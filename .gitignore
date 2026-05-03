@@ -22,5 +22,11 @@ parallel/*.txt
 .DS_Store
 
 # Tools
-.claude/
+.claude/scheduled_tasks.lock
+.claude/*.lock
 .playwright-mcp/
+
+# OMC runtime state
+.omc/state/
+.omc/continuation-count.json
+.omc/swarm-state.json

@@ -405,20 +405,14 @@
       "Bash(\"/C/Users/User/AppData/Local/Programs/Python/Python312/python.exe\" /tmp/complete_scaffolds.py)",
       "Bash(cp /tmp/complete_scaffolds.py /C/Users/User/AppData/Local/Temp/complete_scaffolds.py)",
       "Bash(\"/C/Users/User/AppData/Local/Programs/Python/Python312/python.exe\" \"C:/Users/User/AppData/Local/Temp/complete_scaffolds.py\")",
-      "Bash(\"/C/Users/User/AppData/Local/Programs/Python/Python312/python.exe\" scripts/_complete_scaffolds.py)",
-      "Bash(\"/C/Users/User/AppData/Local/Programs/Python/Python312/python.exe\" scripts/_fix_string_split.py)",
-      "Bash(\"/C/Users/User/AppData/Local/Programs/Python/Python312/python.exe\" scripts/_fix_final_lint.py)",
       "Bash(\"/C/Users/User/AppData/Local/Programs/Python/Python312/python.exe\" scripts/03a_dialog.py)",
       "Bash(grep -c \"\\\\.py$\")",
       "Bash(\"/C/Users/User/AppData/Local/Programs/Python/Python312/python.exe\" scripts/05_execute.py --no-report)",
       "Bash(\"/C/Users/User/AppData/Local/Programs/Python/Python312/python.exe\" scripts/06_heal.py)",
-      "Bash(\"/C/Users/User/AppData/Local/Programs/Python/Python312/python.exe\" scripts/_add_login_retry.py)",
       "Bash(\"/C/Users/User/AppData/Local/Programs/Python/Python312/python.exe\" scripts/05_execute.py --no-report --only-failed)",
-      "Bash(\"/C/Users/User/AppData/Local/Programs/Python/Python312/python.exe\" scripts/_revert_login.py)",
       "Bash(\"/C/Users/User/AppData/Local/Programs/Python/Python312/python.exe\" -m pytest tests/generated/directcloud/ -n 1 --no-header -q --tb=no)",
       "Bash(\"/C/Users/User/AppData/Local/Programs/Python/Python312/python.exe\" -m pytest tests/generated/directcloud/tc_01_login_success_login_success.py tests/generated/directcloud/tc_02_login_wrong_password_login_wrong_password.py tests/generated/directcloud/tc_07_dashboard_layout_dashboard_layout.py tests/generated/directcloud/tc_11_nav_recent_files_nav_recent_files.py tests/generated/directcloud/tc_15_sidebar_mybox_nav_sidebar_mybox_nav.py -v --tb=short -p no:xdist)",
       "Bash(\"/C/Users/User/AppData/Local/Programs/Python/Python312/python.exe\" -m pytest \"tests/generated/directcloud/tc_01_login_success_login_success.py\" \"tests/generated/directcloud/tc_07_dashboard_layout_dashboard_layout.py\" \"tests/generated/directcloud/tc_11_nav_recent_files_nav_recent_files.py\" -v --tb=short -p no:xdist)",
-      "Bash(\"/C/Users/User/AppData/Local/Programs/Python/Python312/python.exe\" scripts/_fix_login_wait.py)",
       "Bash(\"/C/Users/User/AppData/Local/Programs/Python/Python312/python.exe\" -m pytest \"tests/generated/directcloud/tc_01_login_success_login_success.py\" \"tests/generated/directcloud/tc_07_dashboard_layout_dashboard_layout.py\" \"tests/generated/directcloud/tc_11_nav_recent_files_nav_recent_files.py\" \"tests/generated/directcloud/tc_01_login_success_login_success.py\" -v --tb=short -p no:xdist --timeout=60)",
       "Bash(\"/C/Users/User/AppData/Local/Programs/Python/Python312/python.exe\" scripts/06_auto_heal.py)",
       "Bash(taskkill //F //IM python.exe //T)",
@@ -761,7 +755,11 @@
       "Bash(git rm *)",
       "Bash(git add *)",
       "Bash(git commit -m ' *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(grep -rn \"Windows\\\\|win32\\\\|AppData\\\\|Program Files\\\\|\\\\.exe\\\\|Scripts\\\\\\\\\\\\\\\\\\\\|\\\\.venv\\\\\\\\\\\\\\\\Scripts\\\\|backslash\\\\|CRLF\" scripts/ --include=\"*.py\" -l)",
+      "Bash(python3 scripts/check_pending_pipeline.py)",
+      "Bash(python -m http.server 8899)",
+      "Bash(pkill -f \"http.server 8899\")"
     ]
   }
 }
