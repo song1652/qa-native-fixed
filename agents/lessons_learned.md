@@ -32,7 +32,24 @@
   ```
 - **conftest.py 쿨다운**: `tests/generated/directcloud/conftest.py` autouse fixture로 5.0초 간격 강제. '공유 헬퍼 금지' 예외
 - **goto 후 즉시 fill 금지**: `page.goto()` → `wait_for_timeout(1000)` → fill 순서 필수
-- **wait_for_url 필수**: `networkidle` 단독 부족. `wait_for_url(re.compile(r"/mybox|/recents"), timeout=15000)` 병행
+- **wait_for_url timeout 15000 불충분 (23회 반복)**: `wait_for_url("**/mybox/**", timeout=15000)` — DirectCloud 서버 응답 지연으로 반복 실패. **최소 20000, retry 시 30000** 사용 필수
+  ```python
+  # BAD
+  page.wait_for_url("**/mybox/**", timeout=15000)
+  # GOOD
+  page.wait_for_url("**/mybox/**", timeout=20000)   # 최초 시도
+  page.wait_for_url("**/mybox/**", timeout=30000)   # retry 시
+  ```
+- **click 클릭 불가 오류 (12회 반복)**: `await self._channel.send("click")` 오류는 요소가 visible/enabled 상태가 아닌 채 클릭 시도. 클릭 전 반드시 `wait_for(state='visible')` 또는 `expect(locator).to_be_visible()` 확인
+  ```python
+  # BAD
+  page.locator('#btn').click()
+  # GOOD
+  btn = page.locator('#btn')
+  btn.wait_for(state='visible', timeout=10000)
+  btn.click()
+  ```
+- **wait_for_url 필수**: `networkidle` 단독 부족. `wait_for_url(re.compile(r"/mybox|/recents"), timeout=20000)` 병행
 - **AI 팝업 인터셉션**: 로그인 후 `sc-TuwoP` 팝업 → `page.keyboard.press('Escape')` + `wait_for_timeout(300)`
 - **storage_state 주의**: 새 로그인 시 기존 state 무효화 가능
 - **import re 파일 상단 필수**: login() 내 `re.compile()` 사용 시 함수 바디 import 불충분
@@ -107,3 +124,21 @@
 - **navigate 중 evaluate 금지**: 클릭 후 이동 예상 시 `wait_for_load_state()` 후 evaluate
 - **pytest 모듈 충돌**: 동일 basename 파일 → `__init__.py` 필수
 - **items.click() try/except**: count > 0 이후 상호작용도 try/except 필수
+- **JS Prompt dialog 이중 처리 금지**: `page.on("dialog", ...)` 핸들러 + `dialog.accept()` 동시 사용 시 "already handled" 오류. `window.prompt` 오버라이드 방식으로 대체: `page.evaluate(f"window.prompt = () => {repr(text)};")`
+- **동적 콘텐츠 exact count 단언 금지**: `/dynamic_content` 등 페이지는 row 수가 가변 → `== N` 대신 `>= N` 사용
+  ```python
+  # BAD — 동적 페이지에서 exact count 실패
+  assert count == 3, f"Expected 3 content rows, got {count}"
+  # GOOD
+  assert count >= 1, f"Expected at least 1 content row, got {count}"
+  ```
+- **strict mode + 중첩 locator**: `row.locator(".large-10")` 등 부모 row 내에 동일 클래스가 여러 개일 경우 `.first` 필수
+- **test_data.json encoding 명시 필수 (12회 반복)**: Windows 환경에서 기본 cp949 인코딩으로 utf-8 파일 읽기 실패. 모든 json 로드 시 `encoding='utf-8'` 명시
+  ```python
+  # BAD
+  with open(path) as f:
+      data = json.load(f)
+  # GOOD
+  with open(path, encoding='utf-8') as f:
+      data = json.load(f)
+  ```

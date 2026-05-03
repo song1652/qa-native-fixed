@@ -8,6 +8,7 @@
 - 독립적 도구 호출은 반드시 병렬 실행
 - 완료 보고 시 이미 설명한 내용 반복 금지
 - **state/pipeline.json 수동 덮어쓰기 금지**: `heal_count` 등 누적 필드가 리셋됨. 반드시 스크립트(06_heal 등)를 통해 상태 변경. `write_state()`가 FSM 전이 규칙을 자동 검증
+- **Sequential Thinking 우선 사용**: 판단이 필요한 모든 단계(심의·코드 완성·힐링)에서 `mcp__sequential-thinking__sequentialthinking`을 먼저 호출해 단계적으로 추론한 뒤 실행한다
 
 API 호출 없이 Claude Code 자체가 LLM 역할을 수행하는 QA 자동화 시스템.
 모든 단계 결과는 `state/pipeline.json`에 누적되며, Claude Code가 순서대로 직접 실행한다.
@@ -64,19 +65,21 @@ API 호출 없이 Claude Code 자체가 LLM 역할을 수행하는 QA 자동화 
 | 힐링 루프 (05_execute 실패 시) | `/oh-my-claudecode:ultraqa` | `heal-patterns`, `verification-loop`, `browser-qa` | 최대 3회, 동일 오류 2회 반복 시 자동 스킵. 패치마다 lessons_learned 기록 |
 | 패치 후 검증 | `/oh-my-claudecode:verify` | `verify` | 힐링 패치 직후 05_execute 증거 확인. 통과 전 완료 선언 금지 |
 | 패턴 등록 (세션 종료 전) | `/oh-my-claudecode:skillify` | `skillify` | 반복 패턴 발견 시 heal-patterns 또는 lessons_learned에 등록 |
+| 슬롭 정리 (전체 통과 후) | `/oh-my-claudecode:ai-slop-cleaner` | — | 힐링/병렬 완료 후 생성 코드 품질 정리. 동작 변경 없이 중복·죽은 코드 제거 |
 
 ## 힐링
 
 힐링 완료 필수: (1) 코드 패치 (2) [lessons_learned.md](agents/lessons_learned.md)에 교훈 기록 (중복 시 생략, 자동 로그는 [_auto.md](agents/lessons_learned_auto.md)에 별도 기록) (3) 재실행 통과 확인.
 lint 수정·코드 생성 시 반복 오류도 동일하게 lessons_learned.md에 즉시 기록.
 오류 유형별 패치 전략 → [Heal Patterns SKILL.md](.claude/skills/heal-patterns/SKILL.md). MCP 시각 검증 → [HEALING_GUIDE](doc/HEALING_GUIDE.md)
+**힐링 1회차부터 Sequential Thinking 필수**: 오류 유형과 관계없이 힐링 진입 즉시 `mcp__sequential-thinking__sequentialthinking`을 호출해 원인을 단계적으로 추론한 뒤 패치 전략을 결정한다.
 
 **힐링 배치 병렬화**: 06_heal.py / 99_merge.py가 `HEAL_SUBAGENT_CONTEXTS`를 출력하면, 각 배치를 Agent tool로 **동시에** 실행. 배치당 최대 6건 (heal_utils.HEAL_BATCH_SIZE). 단일/병렬/빠른 실행 모두 동일한 출력 형식 사용.
 
 ## 단일 파이프라인 (단일 URL)
 
 ```
-01_analyze → 02a_dialog → [심의] → 02_generate → 03_lint → 03a_dialog → [심의] → 05_execute → 06_heal → 06_auto_heal → [힐링 루프]
+01_analyze → 02a_dialog → [심의] → 02_generate → 03_lint → 03a_dialog → [심의] → 05_execute → 06_heal → 06a_dialog → [심의] → 06_auto_heal → [힐링 루프]
 ```
 
 1. `python scripts/01_analyze.py` — DOM 추출 (메인 + 서브페이지 병렬 수집, React 컴포넌트 포함)
@@ -94,6 +97,10 @@ lint 수정·코드 생성 시 반복 오류도 동일하게 lessons_learned.md�
 > - **힐링 재실행 시**: `05_execute.py --no-report --only-failed`로 실패 테스트만 재실행 가능
 > - 05_execute.py는 매 실행 전 tests/screenshots/ 초기화.
 
+> **슬롭 정리 (선택, 전체 통과 후)**:
+> 힐링을 여러 번 거친 파일에 중복 패치·죽은 코드가 쌓였다면 리포트 생성 전 실행:
+> `/oh-my-claudecode:ai-slop-cleaner tests/generated/{group}/`
+
 ## 병렬 파이프라인 (다중 URL)
 
 ```
@@ -105,6 +112,8 @@ run_qa_parallel.py → testcases/ 스캔 + pages.json URL 조회 → PARALLEL_SU
 3. `subagents[]` 배열의 각 항목을 Agent tool로 **동시에** 실행 — [parallel_subagent.md](prompts/parallel_subagent.md) 참조
 4. 모든 subagent 완료 후 `python parallel/99_merge.py`
 5. 실패 시 단일과 동일한 힐링 플로우 ([HEALING_GUIDE](doc/HEALING_GUIDE.md) 참조). 최대 3회, 초과 시 수동 수정 요청
+6. **슬롭 정리 (선택, 전체 통과 후)**: 여러 subagent가 생성한 파일의 스타일 불일치·중복 정리
+   `/oh-my-claudecode:ai-slop-cleaner tests/generated/`
 
 ## 팀 토론
 

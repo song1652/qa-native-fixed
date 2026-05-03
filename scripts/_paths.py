@@ -1,16 +1,35 @@
-try:
-    import fcntl
-except ImportError:
-    fcntl = None
-
 import hashlib
 import io
 import json
 import os
 import sys
 import tempfile
+import time
 from datetime import datetime, timedelta
 from pathlib import Path
+
+
+def _acquire_file_lock(lock_path: Path, timeout_secs: float = 10.0) -> bool:
+    """크로스플랫폼 락 파일 획득 (스핀락). 획득 성공 시 True."""
+    deadline = time.monotonic() + timeout_secs
+    while time.monotonic() < deadline:
+        try:
+            lock_path.touch(exist_ok=False)  # 원자적 생성 — 이미 존재하면 FileExistsError
+            return True
+        except FileExistsError:
+            # 10초 이상 방치된 스테일 락은 강제 제거
+            try:
+                if lock_path.exists() and (time.time() - lock_path.stat().st_mtime) > 10:
+                    lock_path.unlink(missing_ok=True)
+            except OSError:
+                pass
+            time.sleep(0.05)
+    return False
+
+
+def _release_file_lock(lock_path: Path):
+    """락 파일 해제."""
+    lock_path.unlink(missing_ok=True)
 
 # Windows cp949 터미널에서 한글/유니코드 출력 깨짐 방지
 if sys.stdout and hasattr(sys.stdout, "buffer"):
@@ -45,31 +64,34 @@ QUICK_RUN_LOG = LOGS_DIR / "quick_run.txt"
 
 
 def append_run_history(entry: dict):
-    """실행 이력을 state/run_history.json에 append한다."""
+    """실행 이력을 state/run_history.json에 append한다.
+
+    read-modify-write 전체를 락 파일로 보호해 병렬 파이프라인에서의
+    동시 쓰기로 인한 데이터 유실을 방지한다 (Windows 포함 크로스플랫폼).
+    """
     RUN_HISTORY.parent.mkdir(parents=True, exist_ok=True)
-    history = []
-    if RUN_HISTORY.exists():
-        try:
-            with open(RUN_HISTORY, "r", encoding="utf-8") as f:
-                if fcntl:
-                    fcntl.flock(f, fcntl.LOCK_SH)
-                try:
-                    history = json.loads(f.read())
-                finally:
-                    if fcntl:
-                        fcntl.flock(f, fcntl.LOCK_UN)
-        except (json.JSONDecodeError, Exception):
-            history = []
-    history.append(entry)
-    content = json.dumps(history, ensure_ascii=False, indent=2)
-    fd, tmp_path = tempfile.mkstemp(dir=RUN_HISTORY.parent, suffix=".tmp")
+    lock_path = RUN_HISTORY.with_suffix(".lock")
+    acquired = _acquire_file_lock(lock_path)
     try:
-        with open(fd, "w", encoding="utf-8") as f:
-            f.write(content)
-        Path(tmp_path).replace(RUN_HISTORY)
-    except Exception:
-        Path(tmp_path).unlink(missing_ok=True)
-        raise
+        history = []
+        if RUN_HISTORY.exists():
+            try:
+                history = json.loads(RUN_HISTORY.read_text(encoding="utf-8"))
+            except (json.JSONDecodeError, Exception):
+                history = []
+        history.append(entry)
+        content = json.dumps(history, ensure_ascii=False, indent=2)
+        fd, tmp_path = tempfile.mkstemp(dir=RUN_HISTORY.parent, suffix=".tmp")
+        try:
+            with open(fd, "w", encoding="utf-8") as f:
+                f.write(content)
+            Path(tmp_path).replace(RUN_HISTORY)
+        except Exception:
+            Path(tmp_path).unlink(missing_ok=True)
+            raise
+    finally:
+        if acquired:
+            _release_file_lock(lock_path)
 
 
 def url_cache_key(url: str) -> str:
@@ -158,17 +180,19 @@ def resolve_sub_doms(state: dict) -> dict:
 
 
 def read_state(path: Path) -> dict:
-    """파일 잠금으로 안전하게 JSON 상태 파일을 읽는다."""
+    """크로스플랫폼 락 파일 방식으로 안전하게 JSON 상태 파일을 읽는다."""
     if not path.exists():
         return {}
-    with open(path, "r", encoding="utf-8") as f:
-        if fcntl:
-            fcntl.flock(f, fcntl.LOCK_SH)
+    lock_path = path.with_suffix(".lock")
+    acquired = _acquire_file_lock(lock_path)
+    try:
         try:
-            return json.loads(f.read())
-        finally:
-            if fcntl:
-                fcntl.flock(f, fcntl.LOCK_UN)
+            return json.loads(path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, Exception):
+            return {}
+    finally:
+        if acquired:
+            _release_file_lock(lock_path)
 
 
 def write_state(path: Path, data: dict):

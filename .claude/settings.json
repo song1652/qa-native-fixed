@@ -1,4 +1,13 @@
 {
+  "permissions": {
+    "allow": [
+      "mcp__ccd_session__mark_chapter",
+      "mcp__playwright__browser_snapshot",
+      "mcp__playwright__browser_take_screenshot",
+      "mcp__playwright__browser_wait_for",
+      "Bash(npm list *)"
+    ]
+  },
   "hooks": {
     "UserPromptSubmit": [
       {

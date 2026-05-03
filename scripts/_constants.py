@@ -18,11 +18,11 @@ VALID_TRANSITIONS = {
     "init":         ["analyzed"],
     "analyzed":     ["generated"],
     "generated":    ["reviewed"],
-    "reviewed":     ["done", "heal_needed"],
+    "reviewed":     ["done", "heal_needed", "timeout"],
     "done":         ["heal_needed"],
-    "heal_needed":  ["done", "heal_failed"],
+    "heal_needed":  ["done", "heal_failed", "timeout"],
     "heal_failed":  [],           # 종료 상태
-    "timeout":      ["done"],     # 재실행 가능
+    "timeout":      ["done", "heal_needed"],  # 재실행 가능
 }
 
 

@@ -32,12 +32,6 @@ Claude가 자동으로 호출하는 파일 (직접 실행 불필요)
     ├── check_pending_*.py         훅 5개 (hook_utils.check_state() 공통 사용)
     ├── coverage_matrix.py         커버리지 매트릭스 생성 (tc_*.md → state/coverage.json)
     ├── flaky_detector.py          Flaky Test 감지 (run_history.json → state/flaky_tests.json)
-    ├── _add_login_retry.py        병렬 세션 충돌 대응 — 생성된 테스트에 로그인 재시도 로직 일괄 추가
-    ├── _complete_scaffolds.py     scaffold 파일 완성 보조
-    ├── _fix_final_lint.py         lint 최종 패치 (특수 케이스)
-    ├── _fix_login_wait.py         로그인 대기 패치 (특수 케이스)
-    ├── _fix_string_split.py       문자열 분리 패치 (특수 케이스)
-    ├── _revert_login.py           로그인 패치 롤백
     ├── _python.py                 라이브러리: .venv Python 경로 (PROJECT_ROOT는 _paths.py에서 import)
     ├── _paths.py                  라이브러리: 중앙 경로 상수 + read_state/write_state
     ├── _constants.py              라이브러리: 종료 코드 + VALID_TRANSITIONS 전이 맵
@@ -332,6 +326,7 @@ python scripts/05_execute.py
 | `scripts/check_pending_impl.py` | `pending_impl.json` 존재 여부 | Claude에게 승인 항목 자동 구현 지시 |
 | `scripts/check_pending_parallel.py` | `state/parallel.json`의 `status=ready` | Claude에게 병렬 subagent 실행 지시 |
 | `scripts/check_pending_pipeline.py` | `state/pipeline.json`의 실행 대기 상태 | Claude에게 단일 파이프라인 실행 지시 |
+| `scripts/check_pending_quick_heal.py` | `state/quick.json`의 `status=heal_needed` | 빠른 실행 실패 시 HEAL_SUBAGENT_CONTEXTS 주입해 힐링 자동 시작 |
 
 ---
 
@@ -340,7 +335,7 @@ python scripts/05_execute.py
 | 파일 | 역할 | 직접 실행 |
 |---|---|---|
 | `scripts/_python.py` | `PROJECT_ROOT`를 `_paths.py`에서 import하여 `.venv` 경로 구성. `PYTHON_EXE` 상수 제공 | ❌ (다른 스크립트가 import) |
-| `scripts/_paths.py` | 중앙 경로 상수 (`STATE_DIR`, `LOGS_DIR`, `DOM_CACHE_DIR`, `RUN_HISTORY` 등) + `DOM_CACHE_TTL_HOURS=168`(7일) / `DOM_DYNAMIC_CACHE_TTL_HOURS=24`(24시간) TTL 상수 + `read_state()` (fcntl 공유 잠금) / `write_state()` (atomic rename + **pipeline.json FSM 전이 자동 검증**) / `append_run_history()` (실행 이력 append) / `get_cached_dom()` (정적·동적 TTL 분리 체크 — 동적 만료 시 `dynamic_elements`/`contextmenu_elements`만 제거) / `save_dom_cache()` (atomic write + `_cached_at` / `_dynamic_cached_at` 분리 저장) / `resolve_sub_doms(state)` (sub_dom_keys → {url:dom} 매핑) 유틸 | ❌ (다른 스크립트가 import) |
+| `scripts/_paths.py` | 중앙 경로 상수 (`STATE_DIR`, `LOGS_DIR`, `DOM_CACHE_DIR`, `RUN_HISTORY` 등) + `DOM_CACHE_TTL_HOURS=168`(7일) / `DOM_DYNAMIC_CACHE_TTL_HOURS=24`(24시간) TTL 상수 + `read_state()` (락 파일 기반 크로스플랫폼 잠금) / `write_state()` (atomic rename + **pipeline.json FSM 전이 자동 검증**) / `append_run_history()` (락 파일로 read-modify-write 보호, Windows 포함 크로스플랫폼) / `get_cached_dom()` (정적·동적 TTL 분리 체크 — 동적 만료 시 `dynamic_elements`/`contextmenu_elements`만 제거) / `save_dom_cache()` (atomic write + `_cached_at` / `_dynamic_cached_at` 분리 저장) / `resolve_sub_doms(state)` (sub_dom_keys → {url:dom} 매핑) 유틸 | ❌ (다른 스크립트가 import) |
 | `scripts/_constants.py` | 파이프라인 종료 코드 상수 (`EXIT_SUCCESS=0`, `EXIT_HEAL_NEEDED=10`, `EXIT_HEAL_EXCEEDED=2`, `EXIT_REJECTED=2`) + `VALID_TRANSITIONS` step 전이 맵 + `assert_valid_transition()` 검증 함수 | ❌ (다른 스크립트가 import) |
 | `scripts/result_parser.py` | pytest JSON 리포트 → `{nodeid: passed}` 매핑 파싱. `05_execute.py`와 `99_merge.py`가 공유 | ❌ (다른 스크립트가 import) |
 | `scripts/hook_utils.py` | 훅 스크립트 공통 유틸. `check_state(path, key, value, extra_check)` — 5개 `check_pending_*.py`가 공유 | ❌ (다른 스크립트가 import) |

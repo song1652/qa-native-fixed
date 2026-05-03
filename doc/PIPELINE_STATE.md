@@ -116,23 +116,29 @@
 [
   {
     "timestamp": "YYYY-MM-DD HH:MM:SS",
-    "pipeline": "single | parallel",
+    "pipeline": "single | quick",
     "group": "{group_name}",
     "groups": ["{group_a}", "{group_b}"],
     "passed": 10,
     "failed": 0,
+    "skipped": 0,
     "total": 10,
     "pass_rate": 100.0,
     "heal_count": 0,
     "first_pass": true,
-    "duration_sec": 12.3
+    "duration_sec": 12.3,
+    "per_test_results": {
+      "tests/generated/{group}/tc_01_example.py::test_fn": true
+    }
   }
 ]
 ```
 
 | 필드 | 설명 |
 |------|------|
-| `pipeline` | `single` (05_execute.py) 또는 `parallel` (99_merge.py) |
+| `pipeline` | `single` (05_execute.py 단일 파이프라인) 또는 `quick` (99_merge.py --quick 빠른 실행) |
+| `skipped` | pytest가 skip한 테스트 수 |
+| `per_test_results` | 개별 테스트 nodeid → pass/fail 매핑 (대시보드 필터링용) |
 | `group` | 단일 파이프라인: 대상 그룹명 |
 | `groups` | 병렬 파이프라인: 실행된 그룹 목록 |
 | `first_pass` | 힐링 없이 첫 실행 통과 여부 (생성 코드 품질 프록시) |
@@ -251,10 +257,10 @@
 
 ```
 init → analyzed → generated → reviewed → done
-                                          ↓
-                                     heal_needed → done (패치 성공)
-                                          ↓
-                                     heal_failed (3회 초과, 종료 상태)
-                                     
-timeout → done (재실행 가능)
+                                    ↓         ↓
+                               timeout     heal_needed → done (패치 성공)
+                                    ↓           ↓         ↓
+                                   done     timeout   heal_failed (3회 초과, 종료 상태)
+                                                ↓
+                                        done | heal_needed
 ```
