@@ -32,7 +32,7 @@ from heal_utils import (
     LESSONS_PATH, LESSONS_AUTO_PATH,
 )
 from report_html import case_row as _case_row, build_report
-from result_parser import parse_results
+from result_parser import parse_results, parse_skip_messages
 from structured_log import slog
 try:
     from parse_cases import load_cases as _load_cases
@@ -328,7 +328,9 @@ def _scan_generated_groups() -> dict[str, list[Path]]:
 
 
 def build_html(test_results: dict, summary: dict,
-               created_at: str, target_groups: list[str] | None = None) -> str:
+               created_at: str, target_groups: list[str] | None = None,
+               skip_messages: dict | None = None) -> str:
+    skip_messages = skip_messages or {}
     groups = _scan_generated_groups()
     if target_groups:
         groups = {k: v for k, v in groups.items() if k in target_groups}
@@ -349,19 +351,18 @@ def build_html(test_results: dict, summary: dict,
         if cases:
             for case_idx, case in enumerate(cases):
                 uid = f"{label}_{case_idx}"
-                # case id (tc_01 등)로 개별 테스트 결과 매칭
-                # nodeid 예: tests/generated/demoqa/tc_01_xxx.py::test_yyy
-                # case_id 예: tc_01 → /tc_01_ 패턴으로 정확 매칭
                 case_id = case.get("id", "")
-                matched = next(
-                    (v for k, v in group_tests.items()
+                matched_nodeid = next(
+                    (k for k in group_tests
                      if case_id and (f"/{case_id}." in k or f"/{case_id}_" in k)),
                     None,
                 )
-                case_outcome = matched if matched is not None else "failed"
+                case_outcome = group_tests.get(matched_nodeid, "failed") if matched_nodeid else "failed"
+                if case_outcome == "skipped" and matched_nodeid and matched_nodeid in skip_messages:
+                    case = dict(case, skip_reason=skip_messages[matched_nodeid])
                 rows_html += _case_row(case, uid, case_outcome)
         else:
-            for file_idx, f in enumerate(files):
+            for file_idx, f in enumerate(sorted(files, key=_natural_sort_key)):
                 uid = f"{label}_{file_idx}"
                 nodeid_match = next(
                     (k for k in test_results if f.stem in k), None
@@ -371,6 +372,8 @@ def build_html(test_results: dict, summary: dict,
                     "title": f.stem.replace("_", " ").title(),
                     "precondition": "", "steps": [], "expected": "",
                 }
+                if outcome == "skipped" and nodeid_match and nodeid_match in skip_messages:
+                    simple_case["skip_reason"] = skip_messages[nodeid_match]
                 rows_html += _case_row(simple_case, uid, outcome)
 
         if not rows_html:
@@ -588,7 +591,8 @@ def main():
         index_path = report_dir / f"parallel_index_{ts}.html"
         index_path.write_text(
             build_html(test_results, pytest_summary, now,
-                       target_groups=args.group),
+                       target_groups=args.group,
+                       skip_messages=parse_skip_messages(report)),
             encoding="utf-8"
         )
 

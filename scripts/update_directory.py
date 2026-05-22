@@ -95,10 +95,7 @@ SKILL_DESCRIPTIONS: dict[str, str] = {
     "heal-patterns":             "힐링 오류 유형별 패치 전략 가이드라인 (qa-native)",
     "verify":                    "패치 후 05_execute 기반 3단계 증거 검증 (qa-native)",
     "skillify":                  "반복 패턴 → heal-patterns/lessons_learned 공식 등록 (qa-native)",
-    "e2e-testing":               "Playwright E2E 패턴, POM, flaky test 전략 (ECC)",
     "browser-qa":                "배포 후 시각 검증, 4단계 QA 플로우 (ECC)",
-    "verification-loop":         "패치 완료 후 6단계 검증 체크리스트 (ECC)",
-    "continuous-learning-v2":    "신뢰도 기반 패턴 학습, lessons_learned 강화 (ECC)",
     "python-testing":            "pytest 픽스처·파라미터화·mocking 전략 (ECC)",
 }
 

@@ -182,8 +182,8 @@ class TestCountTestFunctions:
 
     def test_directory(self):
         with tempfile.TemporaryDirectory() as td:
-            (Path(td) / "test_a.py").write_text("def test_x():\n    pass\n")
-            (Path(td) / "test_b.py").write_text("def test_y():\n    pass\n")
+            (Path(td) / "tc_01_login.py").write_text("def test_x():\n    pass\n")
+            (Path(td) / "tc_02_logout.py").write_text("def test_y():\n    pass\n")
             (Path(td) / "__init__.py").write_text("")
             count, has_dep = self.count(td)
             assert count == 2

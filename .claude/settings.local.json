@@ -759,7 +759,20 @@
       "Bash(grep -rn \"Windows\\\\|win32\\\\|AppData\\\\|Program Files\\\\|\\\\.exe\\\\|Scripts\\\\\\\\\\\\\\\\\\\\|\\\\.venv\\\\\\\\\\\\\\\\Scripts\\\\|backslash\\\\|CRLF\" scripts/ --include=\"*.py\" -l)",
       "Bash(python3 scripts/check_pending_pipeline.py)",
       "Bash(python -m http.server 8899)",
-      "Bash(pkill -f \"http.server 8899\")"
-    ]
-  }
+      "Bash(pkill -f \"http.server 8899\")",
+      "Bash(python3 -m playwright install chromium)",
+      "Bash(pip3 list *)",
+      "Bash(python3 -m pytest tests/generated/directcloud/tc_01_login_success_login_success.py -v --no-header)",
+      "Bash(git clone *)",
+      "Bash(gh auth *)",
+      "Bash(find \"/Users/songkyoungjin/CX-QA-AI/[HOLD] qa-webmcp\" -type d | head -20)",
+      "Read(//Users/songkyoungjin/CX-QA-AI/**)",
+      "Bash(ls -la \"/Users/songkyoungjin/CX-QA-AI/[HOLD] qa-webmcp/runner\")",
+      "Bash(ls -la \"/Users/songkyoungjin/CX-QA-AI/[HOLD] qa-webmcp/ai-verifier\")",
+      "Bash(kill 80199)",
+      "Bash(python scripts/team_discuss.py)"
+    ],
+    "defaultMode": "bypassPermissions"
+  },
+  "skipDangerousModePermissionPrompt": true
 }

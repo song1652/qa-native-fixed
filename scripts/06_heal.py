@@ -196,6 +196,14 @@ def main():
     if execution_result.get("failed", 0) == 0 and execution_result.get("exit_code", 1) == 0:
         print("[06] 모든 테스트 통과 - 힐링 불필요.")
         slog("heal_skip_all_pass", step="06_heal")
+        # pytest 재실행 없이 기존 결과로 리포트만 생성
+        import importlib.util
+        _spec = importlib.util.spec_from_file_location(
+            "execute_05", Path(__file__).parent / "05_execute.py"
+        )
+        _mod = importlib.util.module_from_spec(_spec)
+        _spec.loader.exec_module(_mod)
+        _mod.generate_report_from_state(state_path)
         sys.exit(EXIT_SUCCESS)
 
     # 힐링 횟수 확인

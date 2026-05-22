@@ -46,12 +46,10 @@ API 호출 없이 Claude Code 자체가 LLM 역할을 수행하는 QA 자동화 
 
 | 스킬 | 경로 | 용도 |
 |------|------|------|
-| Playwright Best Practices | [SKILL.md](.claude/skills/playwright-best-practices/SKILL.md) | 테스트 코드 작성 시 셀렉터·대기 전략 참조 |
-| Heal Patterns | [SKILL.md](.claude/skills/heal-patterns/SKILL.md) | 힐링 패치 전략, 오류 유형별 수정 패턴 참조 |
-| E2E Testing (ECC) | [SKILL.md](.claude/skills/e2e-testing/SKILL.md) | POM, flaky test 전략, CI/CD 통합 패턴 |
+| Playwright Best Practices | [SKILL.md](.claude/skills/playwright-best-practices/SKILL.md) | 테스트 코드 작성 시 셀렉터·대기 전략 참조. React SPA 이벤트·Tip팝업·파일업로드 포함 |
+| Heal Patterns | [SKILL.md](.claude/skills/heal-patterns/SKILL.md) | 힐링 패치 전략, 오류 유형별 수정 패턴. nativeInputValueSetter·SPA클릭 포함 |
+| DirectCloud QA Domain | [SKILL.md](.claude/skills/directcloud-qa-domain/SKILL.md) | ACL 역할별 테스트, 환경 URL, 데이터 소스 우선순위, CORS 규칙 |
 | Browser QA (ECC) | [SKILL.md](.claude/skills/browser-qa/SKILL.md) | 배포 후 시각 검증, 4단계 QA 플로우 |
-| Verification Loop (ECC) | [SKILL.md](.claude/skills/verification-loop/SKILL.md) | 패치 완료 후 6단계 체크리스트 |
-| Continuous Learning v2 (ECC) | [SKILL.md](.claude/skills/continuous-learning-v2/SKILL.md) | 신뢰도 기반 패턴 학습, lessons_learned 강화 |
 | Python Testing (ECC) | [SKILL.md](.claude/skills/python-testing/SKILL.md) | pytest 픽스처·파라미터화·mocking 전략 |
 | Verify | [SKILL.md](.claude/skills/verify/SKILL.md) | 패치 후 05_execute 기반 증거 검증. "됐을 것 같다" 금지 |
 | Skillify | [SKILL.md](.claude/skills/skillify/SKILL.md) | 반복 패턴 → heal-patterns/lessons_learned 공식 등록 |
@@ -60,9 +58,9 @@ API 호출 없이 Claude Code 자체가 LLM 역할을 수행하는 QA 자동화 
 
 | 단계 | 명령 | 참조 SKILL.md | 핵심 |
 |------|------|--------------|------|
-| 코드 완성 (02_generate 이후) | `/oh-my-claudecode:ultrapilot` | `playwright-best-practices`, `e2e-testing`, `python-testing` | scaffold 파일을 agent별 파티셔닝, dom_info+lessons_learned+SKILL.md 참조 |
+| 코드 완성 (02_generate 이후) | `/oh-my-claudecode:ultrapilot` | `playwright-best-practices`, `python-testing` | scaffold 파일을 agent별 파티셔닝, dom_info+lessons_learned+SKILL.md 참조 |
 | 린트 수정 (03_lint 이후) | Agent tool 직접 병렬 호출 | `python-testing` | lint 이슈 파일별로 Agent 동시 실행 |
-| 힐링 루프 (05_execute 실패 시) | `/oh-my-claudecode:ultraqa` | `heal-patterns`, `verification-loop`, `browser-qa` | 최대 3회, 동일 오류 2회 반복 시 자동 스킵. 패치마다 lessons_learned 기록 |
+| 힐링 루프 (05_execute 실패 시) | `/oh-my-claudecode:ultraqa` | `heal-patterns`, `browser-qa` | 최대 3회, 동일 오류 2회 반복 시 자동 스킵. 패치마다 lessons_learned 기록 |
 | 패치 후 검증 | `/oh-my-claudecode:verify` | `verify` | 힐링 패치 직후 05_execute 증거 확인. 통과 전 완료 선언 금지 |
 | 패턴 등록 (세션 종료 전) | `/oh-my-claudecode:skillify` | `skillify` | 반복 패턴 발견 시 heal-patterns 또는 lessons_learned에 등록 |
 | 슬롭 정리 (전체 통과 후) | `/oh-my-claudecode:ai-slop-cleaner` | — | 힐링/병렬 완료 후 생성 코드 품질 정리. 동작 변경 없이 중복·죽은 코드 제거 |

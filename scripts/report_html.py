@@ -39,6 +39,7 @@ def case_row(case: dict, uid: str, outcome) -> str:
     precondition = case.get("precondition", "")
     steps = case.get("steps", [])
     expected = case.get("expected", "")
+    skip_reason = case.get("skip_reason", "") if outcome == "skipped" else ""
 
     clean_steps = [_esc(_strip_prefix(s)) for s in steps if s.strip()]
     steps_html = "".join(f"<li>{s}</li>" for s in clean_steps) if clean_steps else "<li>-</li>"
@@ -57,6 +58,14 @@ def case_row(case: dict, uid: str, outcome) -> str:
     exp_lines = [_esc(_strip_prefix(l)) for l in exp_raw.splitlines() if l.strip()]
     exp_content = "<br>".join(exp_lines)
 
+    skip_reason_html = (
+        f'<div class="detail-row">'
+        f'<span class="detail-label">Skip Reason</span>'
+        f'<span class="detail-val" style="color:var(--skip);">{_esc(skip_reason)}</span>'
+        f'</div>'
+        if skip_reason else ""
+    )
+
     return (
         f'<div class="case-item {status_cls}" data-status="{status_cls}" data-toggle="{uid}">'
         f'  <div class="case-header">'
@@ -68,6 +77,7 @@ def case_row(case: dict, uid: str, outcome) -> str:
         f'    </div>'
         f'  </div>'
         f'  <div class="case-detail" id="detail_{uid}">'
+        f'    {skip_reason_html}'
         f'    {pre_html}'
         f'    <div class="detail-row">'
         f'      <span class="detail-label">Steps</span>'
@@ -327,6 +337,7 @@ function applyFilter(label) {
     if(st.filter==='all'&&btn.textContent.startsWith('All'))btn.classList.add('active');
     if(st.filter==='pass'&&btn.textContent.startsWith('Pass'))btn.classList.add('active');
     if(st.filter==='fail'&&btn.textContent.startsWith('Fail'))btn.classList.add('active');
+    if(st.filter==='skip'&&btn.textContent.startsWith('Skip'))btn.classList.add('active');
   });
   var pg=document.getElementById('pager_'+label);
   if(pages>1){

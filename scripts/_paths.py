@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import hashlib
 import io
 import json
@@ -32,7 +34,9 @@ def _release_file_lock(lock_path: Path):
     lock_path.unlink(missing_ok=True)
 
 # Windows cp949 터미널에서 한글/유니코드 출력 깨짐 방지
-if sys.stdout and hasattr(sys.stdout, "buffer"):
+# pytest 실행 시에는 캡처 스트림을 재래핑하지 않음 (I/O closed 충돌 방지)
+_under_pytest = "pytest" in sys.modules or "PYTEST_CURRENT_TEST" in os.environ
+if not _under_pytest and sys.stdout and hasattr(sys.stdout, "buffer"):
     try:
         sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
         sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")

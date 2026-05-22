@@ -3,6 +3,8 @@ QA Agent Dashboard 서버
 프로젝트 루트 또는 어디서든 실행 가능:
   python agents/dashboard/serve.py
 """
+from __future__ import annotations
+
 import json
 import queue
 import re

@@ -18,6 +18,10 @@ parallel/*.txt
 # Environment
 .env
 
+# Credentials / sensitive test data
+config/test_data.json
+config/weverse.json
+
 # macOS
 .DS_Store
 

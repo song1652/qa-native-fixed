@@ -8,6 +8,15 @@
 
 ## Locator 오류
 
+- **Locator**: `assert page.locator('ul.table-files').is_visible(), "파일 목록 영역(ul.table-files)이 표시되지 않습니다"` -- dom_info 셀렉터 재확인, #id 우선 사용
+- **Locator**: `assert file_list.count() > 0, "파일 목록 영역을 찾을 수 없습니다"` -- dom_info 셀렉터 재확인, #id 우선 사용
+- **Locator**: `assert comment_count.count() > 0, "파일 목록에 코멘트 수 배지가 표시되지 않습니다"` -- dom_info 셀렉터 재확인, #id 우선 사용
+- **Locator**: `assert file_list.count() > 0, "MyBox 파일 목록이 표시되지 않습니다"` -- dom_info 셀렉터 재확인, #id 우선 사용
+- **Locator**: `assert page.locator('li.preview__list-item').count() > 0 or \` -- dom_info 셀렉터 재확인, #id 우선 사용
+- **Locator**: `assert new_folder_menu.count() > 0, (` -- dom_info 셀렉터 재확인, #id 우선 사용
+- **Locator**: `assert username_display.count() > 0, "설정 모달에 사용자 정보가 표시되지 않습니다"` -- dom_info 셀렉터 재확인, #id 우선 사용
+- **Locator**: `assert photo_nav.count() > 0, "공유박스 사이드바에서 Photo 항목을 찾을 수 없습니다"` -- dom_info 셀렉터 재확인, #id 우선 사용
+
 - **Locator**: `assert "login" not in new_url or current_url == new_url or page.locator('li#mybox').count() > 0` -- dom_info 셀렉터 재확인, #id 우선 사용
 - **Locator**: `E   AssertionError: assert False` -- dom_info 셀렉터 재확인, #id 우선 사용
 - **Locator**: `await self._channel.send("click", self._timeout, locals_to_params(locals()))` -- dom_info 셀렉터 재확인, #id 우선 사용
@@ -32,6 +41,8 @@
 - **Assertion**: `assert "In a list!" in text or "list" in text.lower(), f"Expected list content, got: {text}"` -- 실제 페이지 텍스트/상태로 기댓값 수정
 
 ## Timeout 오류
+
+- **Timeout**: `page.wait_for_url(re.compile(r"/mybox"), timeout=20000)` -- expect(..., timeout=10000) 또는 wait_for_selector 추가
 
 - **Timeout**: `page.wait_for_url("**/login**", timeout=20000)` -- expect(..., timeout=10000) 또는 wait_for_selector 추가
 

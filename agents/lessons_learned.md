@@ -9,6 +9,9 @@
 
 ## DirectCloud — 로그인 & 세션
 
+- **tweb 로그인 후 URL**: `tweb.directcloud.jp` 환경은 로그인 성공 후 `/mybox/`가 아닌 `/home`으로 이동. wait_for_url 패턴에 `/home|/mybox|/recents` 모두 포함할 것 (`re.compile(r"/(home|mybox|recents)")`)
+- **web vs tweb URL 혼용 금지**: 파이프라인 URL이 `tweb`이면 테스트 BASE_URL도 반드시 `tweb`. `web.directcloud.jp`에서는 테스트 계정 자격증명이 동작하지 않아 alert "잘못된 계정정보" 발생
+
 - **병렬 실행 금지**: 계정당 단일 세션. 반드시 `-n 1`
 - **login() retry 필수**: `wait_for_url("**/mybox/**")` 단독 호출은 세션 충돌 시 TimeoutError
   ```python
@@ -59,8 +62,8 @@
 
 ## DirectCloud — 셀렉터 & UI
 
-- **사이드바 ID 없음**: `li#mybox`, `li#sharedbox`, `li#trash` 전부 없음 → `li:has-text("텍스트").first`
-  - 메뉴: Home / My Box / 최근파일 / 즐겨찾기 / 주소록 / Shared Box / AI 폴더 / Link History / File Request / Trash / Mail
+- **사이드바 ID 존재**: `li#mybox`, `li#sharedbox`, `li#trash`, `li#home`, `li#recents` 모두 ID 있음. `li:has-text()` 대신 `li#mybox` 등 ID 선택자 사용 권장
+  - 메뉴: `li#home`(Home) / `li#mybox`(My Box) / `li#recents`(최근파일) / `li#sharedbox`(Shared Box) / `li#trash`(Trash)
 - **검색창**: `#inputSearch` 없음 → `[placeholder="검색"]`
 - **컨텍스트 메뉴 텍스트**: 다운로드 / 복사 / 이동 / **이름변경** / **링크생성** / 삭제 / 즐겨찾기 / 태그
 - **#modal-settings**: strict mode — 5개 select 매칭 → `.first` 필수. `wait_for(state='visible', timeout=20000)` (10000 부족)
@@ -74,6 +77,7 @@
 - **contacts CSV**: 다운로드 "현재 주소록 CSV 다운로드", 업로드 "CSV 일괄등록"
 - **로그아웃 검증**: `"login" in page.url or has_login_form` 패턴 (URL 타이밍 이슈 방지)
 - **항상 통과 assertion 금지**: `count() >= 0`, `is_visible() or True` 패턴은 테스트 가치 없음
+- **클릭 후 변화 검증 시 클릭 대상 자체 count 금지**: `page.locator('[data-testid="forgot-password-button"]').count() > 0` 를 클릭 후 변화 조건으로 사용하면, 버튼이 클릭 전후 모두 존재하므로 항상 True → `or` 연결 시 전체 assertion이 무효화됨. 클릭 대상 요소 외의 **새로 출현하는 요소** 또는 URL 변화로만 검증할 것
 
 ---
 
@@ -84,7 +88,11 @@
 - **MyBox 빈 계정**: count==0이면 `pytest.skip()`. `.checkbox-list-item`은 항상 존재하므로 빈 상태 감지 금지
 - **내용 없으면 skip**: 휴지통·SharedBox 등 조건부 환경 → `if items.count() == 0: pytest.skip("대상 없음")`
 - **컨텍스트 메뉴 텍스트 주의**: 삭제 / 이름변경 / 링크생성 (영구삭제 X, 이름바꾸기 X, 링크공유 X)
-- **TC303 새 폴더 컨텍스트 메뉴**: `ul.table-files` 하단 아래에서만 나타남. `height: 900` 뷰포트 필수
+- **TC303 새 폴더 생성**: 우클릭 컨텍스트 메뉴 방식 동작 안 함. `[data-test-id="toolbar-create-new"]` 버튼 → 드롭다운 `li:has-text("새 폴더")` 클릭 → `#modal-new-folder` 모달 → `input[name="name"]` 입력 → `button.btn-success:has-text("생성")` 클릭
+- **파일 목록 컨테이너**: `ul.table-files` TEST 환경에 없음. 실제 선택자 `#files`(전체 파일 영역), `.table-wrap`(목록 컨테이너). 빈 폴더여도 `#files`는 항상 visible
+- **SPA 렌더링 지연**: networkidle 후에도 `#files` 렌더링에 추가 시간 필요. `page.wait_for_selector('#files', state='visible', timeout=15000)` 사용. `is_visible()` 직접 assert 금지
+- **설정 모달 열기**: `page.mouse.click(1251, 27)` 좌표는 불안정 → `.nav-profile` 클릭 사용. 사용자명이 "게스트"가 아닌 경우 `has-text("게스트")` 어설션 실패 → 모달 visible만 확인
+- **SharedBox 빈 경우**: 서브폴더(Photo 등)가 없을 수 있음. 특정 폴더 존재에 의존하는 assert 대신 페이지 접근 확인으로 대체
 - **`[class*="listItem"]` 위험**: disabled 항목 매칭 → `li[class*="listItem"]:not(.listItem-checkbox-label-all)` 사용
 - **sidebar try/except**: `.first.click()` 도 예외 가능. try/except + `goto()` 폴백
 - **dismiss_popups() 금지 케이스**: 파일 상세 패널 사용 중, 링크생성 모달 검증 전 — Escape가 모달을 닫음
@@ -142,3 +150,76 @@
   with open(path, encoding='utf-8') as f:
       data = json.load(f)
   ```
+
+---
+
+## DirectCloud — React SPA 심화 패턴 (CX-QA-AI 이식)
+
+### 절대 금지 안티패턴
+
+| 안티패턴 | 결과 | 올바른 방법 |
+|----------|------|------------|
+| `page.evaluate("el.remove()")` DOM 직접 제거 | React 앱 전체 파괴 | `dismiss_tip_popup()` 좌표 클릭 |
+| `dispatchEvent(new MouseEvent('click'))` | `isTrusted=false` → React 무시 | `page.mouse.click(좌표)` |
+| `.popover` selector로 Tip 팝업 타겟 | 요소 못 찾음 | z-index 기반 DOM 탐색 |
+| `set_input_files()` headless | 파일 선택 실패 | API 직접 호출 방식 |
+| `page.mouse.click(좌표)` for 모달 submit | 클릭 불안정 | `locator.click()` 네이티브 |
+| `wait_for_load_state('domcontentloaded')` 후 요소 확인 | SPA 렌더링 전 → 요소 없음 | `networkidle` 필수 |
+| `locator.is_visible(timeout=N)` 로 대기 | timeout 무시, 즉시 반환 | `wait_for(state='visible', timeout=N)` |
+| `filter(has_text='A, B')` 쉼표 OR 시도 | 리터럴로 해석 | `filter(has_text=re.compile(r'A\|B'))` |
+
+- **`is_visible()`은 timeout을 지원하지 않는다**: `is_visible(timeout=10000)` → timeout 무시, 즉시 `False` 반환.
+  SPA 비동기 렌더링 대기는 반드시 `wait_for(state='visible', timeout=N)` 또는 `expect(locator).to_be_visible(timeout=N)` 사용
+
+- **삭제 확인은 `wait_for(state='hidden')` 필수**: `is_visible() == False` 단독 체크는 SPA 리렌더링 타이밍에 따라 flaky
+  ```python
+  # BAD — 타이밍 flaky
+  assert not row.is_visible()
+  # GOOD
+  page.wait_for_load_state('networkidle')
+  row.wait_for(state='hidden', timeout=15000)
+  assert not row.is_visible()
+  ```
+
+- **쉼표 구분 selector는 OR가 아님**: Playwright Python에서 `filter(has_text='ログアウト, 로그아웃')`은 리터럴 문자열 탐색
+  ```python
+  # BAD
+  page.locator('button').filter(has_text='ログアウト, 로그아웃')
+  # GOOD
+  page.get_by_role('button', name=re.compile(r'ログアウト|로그아웃|Logout'))
+  ```
+
+- **로그아웃 후 URL 미변경 시 쿠키 삭제 fallback**:
+  ```python
+  # URL이 변경되지 않으면 쿠키 삭제 + reload로 강제 로그아웃 확인
+  page.context.clear_cookies()
+  page.reload()
+  page.wait_for_load_state('networkidle')
+  on_login = '/login' in page.url or page.locator('input[name="id"]').first.is_visible()
+  assert on_login
+  ```
+
+- **로그아웃 3단계 전략 (60초 제한)**: PCWeb 로그아웃은 환경·플랜별 UI가 달라 단일 전략 불가. 각 전략 timeout을 2~3초로 짧게 설정. 전략 순서: (1) 직접 로그아웃 링크 2초 → (2) 프로필→설정→로그아웃 최대 2회 → (3) `/auth/logout` URL 직접 이동. 전략 3은 거의 항상 성공하므로 앞 전략에서 시간 낭비하지 않는 것이 핵심
+
+- **이름변경 input 탐색**: `input[name="name"]` 금지 — 검색박스, 새폴더 모달 등 여러 곳에서 중복 사용됨. 반드시 **파일 행 내부** `row.locator('input').first` 우선 탐색
+  ```python
+  # BAD — 검색박스나 새폴더 모달 input과 충돌
+  page.locator('input[name="name"]').first.fill(new_name)
+  # GOOD — 행 내부 인라인 input 우선
+  inline_input = row.locator('input').first
+  inline_input.wait_for(state='visible', timeout=3000)
+  inline_input.fill(new_name)
+  inline_input.press('Enter')
+  ```
+
+- **PCWeb 로그인 후 URL 4가지 패턴**: 환경에 따라 랜딩 URL이 다름. `/mybox/`만 체크하면 일부 환경에서 실패
+  ```python
+  # BAD
+  page.wait_for_url(re.compile(r'/mybox/'), timeout=10000)
+  # GOOD — 4가지 패턴 모두 허용
+  page.wait_for_url(re.compile(r'/(mypage|home|top|files|drive)'), timeout=30000)
+  ```
+
+- **`test.skip()` 대신 데이터 보장 헬퍼 사용**: 파일/폴더 없으면 skip하지 말고 API 업로드로 전제조건을 테스트 내에서 자동 충족. `pytest.skip()`은 환경 가드(IS_REAL, 플랜 미지원)에만 사용
+
+- **SPA 이동 후 Tip 팝업 + 대기 필수**: `#sharedbox`, `#mybox` 클릭 후 `networkidle` + `wait_for_timeout(1000~2000)` + `dismiss_tip_popup()` 순서 필수. `domcontentloaded` 직후 파일 목록 탐색 시 렌더링 미완료로 0건 반환

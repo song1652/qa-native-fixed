@@ -5,6 +5,7 @@ LLM 없음. pytest 실행 후 결과를 state/pipeline.json에 저장.
 """
 import ast
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -14,7 +15,7 @@ from datetime import datetime
 
 from _python import PYTHON_EXE
 from _paths import PIPELINE_STATE, PROJECT_ROOT, read_state, write_state, append_run_history
-from result_parser import parse_results
+from result_parser import parse_results, parse_skip_messages
 from structured_log import slog
 from report_html import case_row as _case_row, build_report
 
@@ -98,21 +99,30 @@ def _extract_group_name(state: dict) -> str:
 # ── 리포트용 rows_html 생성 ────────────────────────────────────
 
 
-def _build_rows_html(test_results: dict, test_cases: list, group_name: str) -> str:
+def _tc_sort_key(nodeid: str) -> int:
+    m = re.search(r'tc_(\d+)', nodeid)
+    return int(m.group(1)) if m else 9999
+
+
+def _build_rows_html(test_results: dict, test_cases: list, group_name: str,
+                     skip_messages: dict | None = None) -> str:
     """테스트 결과와 케이스 메타데이터를 매칭하여 rows_html 생성."""
+    skip_messages = skip_messages or {}
     rows_html = ""
     if test_cases:
         group_outcome = "passed" if all(v == "passed" for v in test_results.values()) else "failed"
+        test_items = sorted(test_results.items(), key=lambda x: _tc_sort_key(x[0]))
         for case_idx, case in enumerate(test_cases):
             uid = f"{group_name}_{case_idx}"
-            test_items = list(test_results.items())
             if case_idx < len(test_items):
-                outcome = test_items[case_idx][1]  # "passed"|"failed"|"skipped"
+                nodeid, outcome = test_items[case_idx]
             else:
-                outcome = group_outcome
+                nodeid, outcome = "", group_outcome
+            if outcome == "skipped" and nodeid in skip_messages:
+                case = dict(case, skip_reason=skip_messages[nodeid])
             rows_html += _case_row(case, uid, outcome)
     else:
-        for idx, (nodeid, outcome) in enumerate(test_results.items()):
+        for idx, (nodeid, outcome) in enumerate(sorted(test_results.items(), key=lambda x: _tc_sort_key(x[0]))):
             uid = f"{group_name}_{idx}"
             simple_case = {
                 "title": nodeid.split("::")[-1].replace("_", " ").title() if "::" in nodeid else nodeid,
@@ -120,6 +130,8 @@ def _build_rows_html(test_results: dict, test_cases: list, group_name: str) -> s
                 "steps": [],
                 "expected": "",
             }
+            if outcome == "skipped" and nodeid in skip_messages:
+                simple_case["skip_reason"] = skip_messages[nodeid]
             rows_html += _case_row(simple_case, uid, outcome)
 
     if not rows_html:
@@ -128,6 +140,67 @@ def _build_rows_html(test_results: dict, test_cases: list, group_name: str) -> s
 
 
 # ── 메인 ────────────────────────────────────────────────────────
+
+
+def generate_report_from_state(state_path: Path) -> None:
+    """pytest 재실행 없이 state의 execution_result + json_report로 HTML 리포트만 생성."""
+    import json as _json
+    state = read_state(state_path)
+    execution_result = state.get("execution_result", {})
+    json_report_path = execution_result.get("json_report_path", "")
+
+    report = {}
+    if json_report_path and Path(json_report_path).exists():
+        try:
+            report = _json.loads(Path(json_report_path).read_text(encoding="utf-8"))
+        except Exception:
+            pass
+
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    report_dir = PROJECT_ROOT / "tests" / "reports"
+    report_dir.mkdir(parents=True, exist_ok=True)
+    report_path = report_dir / f"report_{ts}.html"
+
+    group_name = _extract_group_name(state)
+    test_cases = state.get("test_cases", [])
+    if not test_cases:
+        test_cases = _load_cases_for_group(group_name)
+
+    test_results = parse_results(report)
+    skip_messages = parse_skip_messages(report)
+    pytest_summary = report.get("summary", {})
+
+    rows_html = _build_rows_html(test_results, test_cases, group_name, skip_messages)
+    passed = execution_result.get("passed", 0)
+    failed = execution_result.get("failed", 0)
+    g_skip_cnt = sum(1 for v in test_results.values() if v == "skipped")
+    groups_data = [{
+        "label": group_name,
+        "rows_html": rows_html,
+        "pass_cnt": passed,
+        "total_cnt": passed + failed + g_skip_cnt,
+        "all_pass": failed == 0,
+        "has_tests": bool(test_results),
+        "skip_cnt": g_skip_cnt,
+    }]
+    html_content = build_report(
+        groups_data=groups_data,
+        summary=pytest_summary,
+        created_at=now,
+        subtitle="Test Report",
+    )
+    report_path.write_text(html_content, encoding="utf-8")
+
+    execution_result["report_path"] = str(report_path)
+    execution_result["report_name"] = report_path.name
+    state["execution_result"] = execution_result
+    write_state(state_path, state)
+
+    print()
+    print("=" * 55)
+    print(f"  HTML 리포트: {report_path}")
+    print("=" * 55)
 
 
 def main():
@@ -232,7 +305,8 @@ def main():
 
     # report_html.build_report 사용 (병렬 리포트와 동일 형식)
     if not no_report:
-        rows_html = _build_rows_html(test_results, test_cases, group_name)
+        skip_messages = parse_skip_messages(report)
+        rows_html = _build_rows_html(test_results, test_cases, group_name, skip_messages)
         g_pass_cnt = sum(1 for v in test_results.values() if v == "passed")
         g_skip_cnt = sum(1 for v in test_results.values() if v == "skipped")
         g_total_cnt = len(test_results)

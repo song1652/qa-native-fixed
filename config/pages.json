@@ -1,27 +1,36 @@
 {
   "directcloud": {
-    "url": "https://web.directcloud.jp/login",
+    "url": "https://tweb.directcloud.jp/login",
     "auth": {
-      "company": "samplelab",
-      "username": "guest",
-      "password": "guest1234!!"
+      "company": "skj",
+      "username": "skj942",
+      "password": "danawa1631!"
     },
     "spa": true,
     "preconditions": [],
     "notes": "DirectCloud 파일 공유 서비스 - 로그인 후 내부 기능 테스트"
   },
-  "heroku": {
-    "url": "https://the-internet.herokuapp.com/",
-    "auth": null,
-    "spa": false,
-    "preconditions": [],
-    "notes": "다양한 UI 패턴 테스트용 (login, drag, shadow DOM 등)"
-  },
-  "demoqa": {
-    "url": "https://demoqa.com",
-    "auth": null,
-    "spa": true,
-    "preconditions": [],
-    "notes": "React SPA 기반 QA 연습 사이트"
+  "directcloud_environments": {
+    "_comment": "환경별 서버 URL — directcloud-qa-domain 스킬 및 TC 작성 시 참조",
+    "dev": {
+      "admin": "https://boxadmin.dev-directcloud.jp/",
+      "manager": "https://boxmanager.dev-directcloud.jp",
+      "web": "https://web.dev-directcloud.jp"
+    },
+    "test": {
+      "admin": "https://tboxadmin.directcloud.jp",
+      "manager": "https://tboxmanager.directcloud.jp",
+      "web": "https://tweb.directcloud.jp"
+    },
+    "qa": {
+      "admin": "https://boxadmin.qa-directcloud.jp/",
+      "manager": "https://boxmanager.qa-directcloud.jp",
+      "web": "https://web.qa-directcloud.jp/login"
+    },
+    "stg": {
+      "admin": "https://sboxadmin.directcloud.jp",
+      "manager": "https://sboxmanager.directcloud.jp",
+      "web": "https://sweb.directcloud.jp"
+    }
   }
 }

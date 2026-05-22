@@ -157,3 +157,97 @@ python scripts/06_auto_heal.py
 # 힐링 컨텍스트 생성
 python scripts/06_heal.py
 ```
+
+---
+
+## DirectCloud 전용 힐링 패턴
+
+### 9. Vue/React input 입력 실패 (nativeInputValueSetter)
+
+DirectCloud Manager 등 Vue/React 앱에서 `locator.fill()`이 프레임워크 상태에 반영되지 않을 때:
+
+```python
+# ❌ fill()이 Vue/React 상태에 반영 안 됨
+page.locator('[name="company_code"]').fill('회사코드')
+
+# ✅ nativeInputValueSetter 패턴 (placeholder 순서 기준)
+page.evaluate("""(args) => {
+    const setter = Object.getOwnPropertyDescriptor(
+        window.HTMLInputElement.prototype, 'value'
+    ).set;
+    const fields = Array.from(document.querySelectorAll('input'))
+                        .filter(i => i.placeholder);
+    setter.call(fields[0], args[0]);
+    fields[0].dispatchEvent(new Event('input', {bubbles: true}));
+    setter.call(fields[1], args[1]);
+    fields[1].dispatchEvent(new Event('input', {bubbles: true}));
+    setter.call(fields[2], args[2]);
+    fields[2].dispatchEvent(new Event('input', {bubbles: true}));
+}""", [company_code, user_id, password])
+```
+
+**적용 조건**: `fill()` 후 로그인 버튼 클릭해도 입력값이 비어있다는 에러 발생 시
+
+### 10. React SPA toolbar 클릭 무반응
+
+`locator.click()`이 React 이벤트 핸들러를 트리거하지 않을 때:
+
+```python
+# ❌ React 핸들러 미트리거
+page.locator('button[data-name="새 폴더"]').click()
+
+# ✅ 좌표 기반 real browser event
+coords = page.evaluate("""() => {
+    const btn = document.querySelector('button[data-name="새 폴더"]')
+             || document.querySelector('button[data-name="新規フォルダ"]');
+    if (!btn) return null;
+    const rect = btn.getBoundingClientRect();
+    return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+}""")
+if coords:
+    page.mouse.click(coords['x'], coords['y'])
+```
+
+### 11. Timeout 직후 요소 없음 — Tip 팝업 가림
+
+toolbar 버튼 클릭이 timeout으로 실패하고 스크린샷에 팝업이 보일 때:
+
+```python
+# Tip 팝업이 버튼을 가리는 경우
+page.wait_for_timeout(2000)
+result = page.evaluate("""() => {
+    const els = Array.from(document.querySelectorAll('*'));
+    for (const el of els) {
+        const style = window.getComputedStyle(el);
+        const zi = parseInt(style.zIndex || '0');
+        if (zi > 100 && (style.position === 'fixed' || style.position === 'absolute')) {
+            const text = el.innerText || '';
+            if (text.includes('Tip') || text.includes('팁') || text.includes('ヒント')) {
+                const rect = el.getBoundingClientRect();
+                return { x: rect.right - 20, y: rect.top + 20 };
+            }
+        }
+    }
+    return null;
+}""")
+if result:
+    page.mouse.click(result['x'], result['y'])
+    page.wait_for_timeout(300)
+```
+
+### 12. 삭제 확인 실패 — waitFor hidden 누락
+
+삭제 후 `assert not row.is_visible()`이 flaky하게 실패할 때:
+
+```python
+# BAD — SPA 리렌더링 전 확인
+assert not row.is_visible()
+
+# GOOD — DOM 제거까지 대기
+page.wait_for_load_state('networkidle')
+try:
+    row.wait_for(state='hidden', timeout=15000)
+except Exception:
+    pass
+assert not row.is_visible()
+```

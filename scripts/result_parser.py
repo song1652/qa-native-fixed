@@ -17,3 +17,41 @@ def parse_results(report: dict) -> dict:
             outcome = "failed"
         results[nodeid] = outcome
     return results
+
+
+def parse_skip_messages(report: dict) -> dict:
+    """JSON 리포트 → {nodeid: skip_reason} (스킵 케이스만).
+
+    pytest.skip("reason") 호출 시 call.longrepr / setup.longrepr 에서 이유 추출.
+    longrepr 형식: 문자열 "('path', line, 'Skipped: reason')" 또는 단순 문자열.
+    """
+    import ast
+    messages = {}
+    for t in report.get("tests", []):
+        if t.get("outcome") != "skipped":
+            continue
+        nodeid = t.get("nodeid", "")
+        for phase in ("call", "setup"):
+            phase_data = t.get(phase) or {}
+            longrepr = phase_data.get("longrepr", "")
+            if not longrepr:
+                continue
+            msg = ""
+            if isinstance(longrepr, str):
+                # "(path, line, 'Skipped: reason')" 튜플 문자열 형식
+                try:
+                    parsed = ast.literal_eval(longrepr)
+                    if isinstance(parsed, tuple) and len(parsed) >= 3:
+                        msg = str(parsed[2]).replace("Skipped: ", "").strip()
+                    else:
+                        msg = longrepr.replace("Skipped: ", "").strip()
+                except Exception:
+                    msg = longrepr.replace("Skipped: ", "").strip()
+            elif isinstance(longrepr, (list, tuple)) and len(longrepr) >= 3:
+                msg = str(longrepr[2]).replace("Skipped: ", "").strip()
+            else:
+                msg = str(longrepr).replace("Skipped: ", "").strip()
+            if msg:
+                messages[nodeid] = msg
+                break
+    return messages
