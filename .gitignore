@@ -28,6 +28,7 @@ config/weverse.json
 # Tools
 .claude/scheduled_tasks.lock
 .claude/*.lock
+.claude/settings.local.json
 .playwright-mcp/
 
 # OMC runtime state
