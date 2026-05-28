@@ -7,6 +7,8 @@
 - append_lessons: lessons_learned.md 자동 기록
 - find_screenshot_for_test: 스크린샷 검색
 """
+from __future__ import annotations
+
 import json
 import re
 from datetime import datetime

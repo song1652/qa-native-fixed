@@ -1,4 +1,6 @@
 """훅 스크립트 공통 유틸리티."""
+from __future__ import annotations
+
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path

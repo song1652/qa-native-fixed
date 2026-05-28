@@ -3,6 +3,8 @@ Step 5 -- 테스트 실행
 LLM 없음. pytest 실행 후 결과를 state/pipeline.json에 저장.
 커스텀 다크 테마 HTML 리포트 생성 (report_html.py 공통 모듈 사용).
 """
+from __future__ import annotations
+
 import ast
 import json
 import re

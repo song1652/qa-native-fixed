@@ -15,6 +15,8 @@ worker 디렉토리 없이 subagent가 tests/generated/에 직접 저장.
   # targets.json 지정
   python run_qa_parallel.py --targets testcases/targets_demo.json
 """
+from __future__ import annotations
+
 import argparse
 import asyncio
 import json
