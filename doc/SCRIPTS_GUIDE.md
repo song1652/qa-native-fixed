@@ -14,7 +14,6 @@
 ├── agents/dashboard/serve.py  ← 모니터링 대시보드 서버
 ├── parallel/00_split.py       ← 병렬 파이프라인 worker 환경 초기화 (URL별 디렉토리 + DOM 분석)
 ├── parallel/99_merge.py       ← 병렬 실행 완료 후 결과 통합
-├── telegram_bot.py            ← 텔레그램 봇 서버
 └── _bootstrap.py              ← 루트 진입점 공통 경로 설정 (scripts/ → sys.path)
 
 Claude가 자동으로 호출하는 파일 (직접 실행 불필요)
@@ -203,19 +202,6 @@ python run_team.py  # 주제를 대화형으로 입력
 
 **동작:** `state/discuss.json` 생성 후 다음 단계 안내 출력.
 이후 Claude에게 직접 "팀 토론 진행해줘"라고 요청하면 됩니다.
-
----
-
-### `telegram_bot.py` — 텔레그램 봇 서버
-
-텔레그램에서 Claude에게 QA 명령을 보낼 수 있는 봇 서버입니다.
-
-```bash
-python telegram_bot.py
-```
-
-**사용 방법:** 텔레그램 앱에서 봇에게 메시지를 보내면 Claude가 응답합니다.
-Claude Code가 실행 중인 상태에서 함께 구동해야 합니다.
 
 ---
 

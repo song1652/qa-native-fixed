@@ -18,7 +18,6 @@ DOM 분석 → 테스트 코드 자동 생성 → 심의 → 실행 → 자가 �
 | `scripts/06_auto_heal.py` | 자동 패치 (힐링 선 실행) | 06_heal.py 이후 Agent 호출 전 deterministic 패턴 자동 수정 |
 | `parallel/99_merge.py` | 병렬 실행 완료 후 | pytest 일괄 실행 + HTML 리포트 생성 + workers 정리 |
 | `parallel/99_merge.py --quick --group` | 빠른 실행 (대시보드) | 특정 그룹만 pytest 실행 (state/quick.json에 결과 저장) |
-| `telegram_bot.py` | 텔레그램 봇 서버 | 텔레그램에서 Claude에게 QA 명령 전달 |
 
 > **scripts/ 폴더 안의 파일들은 직접 실행하지 않습니다.** Claude가 파이프라인 순서에 따라 자동으로 호출합니다.
 

@@ -6,12 +6,6 @@
       "runtimeExecutable": "C:\\Users\\User\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
       "runtimeArgs": ["agents/dashboard/serve.py"],
       "port": 8766
-    },
-    {
-      "name": "Telegram Bot",
-      "runtimeExecutable": "python",
-      "runtimeArgs": ["telegram_bot.py"],
-      "port": null
     }
   ]
 }

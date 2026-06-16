@@ -265,7 +265,6 @@ def build_markdown() -> str:
         "| `run_qa.py` | 단일 파이프라인 실행 엔트리포인트 |",
         "| `run_qa_parallel.py` | 병렬 파이프라인 실행 엔트리포인트 |",
         "| `run_team.py` | 팀 토론 실행 엔트리포인트 |",
-        "| `telegram_bot.py` | Telegram 봇 인터페이스 (비활성 시 미실행) |",
         "",
     ]
 
