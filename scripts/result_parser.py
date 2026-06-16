@@ -19,6 +19,22 @@ def parse_results(report: dict) -> dict:
     return results
 
 
+def parse_durations(report: dict) -> dict:
+    """JSON 리포트 → {nodeid: {setup_ms, call_ms, teardown_ms, total_ms}} 매핑."""
+    out = {}
+    for t in report.get("tests", []):
+        nodeid = t.get("nodeid", "")
+        if not nodeid:
+            continue
+        out[nodeid] = {
+            "setup_ms":    round(t.get("setup",    {}).get("duration", 0) * 1000),
+            "call_ms":     round(t.get("call",     {}).get("duration", 0) * 1000),
+            "teardown_ms": round(t.get("teardown", {}).get("duration", 0) * 1000),
+            "total_ms":    round(t.get("duration", 0) * 1000),
+        }
+    return out
+
+
 def parse_skip_messages(report: dict) -> dict:
     """JSON 리포트 → {nodeid: skip_reason} (스킵 케이스만).
 

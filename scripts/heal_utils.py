@@ -6,6 +6,8 @@
 - extract_key_lines: traceback에서 핵심 라인 추출
 - append_lessons: lessons_learned.md 자동 기록
 - find_screenshot_for_test: 스크린샷 검색
+- snapshot_assertions: 테스트 파일 assertion 패턴 스냅샷
+- compare_assertions: 패치 전후 assertion 약화 감지
 """
 from __future__ import annotations
 
@@ -259,6 +261,115 @@ def update_heal_stats(failures: list[dict]) -> None:
         print(f"[heal_utils] heal_stats.json 업데이트: {len(failures)}건 기록")
     except Exception as e:
         print(f"[heal_utils] heal_stats.json 업데이트 실패 (무시): {e}")
+
+
+def snapshot_assertions(file_paths: list[str]) -> dict:
+    """테스트 파일들의 assertion 패턴을 스냅샷으로 추출.
+
+    힐링 패치 전에 호출해 pre_heal_assertions로 저장.
+    패치 후 compare_assertions()로 약화 여부 감지.
+    """
+    snapshot: dict = {}
+    pw_pattern = re.compile(r'expect\s*\(.+?\)\s*\.\s*(to_\w+)\s*\(([^)]*)\)')
+    assert_pattern = re.compile(r'^\s+assert\s+(.+)')
+    trivial_exprs = {"True", "1 == 1", "1", "not False", "False == False"}
+
+    for fp in file_paths:
+        p = Path(fp)
+        if not p.exists():
+            continue
+        try:
+            source = p.read_text(encoding="utf-8")
+        except Exception:
+            continue
+
+        assertions: list[dict] = []
+        for lineno, line in enumerate(source.splitlines(), 1):
+            for m in pw_pattern.finditer(line):
+                assertions.append({
+                    "line": lineno,
+                    "type": "playwright",
+                    "method": m.group(1),
+                    "arg": m.group(2).strip(),
+                    "raw": line.strip(),
+                })
+            m = assert_pattern.match(line)
+            if m:
+                expr = m.group(1).strip()
+                assertions.append({
+                    "line": lineno,
+                    "type": "python_assert",
+                    "expr": expr,
+                    "raw": line.strip(),
+                    "trivial": expr in trivial_exprs,
+                })
+
+        snapshot[p.name] = {
+            "count": len(assertions),
+            "playwright_count": sum(1 for a in assertions if a["type"] == "playwright"),
+            "python_assert_count": sum(1 for a in assertions if a["type"] == "python_assert"),
+            "assertions": assertions,
+        }
+    return snapshot
+
+
+def compare_assertions(pre: dict, post: dict) -> dict:
+    """패치 전후 assertion 스냅샷 비교 — 약화 패턴 감지.
+
+    약화 패턴:
+    1. assertion 수 감소
+    2. to_have_text → to_contain_text('') 빈 문자열 매칭
+    3. assert True / assert 1 == 1 같은 무의미한 assertion 추가
+    """
+    warnings: list[str] = []
+    details: dict = {}
+
+    for filename, pre_info in pre.items():
+        post_info = post.get(filename)
+        if not post_info:
+            warnings.append(f"{filename}: 파일이 삭제됨")
+            continue
+
+        file_warnings: list[str] = []
+        pre_count = pre_info["count"]
+        post_count = post_info["count"]
+
+        if post_count < pre_count:
+            file_warnings.append(
+                f"assertion 수 감소: {pre_count} → {post_count} ({pre_count - post_count}개 제거됨)"
+            )
+
+        pre_pw = {a["method"] for a in pre_info["assertions"] if a["type"] == "playwright"}
+        if "to_have_text" in pre_pw:
+            for a in post_info["assertions"]:
+                if (a["type"] == "playwright"
+                        and a["method"] == "to_contain_text"
+                        and a["arg"] in ('', '""', "''")):
+                    file_warnings.append("to_have_text → to_contain_text('') 약화 감지 (빈 문자열 매칭)")
+                    break
+
+        pre_trivials = {a["expr"] for a in pre_info["assertions"] if a.get("trivial")}
+        new_trivials = [
+            a["raw"] for a in post_info["assertions"]
+            if a.get("trivial") and a["expr"] not in pre_trivials
+        ]
+        if new_trivials:
+            file_warnings.append(f"무의미한 assertion 추가됨: {new_trivials}")
+
+        if file_warnings:
+            warnings.extend([f"{filename}: {w}" for w in file_warnings])
+            details[filename] = {
+                "pre_count": pre_count,
+                "post_count": post_count,
+                "warnings": file_warnings,
+            }
+
+    return {
+        "has_warnings": bool(warnings),
+        "warnings": warnings,
+        "details": details,
+        "checked_at": datetime.now().isoformat(),
+    }
 
 
 def build_heal_batches(failures: list[dict], batch_size: int = HEAL_BATCH_SIZE) -> list[list[dict]]:

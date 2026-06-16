@@ -108,7 +108,6 @@
 | `pipeline_new.json` | 런타임 생성 |
 | `quick.json` | 빠른 실행 상태 |
 | `run_history.json` | 실행 이력 (매 실행 시 자동 append) |
-| `weverse_auth.json` | 위버스 세션 쿠키 (로그인 성공 시 자동 생성) |
 | `dom_cache/` | 서브페이지 DOM 스냅샷 캐시 (URL MD5 해시 키) |
 
 ## config/ — 설정 파일 (URL 매핑·테스트 입력값)
@@ -117,7 +116,6 @@
 |------|------|
 | `pages.json` | 페이지명 → URL 매핑 (키 = testcases/ 하위 폴더명) |
 | `test_data.json` | 테스트 입력값 (하드코딩 금지, 키 = 그룹명) |
-| `weverse.json` | 위버스 전용 설정 (이메일·비밀번호·IMAP·커뮤니티) |
 
 ## prompts/ — 심의 Agent 프롬프트 템플릿
 

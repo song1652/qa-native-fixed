@@ -223,3 +223,18 @@
 - **`test.skip()` 대신 데이터 보장 헬퍼 사용**: 파일/폴더 없으면 skip하지 말고 API 업로드로 전제조건을 테스트 내에서 자동 충족. `pytest.skip()`은 환경 가드(IS_REAL, 플랜 미지원)에만 사용
 
 - **SPA 이동 후 Tip 팝업 + 대기 필수**: SPA 내 메뉴 클릭 후 `networkidle` + `wait_for_timeout(1000~2000)` + `dismiss_tip_popup()` 순서 필수. `domcontentloaded` 직후 파일 목록 탐색 시 렌더링 미완료로 0건 반환
+
+- **conftest.py 이벤트 핸들러 KeyError**: `context.close()` 후 미처리 console/network 이벤트가 늦게 발화해 이미 `pop()`된 `test_name` 키에 접근 → `KeyError`. 가드 조건(`and test_name in _console_logs`) 필수
+  ```python
+  # BAD
+  page.on("console", lambda msg: _console_logs[test_name].append({...}) if msg.type in ("error", "warning") else None)
+  # GOOD
+  page.on("console", lambda msg: _console_logs[test_name].append({...}) if msg.type in ("error", "warning") and test_name in _console_logs else None)
+  ```
+
+- **06_heal.py PosixPath + str 연산 오류**: `gen_path / f["test_name"] + ".py"` → `TypeError`. 문자열 연결 후 Path 연산이 아니라 괄호로 분리: `gen_path / (f["test_name"] + ".py")`
+
+## 리포트 생성 (report_html.py)
+
+- **Playwright 트레이스 이벤트 타입**: `type == "action"` 이벤트는 존재하지 않음. 실제 포맷은 `type == "before"` (`callId`, `startTime`, `class`, `method`) + `type == "after"` (`callId`, `endTime`) 쌍. callId로 매칭 후 `endTime - startTime`으로 duration 계산. `before` 이벤트에 `title` 필드가 있으면 우선 사용 (Expect 등).
+- **YAML 없는 추가 TC 렌더링 누락**: `test_results`가 `test_cases`보다 많을 때 (데모 TC 등 YAML 없이 추가된 파일) `_build_rows_html`에서 test_cases 루프가 끝난 후 잔여 `test_items[len(test_cases):]`를 별도로 렌더링해야 함. 그렇지 않으면 아티팩트 패널이 리포트에 나타나지 않음.

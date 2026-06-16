@@ -99,6 +99,8 @@ def main():
     except Exception:
         pass
 
+    assertion_integrity = state.get("assertion_integrity")
+
     context_payload = {
         "stage": "healing",
         "url": state["url"],
@@ -112,6 +114,7 @@ def main():
         "lessons_learned": ctx["lessons_learned"],
         "screenshots": screenshots,
         "top_heal_patterns": top_heal_patterns,
+        "assertion_integrity": assertion_integrity,
         "mcp_instructions": {
             "when": "traceback만으로 원인 불명확한 Locator/Assertion/Timeout 오류 시",
             "steps": [
@@ -132,6 +135,8 @@ def main():
         print(f"  스크린샷: {len(screenshots)}개 (시각 검증 가능)")
     if top_heal_patterns:
         print(f"  빈출 패턴: {len(top_heal_patterns)}개 (Top 5 주입)")
+    if assertion_integrity and assertion_integrity.get("has_warnings"):
+        print(f"  ⚠️  assertion 약화 경고: {len(assertion_integrity['warnings'])}건 (심의 Agent에 전달됨)")
     for i, f in enumerate(failures[:3], 1):
         print(f"    [{i}] {f.get('test_name', 'unknown')}")
     print()

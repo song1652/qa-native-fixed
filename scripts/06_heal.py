@@ -20,6 +20,7 @@ from heal_utils import (
     classify_error, extract_key_lines,  # noqa: F401 (re-export for tests)
     find_screenshot_for_test, append_lessons, update_heal_stats,
     build_heal_batches, print_heal_batches, MCP_SNAPSHOT_ERROR_TYPES,
+    snapshot_assertions,
 )
 from structured_log import slog
 
@@ -305,6 +306,25 @@ def main():
         "mcp_snapshot_recommended": needs_mcp,
         "mcp_snapshot_url": state.get("url", "") if needs_mcp else "",
     }
+
+    # 패치 전 assertion 스냅샷 저장 (assert_guard.py가 직전 패치 기준 비교에 사용)
+    failing_files = list({
+        str(Path(f["test_id"].split("::")[0]))
+        for f in healable if "::" in f.get("test_id", "")
+    })
+    if not failing_files:
+        # test_id에 경로가 없으면 generated_file_path 디렉토리에서 추론
+        gen_path = Path(file_path)
+        if gen_path.is_dir():
+            failing_files = [str(gen_path / (f["test_name"] + ".py")) for f in healable]
+        else:
+            failing_files = [str(gen_path)]
+    state["pre_heal_assertions"] = snapshot_assertions(failing_files)
+
+    # original_assertions: 최초 생성 시점 기준으로 고정 (이후 라운드에서 덮어쓰지 않음)
+    # 누적 약화 감지를 위해 항상 원본과 비교
+    if not state.get("original_assertions"):
+        state["original_assertions"] = state["pre_heal_assertions"]
 
     state["heal_context"] = heal_context
     state["heal_count"] = heal_count + 1

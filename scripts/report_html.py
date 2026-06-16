@@ -2,31 +2,186 @@
 
 05_execute.py (단일)와 99_merge.py (병렬)가 공유.
 그룹 접기/펼치기, All/Pass/Fail 필터, 그룹 내 페이지네이션 지원.
+Playwright 스타일 아티팩트: trace step 타이밍 / screenshot / video / trace 링크.
 """
 import html as _html
 import re
+import zipfile
+import json as _json
+from pathlib import Path
 
-
-def _esc(text: str) -> str:
-    """HTML 이스케이프 -- 사용자 데이터를 안전하게 출력."""
-    return _html.escape(str(text), quote=True)
-
-_STEP_NUM_RE = re.compile(r"^\s*\d+[\.\)]\s*")
-_BULLET_RE = re.compile(r"^\s*[-*]\s*")
+_re_step = re.compile(r"^\s*\d+[\.\)]\s*")
+_re_bullet = re.compile(r"^\s*[-*]\s*")
+_re_camel = re.compile(r"(?<!^)(?=[A-Z])")
 
 CASES_PER_PAGE = 20
 
+# Playwright API → 친화적 이름 매핑
+_API_MAP = {
+    "Page.navigate": "page.goto",
+    "Page.click": "page.click",
+    "Page.fill": "page.fill",
+    "Page.type": "page.type",
+    "Page.press": "page.press",
+    "Page.check": "page.check",
+    "Page.uncheck": "page.uncheck",
+    "Page.selectOption": "page.select_option",
+    "Page.hover": "page.hover",
+    "Page.waitForSelector": "page.wait_for_selector",
+    "Page.waitForURL": "page.wait_for_url",
+    "Page.waitForLoadState": "page.wait_for_load_state",
+    "Page.waitForTimeout": "page.wait_for_timeout",
+    "Page.screenshot": "page.screenshot",
+    "Page.evaluate": "page.evaluate",
+    "Page.locator": "page.locator",
+    "Page.goto": "page.goto",
+    "Frame.click": "frame.click",
+    "Frame.fill": "frame.fill",
+    "Frame.waitForSelector": "frame.wait_for_selector",
+    "Locator.click": "locator.click",
+    "Locator.fill": "locator.fill",
+    "Locator.waitFor": "locator.wait_for",
+    "Locator.textContent": "locator.text_content",
+    "Locator.getAttribute": "locator.get_attribute",
+    "Locator.isVisible": "locator.is_visible",
+    "Locator.evaluate": "locator.evaluate",
+    "ElementHandle.click": "element.click",
+}
+
+
+def _esc(text: str) -> str:
+    return _html.escape(str(text), quote=True)
+
 
 def _strip_prefix(text: str) -> str:
-    t = _STEP_NUM_RE.sub("", text)
-    t = _BULLET_RE.sub("", t)
+    t = _re_step.sub("", text)
+    t = _re_bullet.sub("", t)
     return t.strip()
 
 
-def case_row(case: dict, uid: str, outcome) -> str:
+def _friendly_name(api_name: str) -> str:
+    if api_name in _API_MAP:
+        return _API_MAP[api_name]
+    if "." in api_name:
+        cls, method = api_name.split(".", 1)
+        snake = _re_camel.sub("_", method).lower()
+        return f"{cls.lower()}.{snake}"
+    return api_name.lower()
+
+
+def _fmt_ms(ms: int) -> str:
+    if ms < 1000:
+        return f"{ms}ms"
+    return f"{ms / 1000:.1f}s"
+
+
+def parse_trace_steps(trace_zip_path: str) -> list:
+    """trace.zip에서 Playwright action 이벤트를 추출해 [{name, duration_ms}] 반환.
+
+    Playwright Python 트레이스 포맷:
+      {"type":"before","callId":"call@7","startTime":204.744,"class":"BrowserContext","method":"newPage",...}
+      {"type":"after","callId":"call@7","endTime":230.598,...}
+    before/after를 callId로 매칭해 duration 계산.
+    """
+    steps = []
+    try:
+        with zipfile.ZipFile(trace_zip_path) as zf:
+            trace_files = [n for n in zf.namelist() if n.endswith(".trace")]
+            for tf in trace_files:
+                data = zf.read(tf).decode("utf-8", errors="replace")
+                befores = {}  # callId -> {name, startTime}
+                for line in data.splitlines():
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        ev = _json.loads(line)
+                    except Exception:
+                        continue
+                    ev_type = ev.get("type")
+                    if ev_type == "before":
+                        call_id = ev.get("callId")
+                        if not call_id:
+                            continue
+                        # title이 있으면 우선 사용 (Expect "to_be_visible" 등)
+                        title = ev.get("title", "")
+                        if not title:
+                            cls = ev.get("class", "")
+                            method = ev.get("method", "")
+                            api = f"{cls}.{method}" if cls and method else method
+                            title = _friendly_name(api) if api else ""
+                        if title:
+                            befores[call_id] = {
+                                "name": title,
+                                "startTime": ev.get("startTime", 0),
+                            }
+                    elif ev_type == "after":
+                        call_id = ev.get("callId")
+                        if call_id and call_id in befores:
+                            before_ev = befores.pop(call_id)
+                            end = ev.get("endTime", 0)
+                            dur_ms = round(end - before_ev["startTime"]) if end > before_ev["startTime"] else 0
+                            steps.append({
+                                "name": before_ev["name"],
+                                "duration_ms": dur_ms,
+                            })
+    except Exception:
+        pass
+    return steps
+
+
+def _build_artifact_panel(uid: str, duration: dict | None, artifacts: dict) -> str:
+    """실패 TC의 아티팩트 패널 HTML 생성 (screenshot / video / trace 링크)."""
+    screenshot_path = artifacts.get("screenshot_path", "")
+    trace_path = artifacts.get("trace_path", "")
+    video_path = artifacts.get("video_path", "")
+
+    parts = []
+
+    # ── Screenshots ────────────────────────────────────────────────
+    if screenshot_path and Path(screenshot_path).exists():
+        ss_uri = Path(screenshot_path).resolve().as_uri()
+        trace_btn = ""
+        if trace_path:
+            trace_btn = (
+                f'<a class="trace-link" '
+                f'data-trace-path="{_esc(trace_path)}" '
+                f'href="javascript:void(0)">&#128203; trace</a>'
+            )
+        parts.append(
+            f'<div class="artifact-sub">'
+            f'<div class="artifact-sub-title">Screenshots</div>'
+            f'<div class="screenshot-wrap">'
+            f'<img src="{ss_uri}" class="screenshot-thumb" alt="screenshot">'
+            f'</div>'
+            f'{trace_btn}'
+            f'</div>'
+        )
+
+    # ── Videos ────────────────────────────────────────────────────
+    if video_path and Path(video_path).exists():
+        video_uri = Path(video_path).resolve().as_uri()
+        parts.append(
+            f'<div class="artifact-sub">'
+            f'<div class="artifact-sub-title">Videos</div>'
+            f'<video src="{video_uri}" controls class="artifact-video"></video>'
+            f'<a href="{video_uri}" class="artifact-dl" download>&#8659; video</a>'
+            f'</div>'
+        )
+
+    if not parts:
+        return ""
+    return f'<div class="artifact-panel">{"".join(parts)}</div>'
+
+
+def case_row(case: dict, uid: str, outcome,
+             duration: dict | None = None,
+             artifacts: dict | None = None) -> str:
     """테스트 케이스 행 HTML 생성.
 
     outcome: "passed" | "failed" | "skipped"  또는 bool (하위 호환)
+    duration: {setup_ms, call_ms, teardown_ms, total_ms} | None
+    artifacts: {screenshot_path, trace_path, video_path, trace_steps} | None
     """
     if isinstance(outcome, bool):
         outcome = "passed" if outcome else "failed"
@@ -66,12 +221,25 @@ def case_row(case: dict, uid: str, outcome) -> str:
         if skip_reason else ""
     )
 
+    # Duration badge
+    dur_ms = duration.get("total_ms", 0) if duration else 0
+    dur_html = (
+        f'<span class="dur-badge">{_fmt_ms(dur_ms)}</span>'
+        if dur_ms > 0 else ""
+    )
+
+    # Artifact panel (실패 TC만)
+    artifact_html = ""
+    if outcome == "failed" and artifacts:
+        artifact_html = _build_artifact_panel(uid, duration, artifacts)
+
     return (
         f'<div class="case-item {status_cls}" data-status="{status_cls}" data-toggle="{uid}">'
         f'  <div class="case-header">'
         f'    <span class="case-dot {status_cls}"></span>'
         f'    <span class="case-title">{_esc(title)}</span>'
         f'    <div class="case-right">'
+        f'      {dur_html}'
         f'      <span class="case-status-txt {status_cls}">{badge_txt}</span>'
         f'      <span class="chevron" id="chv_{uid}">&#8250;</span>'
         f'    </div>'
@@ -87,6 +255,7 @@ def case_row(case: dict, uid: str, outcome) -> str:
         f'      <span class="detail-label">Expected</span>'
         f'      <span class="detail-val">{exp_content}</span>'
         f'    </div>'
+        f'    {artifact_html}'
         f'  </div>'
         f'</div>'
     )
@@ -242,6 +411,34 @@ def report_css() -> str:
   .steps-list{padding-left:16px;margin:0}
   .steps-list li{margin:3px 0}
   .empty-msg{padding:16px 20px;font-size:13px;color:var(--text3)}
+  /* Duration badge */
+  .dur-badge{font-size:10px;font-weight:600;color:var(--text3);background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:8px;padding:2px 7px;font-family:'JetBrains Mono',monospace}
+  /* Artifact panel */
+  .artifact-panel{margin-top:16px;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden}
+  .artifact-sub{padding:14px 16px;border-bottom:1px solid var(--border)}
+  .artifact-sub:last-child{border-bottom:none}
+  .artifact-sub-title{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px}
+  /* Timing rows */
+  .timing-list{display:flex;flex-direction:column;gap:1px}
+  .timing-row{display:flex;align-items:center;justify-content:space-between;padding:5px 8px;border-radius:6px;transition:background .1s}
+  .timing-row:hover{background:rgba(255,255,255,.04)}
+  .timing-name{color:var(--text2);font-family:'JetBrains Mono',monospace;font-size:11px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-right:12px}
+  .timing-name.hooks{color:var(--text3);font-style:italic}
+  .timing-ms{color:var(--text3);font-family:'JetBrains Mono',monospace;font-size:11px;flex-shrink:0}
+  /* Screenshot */
+  .screenshot-wrap{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:8px}
+  .screenshot-thumb{max-width:300px;max-height:220px;object-fit:cover;border-radius:8px;border:1px solid var(--border);cursor:zoom-in;transition:opacity .15s,box-shadow .15s}
+  .screenshot-thumb:hover{opacity:.85;box-shadow:0 0 0 2px var(--accent)}
+  .trace-link{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--accent);text-decoration:none;padding:4px 12px;border:1px solid rgba(99,102,241,.3);border-radius:8px;transition:all .15s;cursor:pointer}
+  .trace-link:hover{background:rgba(99,102,241,.12);border-color:var(--accent)}
+  /* Video */
+  .artifact-video{max-width:100%;width:480px;border-radius:8px;border:1px solid var(--border);display:block;margin-bottom:8px;background:#000}
+  .artifact-dl{font-size:11px;color:var(--text3);text-decoration:none;display:inline-flex;align-items:center;gap:4px}
+  .artifact-dl:hover{color:var(--text2)}
+  /* Lightbox */
+  .lb-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:9999;align-items:center;justify-content:center;cursor:zoom-out}
+  .lb-overlay.open{display:flex}
+  .lb-overlay img{max-width:92vw;max-height:92vh;object-fit:contain;border-radius:8px;box-shadow:0 0 80px rgba(0,0,0,.9)}
 """
 
 
@@ -347,9 +544,36 @@ function applyFilter(label) {
   }else{pg.innerHTML='';}
 }
 
-// Event delegation -- no inline onclick needed
+// Lightbox
+function _openLb(src) {
+  var ov = document.getElementById('lb-overlay');
+  if (!ov) return;
+  document.getElementById('lb-img').src = src;
+  ov.classList.add('open');
+}
+
+// Event delegation
 document.addEventListener('click', function(e) {
   var t;
+  // Lightbox close
+  t = e.target.closest('#lb-overlay');
+  if(t){t.classList.remove('open');return;}
+  // Screenshot lightbox open
+  t = e.target.closest('.screenshot-thumb');
+  if(t){_openLb(t.src);return;}
+  // Trace copy
+  t = e.target.closest('.trace-link');
+  if(t){
+    var p = t.getAttribute('data-trace-path');
+    var cmd = 'npx playwright show-trace ' + p;
+    if(navigator.clipboard){
+      navigator.clipboard.writeText(cmd).then(function(){
+        t.innerHTML = '\\u2713 copied!';
+        setTimeout(function(){t.innerHTML='\\uD83D\\uDCCB trace';},1600);
+      }).catch(function(){alert(cmd);});
+    } else { alert(cmd); }
+    return;
+  }
   t = e.target.closest('[data-toggle]');
   if(t){toggle(t.getAttribute('data-toggle'));return;}
   t = e.target.closest('[data-toggle-group]');
@@ -366,6 +590,16 @@ document.addEventListener('click', function(e) {
     setPage(gl, dir==='prev'?st.page-1:st.page+1);
   }
 });
+
+// Lightbox DOM 생성
+(function(){
+  var ov=document.createElement('div');
+  ov.id='lb-overlay';ov.className='lb-overlay';
+  var img=document.createElement('img');img.id='lb-img';
+  ov.appendChild(img);
+  if(document.body) document.body.appendChild(ov);
+  else document.addEventListener('DOMContentLoaded',function(){document.body.appendChild(ov);});
+})();
 """
 
 
@@ -423,7 +657,6 @@ def build_report(groups_data: list, summary: dict,
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>QA Report</title>
 <style>{report_css()}</style>
-<script>{report_js()}</script>
 </head>
 <body>
 <div class="layout">
@@ -455,5 +688,6 @@ def build_report(groups_data: list, summary: dict,
     {group_sections}
   </div>
 </div>
+<script>{report_js()}</script>
 </body>
 </html>"""

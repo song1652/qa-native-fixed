@@ -8,6 +8,19 @@
 
 ## Locator 오류
 
+- **Locator**: `page.locator(".login-iframe > iframe").wait_for(state="visible", timeout=6000)` -- dom_info 셀렉터 재확인, #id 우선 사용
+
+- **Locator**: `page.locator(".login-iframe > iframe").wait_for(state="visible", timeout=8000)` -- dom_info 셀렉터 재확인, #id 우선 사용
+
+- **Locator**: `expect(page.get_by_text("스탠다드").first).to_be_visible()` -- dom_info 셀렉터 재확인, #id 우선 사용
+- **Locator**: `assert page.locator("iframe").is_visible()` -- dom_info 셀렉터 재확인, #id 우선 사용
+- **Locator**: `expect(page.get_by_text("라이트").first).to_be_visible()` -- dom_info 셀렉터 재확인, #id 우선 사용
+- **Locator**: `expect(page.get_by_text("BEST").first).to_be_visible()` -- dom_info 셀렉터 재확인, #id 우선 사용
+- **Locator**: `self._sync(self._impl_obj.get_attribute(name=name, timeout=timeout))` -- dom_info 셀렉터 재확인, #id 우선 사용
+- **Locator**: `expect(page.get_by_text("환불 규정")).to_be_visible()` -- dom_info 셀렉터 재확인, #id 우선 사용
+- **Locator**: `assert numeric_elements.count() > 0` -- dom_info 셀렉터 재확인, #id 우선 사용
+- **Locator**: `expect(page.get_by_text("9,900원")).to_be_visible()` -- dom_info 셀렉터 재확인, #id 우선 사용
+
 - **Locator**: `assert page.locator('ul.table-files').is_visible(), "파일 목록 영역(ul.table-files)이 표시되지 않습니다"` -- dom_info 셀렉터 재확인, #id 우선 사용
 - **Locator**: `assert file_list.count() > 0, "파일 목록 영역을 찾을 수 없습니다"` -- dom_info 셀렉터 재확인, #id 우선 사용
 - **Locator**: `assert comment_count.count() > 0, "파일 목록에 코멘트 수 배지가 표시되지 않습니다"` -- dom_info 셀렉터 재확인, #id 우선 사용
@@ -41,6 +54,8 @@
 - **Assertion**: `assert "In a list!" in text or "list" in text.lower(), f"Expected list content, got: {text}"` -- 실제 페이지 텍스트/상태로 기댓값 수정
 
 ## Timeout 오류
+
+- **Timeout**: `page.wait_for_url("**/mypage/order/cart/detail/**", timeout=10000)` -- expect(..., timeout=10000) 또는 wait_for_selector 추가
 
 - **Timeout**: `page.wait_for_url(re.compile(r"/mybox"), timeout=20000)` -- expect(..., timeout=10000) 또는 wait_for_selector 추가
 

@@ -30,7 +30,6 @@ API 호출 없이 Claude Code 자체가 LLM 역할을 수행하는 QA 자동화 
 |------|------|
 | [pages.json](config/pages.json) | URL 매핑 (string/object 혼용). 키 = testcases/ 폴더명 |
 | [test_data.json](config/test_data.json) | 테스트 입력값. 하드코딩 금지 |
-| [weverse.json](config/weverse.json) | 위버스 전용 설정 (이메일·비밀번호·IMAP·커뮤니티 등). weverse TC 전용 |
 | [run_history.json](state/run_history.json) | 실행 이력 (자동 append) |
 
 테스트케이스: YAML frontmatter + Markdown 본문. 상세 스키마 → [SCRIPTS_GUIDE](doc/SCRIPTS_GUIDE.md)
@@ -76,7 +75,7 @@ lint 수정·코드 생성 시 반복 오류도 동일하게 lessons_learned.md�
 ## 단일 파이프라인 (단일 URL)
 
 ```
-01_analyze → 02a_dialog → [심의] → 02_generate → 03_lint → 03a_dialog → [심의] → 05_execute → 06_heal → 06a_dialog → [심의] → 06_auto_heal → [힐링 루프]
+01_analyze → 02a_dialog → [심의] → 02_generate → 03_lint → 03a_dialog → [심의] → 04_approve → 05_execute → 06_heal → [패치] → assert_guard → 06a_dialog → [심의] → 06_auto_heal → [힐링 루프]
 ```
 
 1. `python scripts/01_analyze.py` — DOM 추출 (메인 + 서브페이지 병렬 수집, React 컴포넌트 포함)
@@ -84,9 +83,10 @@ lint 수정·코드 생성 시 반복 오류도 동일하게 lessons_learned.md�
 3. `python scripts/02_generate.py` — scaffold 생성 후 plan 기반 개별 완성
 4. `python scripts/03_lint.py` — flake8 + step=reviewed 설정
 5. `python scripts/03a_dialog.py` → [심의] [review_deliberation.md](prompts/review_deliberation.md) + ctx
-6. `python scripts/05_execute.py` — pytest 실행
-7. `python scripts/06_heal.py` — 종료코드 0: 완료 / 10: 힐링→재실행 반복 / 2: 초과→수동 수정
-8. `python scripts/06_auto_heal.py` — 알려진 패턴 자동 패치. 종료코드 0: Agent 불필요 / 1: 잔여 실패 있음
+6. `python scripts/04_approve.py` — QA 리드 승인 게이트. 종료코드 0: 승인 / 2: 반려→재작성 / 3: 대시보드 대기
+7. `python scripts/05_execute.py` — pytest 실행
+8. `python scripts/06_heal.py` — 종료코드 0: 완료 / 10: 힐링→재실행 반복 / 2: 초과→수동 수정
+9. `python scripts/06_auto_heal.py` — 알려진 패턴 자동 패치. 종료코드 0: Agent 불필요 / 1: 잔여 실패 있음
 
 > **리포트/스크린샷/Trace 규칙 (필수)**:
 > - **첫 실행 포함 모든 실행은 `--no-report`로 실행**. 리포트·스크린샷은 전체 통과 확인 후 마지막 1회만 생성.

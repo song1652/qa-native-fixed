@@ -109,7 +109,6 @@ STATE_FILE_DESCRIPTIONS: dict[str, str] = {
     "run_history.json": "실행 이력 (매 실행 시 자동 append)",
     "coverage.json":    "커버리지 매트릭스 (coverage_matrix.py 생성)",
     "flaky_tests.json": "Flaky Test 목록 (flaky_detector.py 생성)",
-    "weverse_auth.json":"위버스 세션 쿠키 (로그인 성공 시 자동 생성)",
 }
 
 # ── 헬퍼 함수 ────────────────────────────────────────────────────
@@ -371,7 +370,6 @@ def build_markdown() -> str:
         "|------|------|",
         "| `pages.json` | 페이지명 → URL 매핑 (키 = testcases/ 하위 폴더명) |",
         "| `test_data.json` | 테스트 입력값 (하드코딩 금지, 키 = 그룹명) |",
-        "| `weverse.json` | 위버스 전용 설정 (이메일·비밀번호·IMAP·커뮤니티) |",
         "",
     ]
 

@@ -17,13 +17,29 @@ from datetime import datetime
 
 from _python import PYTHON_EXE
 from _paths import PIPELINE_STATE, PROJECT_ROOT, read_state, write_state, append_run_history
-from result_parser import parse_results, parse_skip_messages
+from result_parser import parse_results, parse_skip_messages, parse_durations
 from structured_log import slog
 from report_html import case_row as _case_row, build_report
 
 TESTCASES_DIR = PROJECT_ROOT / "testcases"
 SCREENSHOTS_DIR = PROJECT_ROOT / "tests" / "screenshots"
 TRACES_DIR = PROJECT_ROOT / "tests" / "traces"
+VIDEOS_DIR = PROJECT_ROOT / "tests" / "videos"
+
+
+def _scan_meta_files() -> dict:
+    """tests/screenshots/*.meta.json 스캔 → {test_name: meta_dict}."""
+    meta_by_name = {}
+    if SCREENSHOTS_DIR.exists():
+        for meta_file in SCREENSHOTS_DIR.glob("*.meta.json"):
+            try:
+                m = json.loads(meta_file.read_text(encoding="utf-8"))
+                name = m.get("test_name", "")
+                if name:
+                    meta_by_name[name] = m
+            except Exception:
+                pass
+    return meta_by_name
 
 
 # ── 케이스 메타데이터 로드 ───────────────────────────────────────
@@ -108,10 +124,30 @@ def _tc_sort_key(nodeid: str) -> int:
 
 
 def _build_rows_html(test_results: dict, test_cases: list, group_name: str,
-                     skip_messages: dict | None = None) -> str:
+                     skip_messages: dict | None = None,
+                     durations: dict | None = None,
+                     meta_by_name: dict | None = None) -> str:
     """테스트 결과와 케이스 메타데이터를 매칭하여 rows_html 생성."""
     skip_messages = skip_messages or {}
+    durations = durations or {}
+    meta_by_name = meta_by_name or {}
     rows_html = ""
+
+    def _get_artifacts(nodeid: str, outcome: str) -> tuple:
+        """(duration_dict, artifacts_dict) 반환."""
+        test_func = nodeid.split("::")[-1] if "::" in nodeid else nodeid
+        dur = durations.get(nodeid)
+        if outcome != "failed":
+            return dur, None
+        meta = meta_by_name.get(test_func, {})
+        if not meta:
+            return dur, None
+        return dur, {
+            "screenshot_path": meta.get("screenshot_path", ""),
+            "trace_path": meta.get("trace_path", ""),
+            "video_path": meta.get("video_path", ""),
+        }
+
     if test_cases:
         group_outcome = "passed" if all(v == "passed" for v in test_results.values()) else "failed"
         test_items = sorted(test_results.items(), key=lambda x: _tc_sort_key(x[0]))
@@ -123,7 +159,21 @@ def _build_rows_html(test_results: dict, test_cases: list, group_name: str,
                 nodeid, outcome = "", group_outcome
             if outcome == "skipped" and nodeid in skip_messages:
                 case = dict(case, skip_reason=skip_messages[nodeid])
-            rows_html += _case_row(case, uid, outcome)
+            dur, arts = _get_artifacts(nodeid, outcome)
+            rows_html += _case_row(case, uid, outcome, duration=dur, artifacts=arts)
+        # YAML 매핑 없는 추가 TC (예: 데모 TC) 렌더링
+        for extra_idx, (nodeid, outcome) in enumerate(test_items[len(test_cases):]):
+            uid = f"{group_name}_extra_{extra_idx}"
+            simple_case = {
+                "title": nodeid.split("::")[-1].replace("_", " ").title() if "::" in nodeid else nodeid,
+                "precondition": "",
+                "steps": [],
+                "expected": "",
+            }
+            if outcome == "skipped" and nodeid in skip_messages:
+                simple_case["skip_reason"] = skip_messages[nodeid]
+            dur, arts = _get_artifacts(nodeid, outcome)
+            rows_html += _case_row(simple_case, uid, outcome, duration=dur, artifacts=arts)
     else:
         for idx, (nodeid, outcome) in enumerate(sorted(test_results.items(), key=lambda x: _tc_sort_key(x[0]))):
             uid = f"{group_name}_{idx}"
@@ -135,7 +185,8 @@ def _build_rows_html(test_results: dict, test_cases: list, group_name: str,
             }
             if outcome == "skipped" and nodeid in skip_messages:
                 simple_case["skip_reason"] = skip_messages[nodeid]
-            rows_html += _case_row(simple_case, uid, outcome)
+            dur, arts = _get_artifacts(nodeid, outcome)
+            rows_html += _case_row(simple_case, uid, outcome, duration=dur, artifacts=arts)
 
     if not rows_html:
         rows_html = '<p class="empty-msg">케이스 정보 없음</p>'
@@ -172,9 +223,12 @@ def generate_report_from_state(state_path: Path) -> None:
 
     test_results = parse_results(report)
     skip_messages = parse_skip_messages(report)
+    durations = parse_durations(report)
+    meta_by_name = _scan_meta_files()
     pytest_summary = report.get("summary", {})
 
-    rows_html = _build_rows_html(test_results, test_cases, group_name, skip_messages)
+    rows_html = _build_rows_html(test_results, test_cases, group_name, skip_messages,
+                                 durations=durations, meta_by_name=meta_by_name)
     passed = execution_result.get("passed", 0)
     failed = execution_result.get("failed", 0)
     g_skip_cnt = sum(1 for v in test_results.values() if v == "skipped")
@@ -227,6 +281,8 @@ def main():
         shutil.rmtree(SCREENSHOTS_DIR, ignore_errors=True)
     if TRACES_DIR.exists():
         shutil.rmtree(TRACES_DIR, ignore_errors=True)
+    if VIDEOS_DIR.exists():
+        shutil.rmtree(VIDEOS_DIR, ignore_errors=True)
 
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -238,8 +294,14 @@ def main():
     parallel_opts = []
     # spa: true 사이트는 병렬 실행 시 세션 충돌 발생 → n_workers=1 고정
     _url = state.get("url", "")
+    _group_name = _extract_group_name(state)
+    _pages_json = PROJECT_ROOT / "config" / "pages.json"
+    _pages = json.loads(_pages_json.read_text(encoding="utf-8")) if _pages_json.exists() else {}
+    _page_cfg = _pages.get(_group_name, {})
+    if isinstance(_page_cfg, str):
+        _page_cfg = {}
     _single_session = state.get("spa", False) or any(
-        h in _url for h in pages.get(_group_name, {}).get("single_session_hosts", [])
+        h in _url for h in _page_cfg.get("single_session_hosts", [])
     )
 
     # 표시용 케이스 수: state의 test_cases(테스트 데이터) 우선, 없으면 파일/함수 수 사용
@@ -312,7 +374,10 @@ def main():
     # report_html.build_report 사용 (병렬 리포트와 동일 형식)
     if not no_report:
         skip_messages = parse_skip_messages(report)
-        rows_html = _build_rows_html(test_results, test_cases, group_name, skip_messages)
+        durations = parse_durations(report)
+        meta_by_name = _scan_meta_files()
+        rows_html = _build_rows_html(test_results, test_cases, group_name, skip_messages,
+                                     durations=durations, meta_by_name=meta_by_name)
         g_pass_cnt = sum(1 for v in test_results.values() if v == "passed")
         g_skip_cnt = sum(1 for v in test_results.values() if v == "skipped")
         g_total_cnt = len(test_results)

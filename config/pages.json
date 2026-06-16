@@ -5,5 +5,11 @@
     "spa": false,
     "preconditions": [],
     "notes": "예시 사이트"
+  },
+  "yafit_money": {
+    "url": "https://yafit.yanadoo.co.kr/yanadoo/promotion/yafitMoney.html",
+    "spa": true,
+    "preconditions": [],
+    "notes": "야핏사이클 돈버는 운동 멤버십 프로모션 페이지 (spa:true → 순차실행: 일부 TC가 yanadoo.co.kr로 교차 도메인 이동하여 병렬 시 context teardown 충돌 발생)"
   }
 }
