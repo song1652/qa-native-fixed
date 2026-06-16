@@ -1,36 +1,9 @@
 {
-  "directcloud": {
-    "url": "https://tweb.directcloud.jp/login",
-    "auth": {
-      "company": "skj",
-      "username": "skj942",
-      "password": "danawa1631!"
-    },
-    "spa": true,
+  "_comment": "테스트 대상 사이트 URL 매핑. 키 = testcases/ 폴더명. spa: true이면 단일세션 모드(순차 실행).",
+  "example": {
+    "url": "https://example.com",
+    "spa": false,
     "preconditions": [],
-    "notes": "DirectCloud 파일 공유 서비스 - 로그인 후 내부 기능 테스트"
-  },
-  "directcloud_environments": {
-    "_comment": "환경별 서버 URL — directcloud-qa-domain 스킬 및 TC 작성 시 참조",
-    "dev": {
-      "admin": "https://boxadmin.dev-directcloud.jp/",
-      "manager": "https://boxmanager.dev-directcloud.jp",
-      "web": "https://web.dev-directcloud.jp"
-    },
-    "test": {
-      "admin": "https://tboxadmin.directcloud.jp",
-      "manager": "https://tboxmanager.directcloud.jp",
-      "web": "https://tweb.directcloud.jp"
-    },
-    "qa": {
-      "admin": "https://boxadmin.qa-directcloud.jp/",
-      "manager": "https://boxmanager.qa-directcloud.jp",
-      "web": "https://web.qa-directcloud.jp/login"
-    },
-    "stg": {
-      "admin": "https://sboxadmin.directcloud.jp",
-      "manager": "https://sboxmanager.directcloud.jp",
-      "web": "https://sweb.directcloud.jp"
-    }
+    "notes": "예시 사이트"
   }
 }

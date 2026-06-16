@@ -70,7 +70,8 @@ traceback만으로 원인이 불명확한 경우에도 수동으로 사용할 �
 MCP 호출 실패 시 dom_info 기반 힐링으로 자동 전환 (graceful degradation).
 
 1. **스크린샷 확인**: Read tool로 `heal_context.failures[].screenshot.path` 파일 열기 → 실패 시점 화면 확인
-2. **실제 페이지 탐색** (필요 시만):
+2. **Trace 확인** (네트워크·콘솔 오류 의심 시): `meta.json`의 `trace_path` 참조 → `npx playwright show-trace <파일>.zip` (영상·네트워크·콘솔·DOM 스냅샷 포함)
+3. **실제 페이지 탐색** (필요 시만):
    - `browser_navigate` → heal_context의 URL로 접속
    - `browser_snapshot` → 현재 페이지 ARIA 트리 + DOM 구조 확인
 3. **셀렉터 검증** (필요 시만):

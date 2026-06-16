@@ -41,7 +41,7 @@ import time; time.sleep(2)
 > `wait_for_load_state` 로 감지 불가능한 전환 구간에서 짧은 `wait_for_timeout(300~2000)` 허용.
 > 단, 사유를 주석으로 명시해야 함.
 > ```python
-> # DirectCloud: SPA 메뉴 전환 후 렌더링 대기 (networkidle 미발생)
+> # SPA 메뉴 전환 후 렌더링 대기 (networkidle 미발생)
 > page.wait_for_timeout(1500)
 > ```
 
@@ -131,9 +131,9 @@ def test_english_snake_case(page: Page):
 
 ---
 
-## React 16 SPA 이벤트 처리 (DirectCloud PCWeb)
+## React 16 SPA 이벤트 처리
 
-DirectCloud PCWeb은 React 16 + SPA다. React 16은 이벤트를 `document` 레벨에서 위임하므로
+React 16 기반 SPA 앱은 이벤트를 `document` 레벨에서 위임하므로
 `locator.click()`이 React 이벤트 핸들러를 미트리거하는 경우가 있다.
 
 ### Toolbar 버튼 — `page.mouse.click(좌표)` 필수
@@ -182,9 +182,9 @@ submit_btn.click()
 
 ---
 
-## Tip 팝업 처리 (DirectCloud PCWeb 필수)
+## Tip 팝업 처리 (SPA 앱 필수)
 
-PCWeb 최초 방문 시 styled-components 기반 Tip 팝업이 z-index 999로 표시된다.
+React SPA 앱 최초 방문 시 styled-components 기반 Tip 팝업이 z-index 999로 표시된다.
 **Bootstrap `.popover`가 아니다.**
 
 ```python
@@ -221,7 +221,7 @@ def dismiss_tip_popup(page):
 
 ---
 
-## 파일 업로드 패턴 (DirectCloud)
+## 파일 업로드 패턴
 
 headless Chromium에서는 `set_input_files` / `filechooser` 이벤트가 불안정하다.
 
@@ -234,13 +234,13 @@ headless Chromium에서는 `set_input_files` / `filechooser` 이벤트가 불안
 # ✅ API 직접 호출 (안정적)
 # 1. access_token 쿠키 추출
 # 2. React Fiber에서 currentDirSeq (현재 디렉토리 ID) 추출
-# 3. POST https://uploader.qa-directcloud.jp/v1/files 호출
+# 3. POST https://your-app.example.com/v1/files 호출
 # 4. page.reload() + dismiss_tip_popup() 으로 파일 목록 갱신
 ```
 
 ---
 
-## 셀렉터 규칙 (DirectCloud)
+## 셀렉터 규칙
 
 ```python
 import re
@@ -272,7 +272,7 @@ page.locator('li.contextmenu-item').filter(has_text=re.compile(r"削除|삭제|D
 
 ---
 
-## 타이밍 & 대기 전략 (DirectCloud)
+## 타이밍 & 대기 전략
 
 ### 타임아웃 계층
 
@@ -294,7 +294,7 @@ page.wait_for_load_state('networkidle')
 target_row.wait_for(state='hidden', timeout=15000)
 assert not target_row.is_visible()
 
-# ✅ PCWeb 로그인 후 URL 검증 (4가지 패턴 모두 허용)
+# ✅ SPA 로그인 후 URL 검증 (다양한 랜딩 패턴 모두 허용)
 page.wait_for_url(re.compile(r'/(mypage|home|top|files|drive)'), timeout=30000)
 
 # ✅ SPA 진입 후 필수 대기 순서
@@ -311,7 +311,7 @@ page.wait_for_load_state('networkidle')  # GOOD
 
 ---
 
-## 재시도 패턴 (DirectCloud)
+## 재시도 패턴
 
 ```python
 # 모달 열기 재시도 (최대 5회)
@@ -364,7 +364,7 @@ def cleanup(page):
 
 ## 로그아웃 테스트 — 3단계 전략 (60초 제한)
 
-PCWeb 로그아웃은 단일 전략으로 신뢰할 수 없다. 각 전략의 timeout을 짧게 설정한다.
+SPA 로그아웃은 환경·플랜별 UI가 달라 단일 전략으로 신뢰할 수 없다. 각 전략의 timeout을 짧게 설정한다.
 
 ```python
 import re

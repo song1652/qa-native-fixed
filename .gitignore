@@ -8,6 +8,7 @@ state/
 logs/
 
 # Test outputs (screenshots/reports are now tracked)
+tests/traces/
 
 # Log files in parallel/
 parallel/*.txt

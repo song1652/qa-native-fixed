@@ -265,6 +265,7 @@ Claude Code가 실행 중인 상태에서 함께 구동해야 합니다.
   → `--no-report` 플래그: 리포트·스크린샷 생성 건너뜀 (힐링 중간 실행용)
   → `--only-failed` 플래그: 이전 실행에서 실패한 테스트만 재실행 (힐링 시 시간 대폭 절감)
   → 첫 실행 포함 모든 실행은 `--no-report`, 전체 통과 확인 후 마지막 1회만 리포트 생성
+  → 매 실행 전 `tests/screenshots/`, `tests/traces/` 초기화
   → 워커 자동 감소 재실행 (8→4→2→1):
     처음엔 최대 8워커로 실행. 실패율 15% 이상이면 워커를 절반으로 줄여 실패분만 자동 재실행.
     각 단계 결과를 원래 결과에 병합하여 최종 리포트에 반영.
@@ -272,7 +273,7 @@ Claude Code가 실행 중인 상태에서 함께 구동해야 합니다.
 
 06_heal.py
   → 05_execute가 생성한 JSON 리포트(json_report_path)에서 실패 정보를 파싱 (pytest 재실행 없음)
-  → 스크린샷 경로를 연결해 heal_context 저장. 타임아웃 600s, -n8 병렬
+  → 스크린샷·Trace 경로를 연결해 heal_context 저장 (meta.json의 trace_path 참조). 타임아웃 600s, -n8 병렬
   → --lf 실행 시 0개 수집이면 --lf 없이 재실행 (fallback)
 
 06_auto_heal.py

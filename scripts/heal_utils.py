@@ -127,6 +127,14 @@ def find_screenshot_for_test(test_name: str) -> dict | None:
             meta = json.loads(meta_path.read_text(encoding="utf-8"))
             result["url"] = meta.get("url")
             result["timestamp"] = meta.get("timestamp")
+            if trace_path := meta.get("trace_path"):
+                from pathlib import Path as _Path
+                if _Path(trace_path).exists():
+                    result["trace_path"] = trace_path
+            if console_errors := meta.get("console_errors"):
+                result["console_errors"] = console_errors
+            if network_failures := meta.get("network_failures"):
+                result["network_failures"] = network_failures
         except Exception:
             pass
     return result
@@ -331,10 +339,12 @@ def print_heal_batches(batches: list[list[dict]], url: str = "",
     print()
     print("  각 subagent는:")
     print("  1. 배치 내 실패 파일을 읽고 traceback 분석")
-    print("  2. lessons_learned 패턴 참조하여 패치")
-    print("  3. mcp_snapshot_recommended=true 배치: browser_navigate → browser_snapshot으로")
+    print("  2. screenshot.trace_path 존재 시: 네트워크 오류·콘솔 에러 의심 케이스에 활용")
+    print("     (npx playwright show-trace <파일>.zip — 영상·네트워크·콘솔·DOM 스냅샷 포함)")
+    print("  3. lessons_learned 패턴 참조하여 패치")
+    print("  4. mcp_snapshot_recommended=true 배치: browser_navigate → browser_snapshot으로")
     print("     실시간 ARIA 트리 확인 후 셀렉터 보정 (Locator/Assertion/Timeout 오류 대상)")
-    print("  4. 패치 후 개별 테스트 실행으로 통과 확인")
+    print("  5. 패치 후 개별 테스트 실행으로 통과 확인")
     print("  ※ MCP 실패 시 dom_info 기반 힐링으로 자동 전환 (graceful degradation)")
     print()
     if pipeline == "single":

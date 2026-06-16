@@ -64,25 +64,20 @@
 
 ## testcases/ — 케이스 파일 (tc_*.md) — 그룹별 서브폴더
 
-| 그룹 | TC 수 | 최근 실행 결과 |
-|------|-------|---------------|
-| `directcloud/` | 311개 | 308/311 (99%) |
-| `heroku/` | 10개 | 10/10 (100%) |
+새 프로젝트 대상 TC 작성 후 그룹별 서브폴더로 관리. 폴더명 = `pages.json` 키와 일치.
 
-## tests/ — 테스트 산출물 (생성 코드·리포트·스크린샷)
+## tests/ — 테스트 산출물 (생성 코드·리포트·스크린샷·Trace)
 
 ### tests/generated/ — Claude Code가 작성한 테스트 코드
 
-| 그룹 | 생성 파일 수 | 최근 실행 결과 |
-|------|------------|---------------|
-| `directcloud/` | 311개 | 308/311 (99%) |
-| `heroku/` | 10개 | 10/10 (100%) |
+새 프로젝트 대상 TC 생성 후 채워짐.
 
 | 경로 | 역할 |
 |------|------|
 | `tests/reports/` | HTML 리포트 (pytest 실행 결과) |
-| `tests/screenshots/` | 실패 시 스크린샷 (conftest.py 기반 자동 캡처) |
-| `tests/conftest.py` | pytest 전역 픽스처 |
+| `tests/screenshots/` | 실패 시 스크린샷 + meta.json (conftest.py 기반 자동 캡처) |
+| `tests/traces/` | 실패 시 Playwright Trace (`retain-on-failure`). 뷰어: `npx playwright show-trace <파일>.zip` |
+| `tests/conftest.py` | pytest 전역 픽스처 (tracing 포함) |
 | `tests/test_core_parsers.py` | 핵심 파서 유닛 테스트 |
 
 ## agents/ — 사수-부사수 에이전트 시스템 (페르소나·교훈·대시보드)

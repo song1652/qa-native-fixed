@@ -160,11 +160,11 @@ python scripts/06_heal.py
 
 ---
 
-## DirectCloud 전용 힐링 패턴
+## SPA/React 앱 힐링 패턴
 
 ### 9. Vue/React input 입력 실패 (nativeInputValueSetter)
 
-DirectCloud Manager 등 Vue/React 앱에서 `locator.fill()`이 프레임워크 상태에 반영되지 않을 때:
+Vue/React 앱에서 `locator.fill()`이 프레임워크 상태에 반영되지 않을 때:
 
 ```python
 # ❌ fill()이 Vue/React 상태에 반영 안 됨
@@ -190,7 +190,7 @@ page.evaluate("""(args) => {
 
 ### 10. React SPA toolbar 클릭 무반응
 
-`locator.click()`이 React 이벤트 핸들러를 트리거하지 않을 때:
+React 16 기반 SPA에서 `locator.click()`이 이벤트 핸들러를 트리거하지 않을 때:
 
 ```python
 # ❌ React 핸들러 미트리거

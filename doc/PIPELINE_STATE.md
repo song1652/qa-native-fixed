@@ -51,7 +51,7 @@
     "heal_count": 0,
     "failure_count": 0,
     "failures": [
-      { "test_id": "", "test_name": "", "traceback": "", "error_type": "Locator", "screenshot": null }
+      { "test_id": "", "test_name": "", "traceback": "", "error_type": "Locator", "screenshot": { "path": "", "url": "", "timestamp": "", "trace_path": "", "console_errors": [], "network_failures": [] } }
     ],
     "failure_groups": { "Locator": ["test_a"], "Assertion": ["test_b"] },
     "skipped_repeated": ["test_name_1"],
@@ -73,7 +73,7 @@
   "heal_count": 1,
   "failure_count": 3,
   "failures": [
-    { "test_id": "", "test_name": "", "file": "", "traceback": "", "error_type": "Locator", "screenshot": null }
+    { "test_id": "", "test_name": "", "file": "", "traceback": "", "error_type": "Locator", "screenshot": { "path": "", "url": "", "timestamp": "", "trace_path": "", "console_errors": [], "network_failures": [] } }
   ],
   "failure_groups": { "Locator": ["test_a"], "Assertion": ["test_b"] },
   "skipped_repeated": ["test_c"],
@@ -89,6 +89,9 @@
 | `skipped_repeated` | 동일 오류 2회 연속 반복으로 스킵된 테스트 목록 |
 | `urls` | 실패 테스트의 그룹별 URL (pages.json에서 조회) |
 | `lessons_snapshot` | 힐링 시점의 lessons_learned + _auto 스냅샷 (subagent 간 학습 공유) |
+| `screenshot.trace_path` | 실패 TC의 Playwright Trace 경로 (`tests/traces/*.zip`). 사람이 `npx playwright show-trace <파일>`로 시각 확인용 |
+| `screenshot.console_errors` | 실패 시점까지 수집된 콘솔 에러·경고 목록 `[{type, text}]`. heal agent가 직접 읽음 |
+| `screenshot.network_failures` | 실패 시점까지 수집된 네트워크 실패 목록 `[{url, method, status, failure}]`. heal agent가 직접 읽음 |
 
 ## state/heal_stats.json 구조
 

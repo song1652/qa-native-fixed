@@ -23,6 +23,7 @@ from report_html import case_row as _case_row, build_report
 
 TESTCASES_DIR = PROJECT_ROOT / "testcases"
 SCREENSHOTS_DIR = PROJECT_ROOT / "tests" / "screenshots"
+TRACES_DIR = PROJECT_ROOT / "tests" / "traces"
 
 
 # ── 케이스 메타데이터 로드 ───────────────────────────────────────
@@ -224,6 +225,8 @@ def main():
 
     if SCREENSHOTS_DIR.exists():
         shutil.rmtree(SCREENSHOTS_DIR, ignore_errors=True)
+    if TRACES_DIR.exists():
+        shutil.rmtree(TRACES_DIR, ignore_errors=True)
 
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -233,10 +236,11 @@ def main():
 
     n_funcs, has_dependent = count_test_functions(file_path)
     parallel_opts = []
-    # 단일 세션 사이트(DirectCloud 등)는 병렬 실행 시 세션 충돌 발생 → n_workers=1 고정
-    # URL 또는 파일 경로로 단일세션 여부 판단
+    # spa: true 사이트는 병렬 실행 시 세션 충돌 발생 → n_workers=1 고정
     _url = state.get("url", "")
-    _single_session = any(h in _url for h in ["directcloud.jp"])
+    _single_session = state.get("spa", False) or any(
+        h in _url for h in pages.get(_group_name, {}).get("single_session_hosts", [])
+    )
 
     # 표시용 케이스 수: state의 test_cases(테스트 데이터) 우선, 없으면 파일/함수 수 사용
     n_cases = len(state.get("test_cases", [])) or n_funcs

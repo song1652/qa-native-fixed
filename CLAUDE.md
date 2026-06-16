@@ -48,7 +48,6 @@ API 호출 없이 Claude Code 자체가 LLM 역할을 수행하는 QA 자동화 
 |------|------|------|
 | Playwright Best Practices | [SKILL.md](.claude/skills/playwright-best-practices/SKILL.md) | 테스트 코드 작성 시 셀렉터·대기 전략 참조. React SPA 이벤트·Tip팝업·파일업로드 포함 |
 | Heal Patterns | [SKILL.md](.claude/skills/heal-patterns/SKILL.md) | 힐링 패치 전략, 오류 유형별 수정 패턴. nativeInputValueSetter·SPA클릭 포함 |
-| DirectCloud QA Domain | [SKILL.md](.claude/skills/directcloud-qa-domain/SKILL.md) | ACL 역할별 테스트, 환경 URL, 데이터 소스 우선순위, CORS 규칙 |
 | Browser QA (ECC) | [SKILL.md](.claude/skills/browser-qa/SKILL.md) | 배포 후 시각 검증, 4단계 QA 플로우 |
 | Python Testing (ECC) | [SKILL.md](.claude/skills/python-testing/SKILL.md) | pytest 픽스처·파라미터화·mocking 전략 |
 | Verify | [SKILL.md](.claude/skills/verify/SKILL.md) | 패치 후 05_execute 기반 증거 검증. "됐을 것 같다" 금지 |
@@ -89,11 +88,12 @@ lint 수정·코드 생성 시 반복 오류도 동일하게 lessons_learned.md�
 7. `python scripts/06_heal.py` — 종료코드 0: 완료 / 10: 힐링→재실행 반복 / 2: 초과→수동 수정
 8. `python scripts/06_auto_heal.py` — 알려진 패턴 자동 패치. 종료코드 0: Agent 불필요 / 1: 잔여 실패 있음
 
-> **리포트/스크린샷 규칙 (필수)**:
+> **리포트/스크린샷/Trace 규칙 (필수)**:
 > - **첫 실행 포함 모든 실행은 `--no-report`로 실행**. 리포트·스크린샷은 전체 통과 확인 후 마지막 1회만 생성.
 > - 실행 순서: `05_execute.py --no-report` → `06_heal.py` → 패치 → `05_execute.py --no-report` → ... → 전체 통과 확인 → `05_execute.py` (리포트 생성)
 > - **힐링 재실행 시**: `05_execute.py --no-report --only-failed`로 실패 테스트만 재실행 가능
-> - 05_execute.py는 매 실행 전 tests/screenshots/ 초기화.
+> - 05_execute.py는 매 실행 전 `tests/screenshots/`, `tests/traces/` 초기화.
+> - **Trace**: 실패한 TC에 한해 `tests/traces/{group}__{test}.zip` 자동 생성. 힐링 시 `meta.json`의 `trace_path` 참조. 뷰어: `npx playwright show-trace <파일>.zip`
 
 > **슬롭 정리 (선택, 전체 통과 후)**:
 > 힐링을 여러 번 거친 파일에 중복 패치·죽은 코드가 쌓였다면 리포트 생성 전 실행:
