@@ -210,12 +210,68 @@ def _expand_targets(targets: list[dict]) -> list[dict]:
     return expanded
 
 
+PARALLEL_HEADLESS_PROMPT = (
+    "CLAUDE.md 병렬 파이프라인 지침대로 QA 자동화를 끝까지 진행해줘. "
+    "state/parallel_contexts.json 파일에 subagent 컨텍스트가 준비되어 있어. "
+    "다음 순서로 실행해: "
+    "1) state/parallel_contexts.json 읽기 "
+    "2) subagents[] 배열의 각 항목을 Agent tool로 동시에 실행 "
+    "   (prompts/parallel_subagent.md 지침 참조, shared_context_paths의 파일들도 각 subagent가 읽도록 지시) "
+    "3) 모든 subagent 완료 후 .venv/bin/python parallel/99_merge.py 실행 "
+    "4) 실패 케이스가 있으면 doc/HEALING_GUIDE.md를 참조해서 힐링 루프 진행 (최대 3회). "
+    "모든 파이썬 명령은 프로젝트 루트의 .venv/bin/python을 사용해서 실행해."
+)
+
+
+def _launch_headless_parallel(output_payload: dict) -> None:
+    """parallel_contexts.json을 저장 후 claude -p 헤드리스 세션으로 병렬 파이프라인 자동 실행.
+
+    컨텍스트(DOM, test_cases 등)를 state/parallel_contexts.json에 먼저 기록한 뒤
+    claude CLI를 non-interactive 모드로 실행해 subagent 병렬 실행 + 99_merge.py + 힐링까지
+    사람 개입 없이 완주시킨다.
+
+    주의: run_qa.py의 _launch_headless_pipeline()과 동일한 이유로
+    --dangerously-skip-permissions 사용. 신뢰할 수 없는 환경에서는 재검토 필요.
+    """
+    import subprocess
+
+    # headless Claude가 읽을 컨텍스트 파일 저장
+    ctx_path = PROJECT_ROOT / "state" / "parallel_contexts.json"
+    ctx_path.write_text(
+        json.dumps(output_payload, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+
+    logs_dir = PROJECT_ROOT / "logs"
+    logs_dir.mkdir(exist_ok=True)
+    log_path = logs_dir / "run_qa_parallel_headless.txt"
+
+    print()
+    print("  [자동 실행] headless Claude Code 세션을 백그라운드로 시작합니다.")
+    print(f"  컨텍스트: {ctx_path}")
+    print(f"  로그: {log_path}")
+    print("  (수동으로 이어받고 싶다면 --no-auto 옵션으로 재실행하세요)")
+
+    log_file = open(log_path, "w", encoding="utf-8")
+    subprocess.Popen(
+        [
+            "claude", "-p", PARALLEL_HEADLESS_PROMPT,
+            "--dangerously-skip-permissions",
+            "--output-format", "text",
+        ],
+        cwd=str(PROJECT_ROOT),
+        stdout=log_file, stderr=subprocess.STDOUT,
+    )
+    log_file.close()
+
+
 def main():
     parser = argparse.ArgumentParser(description="QA 병렬 파이프라인 (간소화)")
     parser.add_argument("--targets", default=None,
                         help="targets.json 경로. 생략 시 testcases/ 폴더 자동 스캔.")
     parser.add_argument("--folders", nargs="*", default=None,
                         help="특정 폴더만 실행 (예: login saintcore)")
+    parser.add_argument("--no-auto", action="store_true",
+                        help="headless Claude Code 자동 실행을 생략하고 안내 메시지만 출력 (기존 동작)")
     args = parser.parse_args()
 
     pages = load_pages()
@@ -333,23 +389,26 @@ def main():
     print("=== PARALLEL_SUBAGENT_CONTEXTS_END ===")
     print()
 
-    print("=" * 60)
-    print("  Claude Code에 아래 지시를 전달하세요:")
-    print("=" * 60)
-    print()
-    print(f"  위 PARALLEL_SUBAGENT_CONTEXTS의 {len(contexts)}개 배치를 Agent tool로 동시에 실행해줘.")
-    print(f"  (총 {total_cases}개 케이스, 배치당 최대 {BATCH_SIZE}개)")
-    print()
-    print("  shared_context_paths의 파일들은 각 subagent가 직접 읽어서 참조합니다.")
-    print("  (서브에이전트별 컨텍스트에는 고유 데이터만 포함)")
-    print()
-    print("  각 subagent는:")
-    print("  1. shared_context_paths의 파일들을 먼저 읽기 (lessons_learned, team_charter, SKILL.md)")
-    print("  2. 배치 내 모든 test_cases에 대해 dom_info 바탕으로 plan 수립")
-    print("  3. plan 기반으로 Playwright 테스트 코드 작성 (tc_*.md 1개 = 파일 1개)")
-    print("  4. output_path에 직접 저장")
-    print()
-    print("  완료 후: python parallel/99_merge.py 실행")
+    if not args.no_auto:
+        _launch_headless_parallel(output_payload)
+    else:
+        print("=" * 60)
+        print("  Claude Code에 아래 지시를 전달하세요:")
+        print("=" * 60)
+        print()
+        print(f"  위 PARALLEL_SUBAGENT_CONTEXTS의 {len(contexts)}개 배치를 Agent tool로 동시에 실행해줘.")
+        print(f"  (총 {total_cases}개 케이스, 배치당 최대 {BATCH_SIZE}개)")
+        print()
+        print("  shared_context_paths의 파일들은 각 subagent가 직접 읽어서 참조합니다.")
+        print("  (서브에이전트별 컨텍스트에는 고유 데이터만 포함)")
+        print()
+        print("  각 subagent는:")
+        print("  1. shared_context_paths의 파일들을 먼저 읽기 (lessons_learned, team_charter, SKILL.md)")
+        print("  2. 배치 내 모든 test_cases에 대해 dom_info 바탕으로 plan 수립")
+        print("  3. plan 기반으로 Playwright 테스트 코드 작성 (tc_*.md 1개 = 파일 1개)")
+        print("  4. output_path에 직접 저장")
+        print()
+        print("  완료 후: python parallel/99_merge.py 실행")
     print("=" * 60)
 
 
