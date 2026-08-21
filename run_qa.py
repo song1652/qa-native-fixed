@@ -43,7 +43,7 @@ from datetime import datetime
 
 import _bootstrap  # noqa: F401 — scripts/ 경로 설정
 from parse_cases import load_cases
-from _paths import PIPELINE_STATE, STATE_DIR
+from _paths import PIPELINE_STATE, STATE_DIR, PROJECT_ROOT
 
 
 def init_state(url: str, test_cases: list, cases_path: str) -> dict:
@@ -83,8 +83,55 @@ def print_cases(test_cases: list):
                 print(f"         기대결과: {c['expected']}")
 
 
-def run_single(url: str, test_cases: list, cases_path: str):
-    """단일 파이프라인: state/pipeline.json 생성 후 Claude Code에 실행 지시 출력."""
+HEADLESS_PROMPT = (
+    "CLAUDE.md 파이프라인대로 QA 자동화를 실행해줘. state/pipeline.json이 준비되어 있어. "
+    "01_analyze -> 전략수립(심의 후 plan을 state/pipeline.json에 저장. "
+    "step 값은 스크립트가 자동으로 관리하므로 직접 바꾸지 말 것) -> 코드작성 -> 03_lint -> "
+    "요약작성 -> 04_approve -> 05_execute -> 06_heal 순서로 끝까지 진행해줘. "
+    "모든 파이썬 명령은 프로젝트 루트의 .venv/bin/python 을 사용해서 실행해."
+)
+
+
+def _launch_headless_pipeline() -> None:
+    """claude -p(헤드리스) 세션을 백그라운드로 띄워 파이프라인을 끝까지 자동 실행한다.
+
+    기존에는 state/pipeline.json만 써두고 "다른 데서 Claude Code 세션이 훅으로
+    우연히 감지하기"를 기다렸는데, 그 방식은 실제로 이어받는 세션이 없으면
+    영원히 멈춰있는 문제가 있었다. --auto(기본값)에서는 이 스크립트가 직접
+    claude CLI를 non-interactive 모드로 실행해 파이프라인을 완결시킨다.
+
+    주의: --permission-mode acceptEdits 만으로는 Bash 도구 호출(pytest 실행 등)이
+    non-interactive 세션에서 승인 주체 없이 막힐 수 있어, 이 로컬 자동화 용도에서는
+    --dangerously-skip-permissions를 사용한다. 신뢰할 수 없는 원격/공용 환경에서는
+    이 플래그 대신 .claude/settings.json에 필요한 Bash 패턴만 명시적으로 allow하는
+    방식으로 바꿀 것.
+    """
+    import subprocess
+
+    logs_dir = PROJECT_ROOT / "logs"
+    logs_dir.mkdir(exist_ok=True)
+    log_path = logs_dir / "run_qa_headless.txt"
+
+    print()
+    print("  [자동 실행] headless Claude Code 세션을 백그라운드로 시작합니다.")
+    print(f"  로그: {log_path}")
+    print("  (수동으로 이어받고 싶다면 --no-auto 옵션으로 재실행하세요)")
+
+    log_file = open(log_path, "w", encoding="utf-8")
+    subprocess.Popen(
+        [
+            "claude", "-p", HEADLESS_PROMPT,
+            "--dangerously-skip-permissions",
+            "--output-format", "text",
+        ],
+        cwd=str(PROJECT_ROOT),
+        stdout=log_file, stderr=subprocess.STDOUT,
+    )
+    log_file.close()
+
+
+def run_single(url: str, test_cases: list, cases_path: str, auto: bool = True):
+    """단일 파이프라인: state/pipeline.json 생성 후 자동 실행(기본) 또는 안내만 출력(--no-auto)."""
     natural_count    = sum(1 for c in test_cases if c["format"] == "natural")
     structured_count = sum(1 for c in test_cases if c["format"] == "structured")
 
@@ -102,13 +149,14 @@ def run_single(url: str, test_cases: list, cases_path: str):
     print_cases(test_cases)
     print()
     print("  state/pipeline.json 생성 완료.")
-    print()
-    print("  -- Claude Code에 아래 메시지를 붙여넣으세요 --")
-    print()
-    print("  CLAUDE.md 파이프라인대로 QA 자동화를 실행해줘.")
-    print("  state/pipeline.json이 준비되어 있어.")
-    print("  01_analyze -> 전략수립 -> 코드작성 ->")
-    print("  03_lint -> 요약작성 -> 04_approve -> 05_execute -> 06_heal 순서로 진행해줘.")
+
+    if auto:
+        _launch_headless_pipeline()
+    else:
+        print()
+        print("  -- Claude Code에 아래 메시지를 붙여넣으세요 --")
+        print()
+        print("  " + HEADLESS_PROMPT.replace(". ", ".\n  "))
     print("=" * 55)
 
 
@@ -116,6 +164,8 @@ def main():
     parser = argparse.ArgumentParser(description="QA 자동화 파이프라인 시작 (단일 모드)")
     parser.add_argument("--url",   required=True, help="테스트 대상 URL")
     parser.add_argument("--cases", default=None,  help="테스트 케이스 파일 경로 (.md 또는 .json)")
+    parser.add_argument("--no-auto", action="store_true",
+                         help="headless Claude Code 자동 실행을 생략하고 안내 메시지만 출력 (기존 동작)")
     args = parser.parse_args()
 
     if args.cases and Path(args.cases).exists():
@@ -124,7 +174,7 @@ def main():
         print("[오류] --cases 옵션으로 케이스 파일을 지정하세요. (.md 또는 .json)")
         sys.exit(1)
 
-    run_single(args.url, test_cases, args.cases)
+    run_single(args.url, test_cases, args.cases, auto=not args.no_auto)
 
 
 if __name__ == "__main__":

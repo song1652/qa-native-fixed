@@ -26,6 +26,16 @@ HEAL_STATS_PATH = PROJECT_ROOT / "state" / "heal_stats.json"
 HEAL_BATCH_SIZE = 6  # 힐링 배치당 실패 테스트 수
 MCP_SNAPSHOT_ERROR_TYPES = frozenset({"Locator", "Assertion", "Timeout"})
 
+# 정확한 값을 검증하는 playwright expect 메서드 (정밀 assertion)
+STRICT_METHODS = frozenset({
+    "to_have_text", "to_have_value", "to_have_url", "to_have_count",
+    "to_have_class", "to_have_attribute", "to_have_title",
+})
+# 존재/상태만 확인하는 playwright expect 메서드 (느슨한 assertion)
+WEAK_METHODS = frozenset({
+    "to_be_visible", "to_be_attached", "to_be_enabled", "to_be_checked",
+})
+
 
 def classify_error(traceback: str) -> str:
     """traceback에서 오류 유형 분류.
@@ -347,6 +357,20 @@ def compare_assertions(pre: dict, post: dict) -> dict:
                         and a["arg"] in ('', '""', "''")):
                     file_warnings.append("to_have_text → to_contain_text('') 약화 감지 (빈 문자열 매칭)")
                     break
+
+        # 정밀 assertion(STRICT_METHODS)이 줄고, 느슨한 assertion(WEAK_METHODS)은
+        # 줄지 않았다면 "정밀 assertion이 느슨한 assertion으로 대체"됐을 가능성
+        pre_pw_methods = [a["method"] for a in pre_info["assertions"] if a["type"] == "playwright"]
+        post_pw_methods = [a["method"] for a in post_info["assertions"] if a["type"] == "playwright"]
+        pre_strict = sum(1 for m in pre_pw_methods if m in STRICT_METHODS)
+        post_strict = sum(1 for m in post_pw_methods if m in STRICT_METHODS)
+        pre_weak = sum(1 for m in pre_pw_methods if m in WEAK_METHODS)
+        post_weak = sum(1 for m in post_pw_methods if m in WEAK_METHODS)
+        if post_strict < pre_strict and post_weak >= pre_weak:
+            file_warnings.append(
+                "정밀 assertion이 느슨한 assertion으로 대체되었을 가능성: "
+                f"strict {pre_strict} → {post_strict}, weak {pre_weak} → {post_weak}"
+            )
 
         pre_trivials = {a["expr"] for a in pre_info["assertions"] if a.get("trivial")}
         new_trivials = [

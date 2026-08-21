@@ -58,7 +58,6 @@
 
 | 파일 | 역할 |
 |------|------|
-| `00_split.py` | URL별 worker 환경 초기화 (workers/ 디렉토리 생성) |
 | `99_merge.py` | pytest 실행 + 통합 리포트 + 힐링 루프 |
 
 ## testcases/ — 케이스 파일 (tc_*.md) — 그룹별 서브폴더

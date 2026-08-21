@@ -27,11 +27,13 @@ from _paths import (
     read_state, write_state, append_run_history,
 )
 from _python import PYTHON_EXE
+from _constants import MAX_HEAL
 from heal_utils import (
     classify_error, extract_key_lines,
     find_screenshot_for_test, append_lessons, update_heal_stats,
     build_heal_batches, print_heal_batches,
     LESSONS_PATH, LESSONS_AUTO_PATH,
+    snapshot_assertions, compare_assertions,
 )
 from report_html import case_row as _case_row, build_report
 from result_parser import parse_results, parse_skip_messages
@@ -44,7 +46,6 @@ except ImportError:
 GENERATED_DIR = PROJECT_ROOT / "tests" / "generated"
 TESTCASES_DIR = PROJECT_ROOT / "testcases"
 SCREENSHOTS_DIR = PROJECT_ROOT / "tests" / "screenshots"
-MAX_HEAL = 3
 
 
 def _natural_sort_key(p: Path) -> list:
@@ -111,7 +112,7 @@ def _detect_repeated_failures_parallel(
     return healable, skipped
 
 
-def build_heal_context(report: dict, heal_count: int) -> dict | None:
+def build_heal_context(report: dict, heal_count: int, state_path: Path) -> dict | None:
     """실패 테스트의 traceback을 모아 heal_context.json 생성. 실패 없으면 None 반환.
 
     단일 파이프라인(06_heal.py)과 동일한 플로우:
@@ -120,6 +121,7 @@ def build_heal_context(report: dict, heal_count: int) -> dict | None:
     3. 사이트 사전 접근 체크
     4. 반복 실패 감지 (_detect_repeated_failures_parallel)
     5. append_lessons + update_heal_stats
+    6. 힐링 전 assertion 스냅샷 저장 (state_path에 pre_heal_assertions/original_assertions)
     """
     failures = []
     for t in report.get("tests", []):
@@ -229,6 +231,20 @@ def build_heal_context(report: dict, heal_count: int) -> dict | None:
     # 실수 패턴 자동 기록 + heal_stats 빈도 업데이트
     append_lessons(healable + skipped)
     update_heal_stats(healable + skipped)
+
+    # 힐링 전 assertion 스냅샷 저장 (06_heal.py와 동일한 정책)
+    # pre_heal_assertions: 직전 패치 기준 / original_assertions: 최초 힐링 라운드 기준(고정)
+    failing_files = sorted({
+        str(f["file"]) if Path(f["file"]).is_absolute() else str(PROJECT_ROOT / f["file"])
+        for f in healable if f.get("file")
+    })
+    pre_snap = snapshot_assertions(failing_files)
+    snap_state = read_state(state_path)
+    snap_state["pre_heal_assertions"] = pre_snap
+    snap_state["pre_heal_files"] = failing_files
+    if not snap_state.get("original_assertions"):
+        snap_state["original_assertions"] = pre_snap
+    write_state(state_path, snap_state)
 
     return ctx
 
@@ -542,7 +558,7 @@ def main():
         )
         pytest_exit_code = proc.returncode
     except subprocess.TimeoutExpired:
-        print("\n[99] pytest 실행 타임아웃 (900초 초과)")
+        print("\n[99] pytest 실행 타임아웃 (7200초 초과)")
         pytest_exit_code = -1
     finally:
         if _runner_script and _runner_script.exists():
@@ -569,7 +585,7 @@ def main():
             HEAL_CONTEXT_STATE.unlink(missing_ok=True)
         else:
             heal_count += 1
-            heal_ctx = build_heal_context(report, heal_count)
+            heal_ctx = build_heal_context(report, heal_count, state_path)
             if heal_ctx:
                 # auto_heal 시도 (deterministic 패치)
                 auto_heal_applied = _try_auto_heal()
@@ -583,6 +599,35 @@ def main():
                 HEAL_CONTEXT_STATE.unlink(missing_ok=True)
     else:
         HEAL_CONTEXT_STATE.unlink(missing_ok=True)
+
+        # 힐링을 거쳐 통과한 경우(heal_count > 0), 패치 전/후 assertion 무결성 확인
+        # (06_heal.py/assert_guard.py와 동일한 방식 — 경고만 출력, 파이프라인은 막지 않음)
+        if heal_count > 0:
+            prior_run_state = read_state(state_path)
+            pre_heal = prior_run_state.get("pre_heal_assertions")
+            if pre_heal:
+                baseline = prior_run_state.get("original_assertions") or pre_heal
+                post_files = prior_run_state.get("pre_heal_files") or list(pre_heal.keys())
+                post_snap = snapshot_assertions(post_files)
+                integrity = compare_assertions(baseline, post_snap)
+                integrity["baseline"] = (
+                    "최초 생성 기준" if prior_run_state.get("original_assertions") else "직전 패치 기준"
+                )
+                integrity["heal_round"] = heal_count
+                if integrity["has_warnings"]:
+                    print()
+                    print("=" * 60)
+                    print(f"  ⚠️  [assertion 무결성 경고] 힐링 중 assertion이 약화되었을 수 있습니다"
+                          f" ({integrity['baseline']}, {heal_count}회차)")
+                    print("=" * 60)
+                    for w in integrity["warnings"]:
+                        print(f"  - {w}")
+                    print("=" * 60)
+                    print()
+                else:
+                    print(f"[99] assertion 품질 이상 없음 ({integrity['baseline']}).")
+                prior_run_state["assertion_integrity"] = integrity
+                write_state(state_path, prior_run_state)
 
     # 4. HTML 리포트 (힐링 완료 후에만 생성: 전체 통과 또는 최대 힐링 초과)
     is_final_run = (not has_issues) or heal_count >= MAX_HEAL or args.no_heal

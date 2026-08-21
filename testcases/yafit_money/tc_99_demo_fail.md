@@ -5,6 +5,7 @@ priority: low
 tags: [demo, negative]
 type: structured
 ---
+<!-- 이 TC는 정규 실행에서 skip 처리됨 (tests/generated/.../tc_99_demo_fail.py 참고) -->
 # 의도적 실패 데모 — 아티팩트 렌더링 확인
 
 ## Precondition

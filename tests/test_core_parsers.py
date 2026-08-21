@@ -322,30 +322,48 @@ class TestReadWriteState:
 
 
 class TestDashboardInputValidation:
-    """대시보드 serve.py의 URL/group 입력 검증 패턴."""
+    """대시보드 serve.py가 실제로 사용하는 scripts/_validators.py 검증 함수 테스트.
+
+    serve.py는 모듈 최상단에서 파일 감시 스레드를 시작하는 부작용이 있어
+    직접 import하지 않고, serve.py가 위임하는 _validators 모듈을 그대로
+    import해서 실제 검증 정책을 검증한다.
+    """
+
+    def setup_method(self):
+        from _validators import is_valid_url, is_valid_group_name, is_safe_filename
+        self.is_valid_url = is_valid_url
+        self.is_valid_group_name = is_valid_group_name
+        self.is_safe_filename = is_safe_filename
 
     def test_valid_url_patterns(self):
-        import re
         valid = ["http://example.com", "https://example.com/path", "https://the-internet.herokuapp.com/login"]
         for url in valid:
-            assert url.startswith(("http://", "https://")), f"Valid URL rejected: {url}"
+            assert self.is_valid_url(url), f"Valid URL rejected: {url}"
 
     def test_invalid_url_patterns(self):
         invalid = ["ftp://example.com", "javascript:alert(1)", "/etc/passwd", ""]
         for url in invalid:
-            assert not url.startswith(("http://", "https://")), f"Invalid URL accepted: {url}"
+            assert not self.is_valid_url(url), f"Invalid URL accepted: {url}"
 
     def test_valid_group_names(self):
-        import re
         valid = ["heroku", "login", "my_shop", "test-group", "group123"]
         for name in valid:
-            assert re.match(r'^[\w\-]+$', name), f"Valid group rejected: {name}"
+            assert self.is_valid_group_name(name), f"Valid group rejected: {name}"
 
     def test_invalid_group_names(self):
-        import re
         invalid = ["../etc", "foo bar", "group/sub", "a;rm -rf", ""]
         for name in invalid:
-            assert not re.match(r'^[\w\-]+$', name), f"Invalid group accepted: {name}"
+            assert not self.is_valid_group_name(name), f"Invalid group accepted: {name}"
+
+    def test_valid_filenames(self):
+        valid = ["report.xlsx", "my-file_2024.xlsx", "a.md"]
+        for name in valid:
+            assert self.is_safe_filename(name), f"Valid filename rejected: {name}"
+
+    def test_invalid_filenames(self):
+        invalid = ["../../etc/passwd", "..\\..\\windows", "..", ""]
+        for name in invalid:
+            assert not self.is_safe_filename(name), f"Invalid filename accepted: {name}"
 
 
 # ── classify_error 복합 키워드 우선순위 테스트 ────────────────────
@@ -380,3 +398,44 @@ class TestClassifyErrorPriority:
     def test_mixed_assertion_url(self):
         # "assert" + "url" → Assertion이 URL보다 우선
         assert self.classify("AssertionError: expected url to match") == "Assertion"
+
+
+# ── heal_utils.compare_assertions: strict → weak 대체 감지 테스트 ──
+
+
+class TestCompareAssertionsStrictWeak:
+    """정밀 assertion(STRICT_METHODS)이 느슨한 assertion(WEAK_METHODS)으로
+    바꿔치기된 패턴 감지."""
+
+    def setup_method(self):
+        from heal_utils import compare_assertions
+        self.compare = compare_assertions
+
+    @staticmethod
+    def _snap(assertions):
+        return {
+            "count": len(assertions),
+            "playwright_count": len(assertions),
+            "python_assert_count": 0,
+            "assertions": assertions,
+        }
+
+    def _pw(self, method, arg=""):
+        return {"line": 1, "type": "playwright", "method": method, "arg": arg, "raw": ""}
+
+    def test_strict_replaced_by_weak_detected(self):
+        # pre: to_have_text 2개 → post: to_be_visible 2개 (개수는 동일, 정밀도만 하락)
+        pre = {"test_x.py": self._snap([self._pw("to_have_text", "'Hello'"),
+                                          self._pw("to_have_text", "'World'")])}
+        post = {"test_x.py": self._snap([self._pw("to_be_visible"),
+                                           self._pw("to_be_visible")])}
+        result = self.compare(pre, post)
+        assert result["has_warnings"]
+        assert any("정밀 assertion" in w for w in result["warnings"])
+
+    def test_strict_replaced_by_strict_no_warning(self):
+        # strict → strict 대체는 정밀도 하락이 아니므로 경고 없음
+        pre = {"test_x.py": self._snap([self._pw("to_have_text", "'Hello'")])}
+        post = {"test_x.py": self._snap([self._pw("to_have_value", "'Hello'")])}
+        result = self.compare(pre, post)
+        assert not result["has_warnings"]

@@ -12,7 +12,6 @@
 ├── run_qa_parallel.py         ← QA 자동화 시작 (여러 URL 동시)
 ├── run_team.py                ← 팀 토론 시작 (터미널용, 대시보드 권장)
 ├── agents/dashboard/serve.py  ← 모니터링 대시보드 서버
-├── parallel/00_split.py       ← 병렬 파이프라인 worker 환경 초기화 (URL별 디렉토리 + DOM 분석)
 ├── parallel/99_merge.py       ← 병렬 실행 완료 후 결과 통합
 └── _bootstrap.py              ← 루트 진입점 공통 경로 설정 (scripts/ → sys.path)
 

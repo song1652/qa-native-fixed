@@ -7,6 +7,7 @@ EXIT_ERROR = 1            # 일반 오류
 # 힐링 (06_heal.py, 99_merge.py)
 EXIT_HEAL_NEEDED = 10     # 실패 정보 저장 → Claude Code 패치 필요
 EXIT_HEAL_EXCEEDED = 2    # 최대 힐링 횟수 초과
+MAX_HEAL = 3              # 최대 힐링 횟수 (단일/병렬 파이프라인 공통)
 
 # 승인 (04_approve.py)
 EXIT_REJECTED = 2         # 반려 → 코드 재작성
@@ -16,7 +17,8 @@ EXIT_AWAITING_APPROVAL = 3  # 대시보드 승인 대기
 # {current_step: [allowed_next_steps]}
 VALID_TRANSITIONS = {
     "init":         ["analyzed"],
-    "analyzed":     ["generated"],
+    "analyzed":     ["planned", "generated"],  # planned: 심의 Agent가 plan 저장 시 경유하는 선택적 중간 단계
+    "planned":      ["generated"],
     "generated":    ["reviewed"],
     "reviewed":     ["done", "heal_needed", "timeout"],
     "done":         ["heal_needed"],

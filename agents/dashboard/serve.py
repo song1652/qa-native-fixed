@@ -28,6 +28,7 @@ if _venv_sp.exists():
         if str(_sp) not in sys.path:
             sys.path.insert(0, str(_sp))
 from _python import PYTHON_EXE
+from _validators import is_valid_url, is_valid_group_name, is_safe_filename
 DIALOG_PATH = PROJECT_ROOT / "agents" / "dialog.json"
 STATE_PATH = PROJECT_ROOT / "state" / "pipeline.json"
 TEAM_NOTES_PATH = PROJECT_ROOT / "agents" / "team_notes.md"
@@ -672,7 +673,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
         from urllib.parse import urlparse, parse_qs
         qs = parse_qs(urlparse(self.path).query)
         fname = qs.get("file", [""])[0]
-        if not fname or ".." in fname:
+        if not is_safe_filename(fname):
             self._serve_bytes(
                 b'{"ok":false,"error":"file parameter required"}',
                 "application/json; charset=utf-8")
@@ -835,12 +836,12 @@ class DashboardHandler(BaseHTTPRequestHandler):
         url = body.get("url", "").strip()
         cases_dir = body.get("cases_dir", "").strip()  # e.g. "login"
         # 입력 검증: URL은 http(s)로 시작, cases_dir은 영숫자/언더스코어/하이픈만
-        if url and not url.startswith(("http://", "https://")):
+        if url and not is_valid_url(url):
             self._serve_bytes(
                 b'{"ok":false,"error":"url must start with http:// or https://"}',
                 "application/json; charset=utf-8")
             return
-        if cases_dir and not re.match(r'^[\w\-]+$', cases_dir):
+        if cases_dir and not is_valid_group_name(cases_dir):
             self._serve_bytes(
                 b'{"ok":false,"error":"invalid cases_dir format"}',
                 "application/json; charset=utf-8")
@@ -1058,7 +1059,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 "application/json; charset=utf-8")
             return
         # 그룹명 형식 검증 (경로 탈출 방지)
-        invalid = [g for g in groups if not re.match(r'^[\w\-]+$', g)]
+        invalid = [g for g in groups if not is_valid_group_name(g)]
         if invalid:
             self._serve_bytes(
                 json.dumps({"ok": False, "error": f"잘못된 그룹명: {', '.join(invalid)}"},
@@ -1100,6 +1101,11 @@ class DashboardHandler(BaseHTTPRequestHandler):
         if not fname or not sheet_names:
             self._serve_bytes(
                 b'{"ok":false,"error":"file and sheets required"}',
+                "application/json; charset=utf-8")
+            return
+        if not is_safe_filename(fname):
+            self._serve_bytes(
+                b'{"ok":false,"error":"invalid file parameter"}',
                 "application/json; charset=utf-8")
             return
         fpath = IMPORT_DIR / fname

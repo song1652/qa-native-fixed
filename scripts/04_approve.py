@@ -12,6 +12,8 @@ import sys
 from pathlib import Path
 from _paths import PIPELINE_STATE, read_state, write_state
 
+# 주의: config/pipeline.json (동작 설정, 이 파일)과 state/pipeline.json (런타임 상태, PIPELINE_STATE)은
+# 파일명만 같을 뿐 서로 다른 파일이다. 혼동 주의.
 _PIPELINE_CONFIG = Path(__file__).parent.parent / "config" / "pipeline.json"
 
 

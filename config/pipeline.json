@@ -1,4 +1,4 @@
 {
-  "_comment": "파이프라인 동작 설정",
+  "_comment": "파이프라인 *동작 설정* (런타임 상태는 state/pipeline.json 참조)",
   "auto_approve": true
 }

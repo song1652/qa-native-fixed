@@ -34,5 +34,6 @@ config/weverse.json
 
 # OMC runtime state
 .omc/state/
+.omc/sessions/
 .omc/continuation-count.json
 .omc/swarm-state.json

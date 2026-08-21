@@ -123,23 +123,6 @@ def fix_modal_timeout(source: str, traceback: str) -> tuple[str, bool]:
     return new_source, new_source != source
 
 
-def fix_ad_removal(source: str, traceback: str) -> tuple[str, bool]:
-    """광고 간섭 Timeout → 광고 제거 코드 삽입."""
-    if "timeout" not in traceback.lower():
-        return source, False
-    # automationexercise.com 등 광고 사이트만 대상
-    if "automationexercise" not in source and "adsbygoogle" not in traceback:
-        return source, False
-    if "adsbygoogle" in source:
-        return source, False  # 이미 광고 제거 코드 있음
-
-    ad_removal = '    page.evaluate("document.querySelectorAll(\'ins.adsbygoogle, iframe[src*=google], iframe[src*=doubleclick]\').forEach(e => e.remove())")\n'
-    # page.goto() 다음 줄에 삽입
-    pattern = re.compile(r'(    page\.goto\([^\)]+\)\n)')
-    new_source = pattern.sub(r'\1' + ad_removal, source, count=1)
-    return new_source, new_source != source
-
-
 def _load_frequent_patterns(min_count: int = 3) -> list[dict]:
     """heal_stats.json에서 빈출 패턴(count >= min_count) 로드."""
     if not HEAL_STATS_PATH.exists():
@@ -167,7 +150,6 @@ PATCHERS = [
     fix_evaluate_return,
     fix_unicode_encoding,
     fix_modal_timeout,
-    fix_ad_removal,
 ]
 
 

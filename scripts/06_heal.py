@@ -15,7 +15,7 @@ from pathlib import Path
 from datetime import datetime
 from _python import PYTHON_EXE
 from _paths import PIPELINE_STATE, read_state, write_state
-from _constants import EXIT_SUCCESS, EXIT_HEAL_NEEDED, EXIT_HEAL_EXCEEDED
+from _constants import EXIT_SUCCESS, EXIT_HEAL_NEEDED, EXIT_HEAL_EXCEEDED, MAX_HEAL
 from heal_utils import (
     classify_error, extract_key_lines,  # noqa: F401 (re-export for tests)
     find_screenshot_for_test, append_lessons, update_heal_stats,
@@ -23,8 +23,6 @@ from heal_utils import (
     snapshot_assertions,
 )
 from structured_log import slog
-
-MAX_HEAL = 3
 
 
 def _detect_repeated_failures(
