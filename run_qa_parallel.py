@@ -251,17 +251,18 @@ def _launch_headless_parallel(output_payload: dict) -> None:
     print(f"  로그: {log_path}")
     print("  (수동으로 이어받고 싶다면 --no-auto 옵션으로 재실행하세요)")
 
-    log_file = open(log_path, "w", encoding="utf-8")
-    subprocess.Popen(
-        [
-            "claude", "-p", PARALLEL_HEADLESS_PROMPT,
-            "--dangerously-skip-permissions",
-            "--output-format", "text",
-        ],
-        cwd=str(PROJECT_ROOT),
-        stdout=log_file, stderr=subprocess.STDOUT,
-    )
-    log_file.close()
+    # context manager: Popen 예외 시에도 log_file이 반드시 닫힘.
+    # POSIX에서 부모가 fd를 닫아도 자식은 dup된 fd로 계속 씀 — 데이터 유실 없음.
+    with open(log_path, "w", encoding="utf-8") as log_file:
+        subprocess.Popen(
+            [
+                "claude", "-p", PARALLEL_HEADLESS_PROMPT,
+                "--dangerously-skip-permissions",
+                "--output-format", "text",
+            ],
+            cwd=str(PROJECT_ROOT),
+            stdout=log_file, stderr=subprocess.STDOUT,
+        )
 
 
 def main():

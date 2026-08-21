@@ -126,17 +126,20 @@ class TestRunQaNoAutoFlag:
         self.mod = _load_run_qa()
 
     def test_no_auto_skips_subprocess(self, tmp_path, capsys):
-        """--no-auto 시 subprocess.Popen이 호출되지 않아야 한다."""
+        """--no-auto 시 subprocess.Popen이 호출되지 않고, 안내 메시지가 출력되어야 한다."""
         cases_path = tmp_path / "tc_01.md"
         cases_path.write_text("# test", encoding="utf-8")
         test_cases = [{"format": "natural", "title": "T1"}]
 
-        # state 파일 경로를 tmp_path로 패치
         with patch("subprocess.Popen") as mock_popen, \
              patch.object(self.mod, "PIPELINE_STATE", tmp_path / "pipeline.json"), \
              patch.object(self.mod, "STATE_DIR", tmp_path):
             self.mod.run_single("https://x.com", test_cases, str(cases_path), auto=False)
             assert not mock_popen.called, "--no-auto인데 subprocess.Popen이 호출됨"
+
+        out = capsys.readouterr().out
+        assert "붙여넣으세요" in out or "HEADLESS" in out or "파이프라인" in out, \
+            "--no-auto인데 안내 메시지가 출력되지 않음"
 
     def test_auto_calls_subprocess(self, tmp_path):
         """--auto(기본)시 subprocess.Popen이 호출되어야 한다."""
@@ -144,10 +147,13 @@ class TestRunQaNoAutoFlag:
         cases_path.write_text("# test", encoding="utf-8")
         test_cases = [{"format": "natural", "title": "T1"}]
 
+        # logs/ 디렉토리를 실제로 생성해야 context manager가 log 파일을 열 수 있음
+        (tmp_path / "logs").mkdir()
+
         with patch("subprocess.Popen") as mock_popen, \
-             patch("builtins.open", MagicMock()), \
              patch.object(self.mod, "PIPELINE_STATE", tmp_path / "pipeline.json"), \
-             patch.object(self.mod, "STATE_DIR", tmp_path):
+             patch.object(self.mod, "STATE_DIR", tmp_path), \
+             patch.object(self.mod, "PROJECT_ROOT", tmp_path):
             mock_popen.return_value = MagicMock()
             self.mod.run_single("https://x.com", test_cases, str(cases_path), auto=True)
             assert mock_popen.called, "--auto인데 subprocess.Popen이 호출되지 않음"
@@ -248,33 +254,39 @@ class TestLaunchHeadlessParallel:
     def setup_method(self):
         self.mod = _load_run_qa_parallel()
 
+    def _make_env(self, tmp_path):
+        """테스트용 디렉토리 구조 생성 (state/, logs/ 필수)."""
+        (tmp_path / "state").mkdir(exist_ok=True)
+        (tmp_path / "logs").mkdir(exist_ok=True)
+        return tmp_path
+
     def test_saves_parallel_contexts_json(self, tmp_path):
         """state/parallel_contexts.json이 올바른 구조로 저장되어야 한다."""
         payload = {
             "shared_context_paths": {"lessons_learned": "agents/lessons_learned.md"},
             "subagents": [{"group_dir": "login", "url": "https://x.com", "test_cases": []}],
         }
-        fake_state = tmp_path / "state"
-        fake_state.mkdir()
+        self._make_env(tmp_path)
 
+        # builtins.open을 mock하지 않음 — Path.write_text가 실제 파일을 쓰고,
+        # log file도 실제로 생성됨 (logs/ 디렉토리 미리 생성해야 함)
         with patch("subprocess.Popen") as mock_popen, \
-             patch("builtins.open", MagicMock()), \
              patch.object(self.mod, "PROJECT_ROOT", tmp_path):
             mock_popen.return_value = MagicMock()
             self.mod._launch_headless_parallel(payload)
 
-        saved = json.loads((fake_state / "parallel_contexts.json").read_text(encoding="utf-8"))
+        saved = json.loads(
+            (tmp_path / "state" / "parallel_contexts.json").read_text(encoding="utf-8")
+        )
         assert "shared_context_paths" in saved
         assert "subagents" in saved
         assert saved["subagents"][0]["group_dir"] == "login"
 
     def test_subprocess_called_with_claude_p(self, tmp_path):
         payload = {"shared_context_paths": {}, "subagents": []}
-        (tmp_path / "state").mkdir()
-        (tmp_path / "logs").mkdir()
+        self._make_env(tmp_path)
 
         with patch("subprocess.Popen") as mock_popen, \
-             patch("builtins.open", MagicMock()), \
              patch.object(self.mod, "PROJECT_ROOT", tmp_path):
             mock_popen.return_value = MagicMock()
             self.mod._launch_headless_parallel(payload)
@@ -285,11 +297,9 @@ class TestLaunchHeadlessParallel:
 
     def test_dangerously_skip_permissions_in_args(self, tmp_path):
         payload = {"shared_context_paths": {}, "subagents": []}
-        (tmp_path / "state").mkdir()
-        (tmp_path / "logs").mkdir()
+        self._make_env(tmp_path)
 
         with patch("subprocess.Popen") as mock_popen, \
-             patch("builtins.open", MagicMock()), \
              patch.object(self.mod, "PROJECT_ROOT", tmp_path):
             mock_popen.return_value = MagicMock()
             self.mod._launch_headless_parallel(payload)
