@@ -47,7 +47,7 @@ Claude가 자동으로 호출하는 파일 (직접 실행 불필요)
 
 ### `run_qa.py` — QA 자동화 시작 (단일 URL)
 
-테스트할 URL과 케이스 폴더를 지정하면 Claude에게 파이프라인 실행 지시를 출력합니다.
+테스트할 URL과 케이스 폴더를 지정하면 headless Claude Code 세션을 백그라운드로 띄워 파이프라인 전체를 자동 완주합니다.
 
 ```bash
 # 케이스 폴더 지정 (권장) — 폴더 내 tc_*.md 파일 전체를 자동 읽음
@@ -55,24 +55,51 @@ python run_qa.py --url https://example.com/ --cases testcases/mysite/
 
 # 단일 파일 지정
 python run_qa.py --url https://example.com/ --cases testcases/mysite/tc_01.md
+
+# 자동 실행 없이 안내 메시지만 출력 (기존 방식)
+python run_qa.py --url https://example.com/ --cases testcases/mysite/ --no-auto
 ```
 
-**동작 순서:**
+**옵션:**
+| 옵션 | 설명 |
+|---|---|
+| `--url` | 테스트 대상 URL (필수) |
+| `--cases` | 케이스 파일 또는 폴더 경로 (필수) |
+| `--no-auto` | headless Claude 자동 실행 생략. 안내 메시지만 출력 (기존 동작) |
+
+**동작 순서 (`--auto` 기본):**
 1. `testcases/` 폴더에서 케이스 파일 읽기
 2. `state/pipeline.json` 생성 (URL + 케이스 목록)
-3. 케이스가 1개면 → 단일 파이프라인 지시 출력
-4. 케이스가 2개 이상이면 → `run_qa_parallel.py`와 동일하게 병렬 파이프라인으로 자동 전환
+3. `claude -p` headless 세션 백그라운드 실행 → `01_analyze → 코드작성 → lint → 승인 → 실행 → 힐링` 자동 완주
+4. 로그: `logs/run_qa_headless.txt`
 
 ---
 
 ### `run_qa_parallel.py` — QA 자동화 시작 (여러 URL 동시)
 
-`config/pages.json`에 등록된 URL을 기반으로 여러 URL을 동시에 테스트합니다.
+`config/pages.json`에 등록된 URL을 기반으로 여러 URL을 동시에 테스트합니다.  
+DOM 분석 후 headless Claude Code 세션을 백그라운드로 띄워 subagent 병렬 실행 + 99_merge + 힐링까지 자동 완주합니다.
 
 ```bash
-# pages.json에 등록된 모든 URL 자동 스캔
+# pages.json에 등록된 모든 URL 자동 스캔 (headless 자동 실행)
 python run_qa_parallel.py
+
+# 특정 폴더만
+python run_qa_parallel.py --folders login saintcore
+
+# targets.json 지정
+python run_qa_parallel.py --targets testcases/targets_demo.json
+
+# 자동 실행 없이 안내 메시지만 출력 (기존 방식)
+python run_qa_parallel.py --no-auto
 ```
+
+**옵션:**
+| 옵션 | 설명 |
+|---|---|
+| `--targets` | targets.json 경로. 생략 시 `testcases/` 폴더 자동 스캔 |
+| `--folders` | 특정 폴더만 실행 (예: `login saintcore`) |
+| `--no-auto` | headless Claude 자동 실행 생략. `PARALLEL_SUBAGENT_CONTEXTS` 출력 + 안내 메시지만 출력 (기존 동작) |
 
 **`config/pages.json` 형식 (string/object 혼용 가능):**
 ```json
@@ -90,14 +117,14 @@ python run_qa_parallel.py
 키 이름 = `testcases/` 하위 폴더명과 일치해야 합니다. 해당 폴더가 없는 키는 자동 건너뜁니다.
 object 형식 사용 시 `page_meta`(auth, spa, preconditions, notes)가 subagent 컨텍스트에 자동 포함됩니다.
 
-**동작 순서:**
+**동작 순서 (`--auto` 기본):**
 1. `config/pages.json` 읽기 + `testcases/` 폴더 자동 스캔
 2. URL별 DOM 분석 (동일 URL 1회만, 캐시)
-3. `PARALLEL_SUBAGENT_CONTEXTS` 출력 → 구조: `{ shared_context_paths: {...}, subagents: [...] }`
+3. `state/parallel_contexts.json` 저장 → 구조: `{ shared_context_paths: {...}, subagents: [...] }`
    - `shared_context_paths`: 공통 참조 파일 경로 (lessons_learned, team_charter, SKILL.md) — 각 subagent가 직접 읽음
    - `subagents[]`: 배치별 고유 데이터 (dom_info, test_cases, test_data 등)
-4. Claude가 `subagents[]`의 각 항목을 Agent tool로 동시 실행
-5. 모든 subagent 완료 후: `python parallel/99_merge.py` 실행
+4. `claude -p` headless 세션 백그라운드 실행 → `subagents[]` Agent tool 동시 실행 → `99_merge.py` → 힐링 자동 완주
+5. 로그: `logs/run_qa_parallel_headless.txt`
 
 ---
 
@@ -380,3 +407,6 @@ python scripts/05_execute.py
 | `logs/quick_run.txt` | 빠른 실행 로그 | 대시보드 빠른 실행 시 |
 | `logs/run_parallel.txt` | 병렬 파이프라인 실행 로그 | 대시보드에서 병렬 실행 시 |
 | `logs/run_qa.txt` | 단일 파이프라인 실행 로그 | 대시보드에서 단일 실행 시 |
+| `logs/run_qa_headless.txt` | `run_qa.py` headless 세션 전체 로그 | `run_qa.py` (--auto) 실행 시 |
+| `logs/run_qa_parallel_headless.txt` | `run_qa_parallel.py` headless 세션 전체 로그 | `run_qa_parallel.py` (--auto) 실행 시 |
+| `state/parallel_contexts.json` | 병렬 파이프라인 subagent 컨텍스트 전체 (dom_info + test_cases + shared_paths) | `run_qa_parallel.py` 실행 시 |

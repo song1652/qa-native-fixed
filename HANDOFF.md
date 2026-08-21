@@ -36,14 +36,24 @@
 - 로컬 자동화용으로 `--dangerously-skip-permissions` 사용 (`.claude/settings.json`의 allow 리스트만으로는 workspace trust 문제로 무시됨 — 신뢰 안 하는 환경에선 재검토 필요).
 - **실제로 the-internet.herokuapp.com/login(공개 QA 연습 사이트)을 대상으로 라이브 테스트해서 사람 개입 없이 `state=done`, 테스트 통과까지 완주 확인함.**
 
-## 🔜 남은 작업: 병렬 파이프라인에도 headless 자동실행 추가
+## ✅ 완료: 병렬 파이프라인 headless 자동실행 추가 (2026-08-21)
 
-`run_qa_parallel.py`는 아직 옛날 방식 그대로임 — `PARALLEL_SUBAGENT_CONTEXTS`를 출력만 하고, 사람이나 인터랙티브 Claude 세션이 그걸 읽어서 Agent tool로 직접 실행해줘야 함.
+`run_qa_parallel.py`에 단일 파이프라인(`run_qa.py`)과 동일한 패턴 적용 완료.
 
-**할 일**: `run_qa.py`에 만든 `_launch_headless_pipeline()` 패턴을 `run_qa_parallel.py`에도 적용.
-- `run_qa_parallel.py`의 `main()` 마지막 부분(`PARALLEL_SUBAGENT_CONTEXTS_START/END` 출력하는 곳) 이후에, `claude -p`로 headless 세션을 띄워서 그 출력을 바탕으로 배치들을 Agent tool로 동시 실행하도록 지시하는 프롬프트를 넘기면 됨.
-- `parallel/99_merge.py`도 이어서 자동으로 실행되게 하려면, headless 프롬프트에 "완료 후 `python parallel/99_merge.py`까지 실행해줘"를 포함시킬 것.
-- 참고 구현: `qa-native-fixed` 저장소의 `run_qa.py`에 있는 `HEADLESS_PROMPT`, `_launch_headless_pipeline()` 함수.
+**구현 내용** (커밋 `fb8495f`):
+- `PARALLEL_HEADLESS_PROMPT` 상수: subagents[] 동시 실행 → 99_merge.py → 힐링 루프까지 지시
+- `_launch_headless_parallel(output_payload)`: contexts를 `state/parallel_contexts.json`에 저장 후 `claude -p` 백그라운드 실행
+- `--no-auto` 인자: 기존 안내 메시지만 출력하는 동작으로 되돌림
+- 기본값(`--auto`): headless 세션이 자동으로 병렬 서브에이전트 실행 + 99_merge + 힐링까지 완주
+- 로그: `logs/run_qa_parallel_headless.txt`
+
+**단일/병렬 대칭 완성**:
+
+| | `run_qa.py` | `run_qa_parallel.py` |
+|---|---|---|
+| 컨텍스트 파일 | `state/pipeline.json` | `state/parallel_contexts.json` |
+| 로그 | `logs/run_qa_headless.txt` | `logs/run_qa_parallel_headless.txt` |
+| 수동 모드 | `--no-auto` | `--no-auto` |
 
 ## 재현/검증 환경 세팅 (참고)
 

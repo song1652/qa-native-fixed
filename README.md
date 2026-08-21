@@ -11,8 +11,8 @@ DOM 분석 → 테스트 코드 자동 생성 → 심의 → 실행 → 자가 �
 
 | 파일 | 언제 실행? | 하는 일 |
 |---|---|---|
-| `run_qa.py` | 단일 URL 테스트 시작 | state/pipeline.json 생성 후 Claude에게 파이프라인 실행 지시 |
-| `run_qa_parallel.py` | 여러 URL 동시 테스트 | pages.json 기반 워커 생성 + 병렬 실행 지시 |
+| `run_qa.py` | 단일 URL 테스트 시작 | state/pipeline.json 생성 후 headless Claude 세션으로 파이프라인 자동 완주 (기본 `--auto`). `--no-auto` 시 안내 메시지만 출력. |
+| `run_qa_parallel.py` | 여러 URL 동시 테스트 | DOM 분석 → contexts 저장 → headless Claude 세션이 subagent 병렬 실행 + 99_merge + 힐링까지 자동 완주 (기본 `--auto`). `--no-auto` 시 안내 메시지만 출력. |
 | `run_team.py` | 팀 토론 주제 등록 | state/discuss.json 생성 (대시보드 버튼으로 대체 가능) |
 | `agents/dashboard/serve.py` | 모니터링 대시보드 실행 | http://localhost:8766 에서 파이프라인 실행·모니터링·토론 관리 |
 | `scripts/06_auto_heal.py` | 자동 패치 (힐링 선 실행) | 06_heal.py 이후 Agent 호출 전 deterministic 패턴 자동 수정 |
@@ -66,14 +66,13 @@ claude mcp list
 ```bash
 # 폴더 지정 (권장) — 폴더 내 tc_*.md 파일 전체를 자동 읽음
 python run_qa.py --url https://example.com/login --cases testcases/login/
+
+# 자동 실행 없이 안내만 출력 (기존 방식)
+python run_qa.py --url https://example.com/login --cases testcases/login/ --no-auto
 ```
 
-케이스 수에 따라 자동 분기됩니다:
-
-| 케이스 수 | 동작 |
-|---|---|
-| 1개 | 단일 파이프라인 — `state/pipeline.json` 생성 후 Claude Code가 순차 실행 |
-| N개 | 병렬 파이프라인 — 케이스별 worker 자동 생성, Claude Code가 동시 실행 |
+실행하면 headless Claude Code 세션이 백그라운드로 뜨고 파이프라인 전체를 자동 완주합니다.  
+진행 로그는 `logs/run_qa_headless.txt`에서 확인할 수 있습니다.
 
 ---
 
@@ -124,11 +123,13 @@ type: structured
 
 ```bash
 python run_qa_parallel.py
-# pages.json + testcases/ 자동 스캔 → PARALLEL_SUBAGENT_CONTEXTS 출력
-# 공통 참조(lessons_learned 등)는 파일 경로로, 고유 데이터만 JSON으로 전달
-# Claude Code가 subagents[] 각 항목을 동시 실행 (코드 생성)
-python parallel/99_merge.py
-# pytest 일괄 실행 + HTML 리포트 생성
+# pages.json + testcases/ 자동 스캔 → DOM 분석 → state/parallel_contexts.json 저장
+# → headless Claude 세션이 subagents[] 동시 실행 + parallel/99_merge.py + 힐링까지 자동 완주
+# 진행 로그: logs/run_qa_parallel_headless.txt
+
+# 자동 실행 없이 안내만 출력 (기존 방식)
+python run_qa_parallel.py --no-auto
+# PARALLEL_SUBAGENT_CONTEXTS 출력 후 수동 실행 안내
 ```
 
 ---

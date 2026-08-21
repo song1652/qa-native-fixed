@@ -12,8 +12,8 @@
 | 파일 | 역할 |
 |------|------|
 | `_bootstrap.py` | 프로젝트 진입점 공통 경로 설정 (루트 스크립트가 import) |
-| `run_qa.py` | 단일 파이프라인 실행 엔트리포인트 |
-| `run_qa_parallel.py` | 병렬 파이프라인 실행 엔트리포인트 |
+| `run_qa.py` | 단일 파이프라인 실행 엔트리포인트 (기본: headless Claude 자동 실행, `--no-auto` 시 안내만 출력) |
+| `run_qa_parallel.py` | 병렬 파이프라인 실행 엔트리포인트 (기본: headless Claude 자동 실행, `--no-auto` 시 안내만 출력) |
 | `run_team.py` | 팀 토론 실행 엔트리포인트 |
 
 ## scripts/ — 단계별 실행 스크립트 (LLM 없음, 순수 Python)
@@ -102,6 +102,7 @@
 | `discuss.json` | 팀 토론 상태 |
 | `heal_stats.json` | 힐링 오류 패턴별 빈도 카운터 (06_heal.py 자동 갱신) |
 | `parallel.json` | 병렬 파이프라인 상태 |
+| `parallel_contexts.json` | 병렬 파이프라인 subagent 컨텍스트 전체 (dom_info + test_cases + shared_paths). run_qa_parallel.py가 저장, headless Claude가 읽음 |
 | `pipeline.json` | 단일 파이프라인 상태 (FSM step 전이 검증 포함) |
 | `pipeline_new.json` | 런타임 생성 |
 | `quick.json` | 빠른 실행 상태 |
@@ -156,5 +157,5 @@
 |------|------|
 | `knowledge/` | QA 지식 베이스 (체크리스트·팀 내규) |
 | `templates/` | 문서 템플릿 (TC·리포트·이슈) |
-| `logs/` | 실행 로그 (run_qa.txt, run_parallel.txt, structured.jsonl 등) |
+| `logs/` | 실행 로그 (run_qa.txt, run_parallel.txt, run_qa_headless.txt, run_qa_parallel_headless.txt, structured.jsonl 등) |
 | `reports/issues/` | 이슈 추적 파일 (ISSUE-{날짜}-{번호}.md) |
