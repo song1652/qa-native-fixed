@@ -235,15 +235,15 @@ def _launch_headless_parallel(output_payload: dict) -> None:
     """
     import subprocess
 
-    # headless Claude가 읽을 컨텍스트 파일 저장
     ctx_path = PROJECT_ROOT / "state" / "parallel_contexts.json"
-    ctx_path.write_text(
-        json.dumps(output_payload, ensure_ascii=False, indent=2), encoding="utf-8"
-    )
-
     logs_dir = PROJECT_ROOT / "logs"
     logs_dir.mkdir(exist_ok=True)
     log_path = logs_dir / "run_qa_parallel_headless.txt"
+
+    # headless Claude가 읽을 컨텍스트 파일 저장
+    ctx_path.write_text(
+        json.dumps(output_payload, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
 
     print()
     print("  [자동 실행] headless Claude Code 세션을 백그라운드로 시작합니다.")
@@ -253,16 +253,21 @@ def _launch_headless_parallel(output_payload: dict) -> None:
 
     # context manager: Popen 예외 시에도 log_file이 반드시 닫힘.
     # POSIX에서 부모가 fd를 닫아도 자식은 dup된 fd로 계속 씀 — 데이터 유실 없음.
-    with open(log_path, "w", encoding="utf-8") as log_file:
-        subprocess.Popen(
-            [
-                "claude", "-p", PARALLEL_HEADLESS_PROMPT,
-                "--dangerously-skip-permissions",
-                "--output-format", "text",
-            ],
-            cwd=str(PROJECT_ROOT),
-            stdout=log_file, stderr=subprocess.STDOUT,
-        )
+    try:
+        with open(log_path, "w", encoding="utf-8") as log_file:
+            subprocess.Popen(
+                [
+                    "claude", "-p", PARALLEL_HEADLESS_PROMPT,
+                    "--dangerously-skip-permissions",
+                    "--output-format", "text",
+                ],
+                cwd=str(PROJECT_ROOT),
+                stdout=log_file, stderr=subprocess.STDOUT,
+            )
+    except Exception:
+        # Popen 실패 시 컨텍스트 파일을 삭제해 stale 상태 방지
+        ctx_path.unlink(missing_ok=True)
+        raise
 
 
 def main():
@@ -379,20 +384,23 @@ def main():
         ],
     })
 
-    # 6. subagent 컨텍스트 출력 (공통 데이터는 파일 경로만, 고유 데이터만 JSON)
+    # 6. subagent 컨텍스트 빌드
     output_payload = {
         "shared_context_paths": shared_context_paths,
         "subagents": contexts,
     }
-    print()
-    print("=== PARALLEL_SUBAGENT_CONTEXTS_START ===")
-    print(json.dumps(output_payload, ensure_ascii=False, indent=2))
-    print("=== PARALLEL_SUBAGENT_CONTEXTS_END ===")
-    print()
 
     if not args.no_auto:
+        # --auto(기본): headless Claude가 state/parallel_contexts.json을 읽으므로
+        # 터미널에 대용량 JSON을 출력할 필요 없음
         _launch_headless_parallel(output_payload)
     else:
+        # --no-auto: 사람이 직접 Claude에 붙여넣을 수 있도록 전체 컨텍스트 출력
+        print()
+        print("=== PARALLEL_SUBAGENT_CONTEXTS_START ===")
+        print(json.dumps(output_payload, ensure_ascii=False, indent=2))
+        print("=== PARALLEL_SUBAGENT_CONTEXTS_END ===")
+        print()
         print("=" * 60)
         print("  Claude Code에 아래 지시를 전달하세요:")
         print("=" * 60)

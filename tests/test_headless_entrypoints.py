@@ -7,7 +7,6 @@
 """
 import json
 import sys
-import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -88,30 +87,36 @@ class TestRunQaLaunchHeadless:
     def setup_method(self):
         self.mod = _load_run_qa()
 
-    def test_subprocess_called_with_claude_p(self):
-        with patch("subprocess.Popen") as mock_popen, \
-             patch("builtins.open", MagicMock()):
+    def _popen_ctx(self, tmp_path):
+        """PROJECT_ROOT를 tmp_path로 격리하고 logs/ 생성."""
+        (tmp_path / "logs").mkdir(exist_ok=True)
+        return patch("subprocess.Popen"), patch.object(self.mod, "PROJECT_ROOT", tmp_path)
+
+    def test_subprocess_called_with_claude_p(self, tmp_path):
+        mock_popen_ctx, root_ctx = self._popen_ctx(tmp_path)
+        with mock_popen_ctx as mock_popen, root_ctx:
             mock_popen.return_value = MagicMock()
             self.mod._launch_headless_pipeline()
             assert mock_popen.called, "subprocess.Popen이 호출되지 않음"
-            args = mock_popen.call_args[0][0]  # 첫 번째 위치 인자 (cmd 리스트)
+            args = mock_popen.call_args[0][0]
             assert args[0] == "claude"
             assert args[1] == "-p"
+            assert args[2] == self.mod.HEADLESS_PROMPT, "세 번째 인자가 HEADLESS_PROMPT여야 함"
 
     def test_headless_prompt_not_empty(self):
         assert len(self.mod.HEADLESS_PROMPT) > 10
 
-    def test_dangerously_skip_permissions_flag(self):
-        with patch("subprocess.Popen") as mock_popen, \
-             patch("builtins.open", MagicMock()):
+    def test_dangerously_skip_permissions_flag(self, tmp_path):
+        mock_popen_ctx, root_ctx = self._popen_ctx(tmp_path)
+        with mock_popen_ctx as mock_popen, root_ctx:
             mock_popen.return_value = MagicMock()
             self.mod._launch_headless_pipeline()
             args = mock_popen.call_args[0][0]
             assert "--dangerously-skip-permissions" in args
 
-    def test_output_format_text(self):
-        with patch("subprocess.Popen") as mock_popen, \
-             patch("builtins.open", MagicMock()):
+    def test_output_format_text(self, tmp_path):
+        mock_popen_ctx, root_ctx = self._popen_ctx(tmp_path)
+        with mock_popen_ctx as mock_popen, root_ctx:
             mock_popen.return_value = MagicMock()
             self.mod._launch_headless_pipeline()
             args = mock_popen.call_args[0][0]
@@ -294,6 +299,8 @@ class TestLaunchHeadlessParallel:
             args = mock_popen.call_args[0][0]
             assert args[0] == "claude"
             assert args[1] == "-p"
+            assert args[2] == self.mod.PARALLEL_HEADLESS_PROMPT, \
+                "세 번째 인자가 PARALLEL_HEADLESS_PROMPT여야 함"
 
     def test_dangerously_skip_permissions_in_args(self, tmp_path):
         payload = {"shared_context_paths": {}, "subagents": []}
