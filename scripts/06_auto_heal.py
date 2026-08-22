@@ -4,8 +4,9 @@ LLM 없음. 알려진 패턴을 regex 기반으로 자동 패치.
 06_heal.py 이후, Agent 호출 전에 실행.
 
 종료코드:
-  0 = 모든 실패 자동 수�� 완료 (Agent 불필요)
+  0 = 모든 실패 자동 수정 완료 (Agent 불필요)
   1 = 일부 실패 남음 (Agent 힐링 필요)
+  3 = 스킵 (heal_needed 상태가 아님 / 실패 없음) — 단일·병렬 공통
 """
 import json
 import re
@@ -167,12 +168,12 @@ def main():
 
     if not heal_context or state.get("step") != "heal_needed":
         print("[스킵] heal_needed 상태가 아님.")
-        sys.exit(0)
+        sys.exit(3)  # 스킵 코드 — 호출자가 "자동 완료"와 구분할 수 있어야 함
 
     failures = heal_context.get("failures", [])
     if not failures:
         print("[06-auto] 실패 없음.")
-        sys.exit(0)
+        sys.exit(3)  # 스킵 코드 — 호출자가 "자동 완료"와 구분할 수 있어야 함
 
     # 빈출 패턴 보고 (Agent 힌트)
     frequent = _load_frequent_patterns(min_count=3)

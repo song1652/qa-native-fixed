@@ -55,9 +55,10 @@ def classify_error(traceback: str) -> str:
                               "ms exceeded", "page timeout", "navigation timeout"]):
         return "Timeout"
     # "timeout" 단독 키워드는 locator/assertion 미포함 시에만
+    # "locator"가 포함된 경우 Locator 우선 → 2번 블록에서 처리
     if "timeout" in tb and not any(k in tb for k in [
         "strict mode violation", "element not found",
-        "no element", "getby", "waiting for selector",
+        "no element", "getby", "waiting for selector", "locator",
     ]):
         return "Timeout"
 
@@ -496,10 +497,14 @@ def print_heal_batches(batches: list[list[dict]], url: str = "",
     print("  4. mcp_snapshot_recommended=true 배치: browser_navigate → browser_snapshot으로")
     print("     실시간 ARIA 트리 확인 후 셀렉터 보정 (Locator/Assertion/Timeout 오류 대상)")
     print("  5. 패치 후 개별 테스트 실행으로 통과 확인")
+    print("  6. 패치 후 python scripts/assert_guard.py 실행 — assertion 무결성 검증")
+    print("     (assert_guard 경고 시: assert 값이 의도적으로 바뀐 것인지 확인)")
     print("  ※ MCP 실패 시 dom_info 기반 힐링으로 자동 전환 (graceful degradation)")
     print()
     if pipeline == "single":
         print("  완료 후: python scripts/05_execute.py --no-report → python scripts/06_heal.py")
+        print("           → python scripts/assert_guard.py (assertion 무결성 확인)")
     else:
         print("  완료 후: python parallel/99_merge.py")
+        print("           → python scripts/assert_guard.py (assertion 무결성 확인)")
     print("=" * 60)

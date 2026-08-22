@@ -400,6 +400,28 @@ def main():
         failed_count = 1 if result.returncode != 0 else 0
         skipped_count = 0
 
+    # ── --only-failed 결과 병합 ──────────────────────────────────────
+    # 부분 실행(only-failed) 결과를 이전 전체 실행 결과와 병합해
+    # total/passed 카운트가 "3/3"처럼 축소되지 않도록 보정.
+    # step="done" / step="heal_needed" 판정은 이 병합 결과 기준.
+    _is_partial_run = only_failed and test_targets != [str(file_path)]
+    if _is_partial_run:
+        prev_exec_full = state.get("execution_result", {})
+        prev_total = prev_exec_full.get("total", 0)
+        prev_passed = prev_exec_full.get("passed", 0)
+        prev_failed = prev_exec_full.get("failed", 0)
+        prev_skipped = prev_exec_full.get("skipped", 0)
+        if prev_total > 0:
+            # 이번 실행에서 통과한 nodeids = 이전에 실패였던 것이 now-passed
+            now_passed_ids = {nid for nid, oc in test_results.items() if oc == "passed"}
+            newly_fixed = len([nid for nid in test_targets if nid in now_passed_ids])
+            still_failed = failed_count
+            # 전체 카운트 = 이전 실행 기준 업데이트
+            passed_count = prev_passed + newly_fixed
+            failed_count = prev_failed - newly_fixed + still_failed
+            failed_count = max(0, failed_count)
+            skipped_count = prev_skipped
+
     group_name = _extract_group_name(state)
 
     test_cases = state.get("test_cases", [])

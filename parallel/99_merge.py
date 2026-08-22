@@ -271,6 +271,8 @@ def _try_auto_heal() -> bool:
             for line in result.stdout.strip().splitlines():
                 print(f"  {line}")
         # 종료코드 0 = 모든 실패 자동 수정 완료
+        # 종료코드 1 = 일부 실패 남음, 3 = 스킵 (heal_needed 아님)
+        # exit 3 (스킵)은 "자동 완료"가 아니므로 False 반환
         return result.returncode == 0
     except (subprocess.TimeoutExpired, Exception) as e:
         print(f"  [auto_heal] 실행 실패 (무시): {e}")
@@ -492,20 +494,6 @@ def main():
          file_count=len(sorted_files), quick=quick_mode)
     print(f"\n[99] 실행 범위: {scope_label}  ({len(sorted_files)}개 케이스, 순차 실행)")
 
-    # heal_count는 pipeline.json에서 읽기 (heal_context.json 삭제 시에도 카운터 보존)
-    heal_count = 0
-    heal_analyzed_at = None
-    _pipeline_st = read_state(PIPELINE_STATE)
-    heal_count = _pipeline_st.get("heal_count", 0)
-    # lessons_learned 검증용 analyzed_at은 heal_context.json에서만 읽기
-    _prev_ctx = read_state(HEAL_CONTEXT_STATE)
-    if _prev_ctx:
-        heal_analyzed_at = _prev_ctx.get("analyzed_at")
-
-    # 힐링 재실행 시 lessons_learned 기록 검증
-    if heal_count > 0 and heal_analyzed_at:
-        verify_lessons_learned_updated(heal_analyzed_at)
-
     # 2. pytest 실행 전 스크린샷 정리 (최종 실패 시만 남기기)
     if SCREENSHOTS_DIR.exists():
         shutil.rmtree(SCREENSHOTS_DIR, ignore_errors=True)
@@ -516,6 +504,20 @@ def main():
 
     if not quick_mode:
         _update_parallel_status("testing")
+
+    # heal_count는 병렬 상태 파일(state_path)에서 읽기 (단일 파이프라인 오염 방지)
+    heal_count = 0
+    heal_analyzed_at = None
+    _parallel_st = read_state(state_path)
+    heal_count = _parallel_st.get("heal_count", 0)
+    # lessons_learned 검증용 analyzed_at은 heal_context.json에서만 읽기
+    _prev_ctx = read_state(HEAL_CONTEXT_STATE)
+    if _prev_ctx:
+        heal_analyzed_at = _prev_ctx.get("analyzed_at")
+
+    # 힐링 재실행 시 lessons_learned 기록 검증
+    if heal_count > 0 and heal_analyzed_at:
+        verify_lessons_learned_updated(heal_analyzed_at)
 
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     json_report_path = Path(tempfile.gettempdir()) / f"qa_report_{ts}.json"
@@ -585,17 +587,17 @@ def main():
         elif heal_count >= MAX_HEAL:
             print(f"\n[99] 최대 힐링 횟수({MAX_HEAL}회) 초과 -- 수동 수정이 필요합니다.")
             HEAL_CONTEXT_STATE.unlink(missing_ok=True)
-            # heal_count + heal_failed를 pipeline.json에 반영 (카운터 보존)
-            _ps_fail = read_state(PIPELINE_STATE)
+            # heal_count + heal_failed를 병렬 상태 파일에 반영 (단일 파이프라인 오염 방지)
+            _ps_fail = read_state(state_path)
             _ps_fail["heal_count"] = heal_count
             _ps_fail["heal_failed"] = True
-            write_state(PIPELINE_STATE, _ps_fail)
+            write_state(state_path, _ps_fail)
         else:
             heal_count += 1
-            # heal_count를 pipeline.json에 기록 (heal_context.json 삭제 시에도 카운터 보존)
-            _ps_upd = read_state(PIPELINE_STATE)
+            # heal_count를 병렬 상태 파일에 기록 (단일 파이프라인 오염 방지)
+            _ps_upd = read_state(state_path)
             _ps_upd["heal_count"] = heal_count
-            write_state(PIPELINE_STATE, _ps_upd)
+            write_state(state_path, _ps_upd)
             heal_ctx = build_heal_context(report, heal_count, state_path)
             if heal_ctx:
                 # auto_heal 시도 (deterministic 패치)

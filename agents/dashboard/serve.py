@@ -134,6 +134,44 @@ def _safe_write_json(path: Path, data) -> None:
             _release_file_lock(lock_path)
 
 
+def _safe_update_json(path: Path, mutator) -> dict:
+    """락 보유 중 read-modify-write를 원자적으로 수행한다.
+
+    mutator(current: dict) -> dict 를 받아 현재 상태를 수정하고 쓴다.
+    ThreadingHTTPServer 멀티스레드 환경에서 RMW 경쟁 조건 방지.
+
+    예시:
+        _safe_update_json(DISCUSS_PATH, lambda d: {**d, "step": "approved"})
+    """
+    import tempfile as _tempfile
+    from _paths import _acquire_file_lock, _release_file_lock
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    lock_path = path.with_suffix(".lock")
+    acquired = _acquire_file_lock(lock_path)
+    try:
+        current: dict = {}
+        if path.exists():
+            try:
+                current = json.loads(path.read_text(encoding="utf-8"))
+            except Exception:
+                pass
+        new_data = mutator(current)
+        content = json.dumps(new_data, ensure_ascii=False, indent=2)
+        fd, tmp_path = _tempfile.mkstemp(dir=path.parent, suffix=".tmp")
+        try:
+            with open(fd, "w", encoding="utf-8") as f:
+                f.write(content)
+            Path(tmp_path).replace(path)
+        except Exception:
+            Path(tmp_path).unlink(missing_ok=True)
+            raise
+        return new_data
+    finally:
+        if acquired:
+            _release_file_lock(lock_path)
+
+
 def parse_conclusion_items(conclusion: str) -> list:
     """결론 마크다운을 투표 가능한 개별 항목으로 파싱."""
     items = []
@@ -818,22 +856,25 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 "application/json; charset=utf-8")
             return
 
-        discuss = json.loads(DISCUSS_PATH.read_text(encoding="utf-8"))
-        items = discuss.get("conclusion_items", [])
-        for item in items:
-            if item["id"] == item_id:
-                item["status"] = "approved" if vote == "approve" else "rejected"
-                break
-        discuss["conclusion_items"] = items
+        all_voted_ref = [False]
 
-        all_voted = bool(items) and all(i["status"] != "pending" for i in items)
-        if all_voted:
-            finalize_team_notes(discuss)
-            discuss["step"] = "approved"
+        def _vote_mutator(discuss: dict) -> dict:
+            items = discuss.get("conclusion_items", [])
+            for item in items:
+                if item["id"] == item_id:
+                    item["status"] = "approved" if vote == "approve" else "rejected"
+                    break
+            discuss["conclusion_items"] = items
+            voted = bool(items) and all(i["status"] != "pending" for i in items)
+            all_voted_ref[0] = voted
+            if voted:
+                finalize_team_notes(discuss)
+                discuss["step"] = "approved"
+            return discuss
 
-        _safe_write_json(DISCUSS_PATH, discuss)
+        _safe_update_json(DISCUSS_PATH, _vote_mutator)
         self._serve_bytes(
-            json.dumps({"ok": True, "all_voted": all_voted}, ensure_ascii=False).encode("utf-8"),
+            json.dumps({"ok": True, "all_voted": all_voted_ref[0]}, ensure_ascii=False).encode("utf-8"),
             "application/json; charset=utf-8"
         )
 
@@ -845,11 +886,12 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 json.dumps({"ok": False, "error": "state/discuss.json 없음"}, ensure_ascii=False).encode("utf-8"),
                 "application/json; charset=utf-8")
             return
-        discuss = json.loads(DISCUSS_PATH.read_text(encoding="utf-8"))
-        discuss["step"] = "rejected"
-        discuss["rejection_reason"] = reason
-        discuss["rejection_count"] = discuss.get("rejection_count", 0) + 1
-        _safe_write_json(DISCUSS_PATH, discuss)
+        _safe_update_json(DISCUSS_PATH, lambda d: {
+            **d,
+            "step": "rejected",
+            "rejection_reason": reason,
+            "rejection_count": d.get("rejection_count", 0) + 1,
+        })
         self._serve_bytes(b'{"ok":true}', "application/json; charset=utf-8")
 
     def _post_run_qa(self):

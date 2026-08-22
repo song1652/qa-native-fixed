@@ -7,6 +7,66 @@
 
 ---
 
+## 아키텍처 결함 수정 — 2026-08-22
+
+### FSM 재진입 경로 (`_constants.py`, `_paths.py`, `run_qa.py`)
+- **문제**: `done`/`heal_failed`/`timeout` → `init` 전이 엣지가 없어 재실행 시 FSM 검증에서 ValueError 발생
+- **수정**: `VALID_TRANSITIONS`에 `"init"` 목적지 추가. `reset_state()` 신규 함수로 초기화 원자 쓰기 분리. `run_qa.py`에서 raw `write_text()` 제거하고 `reset_state()` 사용
+- **재발 방지**: 파이프라인 상태 초기화는 반드시 `reset_state()`를 사용. `write_text()` 직접 사용 금지
+
+### 병렬 파이프라인 상태 어휘 부재 (`_constants.py`)
+- **문제**: `VALID_PARALLEL_TRANSITIONS`에 `init`, `analyzing`, `ready`, `error` 상태가 없어 `assert_valid_parallel_transition()` 호출 시 예외 발생
+- **수정**: 위 4개 상태와 전이 엣지 추가. `done`/`heal_failed` → `init` 엣지도 함께 추가
+
+### 06_auto_heal.py 스킵 exit 코드 (`scripts/06_auto_heal.py`)
+- **문제**: heal_needed 아닌 상태에서 `exit(0)` 반환 → 99_merge.py가 "자동 수정 완료"로 오판
+- **수정**: 스킵 케이스는 `exit(3)`으로 변경. docstring에도 종료코드 3 명시
+- **재발 방지**: exit 0은 "작업 성공 완료", exit 3은 "스킵/해당 없음"으로 구분 필수
+
+### 병렬 heal_count 오염 (`parallel/99_merge.py`)
+- **문제**: `heal_count`를 `PIPELINE_STATE`(단일 파이프라인 상태)에서 읽고 씀 → 단일·병렬 카운터 충돌
+- **수정**: `state_path`(PARALLEL_STATE 또는 QUICK_STATE) 정의 이후로 읽기 블록 이동. read/write 모두 `state_path` 사용
+- **재발 방지**: 병렬 파이프라인 상태는 항상 `state_path`(PARALLEL_STATE/QUICK_STATE) 사용. PIPELINE_STATE는 단일 파이프라인 전용
+
+### RMW 레이스 조건 (`agents/dashboard/serve.py`, `scripts/_paths.py`)
+- **문제**: discuss vote/reject 핸들러가 락 없이 read 후 별도 락으로 write → 동시 요청 시 데이터 유실
+- **수정**: `_safe_update_json()` 함수 추가(serve.py). `update_state()` 함수 추가(_paths.py). 두 핸들러를 단일 락 RMW로 교체
+- **재발 방지**: 상태 수정은 반드시 `update_state()` 또는 `_safe_update_json()`를 통해 단일 락 RMW로 처리
+
+### --only-failed 부분 실행 카운트 오염 (`scripts/05_execute.py`)
+- **문제**: `--only-failed`로 부분 실행 시 `execution_result`에 전체 카운트가 아닌 부분 카운트 기록 → 통계 왜곡
+- **수정**: `_is_partial_run` 조건에서 이전 execution_result와 병합해 카운트 보정
+- **재발 방지**: `--only-failed` 실행 후에는 이전 실행 결과와 반드시 병합해야 함
+
+### classify_error locator/timeout 우선순위 (`scripts/heal_utils.py`)
+- **문제**: "locator timeout 30000ms" 같은 traceback이 Locator가 아닌 Timeout으로 분류됨
+- **수정**: `"locator"` 키워드를 timeout 단독 체크의 exclusion list에 추가
+- **재발 방지**: locator와 timeout이 같이 나오면 Locator 우선. "waiting for locator"가 timeout 메시지를 내포하기 때문
+
+### Agent 힐링 경로 assert_guard 누락 (`scripts/heal_utils.py`)
+- **문제**: Agent가 패치 후 assert_guard.py 실행을 안 해 assertion 무결성 검증이 빠짐
+- **수정**: `print_heal_batches()` 지시에 step 6 (assert_guard.py 실행) 추가. "완료 후" 섹션에도 명시
+
+---
+
+## SauceDemo 장바구니 패턴
+
+- **`[data-test="cart-item"]` 존재하지 않음**: SauceDemo `/cart.html`의 장바구니 아이템 선택자는 `[data-test="cart-item"]`이 아니라 `.cart_item` CSS 클래스. `data-test` 속성이 없으므로 반드시 `.cart_item` 사용.
+- **add-to-cart 후 배지 검증 필수**: 장바구니 이동 전 `expect(page.locator('[data-test="shopping-cart-badge"]')).to_contain_text("1")` 로 아이템이 실제 추가됐음을 확인. 이 단계 없으면 빈 장바구니로 이동 후 `.cart_item` timeout 발생.
+- **login 후 `wait_for_url` 필수**: `page.wait_for_load_state("networkidle")` 단독으로는 로그인 → /inventory 전환을 보장하지 못함. `page.wait_for_url(re.compile(r"/inventory"), timeout=15000)` + `networkidle` 병행 사용.
+  ```python
+  # BAD
+  page.locator('[data-test="login-button"]').click()
+  page.wait_for_load_state("networkidle")
+  # GOOD
+  page.locator('[data-test="login-button"]').click()
+  page.wait_for_url(re.compile(r"/inventory"), timeout=15000)
+  page.wait_for_load_state("networkidle")
+  ```
+- **장바구니 이동 후 `wait_for_url` 필수**: `[data-test="shopping-cart-link"]` 클릭 후 `page.wait_for_url(re.compile(r"/cart"), timeout=10000)` 추가.
+
+---
+
 ## 로그인 & 세션
 
 - **로그인 후 랜딩 URL 다양성**: SPA 앱 환경에 따라 로그인 성공 후 `/mybox/`가 아닌 `/home` 등 다른 경로로 이동할 수 있음. wait_for_url 패턴에 가능한 랜딩 경로를 모두 포함할 것 (`re.compile(r"/(home|mybox|recents)")`)

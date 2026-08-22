@@ -199,6 +199,85 @@ def read_state(path: Path) -> dict:
             _release_file_lock(lock_path)
 
 
+def update_state(path: Path, mutator) -> dict:
+    """락 보유 중 read-modify-write를 원자적으로 수행한다.
+
+    mutator(current: dict) -> dict 를 받아 현재 상태를 수정하고 쓴다.
+    FSM 전이 검증(write_state)도 자동 적용된다.
+
+    예시:
+        update_state(PARALLEL_STATE, lambda s: {**s, "heal_count": s.get("heal_count", 0) + 1})
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    lock_path = path.with_suffix(".lock")
+    acquired = _acquire_file_lock(lock_path)
+    try:
+        # 락 보유 중 읽기 (read_state는 내부적으로 락을 획득하려 하므로 직접 읽기)
+        current: dict = {}
+        if path.exists():
+            try:
+                current = json.loads(path.read_text(encoding="utf-8"))
+            except Exception:
+                pass
+        new_data = mutator(current)
+        # 전이 검증 (락 보유 중 직접)
+        if path == PIPELINE_STATE and "step" in new_data:
+            _validate_transition_locked_raw(path, "step", new_data, current)
+        elif path in (PARALLEL_STATE, QUICK_STATE) and "status" in new_data:
+            _validate_transition_locked_raw(path, "status", new_data, current)
+        content = json.dumps(new_data, ensure_ascii=False, indent=2)
+        fd, tmp_path = tempfile.mkstemp(dir=path.parent, suffix=".tmp")
+        try:
+            with open(fd, "w", encoding="utf-8") as f:
+                f.write(content)
+            Path(tmp_path).replace(path)
+        except Exception:
+            Path(tmp_path).unlink(missing_ok=True)
+            raise
+        return new_data
+    finally:
+        if acquired:
+            _release_file_lock(lock_path)
+
+
+def _validate_transition_locked_raw(path: Path, field: str, new_data: dict, current: dict):
+    """이미 파일을 읽은 상태에서 전이 검증 (update_state 내부용)."""
+    if field == "step":
+        from _constants import assert_valid_transition as _check
+    else:
+        from _constants import assert_valid_parallel_transition as _check  # type: ignore[assignment]
+
+    new_val = new_data.get(field, "")
+    current_val = current.get(field, "")
+    if not new_val or not current_val or current_val == new_val:
+        return
+    _check(current_val, new_val)
+
+
+def reset_state(path: Path, data: dict):
+    """FSM 전이 검증 없이 초기화 상태로 원자 쓰기.
+
+    run_qa.py 재실행 시 step="init" 기록처럼 FSM 시작점을 생성할 때만 사용.
+    이 함수를 쓴 후의 모든 상태 변경은 반드시 write_state() 를 통해야 한다.
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    lock_path = path.with_suffix(".lock")
+    acquired = _acquire_file_lock(lock_path)
+    try:
+        content = json.dumps(data, ensure_ascii=False, indent=2)
+        fd, tmp_path = tempfile.mkstemp(dir=path.parent, suffix=".tmp")
+        try:
+            with open(fd, "w", encoding="utf-8") as f:
+                f.write(content)
+            Path(tmp_path).replace(path)
+        except Exception:
+            Path(tmp_path).unlink(missing_ok=True)
+            raise
+    finally:
+        if acquired:
+            _release_file_lock(lock_path)
+
+
 def write_state(path: Path, data: dict):
     """원자적 쓰기 + 락으로 안전하게 JSON 상태 파일을 쓴다.
 

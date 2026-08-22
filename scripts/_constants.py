@@ -21,10 +21,10 @@ VALID_TRANSITIONS = {
     "planned":      ["generated"],
     "generated":    ["reviewed"],
     "reviewed":     ["done", "heal_needed", "timeout"],
-    "done":         ["heal_needed", "analyzed"],   # analyzed: 재실행 시 리셋 경로
+    "done":         ["heal_needed", "analyzed", "init"],  # init: 재실행 전체 리셋 경로
     "heal_needed":  ["done", "heal_failed", "timeout"],
-    "heal_failed":  ["analyzed"],  # 재실행 가능 (run_qa.py 리셋 경로)
-    "timeout":      ["done", "heal_needed"],  # 재실행 가능
+    "heal_failed":  ["analyzed", "init"],  # init: 재실행 가능
+    "timeout":      ["done", "heal_needed", "init"],  # init: 재실행 가능
 }
 
 
@@ -46,11 +46,15 @@ def assert_valid_transition(current: str, next_step: str) -> None:
 # parallel.json / quick.json의 status 필드 전이 규칙
 # {current_status: [allowed_next_statuses]}
 VALID_PARALLEL_TRANSITIONS: dict[str, list[str]] = {
-    "":            ["testing"],          # 초기 → 실행 중
+    "":            ["init", "testing"],      # 초기 → init 또는 직접 testing
+    "init":        ["analyzing", "testing"], # 초기화 → 분석 중
+    "analyzing":   ["ready", "error"],       # 분석 완료 or 오류
+    "ready":       ["testing"],              # 준비 → 실행
+    "error":       ["init", "testing"],      # 오류 → 재시작 또는 재실행
     "testing":     ["done", "heal_needed", "heal_failed"],
-    "done":        ["testing"],          # 재실행 가능
+    "done":        ["testing", "init"],      # init: 재실행 전체 리셋
     "heal_needed": ["done", "heal_failed", "testing"],
-    "heal_failed": ["testing"],          # 재실행 가능
+    "heal_failed": ["testing", "init"],      # init: 재실행 가능
 }
 
 
