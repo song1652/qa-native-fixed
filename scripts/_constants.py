@@ -40,3 +40,28 @@ def assert_valid_transition(current: str, next_step: str) -> None:
             f"파이프라인 단계가 건너뛰어졌을 수 있습니다. "
             f"state/pipeline.json을 확인하세요."
         )
+
+
+# ── 병렬 파이프라인 status 전이 규칙 ──────────────────────────────
+# parallel.json / quick.json의 status 필드 전이 규칙
+# {current_status: [allowed_next_statuses]}
+VALID_PARALLEL_TRANSITIONS: dict[str, list[str]] = {
+    "":            ["testing"],          # 초기 → 실행 중
+    "testing":     ["done", "heal_needed", "heal_failed"],
+    "done":        ["testing"],          # 재실행 가능
+    "heal_needed": ["done", "heal_failed", "testing"],
+    "heal_failed": ["testing"],          # 재실행 가능
+}
+
+
+def assert_valid_parallel_transition(current: str, next_status: str) -> None:
+    """parallel.json / quick.json의 status 전이가 허용되는지 검증."""
+    allowed = VALID_PARALLEL_TRANSITIONS.get(current)
+    if allowed is None:
+        return  # 알 수 없는 status이면 건너뜀 (하위 호환)
+    if next_status not in allowed:
+        raise ValueError(
+            f"잘못된 parallel status 전이: '{current}' → '{next_status}'. "
+            f"허용: {allowed}. "
+            f"state/parallel.json 또는 state/quick.json을 확인하세요."
+        )

@@ -102,6 +102,38 @@ def load_json(path: Path):
     return None
 
 
+def _safe_write_json(path: Path, data) -> None:
+    """원자적 쓰기 + 파일 락으로 JSON 상태 파일 저장.
+
+    serve.py 내에서 state 파일을 직접 write_text()로 쓰는 대신 이 함수를 사용한다.
+    - tempfile + replace  → 파이프라인 실행 중 부분 쓰기(partial write) 방지
+    - 파일 락(*.lock)     → ThreadingHTTPServer 멀티스레드/멀티프로세스 경쟁 조건 방지
+    """
+    import tempfile as _tempfile
+    from _paths import _acquire_file_lock, _release_file_lock
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if isinstance(data, str):
+        content = data
+    else:
+        content = json.dumps(data, ensure_ascii=False, indent=2)
+
+    lock_path = path.with_suffix(".lock")
+    acquired = _acquire_file_lock(lock_path)
+    try:
+        fd, tmp_path = _tempfile.mkstemp(dir=path.parent, suffix=".tmp")
+        try:
+            with open(fd, "w", encoding="utf-8") as f:
+                f.write(content)
+            Path(tmp_path).replace(path)
+        except Exception:
+            Path(tmp_path).unlink(missing_ok=True)
+            raise
+    finally:
+        if acquired:
+            _release_file_lock(lock_path)
+
+
 def parse_conclusion_items(conclusion: str) -> list:
     """결론 마크다운을 투표 가능한 개별 항목으로 파싱."""
     items = []
@@ -286,9 +318,7 @@ def build_dialogs() -> dict:
             and discuss_state.get("conclusion")
             and not discuss_state.get("conclusion_items")):
         discuss_state["conclusion_items"] = parse_conclusion_items(discuss_state["conclusion"])
-        DISCUSS_PATH.write_text(
-            json.dumps(discuss_state, ensure_ascii=False, indent=2), encoding="utf-8"
-        )
+        _safe_write_json(DISCUSS_PATH, discuss_state)
 
     all_sessions = full_dialog.get("sessions", [])
     team_sessions = [s for s in all_sessions if s.get("stage") == "team_discussion"]
@@ -742,9 +772,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
     # ── POST handlers ─────────────────────────────────────────────
     def _post_reset(self):
         empty = {"pipeline_url": "", "started_at": "", "sessions": []}
-        DIALOG_PATH.write_text(
-            json.dumps(empty, ensure_ascii=False, indent=2), encoding="utf-8"
-        )
+        _safe_write_json(DIALOG_PATH, empty)
         self._serve_bytes(b'{"ok":true}', "application/json; charset=utf-8")
 
     def _post_discuss_start(self):
@@ -772,9 +800,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
             "created_at": datetime.datetime.now().isoformat(),
             "history": history,
         }
-        DISCUSS_PATH.write_text(
-            json.dumps(discuss, ensure_ascii=False, indent=2), encoding="utf-8"
-        )
+        _safe_write_json(DISCUSS_PATH, discuss)
 
         # Claude Code UserPromptSubmit 훅(check_pending_discuss.py)이
         # 다음 프롬프트 제출 시 자동으로 토론 시작을 Claude에게 주입한다.
@@ -805,9 +831,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
             finalize_team_notes(discuss)
             discuss["step"] = "approved"
 
-        DISCUSS_PATH.write_text(
-            json.dumps(discuss, ensure_ascii=False, indent=2), encoding="utf-8"
-        )
+        _safe_write_json(DISCUSS_PATH, discuss)
         self._serve_bytes(
             json.dumps({"ok": True, "all_voted": all_voted}, ensure_ascii=False).encode("utf-8"),
             "application/json; charset=utf-8"
@@ -825,9 +849,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
         discuss["step"] = "rejected"
         discuss["rejection_reason"] = reason
         discuss["rejection_count"] = discuss.get("rejection_count", 0) + 1
-        DISCUSS_PATH.write_text(
-            json.dumps(discuss, ensure_ascii=False, indent=2), encoding="utf-8"
-        )
+        _safe_write_json(DISCUSS_PATH, discuss)
         self._serve_bytes(b'{"ok":true}', "application/json; charset=utf-8")
 
     def _post_run_qa(self):
@@ -911,7 +933,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
     def _post_reset_all(self):
         # dialog
         empty = {"pipeline_url": "", "started_at": "", "sessions": []}
-        DIALOG_PATH.write_text(json.dumps(empty, ensure_ascii=False, indent=2), encoding="utf-8")
+        _safe_write_json(DIALOG_PATH, empty)
         # pipeline
         init_state = {
             "url": "", "test_cases": [], "step": "init",
@@ -922,12 +944,10 @@ class DashboardHandler(BaseHTTPRequestHandler):
             "rejection_count": 0, "execution_result": {},
             "heal_count": 0, "heal_context": {}
         }
-        STATE_PATH.write_text(json.dumps(init_state, ensure_ascii=False, indent=2), encoding="utf-8")
+        _safe_write_json(STATE_PATH, init_state)
         # parallel
-        PARALLEL_STATE_PATH.write_text(
-            json.dumps({"status": "", "total_count": 0, "targets": []}, ensure_ascii=False, indent=2),
-            encoding="utf-8"
-        )
+        _safe_write_json(PARALLEL_STATE_PATH,
+                         {"status": "", "total_count": 0, "targets": []})
         heal_ctx = PROJECT_ROOT / "state" / "heal_context.json"
         if heal_ctx.exists():
             heal_ctx.unlink()
@@ -935,11 +955,9 @@ class DashboardHandler(BaseHTTPRequestHandler):
         if QUICK_STATE_PATH.exists():
             QUICK_STATE_PATH.unlink()
         # heal stats
-        HEAL_STATS_PATH.write_text(
-            json.dumps({"version": 1, "patterns": {}}, ensure_ascii=False, indent=2), encoding="utf-8"
-        )
+        _safe_write_json(HEAL_STATS_PATH, {"version": 1, "patterns": {}})
         # run history
-        RUN_HISTORY_PATH.write_text("[]", encoding="utf-8")
+        _safe_write_json(RUN_HISTORY_PATH, [])
         self._serve_bytes(b'{"ok":true}', "application/json; charset=utf-8")
 
     def _post_pipeline_reset(self):
@@ -952,17 +970,12 @@ class DashboardHandler(BaseHTTPRequestHandler):
             "rejection_count": 0, "execution_result": {},
             "heal_count": 0, "heal_context": {}
         }
-        STATE_PATH.write_text(
-            json.dumps(init_state, ensure_ascii=False, indent=2), encoding="utf-8"
-        )
+        _safe_write_json(STATE_PATH, init_state)
         self._serve_bytes(b'{"ok":true}', "application/json; charset=utf-8")
 
     def _post_parallel_reset(self):
         init_state = {"status": "", "total_count": 0, "targets": []}
-        PARALLEL_STATE_PATH.write_text(
-            json.dumps(init_state, ensure_ascii=False, indent=2),
-            encoding="utf-8",
-        )
+        _safe_write_json(PARALLEL_STATE_PATH, init_state)
         # heal_context도 정리
         heal_ctx = PROJECT_ROOT / "state" / "heal_context.json"
         if heal_ctx.exists():
@@ -989,29 +1002,23 @@ class DashboardHandler(BaseHTTPRequestHandler):
 
     def _post_heal_stats_reset(self):
         init = {"version": 1, "patterns": {}}
-        HEAL_STATS_PATH.write_text(
-            json.dumps(init, ensure_ascii=False, indent=2), encoding="utf-8"
-        )
+        _safe_write_json(HEAL_STATS_PATH, init)
         self._serve_bytes(b'{"ok":true}', "application/json; charset=utf-8")
 
     def _post_run_history_reset(self):
-        RUN_HISTORY_PATH.write_text("[]", encoding="utf-8")
+        _safe_write_json(RUN_HISTORY_PATH, [])
         self._serve_bytes(b'{"ok":true}', "application/json; charset=utf-8")
 
     def _post_discuss_reset(self):
         # discuss.json 초기화 (topic/step/conclusion 등 모든 상태 제거)
-        DISCUSS_PATH.write_text(
-            json.dumps({}, ensure_ascii=False, indent=2), encoding="utf-8"
-        )
+        _safe_write_json(DISCUSS_PATH, {})
         # dialog.json의 team_discussion 세션도 제거
         dialog = load_json(DIALOG_PATH) or {"sessions": []}
         dialog["sessions"] = [
             s for s in dialog.get("sessions", [])
             if s.get("stage") != "team_discussion"
         ]
-        DIALOG_PATH.write_text(
-            json.dumps(dialog, ensure_ascii=False, indent=2), encoding="utf-8"
-        )
+        _safe_write_json(DIALOG_PATH, dialog)
         self._serve_bytes(b'{"ok":true}', "application/json; charset=utf-8")
 
     def _post_run_merge(self):

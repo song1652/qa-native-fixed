@@ -7,18 +7,30 @@ LLM 없음. state.json의 review_summary를 출력하고 y/n 입력 대기.
 step은 변경하지 않음 (reviewed 유지) — 05_execute.py가 done/heal_needed로 전이.
 auto_approve: config/pipeline.json의 auto_approve=true 또는 --yes 플래그로 활성화.
 """
+import argparse
 import json
 import sys
 from pathlib import Path
 from _paths import PIPELINE_STATE, read_state, write_state
+
+MAX_REJECTION = 3  # 반려 최대 횟수 — 초과 시 파이프라인 강제 종료
 
 # 주의: config/pipeline.json (동작 설정, 이 파일)과 state/pipeline.json (런타임 상태, PIPELINE_STATE)은
 # 파일명만 같을 뿐 서로 다른 파일이다. 혼동 주의.
 _PIPELINE_CONFIG = Path(__file__).parent.parent / "config" / "pipeline.json"
 
 
-def _auto_approve_enabled():
-    if "--yes" in sys.argv:
+def _parse_args():
+    parser = argparse.ArgumentParser(description="Step 4: QA 리드 승인 게이트")
+    parser.add_argument("--yes", action="store_true",
+                        help="자동 승인 (CI/headless 환경)")
+    parser.add_argument("--auto", action="store_true",
+                        help="대시보드 대기 모드 (stdin 없는 headless 환경)")
+    return parser.parse_args()
+
+
+def _auto_approve_enabled(yes_flag: bool) -> bool:
+    if yes_flag:
         return True
     try:
         cfg = json.loads(_PIPELINE_CONFIG.read_text(encoding="utf-8"))
@@ -28,6 +40,7 @@ def _auto_approve_enabled():
 
 
 def main():
+    args = _parse_args()
     state_path = PIPELINE_STATE
     if not state_path.exists():
         print("[오류] state/pipeline.json 없음.")
@@ -59,16 +72,14 @@ def main():
     print("=" * 60)
 
     # config/pipeline.json auto_approve=true 또는 --yes → 즉시 승인
-    if _auto_approve_enabled():
+    if _auto_approve_enabled(args.yes):
         state["approval_status"] = "approved"
         write_state(state_path, state)
         print("  [자동 승인] config/pipeline.json auto_approve=true")
         return
 
     # --auto 플래그 또는 stdin 불가 시 대시보드 대기
-    auto_mode = "--auto" in sys.argv
-
-    if auto_mode:
+    if args.auto:
         state["approval_status"] = "pending"
         write_state(state_path, state)
         print()
@@ -108,9 +119,12 @@ def main():
         write_state(state_path, state)
         print()
         print(f"  [반려] 사유: {state['rejection_reason']}")
-        print(f"  반려 횟수: {state['rejection_count']}회")
-        if state["rejection_count"] >= 3:
-            print("  [경고] 3회 반려. 파이프라인을 종료합니다.")
+        rejection_count = state["rejection_count"]
+        print(f"  반려 횟수: {rejection_count}회")
+        if rejection_count >= MAX_REJECTION:
+            print(f"  [경고] {MAX_REJECTION}회 반려 한도 초과. 파이프라인을 종료합니다.")
+            print("  수동으로 코드를 검토하거나 테스트케이스를 수정하세요.")
+            sys.exit(2)
         print()
         print("[다음] Claude Code가 반려 사유를 반영해 코드를 재작성합니다.")
         sys.exit(2)

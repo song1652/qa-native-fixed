@@ -202,18 +202,21 @@ def read_state(path: Path) -> dict:
 def write_state(path: Path, data: dict):
     """원자적 쓰기 + 락으로 안전하게 JSON 상태 파일을 쓴다.
 
-    락 파일(*.lock)을 보유한 채로 step 전이 검증 → 원자 쓰기를 수행하므로
+    락 파일(*.lock)을 보유한 채로 전이 검증 → 원자 쓰기를 수행하므로
     병렬 프로세스 간 RMW(Read-Modify-Write) 경쟁 조건을 방지한다.
-    pipeline.json 기록 시 step 전이 규칙을 자동 검증한다.
+    - pipeline.json: step 전이 규칙 검증
+    - parallel.json / quick.json: status 전이 규칙 검증
     잘못된 전이 시 ValueError 발생.
     """
     path.parent.mkdir(parents=True, exist_ok=True)
     lock_path = path.with_suffix(".lock")
     acquired = _acquire_file_lock(lock_path)
     try:
-        # 락 보유 중 step 전이 검증 (read_state를 통하지 않고 직접 읽어 재진입 방지)
+        # 락 보유 중 전이 검증 (read_state를 통하지 않고 직접 읽어 재진입 방지)
         if path == PIPELINE_STATE and "step" in data:
-            _validate_step_transition_locked(path, data)
+            _validate_transition_locked(path, "step", data)
+        elif path in (PARALLEL_STATE, QUICK_STATE) and "status" in data:
+            _validate_transition_locked(path, "status", data)
 
         content = json.dumps(data, ensure_ascii=False, indent=2)
         fd, tmp_path = tempfile.mkstemp(dir=path.parent, suffix=".tmp")
@@ -229,31 +232,39 @@ def write_state(path: Path, data: dict):
             _release_file_lock(lock_path)
 
 
-def _validate_step_transition_locked(path: Path, new_data: dict):
-    """락을 보유한 채로 pipeline.json의 step 전이가 유효한지 검증.
+def _validate_transition_locked(path: Path, field: str, new_data: dict):
+    """락을 보유한 채로 step/status 전이가 유효한지 검증.
 
     read_state()를 호출하지 않고 직접 파일을 읽어 락 재진입(deadlock)을 방지한다.
+    field: 'step' (pipeline.json) 또는 'status' (parallel.json/quick.json)
     """
-    from _constants import assert_valid_transition
+    if field == "step":
+        from _constants import assert_valid_transition as _check
+    else:
+        from _constants import assert_valid_parallel_transition as _check  # type: ignore[assignment]
 
-    new_step = new_data.get("step", "")
-    if not new_step:
+    new_val = new_data.get(field, "")
+    if not new_val:
         return
 
     # 직접 파일 읽기 (이미 락 보유 중이므로 read_state 호출 금지)
-    current_step = ""
+    current_val = ""
     if path.exists():
         try:
-            current_step = json.loads(path.read_text(encoding="utf-8")).get("step", "")
+            current_val = json.loads(path.read_text(encoding="utf-8")).get(field, "")
         except Exception:
             pass
 
-    # 초기 상태(파일 없음 or step 없음)에서는 검증 건너뜀
-    if not current_step:
+    # 초기 상태(파일 없음 or 필드 없음)에서는 검증 건너뜀
+    if not current_val:
         return
 
-    # 같은 step으로 재기록은 허용 (상태 업데이트)
-    if current_step == new_step:
+    # 같은 값으로 재기록은 허용 (상태 업데이트)
+    if current_val == new_val:
         return
 
-    assert_valid_transition(current_step, new_step)
+    _check(current_val, new_val)
+
+
+# 하위 호환 alias (외부에서 직접 import하는 코드 대비)
+_validate_step_transition_locked = _validate_transition_locked
