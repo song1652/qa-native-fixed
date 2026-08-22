@@ -7,6 +7,20 @@
 
 ---
 
+## 병렬 파이프라인 개선 — P7/P9 — 2026-08-22
+
+### P9: 병렬 공통 사전 심의 추가
+- **문제**: 병렬 파이프라인에 02a_dialog(계획 심의) 없이 subagent 바로 실행 → 초기 코드 품질이 단일 대비 열위, 힐링 횟수 증가
+- **수정**: `parallel/02a_parallel_dialog.py` 신규 생성. `state/parallel_plan.json`에 공통 전략 저장. `shared_context_paths`에 추가하여 모든 subagent가 심의 결과 참조
+- **재발 방지**: 병렬 파이프라인 실행 순서: `run_qa_parallel.py` → `02a_parallel_dialog.py(심의)` → subagent spawn. 심의 없이 subagent 먼저 실행 금지
+
+### P7: 06_auto_heal → 06a_dialog 순서 정렬
+- **문제**: CLAUDE.md 파이프라인이 `06a_dialog(심의) → 06_auto_heal(패치)` 순서였음. 결정적 패턴 매칭이 Agent 심의 이후에 실행되어 이미 자동 수정 가능한 케이스까지 심의 컨텍스트에 포함됨
+- **수정**: CLAUDE.md 파이프라인을 `06_auto_heal → 06a_dialog` 순서로 변경. 자동 패치 후 잔여 실패만 심의 컨텍스트에 포함
+- **재발 방지**: 힐링 순서: `06_heal → 06_auto_heal(결정적 패치) → (exit 1시) 06a_dialog → 심의 → Agent 패치 → assert_guard`. 06_auto_heal 위치는 반드시 Agent 호출 전
+
+---
+
 ## 아키텍처 결함 수정 — 2026-08-22
 
 ### FSM 재진입 경로 (`_constants.py`, `_paths.py`, `run_qa.py`)

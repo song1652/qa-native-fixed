@@ -214,11 +214,16 @@ PARALLEL_HEADLESS_PROMPT = (
     "CLAUDE.md 병렬 파이프라인 지침대로 QA 자동화를 끝까지 진행해줘. "
     "state/parallel_contexts.json 파일에 subagent 컨텍스트가 준비되어 있어. "
     "다음 순서로 실행해: "
-    "1) state/parallel_contexts.json 읽기 "
-    "2) subagents[] 배열의 각 항목을 Agent tool로 동시에 실행 "
-    "   (prompts/parallel_subagent.md 지침 참조, shared_context_paths의 파일들도 각 subagent가 읽도록 지시) "
-    "3) 모든 subagent 완료 후 .venv/bin/python parallel/99_merge.py 실행 "
-    "4) 실패 케이스가 있으면 doc/HEALING_GUIDE.md를 참조해서 힐링 루프 진행 (최대 3회). "
+    "1) .venv/bin/python parallel/02a_parallel_dialog.py 실행 → "
+    "   DELIBERATION_CONTEXT를 바탕으로 공통 테스트 전략 심의 (사수·부사수 내부 시뮬레이션) → "
+    "   결과를 state/parallel_plan.json 에 JSON으로 저장 "
+    "   (저장 형식: {common_patterns, common_cautions, group_notes}) "
+    "2) state/parallel_contexts.json 읽기 "
+    "3) subagents[] 배열의 각 항목을 Agent tool로 동시에 실행 "
+    "   (prompts/parallel_subagent.md 지침 참조, shared_context_paths의 파일들 — "
+    "   parallel_plan.json 포함 — 각 subagent가 읽도록 지시) "
+    "4) 모든 subagent 완료 후 .venv/bin/python parallel/99_merge.py 실행 "
+    "5) 실패 케이스가 있으면 doc/HEALING_GUIDE.md를 참조해서 힐링 루프 진행 (최대 3회). "
     "모든 파이썬 명령은 프로젝트 루트의 .venv/bin/python을 사용해서 실행해."
 )
 
@@ -328,10 +333,12 @@ def main():
         raise
 
     # 3. 공통 컨텍스트는 파일 경로로 참조 (토큰 절감: 서브에이전트마다 복사하지 않음)
+    # parallel_plan: 02a_parallel_dialog.py 심의 후 생성 (사전 심의 전략 공유)
     shared_context_paths = {
         "team_charter": "agents/team_charter.md",
         "lessons_learned": "agents/lessons_learned.md",
         "skill_playwright": ".claude/skills/playwright-best-practices/SKILL.md",
+        "parallel_plan": "state/parallel_plan.json",  # 사전 심의 결과 (02a_parallel_dialog 실행 후 생성됨)
     }
 
     # 4. subagent 컨텍스트 빌드 (배치 단위) — 고유 데이터만 포함

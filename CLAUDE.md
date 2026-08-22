@@ -58,7 +58,8 @@ API 호출 없이 Claude Code 자체가 LLM 역할을 수행하는 QA 자동화 
 |------|------|--------------|------|
 | 코드 완성 (02_generate 이후) | `/oh-my-claudecode:ultrapilot` | `playwright-best-practices`, `python-testing` | scaffold 파일을 agent별 파티셔닝, dom_info+lessons_learned+SKILL.md 참조 |
 | 린트 수정 (03_lint 이후) | Agent tool 직접 병렬 호출 | `python-testing` | lint 이슈 파일별로 Agent 동시 실행 |
-| 힐링 루프 (05_execute 실패 시) | `/oh-my-claudecode:ultraqa` | `heal-patterns`, `browser-qa` | 최대 3회, 동일 오류 2회 반복 시 자동 스킵. 패치마다 lessons_learned 기록 |
+| 힐링 루프 (05_execute 실패 시) | `/oh-my-claudecode:ultraqa` | `heal-patterns`, `browser-qa` | 06_heal → 06_auto_heal → (잔여) 06a_dialog 순서 준수. 최대 3회, 동일 오류 2회 반복 시 자동 스킵. 패치마다 lessons_learned 기록 |
+| 병렬 공통 심의 (02a_parallel_dialog 후) | Agent tool 직접 | `playwright-best-practices`, `python-testing` | parallel_plan.json 저장 후 subagent spawn |
 | 패치 후 검증 | `/oh-my-claudecode:verify` | `verify` | 힐링 패치 직후 05_execute 증거 확인. 통과 전 완료 선언 금지 |
 | 패턴 등록 (세션 종료 전) | `/oh-my-claudecode:skillify` | `skillify` | 반복 패턴 발견 시 heal-patterns 또는 lessons_learned에 등록 |
 | 슬롭 정리 (전체 통과 후) | `/oh-my-claudecode:ai-slop-cleaner` | — | 힐링/병렬 완료 후 생성 코드 품질 정리. 동작 변경 없이 중복·죽은 코드 제거 |
@@ -75,7 +76,7 @@ lint 수정·코드 생성 시 반복 오류도 동일하게 lessons_learned.md�
 ## 단일 파이프라인 (단일 URL)
 
 ```
-01_analyze → 02a_dialog → [심의] → 02_generate → 03_lint → 03a_dialog → [심의] → 04_approve → 05_execute → 06_heal → [패치] → assert_guard → 06a_dialog → [심의] → 06_auto_heal → [힐링 루프]
+01_analyze → 02a_dialog → [심의] → 02_generate → 03_lint → 03a_dialog → [심의] → 04_approve → 05_execute → 06_heal → 06_auto_heal → [exit 1시] → 06a_dialog → [심의] → [Agent 패치] → assert_guard → [힐링 루프]
 ```
 
 1. `python scripts/01_analyze.py` — DOM 추출 (메인 + 서브페이지 병렬 수집, React 컴포넌트 포함)
@@ -86,7 +87,12 @@ lint 수정·코드 생성 시 반복 오류도 동일하게 lessons_learned.md�
 6. `python scripts/04_approve.py` — QA 리드 승인 게이트. 종료코드 0: 승인 / 2: 반려→재작성 / 3: 대시보드 대기
 7. `python scripts/05_execute.py` — pytest 실행
 8. `python scripts/06_heal.py` — 종료코드 0: 완료 / 10: 힐링→재실행 반복 / 2: 초과→수동 수정
-9. `python scripts/06_auto_heal.py` — 알려진 패턴 자동 패치. 종료코드 0: Agent 불필요 / 1: 잔여 실패 있음
+9. `python scripts/06_auto_heal.py` — 결정적 패턴 자동 패치 (Agent 호출 전). 종료코드 0: 완료·재실행 / 1: 잔여 실패→10번으로 / 3: 스킵(heal_needed 아님)
+10. (exit 1시) `python scripts/06a_dialog.py` → [심의] [heal_deliberation.md](prompts/heal_deliberation.md) + ctx
+11. (exit 1시) Agent 패치 → `python scripts/assert_guard.py` 실행
+
+> **실행 순서 근거**: 06_auto_heal은 결정적 패턴 매칭으로 쉬운 케이스를 먼저 제거한다.
+> 06a_dialog(심의)는 자동 수정 후 **남은 어려운 실패만** 컨텍스트에 담으므로 Agent 지시가 더 정확해진다.
 
 > **리포트/스크린샷/Trace 규칙 (필수)**:
 > - **첫 실행 포함 모든 실행은 `--no-report`로 실행**. 리포트·스크린샷은 전체 통과 확인 후 마지막 1회만 생성.
@@ -102,15 +108,19 @@ lint 수정·코드 생성 시 반복 오류도 동일하게 lessons_learned.md�
 ## 병렬 파이프라인 (다중 URL)
 
 ```
-run_qa_parallel.py → testcases/ 스캔 + pages.json URL 조회 → PARALLEL_SUBAGENT_CONTEXTS 출력
+run_qa_parallel.py → 02a_parallel_dialog → [공통 심의] → subagents × N → 99_merge.py
 ```
 
-1. `PARALLEL_SUBAGENT_CONTEXTS_START ~ END` JSON 읽기 — 구조: `{ shared_context_paths: {...}, subagents: [...] }`
-2. `shared_context_paths`의 파일들은 각 subagent가 직접 읽음 (JSON에 포함되지 않아 토큰 절감)
-3. `subagents[]` 배열의 각 항목을 Agent tool로 **동시에** 실행 — [parallel_subagent.md](prompts/parallel_subagent.md) 참조
-4. 모든 subagent 완료 후 `python parallel/99_merge.py`
-5. 실패 시 단일과 동일한 힐링 플로우 ([HEALING_GUIDE](doc/HEALING_GUIDE.md) 참조). 최대 3회, 초과 시 수동 수정 요청
-6. **슬롭 정리 (선택, 전체 통과 후)**: 여러 subagent가 생성한 파일의 스타일 불일치·중복 정리
+1. `python run_qa_parallel.py` — testcases/ 스캔 + DOM 분석 → `state/parallel_contexts.json` 생성
+2. `python parallel/02a_parallel_dialog.py` → DELIBERATION_CONTEXT 출력
+   → [공통 심의]: 전체 그룹 테스트 전략 수립 (사수·부사수 내부 시뮬레이션)
+   → 결과를 `state/parallel_plan.json` 에 저장 — [parallel_plan_deliberation.md](prompts/parallel_plan_deliberation.md) 참조
+3. `state/parallel_contexts.json` 읽기 — 구조: `{ shared_context_paths: {...}, subagents: [...] }`
+4. `shared_context_paths`의 파일들(`parallel_plan.json` 포함)은 각 subagent가 직접 읽음 (토큰 절감)
+5. `subagents[]` 배열의 각 항목을 Agent tool로 **동시에** 실행 — [parallel_subagent.md](prompts/parallel_subagent.md) 참조
+6. 모든 subagent 완료 후 `python parallel/99_merge.py`
+7. 실패 시 단일과 동일한 힐링 플로우 ([HEALING_GUIDE](doc/HEALING_GUIDE.md) 참조). 최대 3회, 초과 시 수동 수정 요청
+8. **슬롭 정리 (선택, 전체 통과 후)**: 여러 subagent가 생성한 파일의 스타일 불일치·중복 정리
    `/oh-my-claudecode:ai-slop-cleaner tests/generated/`
 
 ## 팀 토론

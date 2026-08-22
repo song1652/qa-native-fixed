@@ -19,14 +19,19 @@ batch_files: {ctx.batch_files}
 - lessons_learned: `agents/lessons_learned.md`
 - team_charter: `agents/team_charter.md`
 - Playwright SKILL: `.claude/skills/playwright-best-practices/SKILL.md`
+- **parallel_plan**: `state/parallel_plan.json` ← **공통 사전 심의 결과 (반드시 읽기)**
 
 수행할 작업:
-1. **공통 참조 파일을 먼저 읽기**: `agents/lessons_learned.md` → 과거 실수 패턴 확인 (같은 실수 반복 금지)
+0. **`state/parallel_plan.json` 먼저 읽기** (존재 시): 공통 테스트 전략·주의사항을 확인하고
+   이후 모든 단계에 반영한다. (`common_patterns`, `common_cautions`, `group_notes` 참조)
+1. **공통 참조 파일을 읽기**: `agents/lessons_learned.md` → 과거 실수 패턴 확인 (같은 실수 반복 금지)
 2. 배치 내 **모든 test_cases**와 dom_info를 분석해 테스트 plan 수립
    - structured 케이스: precondition/steps/expected 직접 반영
    - natural 케이스: dom_info 기반 steps/assertion 자동 추론
-3. plan 기반으로 완전한 Playwright 테스트 코드 작성 (SKILL.md + lessons_learned 패턴 반영)
+   - **parallel_plan의 `group_notes[group_dir]`** 항목이 있으면 우선 반영
+3. plan 기반으로 완전한 Playwright 테스트 코드 작성 (SKILL.md + lessons_learned + parallel_plan 반영)
    - 배치 내 여러 케이스는 **독립적으로 병렬 작성** 가능 (공유 상태 없음)
+   - **`common_cautions`의 모든 주의사항**을 코드에 반영 (SPA 대기, 팝업 처리 등)
 4. **tc_*.md 1개 = 테스트 파일 1개 = 테스트 함수 1개** 규칙으로 output_path 디렉토리에 개별 파일 저장
    - 파일명: `tc_{번호}_{english_snake_case}.py` (예: `tc_01_login_success.py`)
    - 단일 파이프라인과 동일한 파일명 규칙
