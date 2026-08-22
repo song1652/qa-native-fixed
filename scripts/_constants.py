@@ -21,9 +21,9 @@ VALID_TRANSITIONS = {
     "planned":      ["generated"],
     "generated":    ["reviewed"],
     "reviewed":     ["done", "heal_needed", "timeout"],
-    "done":         ["heal_needed"],
+    "done":         ["heal_needed", "analyzed"],   # analyzed: 재실행 시 리셋 경로
     "heal_needed":  ["done", "heal_failed", "timeout"],
-    "heal_failed":  [],           # 종료 상태
+    "heal_failed":  ["analyzed"],  # 재실행 가능 (run_qa.py 리셋 경로)
     "timeout":      ["done", "heal_needed"],  # 재실행 가능
 }
 

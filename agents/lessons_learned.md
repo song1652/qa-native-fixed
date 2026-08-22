@@ -238,3 +238,13 @@
 
 - **Playwright 트레이스 이벤트 타입**: `type == "action"` 이벤트는 존재하지 않음. 실제 포맷은 `type == "before"` (`callId`, `startTime`, `class`, `method`) + `type == "after"` (`callId`, `endTime`) 쌍. callId로 매칭 후 `endTime - startTime`으로 duration 계산. `before` 이벤트에 `title` 필드가 있으면 우선 사용 (Expect 등).
 - **YAML 없는 추가 TC 렌더링 누락**: `test_results`가 `test_cases`보다 많을 때 (데모 TC 등 YAML 없이 추가된 파일) `_build_rows_html`에서 test_cases 루프가 끝난 후 잔여 `test_items[len(test_cases):]`를 별도로 렌더링해야 함. 그렇지 않으면 아티팩트 패널이 리포트에 나타나지 않음.
+
+## 파이프라인 인프라 (scripts/)
+
+- **write_state() RMW 원자성**: `read_state()` + `write_state()` 사이에 락이 없으면 두 프로세스가 동시에 읽고 먼저 쓴 데이터를 나중 프로세스가 덮어씀. `write_state()` 내부에서 락 파일을 획득하고 검증·쓰기를 락 보호 영역 안에서 수행해야 함. 단, 락 보유 중 `read_state()`를 호출하면 동일 락을 재획득하려다 deadlock 발생 → `_validate_step_transition_locked()`처럼 파일 직접 읽기 사용.
+
+- **classify_error Timeout/Locator 우선순위**: Playwright 타임아웃 메시지에는 항상 "waiting for locator" 텍스트가 포함되므로 Locator 패턴 매칭이 우선되면 모든 타임아웃이 Locator로 오분류됨. 해결책: Timeout 패턴 먼저 확인, 특히 `"ms exceeded"` 키워드 포함 여부로 명시적 타임아웃 식별.
+
+- **`--only-failed` 구현**: `05_execute.py`에서 `sys.argv` 문자열 파싱은 알 수 없는 플래그를 사일런트 무시함. `argparse`로 전환하면 unrecognized argument에서 자동으로 non-zero exit. `--only-failed` 시 `execution_result.json_report_path`의 이전 JSON 리포트를 `parse_results()`로 파싱하여 failed nodeids만 추출 후 pytest에 직접 전달.
+
+- **heal_count 카운터 보존**: 병렬 파이프라인에서 힐링 카운터를 `heal_context.json`에 저장하면, 이 파일이 힐링 완료 시 삭제되어 다음 재실행에서 MAX_HEAL을 우회하는 문제 발생. `pipeline.json`에 `heal_count`를 저장하여 파일 삭제와 무관하게 카운터를 보존해야 함.

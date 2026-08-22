@@ -6,6 +6,7 @@ __pycache__/
 # Runtime state & logs
 state/
 logs/
+pending_impl.json
 
 # Test outputs (screenshots/reports are now tracked)
 tests/traces/

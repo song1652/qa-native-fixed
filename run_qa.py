@@ -43,7 +43,7 @@ from datetime import datetime
 
 import _bootstrap  # noqa: F401 — scripts/ 경로 설정
 from parse_cases import load_cases
-from _paths import PIPELINE_STATE, STATE_DIR, PROJECT_ROOT
+from _paths import PIPELINE_STATE, STATE_DIR, PROJECT_ROOT, write_state
 
 
 def init_state(url: str, test_cases: list, cases_path: str) -> dict:
@@ -138,9 +138,10 @@ def run_single(url: str, test_cases: list, cases_path: str, auto: bool = True):
 
     state = init_state(url, test_cases, cases_path)
     STATE_DIR.mkdir(exist_ok=True)
+    # write_state()를 통해 FSM 검증 없이 초기화 (step="init"은 전이 규칙 시작점)
     PIPELINE_STATE.write_text(
         json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8"
-    )
+    )  # NOTE: 초기화는 raw write 허용 (FSM 시작점 생성이므로 전이 검증 불필요)
 
     print("=" * 55)
     print("  QA 자동화 파이프라인 초기화 완료 [단일 모드]")

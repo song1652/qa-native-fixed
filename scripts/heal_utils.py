@@ -40,12 +40,28 @@ WEAK_METHODS = frozenset({
 def classify_error(traceback: str) -> str:
     """traceback에서 오류 유형 분류.
 
-    분류 우선순위: Locator > Assertion > Timeout > URL > JS평가
+    분류 우선순위: Timeout > Locator > Assertion > URL > JS평가
                   > Python런타임 > Playwright일반 > 기타
+
+    NOTE: Timeout을 Locator보다 먼저 검사해야 함.
+    Playwright 타임아웃 traceback에는 항상 "waiting for locator"가 포함되어
+    Locator 키워드가 먼저 매칭되면 모든 Timeout이 Locator로 오분류됨.
     """
     tb = traceback.lower()
 
-    # 1. Locator 오류 (셀렉터/요소 관련)
+    # 1. Timeout 오류 (Locator보다 먼저 — "waiting for locator" 포함 때문)
+    # Playwright timeout 패턴: "TimeoutError", "Timeout 30000ms exceeded", "timed out" 등
+    if any(k in tb for k in ["timeouterror", "timed out", "timeout exceeded",
+                              "ms exceeded", "page timeout", "navigation timeout"]):
+        return "Timeout"
+    # "timeout" 단독 키워드는 locator/assertion 미포함 시에만
+    if "timeout" in tb and not any(k in tb for k in [
+        "strict mode violation", "element not found",
+        "no element", "getby", "waiting for selector",
+    ]):
+        return "Timeout"
+
+    # 2. Locator 오류 (셀렉터/요소 관련)
     if any(k in tb for k in [
         "strict mode violation", "element not found", "locator",
         "no element", "getby", "waiting for selector",
@@ -54,7 +70,7 @@ def classify_error(traceback: str) -> str:
     ]):
         return "Locator"
 
-    # 2. Assertion 오류 (기대값 불일치)
+    # 3. Assertion 오류 (기대값 불일치)
     if any(k in tb for k in [
         "expected", "to contain", "assertionerror", "to have text",
         "to have url", "to be visible", "to have count", "to have class",
@@ -62,7 +78,7 @@ def classify_error(traceback: str) -> str:
     ]):
         return "Assertion"
 
-    # 3. Timeout 오류
+    # 4. (구) Timeout 폴백 — 위에서 안 잡힌 경우
     if any(k in tb for k in ["timeout", "timed out"]):
         return "Timeout"
 

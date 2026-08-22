@@ -5,6 +5,7 @@ LLM 없음. pytest 실행 후 결과를 state/pipeline.json에 저장.
 """
 from __future__ import annotations
 
+import argparse
 import ast
 import json
 import re
@@ -261,7 +262,20 @@ def generate_report_from_state(state_path: Path) -> None:
 
 
 def main():
-    no_report = "--no-report" in sys.argv
+    parser = argparse.ArgumentParser(
+        description="Step 5: 테스트 실행 (pytest + JSON 리포트)"
+    )
+    parser.add_argument(
+        "--no-report", action="store_true",
+        help="HTML 리포트 생성 건너뜀 (힐링 중 사용)",
+    )
+    parser.add_argument(
+        "--only-failed", action="store_true",
+        help="이전 실행 결과에서 실패한 테스트만 재실행 (힐링 재확인 시 사용)",
+    )
+    args = parser.parse_args()
+    no_report = args.no_report
+    only_failed = args.only_failed
 
     state_path = PIPELINE_STATE
     if not state_path.exists():
@@ -322,10 +336,31 @@ def main():
 
     json_report_path = Path(tempfile.gettempdir()) / f"qa_single_report_{ts}.json"
 
+    # ── --only-failed: 이전 실패 nodeids만 수집 ─────────────────────
+    test_targets: list[str] = [str(file_path)]
+    if only_failed:
+        prev_exec = state.get("execution_result", {})
+        prev_json_path = prev_exec.get("json_report_path", "")
+        if prev_json_path and Path(prev_json_path).exists():
+            try:
+                prev_report = json.loads(Path(prev_json_path).read_text(encoding="utf-8"))
+                prev_results = parse_results(prev_report)
+                failed_ids = [nid for nid, oc in prev_results.items() if oc == "failed"]
+            except Exception:
+                failed_ids = []
+            if failed_ids:
+                test_targets = failed_ids
+                parallel_opts = []   # 소수 재실행 — 병렬 불필요
+                print(f"[05] --only-failed: {len(failed_ids)}개 실패 테스트만 재실행")
+            else:
+                print("[05] --only-failed: 이전 실패 없음 → 전체 실행")
+        else:
+            print("[05] --only-failed: 이전 리포트 없음 → 전체 실행")
+
     try:
         result = subprocess.run(
             [
-                PYTHON_EXE, "-m", "pytest", file_path,
+                PYTHON_EXE, "-m", "pytest", *test_targets,
                 "--json-report",
                 f"--json-report-file={json_report_path}",
                 "-v",

@@ -200,38 +200,53 @@ def read_state(path: Path) -> dict:
 
 
 def write_state(path: Path, data: dict):
-    """원자적 쓰기로 안전하게 JSON 상태 파일을 쓴다.
+    """원자적 쓰기 + 락으로 안전하게 JSON 상태 파일을 쓴다.
 
+    락 파일(*.lock)을 보유한 채로 step 전이 검증 → 원자 쓰기를 수행하므로
+    병렬 프로세스 간 RMW(Read-Modify-Write) 경쟁 조건을 방지한다.
     pipeline.json 기록 시 step 전이 규칙을 자동 검증한다.
     잘못된 전이 시 ValueError 발생.
     """
-    # pipeline.json인 경우 step 전이 검증
-    if path == PIPELINE_STATE and "step" in data:
-        _validate_step_transition(path, data)
-
     path.parent.mkdir(parents=True, exist_ok=True)
-    content = json.dumps(data, ensure_ascii=False, indent=2)
-    fd, tmp_path = tempfile.mkstemp(dir=path.parent, suffix=".tmp")
+    lock_path = path.with_suffix(".lock")
+    acquired = _acquire_file_lock(lock_path)
     try:
-        with open(fd, "w", encoding="utf-8") as f:
-            f.write(content)
-        Path(tmp_path).replace(path)
-    except Exception:
-        Path(tmp_path).unlink(missing_ok=True)
-        raise
+        # 락 보유 중 step 전이 검증 (read_state를 통하지 않고 직접 읽어 재진입 방지)
+        if path == PIPELINE_STATE and "step" in data:
+            _validate_step_transition_locked(path, data)
+
+        content = json.dumps(data, ensure_ascii=False, indent=2)
+        fd, tmp_path = tempfile.mkstemp(dir=path.parent, suffix=".tmp")
+        try:
+            with open(fd, "w", encoding="utf-8") as f:
+                f.write(content)
+            Path(tmp_path).replace(path)
+        except Exception:
+            Path(tmp_path).unlink(missing_ok=True)
+            raise
+    finally:
+        if acquired:
+            _release_file_lock(lock_path)
 
 
-def _validate_step_transition(path: Path, new_data: dict):
-    """pipeline.json의 step 전이가 유효한지 검증."""
+def _validate_step_transition_locked(path: Path, new_data: dict):
+    """락을 보유한 채로 pipeline.json의 step 전이가 유효한지 검증.
+
+    read_state()를 호출하지 않고 직접 파일을 읽어 락 재진입(deadlock)을 방지한다.
+    """
     from _constants import assert_valid_transition
 
     new_step = new_data.get("step", "")
     if not new_step:
         return
 
-    # 현재 상태 읽기
-    current_data = read_state(path)
-    current_step = current_data.get("step", "")
+    # 직접 파일 읽기 (이미 락 보유 중이므로 read_state 호출 금지)
+    current_step = ""
+    if path.exists():
+        try:
+            current_step = json.loads(path.read_text(encoding="utf-8")).get("step", "")
+        except Exception:
+            pass
 
     # 초기 상태(파일 없음 or step 없음)에서는 검증 건너뜀
     if not current_step:

@@ -236,15 +236,27 @@ def main():
 
     if patched_nodeids:
         print(f"[06-auto] {len(patched_nodeids)}개 테스트 재실행 중...")
-        result = subprocess.run(
-            [PYTHON_EXE, "-m", "pytest"] + patched_nodeids +
-            ["-v", "--tb=line", "--no-header"],
-            capture_output=True, text=True, timeout=300,
-        )
+        try:
+            result = subprocess.run(
+                [PYTHON_EXE, "-m", "pytest"] + patched_nodeids +
+                ["-v", "--tb=line", "--no-header"],
+                capture_output=True, text=True, timeout=300,
+            )
+        except subprocess.TimeoutExpired:
+            print("[06-auto] pytest 재실행 타임아웃 (300s) — Agent 힐링 필요")
+            sys.exit(1)
 
-        # 결과 파싱
+        # 결과 파싱 (stdout 카운트 방식 유지 + 크래시 감지 보강)
         passed = result.stdout.count(" PASSED")
         failed = result.stdout.count(" FAILED")
+
+        # pytest가 크래시(수집 실패, import 오류 등)하면 passed=0, failed=0이 되지만
+        # returncode != 0이므로 이를 실패로 처리 (성공 오판 방지)
+        if result.returncode != 0 and passed == 0 and failed == 0:
+            print(f"[06-auto] pytest 크래시 (exit {result.returncode}) — Agent 힐링 필요")
+            if result.stderr:
+                print(result.stderr[:300])
+            sys.exit(1)
 
         print(f"[06-auto] 재실행 결과: {passed} passed, {failed} failed")
 
@@ -261,6 +273,19 @@ def main():
                 heal_context["auto_healed"] = len(patched_nodeids)
                 state["heal_context"] = heal_context
                 write_state(state_path, state)
+
+                # 패치 후 assertion 무결성 검증 (assert_guard.py 자동 호출)
+                _scripts_dir = Path(__file__).parent
+                _guard = subprocess.run(
+                    [PYTHON_EXE, str(_scripts_dir / "assert_guard.py")],
+                    capture_output=True, text=True,
+                )
+                # assert_guard는 advisory — 오류나도 파이프라인을 막지 않음
+                if _guard.stdout:
+                    print(_guard.stdout.rstrip())
+                if _guard.returncode not in (0, 1):
+                    print(f"[06-auto] assert_guard 비정상 종료 (exit {_guard.returncode})")
+
                 sys.exit(0)
             else:
                 print(f"[06-auto] {len(remaining)}건 잔여 실패 -- Agent 힐링 필요")
