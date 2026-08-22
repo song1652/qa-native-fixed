@@ -248,3 +248,8 @@
 - **`--only-failed` 구현**: `05_execute.py`에서 `sys.argv` 문자열 파싱은 알 수 없는 플래그를 사일런트 무시함. `argparse`로 전환하면 unrecognized argument에서 자동으로 non-zero exit. `--only-failed` 시 `execution_result.json_report_path`의 이전 JSON 리포트를 `parse_results()`로 파싱하여 failed nodeids만 추출 후 pytest에 직접 전달.
 
 - **heal_count 카운터 보존**: 병렬 파이프라인에서 힐링 카운터를 `heal_context.json`에 저장하면, 이 파일이 힐링 완료 시 삭제되어 다음 재실행에서 MAX_HEAL을 우회하는 문제 발생. `pipeline.json`에 `heal_count`를 저장하여 파일 삭제와 무관하게 카운터를 보존해야 함.
+
+## SauceDemo 셀렉터 패턴
+
+- **`.cart_item` vs `[data-test="cart-item"]`**: SauceDemo 장바구니 페이지의 장바구니 아이템 컨테이너는 `[data-test="cart-item"]`이 존재하지 않음. 실제 CSS class인 `.cart_item`을 사용해야 함. `data-test` 목록: `inventory-item`, `cart-list`, `item-quantity` 등이 올바른 속성.
+- **SauceDemo headless 호환 확인**: `/inventory.html`, `/cart.html` 등 인증 없이 접근하면 로그인 페이지로 리다이렉트됨. 각 테스트에서 `BASE_URL`에 먼저 로그인 후 진행해야 함.
