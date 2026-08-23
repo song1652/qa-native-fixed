@@ -20,6 +20,8 @@ function renderCurrentView() {
     renderReports(main);
   } else if (currentView === 'history') {
     renderHistory(main);
+  } else if (currentView === 'pages') {
+    renderPages(main);
   } else if (currentView.startsWith('team_')) {
     renderTeamView(main);
   } else {

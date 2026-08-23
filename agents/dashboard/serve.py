@@ -37,6 +37,8 @@ PENDING_IMPL_PATH = PROJECT_ROOT / "pending_impl.json"
 PARALLEL_STATE_PATH = PROJECT_ROOT / "state" / "parallel.json"
 GENERATED_DIR = PROJECT_ROOT / "tests" / "generated"
 REPORTS_DIR = PROJECT_ROOT / "tests" / "reports"
+SCREENSHOTS_DIR = PROJECT_ROOT / "tests" / "screenshots"
+VIDEOS_DIR = PROJECT_ROOT / "tests" / "videos"
 QUICK_STATE_PATH = PROJECT_ROOT / "state" / "quick.json"
 RUN_HISTORY_PATH = PROJECT_ROOT / "state" / "run_history.json"
 HEAL_STATS_PATH = PROJECT_ROOT / "state" / "heal_stats.json"
@@ -544,6 +546,9 @@ class DashboardHandler(BaseHTTPRequestHandler):
     }
 
     POST_ROUTES = {
+        "/api/pages/add":          "_post_pages_add",
+        "/api/pages/update":       "_post_pages_update",
+        "/api/pages/delete":       "_post_pages_delete",
         "/api/reset":              "_post_reset",
         "/api/reset/all":          "_post_reset_all",
         "/api/discuss/start":      "_post_discuss_start",
@@ -581,6 +586,14 @@ class DashboardHandler(BaseHTTPRequestHandler):
         # prefix routes
         if path.startswith("/reports/"):
             self._get_report_file(path)
+            return
+
+        if path.startswith("/screenshots/"):
+            self._get_artifact_file(path, "/screenshots/", SCREENSHOTS_DIR, "image/png")
+            return
+
+        if path.startswith("/videos/"):
+            self._get_artifact_file(path, "/videos/", VIDEOS_DIR, "video/mp4")
             return
 
         if path.startswith("/static/"):
@@ -625,7 +638,16 @@ class DashboardHandler(BaseHTTPRequestHandler):
         self._serve_json(STATE_PATH)
 
     def _get_pages(self):
-        payload = {"pages": list_pages(), "groups": list_testcase_groups()}
+        pages = list_pages()
+        # project 목록 추출 (중복 제거, 알파벳 정렬 — "기본"은 UI 개념이므로 미포함)
+        project_set: set[str] = set()
+        for k, v in pages.items():
+            if k == "_comment":
+                continue
+            if isinstance(v, dict) and v.get("project"):
+                project_set.add(v["project"])
+        project_list = sorted(project_set)
+        payload = {"pages": pages, "groups": list_testcase_groups(), "projects": project_list}
         self._serve_bytes(
             json.dumps(payload, ensure_ascii=False).encode("utf-8"),
             "application/json; charset=utf-8"
@@ -779,9 +801,24 @@ class DashboardHandler(BaseHTTPRequestHandler):
                              "script-src 'unsafe-inline'; "
                              "style-src 'unsafe-inline' https:; "
                              "font-src 'self' https: data:; "
-                             "img-src 'self' data: blob:")
+                             "img-src 'self' data: blob:; "
+                             "media-src 'self' blob:")
             self.end_headers()
             self.wfile.write(content)
+        else:
+            self.send_response(404)
+            self.end_headers()
+
+    def _get_artifact_file(self, path: str, prefix: str, base_dir: Path, content_type: str):
+        """screenshots / videos 등 아티팩트 파일 서빙."""
+        fname = path[len(prefix):]
+        if ".." in fname or "/" in fname:
+            self.send_response(403)
+            self.end_headers()
+            return
+        fpath = base_dir / fname
+        if fpath.exists() and fpath.is_file():
+            self._serve_file(fpath, content_type)
         else:
             self.send_response(404)
             self.end_headers()
@@ -808,6 +845,127 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self.end_headers()
 
     # ── POST handlers ─────────────────────────────────────────────
+    def _post_pages_add(self):
+        body = _read_body(self)
+        group   = body.get("group", "").strip()
+        url     = body.get("url", "").strip()
+        notes   = body.get("notes", "").strip()
+        spa     = bool(body.get("spa", False))
+        project = body.get("project", "").strip()
+
+        if not group or not url:
+            self._serve_bytes(b'{"ok":false,"error":"group and url required"}', "application/json; charset=utf-8"); return
+        if not is_valid_group_name(group) or group.startswith("_"):
+            self._serve_bytes(b'{"ok":false,"error":"invalid group name"}', "application/json; charset=utf-8"); return
+        if not is_valid_url(url):
+            self._serve_bytes(b'{"ok":false,"error":"url must start with http:// or https://"}', "application/json; charset=utf-8"); return
+        if project and not is_valid_group_name(project):
+            self._serve_bytes(b'{"ok":false,"error":"project name: alphanumeric/underscore/hyphen only"}', "application/json; charset=utf-8"); return
+
+        # pages.json 파싱 실패 시 설정 소실 방지
+        if PAGES_JSON.exists():
+            raw = load_json(PAGES_JSON)
+            if raw is None:
+                self._serve_bytes(
+                    b'{"ok":false,"error":"pages.json \xed\x8c\x8c\xec\x8b\xb1 \xec\x8b\xa4\xed\x8c\xa8 \xe2\x80\x94 \xec\x88\x98\xeb\x8f\x99 \xed\x99\x95\xec\x9d\xb8 \xed\x95\x84\xec\x9a\x94"}',
+                    "application/json; charset=utf-8"); return
+
+        # RMW 원자적 처리 (락 보유 중 읽기+중복 체크+쓰기)
+        error_msg = None
+        def _add_mutator(cur: dict) -> dict:
+            nonlocal error_msg
+            if group in cur:
+                error_msg = f"'{group}' 그룹이 이미 존재합니다"
+                return cur
+            entry: dict = {"url": url, "spa": spa, "preconditions": [], "notes": notes}
+            if project:
+                entry["project"] = project
+            cur[group] = entry
+            return cur
+
+        _safe_update_json(PAGES_JSON, _add_mutator)
+        if error_msg:
+            self._serve_bytes(
+                json.dumps({"ok": False, "error": error_msg}, ensure_ascii=False).encode("utf-8"),
+                "application/json; charset=utf-8"); return
+
+        (TESTCASES_DIR / group).mkdir(parents=True, exist_ok=True)
+        print(f"[Dashboard] 페이지 추가: {group} → {url}")
+        self._serve_bytes(
+            json.dumps({"ok": True, "group": group}, ensure_ascii=False).encode("utf-8"),
+            "application/json; charset=utf-8")
+
+    def _post_pages_update(self):
+        body    = _read_body(self)
+        group   = body.get("group", "").strip()
+        url     = body.get("url", "").strip()
+        notes   = body.get("notes", "").strip()
+        spa     = bool(body.get("spa", False))
+        project = body.get("project", "").strip()
+
+        if not group or not url:
+            self._serve_bytes(b'{"ok":false,"error":"group and url required"}', "application/json; charset=utf-8"); return
+        if not is_valid_group_name(group) or group.startswith("_"):
+            self._serve_bytes(b'{"ok":false,"error":"invalid group name"}', "application/json; charset=utf-8"); return
+        if not is_valid_url(url):
+            self._serve_bytes(b'{"ok":false,"error":"url must start with http:// or https://"}', "application/json; charset=utf-8"); return
+        if project and not is_valid_group_name(project):
+            self._serve_bytes(b'{"ok":false,"error":"project name: alphanumeric/underscore/hyphen only"}', "application/json; charset=utf-8"); return
+
+        error_msg = None
+        def _update_mutator(cur: dict) -> dict:
+            nonlocal error_msg
+            if group not in cur:
+                error_msg = f"'{group}' 없음"
+                return cur
+            existing = cur[group] if isinstance(cur[group], dict) else {}
+            entry: dict = {
+                "url": url,
+                "spa": spa,
+                "preconditions": existing.get("preconditions", []),
+                "notes": notes,
+            }
+            if project:
+                entry["project"] = project
+            cur[group] = entry
+            return cur
+
+        _safe_update_json(PAGES_JSON, _update_mutator)
+        if error_msg:
+            self._serve_bytes(
+                json.dumps({"ok": False, "error": error_msg}, ensure_ascii=False).encode("utf-8"),
+                "application/json; charset=utf-8"); return
+
+        print(f"[Dashboard] 페이지 수정: {group} → {url}")
+        self._serve_bytes(
+            json.dumps({"ok": True, "group": group}, ensure_ascii=False).encode("utf-8"),
+            "application/json; charset=utf-8")
+
+    def _post_pages_delete(self):
+        body = _read_body(self)
+        group = body.get("group", "").strip()
+        if not group or not is_valid_group_name(group) or group.startswith("_"):
+            self._serve_bytes(b'{"ok":false,"error":"valid group required"}', "application/json; charset=utf-8"); return
+
+        # RMW 원자적 처리
+        error_msg = None
+        def _del_mutator(cur: dict) -> dict:
+            nonlocal error_msg
+            if group not in cur:
+                error_msg = f"'{group}' 없음"
+                return cur
+            del cur[group]
+            return cur
+
+        _safe_update_json(PAGES_JSON, _del_mutator)
+        if error_msg:
+            self._serve_bytes(
+                json.dumps({"ok": False, "error": error_msg}, ensure_ascii=False).encode("utf-8"),
+                "application/json; charset=utf-8"); return
+
+        print(f"[Dashboard] 페이지 삭제: {group}")
+        self._serve_bytes(b'{"ok":true}', "application/json; charset=utf-8")
+
     def _post_reset(self):
         empty = {"pipeline_url": "", "started_at": "", "sessions": []}
         _safe_write_json(DIALOG_PATH, empty)
@@ -856,25 +1014,22 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 "application/json; charset=utf-8")
             return
 
-        all_voted_ref = [False]
+        discuss = json.loads(DISCUSS_PATH.read_text(encoding="utf-8"))
+        items = discuss.get("conclusion_items", [])
+        for item in items:
+            if item["id"] == item_id:
+                item["status"] = "approved" if vote == "approve" else "rejected"
+                break
+        discuss["conclusion_items"] = items
 
-        def _vote_mutator(discuss: dict) -> dict:
-            items = discuss.get("conclusion_items", [])
-            for item in items:
-                if item["id"] == item_id:
-                    item["status"] = "approved" if vote == "approve" else "rejected"
-                    break
-            discuss["conclusion_items"] = items
-            voted = bool(items) and all(i["status"] != "pending" for i in items)
-            all_voted_ref[0] = voted
-            if voted:
-                finalize_team_notes(discuss)
-                discuss["step"] = "approved"
-            return discuss
+        all_voted = bool(items) and all(i["status"] != "pending" for i in items)
+        if all_voted:
+            finalize_team_notes(discuss)
+            discuss["step"] = "approved"
 
-        _safe_update_json(DISCUSS_PATH, _vote_mutator)
+        _safe_write_json(DISCUSS_PATH, discuss)
         self._serve_bytes(
-            json.dumps({"ok": True, "all_voted": all_voted_ref[0]}, ensure_ascii=False).encode("utf-8"),
+            json.dumps({"ok": True, "all_voted": all_voted}, ensure_ascii=False).encode("utf-8"),
             "application/json; charset=utf-8"
         )
 
@@ -886,12 +1041,11 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 json.dumps({"ok": False, "error": "state/discuss.json 없음"}, ensure_ascii=False).encode("utf-8"),
                 "application/json; charset=utf-8")
             return
-        _safe_update_json(DISCUSS_PATH, lambda d: {
-            **d,
-            "step": "rejected",
-            "rejection_reason": reason,
-            "rejection_count": d.get("rejection_count", 0) + 1,
-        })
+        discuss = json.loads(DISCUSS_PATH.read_text(encoding="utf-8"))
+        discuss["step"] = "rejected"
+        discuss["rejection_reason"] = reason
+        discuss["rejection_count"] = discuss.get("rejection_count", 0) + 1
+        _safe_write_json(DISCUSS_PATH, discuss)
         self._serve_bytes(b'{"ok":true}', "application/json; charset=utf-8")
 
     def _post_run_qa(self):
