@@ -1,29 +1,18 @@
 """
-tc_01_login_success.py
+자동 생성된 Playwright 테스트 코드
 URL: https://www.saucedemo.com
-케이스: standard_user로 정상 로그인 성공 후 인벤토리 페이지 이동 검증
+케이스: tc_01_login_success — 정상 로그인 성공
 """
-import json
 import re
-from pathlib import Path
-from playwright.sync_api import Page, expect
+from playwright.sync_api import expect
 
 BASE_URL = "https://www.saucedemo.com"
-_ROOT = Path(__file__).resolve().parent.parent.parent.parent
-TEST_DATA_PATH = _ROOT / "config" / "test_data.json"
 
 
-def test_login_success(page: Page):
-    """standard_user 로 로그인 성공 시 /inventory.html 이동 검증"""
-    with open(TEST_DATA_PATH, encoding="utf-8") as f:
-        data = json.load(f)
-    sd = data["saucedemo"]
-
+def test_login_success(page):
+    """정상 로그인 성공 — standard_user/secret_sauce 입력 후 /inventory.html 이동 확인"""
     page.goto(BASE_URL)
-    page.wait_for_load_state("networkidle")
-
-    page.locator('[data-test="username"]').fill(sd["valid_user"])
-    page.locator('[data-test="password"]').fill(sd["valid_password"])
-    page.locator('[data-test="login-button"]').click()
-
-    expect(page).to_have_url(re.compile(r"/inventory"))
+    page.fill('[data-test="username"]', "standard_user")
+    page.fill('[data-test="password"]', "secret_sauce")
+    page.click('[data-test="login-button"]')
+    expect(page).to_have_url(re.compile(r"/inventory\.html"))
