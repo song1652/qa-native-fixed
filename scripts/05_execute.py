@@ -218,9 +218,10 @@ def generate_report_from_state(state_path: Path) -> None:
     report_path = report_dir / f"report_{ts}.html"
 
     group_name = _extract_group_name(state)
-    test_cases = state.get("test_cases", [])
+    # 항상 최신 tc_*.md에서 직접 로드 (state.test_cases는 stale title 가능)
+    test_cases = _load_cases_for_group(group_name)
     if not test_cases:
-        test_cases = _load_cases_for_group(group_name)
+        test_cases = state.get("test_cases", [])
 
     test_results = parse_results(report)
     skip_messages = parse_skip_messages(report)
@@ -424,9 +425,10 @@ def main():
 
     group_name = _extract_group_name(state)
 
-    test_cases = state.get("test_cases", [])
+    # 리포트용: 항상 최신 tc_*.md에서 직접 로드 (state.test_cases는 stale title 가능)
+    test_cases = _load_cases_for_group(group_name)
     if not test_cases:
-        test_cases = _load_cases_for_group(group_name)
+        test_cases = state.get("test_cases", [])
 
     # report_html.build_report 사용 (병렬 리포트와 동일 형식)
     if not no_report:

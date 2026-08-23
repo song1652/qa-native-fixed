@@ -130,6 +130,16 @@ def parse_trace_steps(trace_zip_path: str) -> list:
     return steps
 
 
+def _artifact_http_path(abs_path: str, subdir: str) -> str:
+    """절대 파일 경로 → serve.py HTTP 상대 경로 변환.
+
+    /…/tests/screenshots/foo.png  →  /screenshots/foo.png
+    /…/tests/videos/foo.mp4       →  /videos/foo.mp4
+    """
+    p = Path(abs_path)
+    return f"/{subdir}/{p.name}"
+
+
 def _build_artifact_panel(uid: str, duration: dict | None, artifacts: dict) -> str:
     """실패 TC의 아티팩트 패널 HTML 생성 (screenshot / video / trace 링크)."""
     screenshot_path = artifacts.get("screenshot_path", "")
@@ -140,7 +150,8 @@ def _build_artifact_panel(uid: str, duration: dict | None, artifacts: dict) -> s
 
     # ── Screenshots ────────────────────────────────────────────────
     if screenshot_path and Path(screenshot_path).exists():
-        ss_uri = Path(screenshot_path).resolve().as_uri()
+        # file:// 대신 serve.py HTTP 경로 사용 (iframe CSP 통과)
+        ss_src = _artifact_http_path(screenshot_path, "screenshots")
         trace_btn = ""
         if trace_path:
             trace_btn = (
@@ -152,7 +163,7 @@ def _build_artifact_panel(uid: str, duration: dict | None, artifacts: dict) -> s
             f'<div class="artifact-sub">'
             f'<div class="artifact-sub-title">Screenshots</div>'
             f'<div class="screenshot-wrap">'
-            f'<img src="{ss_uri}" class="screenshot-thumb" alt="screenshot">'
+            f'<img src="{_esc(ss_src)}" class="screenshot-thumb" alt="screenshot">'
             f'</div>'
             f'{trace_btn}'
             f'</div>'
@@ -160,12 +171,12 @@ def _build_artifact_panel(uid: str, duration: dict | None, artifacts: dict) -> s
 
     # ── Videos ────────────────────────────────────────────────────
     if video_path and Path(video_path).exists():
-        video_uri = Path(video_path).resolve().as_uri()
+        vid_src = _artifact_http_path(video_path, "videos")
         parts.append(
             f'<div class="artifact-sub">'
             f'<div class="artifact-sub-title">Videos</div>'
-            f'<video src="{video_uri}" controls class="artifact-video"></video>'
-            f'<a href="{video_uri}" class="artifact-dl" download>&#8659; video</a>'
+            f'<video src="{_esc(vid_src)}" controls class="artifact-video"></video>'
+            f'<a href="{_esc(vid_src)}" class="artifact-dl" download>&#8659; video</a>'
             f'</div>'
         )
 
@@ -387,9 +398,7 @@ def report_css() -> str:
   .pager button:not(:disabled):hover{border-color:var(--accent);color:var(--text);background:rgba(99,102,241,.1)}
   .case-list{padding:8px 0}
   .case-item{border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s}
-  .case-item.pass{cursor:default}
-  .case-item.pass .chevron{display:none}
-  .case-item.pass .case-detail{display:none !important}
+  .case-item.pass{cursor:pointer}
   .case-item:last-child{border-bottom:none}
   .case-item:hover{background:rgba(255,255,255,.04)}
   .case-header{display:flex;align-items:center;gap:12px;padding:10px 20px}

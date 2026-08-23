@@ -78,11 +78,11 @@ def parse_md(text: str) -> list:
             continue
 
         title_match = re.search(r"^#\s+(.+)$", block, re.MULTILINE)
-        title = title_match.group(1).strip() if title_match else "unnamed"
+        title = title_match.group(1).strip() if title_match else meta.get("title", "unnamed")
 
-        precondition = _extract_section(block, "Precondition")
-        steps_raw = _extract_section(block, "Steps")
-        expected = _extract_section(block, "Expected")
+        precondition = _extract_section(block, "Precondition", "전제 조건", "사전 조건")
+        steps_raw = _extract_section(block, "Steps", "테스트 절차", "절차", "단계")
+        expected = _extract_section(block, "Expected", "기대 결과", "예상 결과")
 
         # Steps: 번호 있는 줄들을 리스트로
         steps = [
@@ -110,11 +110,14 @@ def parse_md(text: str) -> list:
     return cases
 
 
-def _extract_section(text: str, section: str) -> str:
-    """## Section 헤더 아래의 내용을 추출."""
-    pattern = rf"##\s+{section}\s*\n(.*?)(?=\n##|\Z)"
-    match = re.search(pattern, text, re.DOTALL | re.IGNORECASE)
-    return match.group(1).strip() if match else ""
+def _extract_section(text: str, *section_aliases: str) -> str:
+    """## Section 헤더 아래의 내용을 추출. 영문·한글 alias 모두 시도."""
+    for section in section_aliases:
+        pattern = rf"##\s+{re.escape(section)}\s*\n(.*?)(?=\n##|\Z)"
+        match = re.search(pattern, text, re.DOTALL | re.IGNORECASE)
+        if match:
+            return match.group(1).strip()
+    return ""
 
 
 def parse_json(text: str) -> list:
