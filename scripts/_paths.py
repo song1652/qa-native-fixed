@@ -7,11 +7,15 @@ import os
 import sys
 import tempfile
 import time
+from contextlib import contextmanager
 from datetime import datetime, timedelta
 from pathlib import Path
 
+# 파일 락 기본 대기 시간(초)
+LOCK_TIMEOUT_SECS = 10.0
 
-def _acquire_file_lock(lock_path: Path, timeout_secs: float = 10.0) -> bool:
+
+def _acquire_file_lock(lock_path: Path, timeout_secs: float = LOCK_TIMEOUT_SECS) -> bool:
     """크로스플랫폼 락 파일 획득 (스핀락). 획득 성공 시 True."""
     deadline = time.monotonic() + timeout_secs
     while time.monotonic() < deadline:
@@ -32,6 +36,23 @@ def _acquire_file_lock(lock_path: Path, timeout_secs: float = 10.0) -> bool:
 def _release_file_lock(lock_path: Path):
     """락 파일 해제."""
     lock_path.unlink(missing_ok=True)
+
+
+@contextmanager
+def _file_lock(lock_path: Path, target: Path, timeout_secs: float = LOCK_TIMEOUT_SECS):
+    """락 획득을 강제하는 컨텍스트 매니저. 실패 시 TimeoutError.
+
+    락 획득 실패를 무시하고 진행하면 상호 배제가 없는 상태로 파일을
+    읽고 쓰게 되므로, 실패는 조용히 넘기지 않고 예외로 승격한다.
+    """
+    if not _acquire_file_lock(lock_path, timeout_secs):
+        raise TimeoutError(
+            f"파일 락 획득 실패 ({timeout_secs}초 초과): {target} (lock={lock_path})"
+        )
+    try:
+        yield
+    finally:
+        _release_file_lock(lock_path)
 
 # Windows cp949 터미널에서 한글/유니코드 출력 깨짐 방지
 # pytest 실행 시에는 캡처 스트림을 재래핑하지 않음 (I/O closed 충돌 방지)
@@ -75,8 +96,7 @@ def append_run_history(entry: dict):
     """
     RUN_HISTORY.parent.mkdir(parents=True, exist_ok=True)
     lock_path = RUN_HISTORY.with_suffix(".lock")
-    acquired = _acquire_file_lock(lock_path)
-    try:
+    with _file_lock(lock_path, RUN_HISTORY):
         history = []
         if RUN_HISTORY.exists():
             try:
@@ -93,9 +113,6 @@ def append_run_history(entry: dict):
         except Exception:
             Path(tmp_path).unlink(missing_ok=True)
             raise
-    finally:
-        if acquired:
-            _release_file_lock(lock_path)
 
 
 def url_cache_key(url: str) -> str:
@@ -188,15 +205,11 @@ def read_state(path: Path) -> dict:
     if not path.exists():
         return {}
     lock_path = path.with_suffix(".lock")
-    acquired = _acquire_file_lock(lock_path)
-    try:
+    with _file_lock(lock_path, path):
         try:
             return json.loads(path.read_text(encoding="utf-8"))
         except (json.JSONDecodeError, Exception):
             return {}
-    finally:
-        if acquired:
-            _release_file_lock(lock_path)
 
 
 def update_state(path: Path, mutator) -> dict:
@@ -210,8 +223,7 @@ def update_state(path: Path, mutator) -> dict:
     """
     path.parent.mkdir(parents=True, exist_ok=True)
     lock_path = path.with_suffix(".lock")
-    acquired = _acquire_file_lock(lock_path)
-    try:
+    with _file_lock(lock_path, path):
         # 락 보유 중 읽기 (read_state는 내부적으로 락을 획득하려 하므로 직접 읽기)
         current: dict = {}
         if path.exists():
@@ -235,9 +247,6 @@ def update_state(path: Path, mutator) -> dict:
             Path(tmp_path).unlink(missing_ok=True)
             raise
         return new_data
-    finally:
-        if acquired:
-            _release_file_lock(lock_path)
 
 
 def _validate_transition_locked_raw(path: Path, field: str, new_data: dict, current: dict):
@@ -262,8 +271,7 @@ def reset_state(path: Path, data: dict):
     """
     path.parent.mkdir(parents=True, exist_ok=True)
     lock_path = path.with_suffix(".lock")
-    acquired = _acquire_file_lock(lock_path)
-    try:
+    with _file_lock(lock_path, path):
         content = json.dumps(data, ensure_ascii=False, indent=2)
         fd, tmp_path = tempfile.mkstemp(dir=path.parent, suffix=".tmp")
         try:
@@ -273,9 +281,6 @@ def reset_state(path: Path, data: dict):
         except Exception:
             Path(tmp_path).unlink(missing_ok=True)
             raise
-    finally:
-        if acquired:
-            _release_file_lock(lock_path)
 
 
 def write_state(path: Path, data: dict):
@@ -289,8 +294,7 @@ def write_state(path: Path, data: dict):
     """
     path.parent.mkdir(parents=True, exist_ok=True)
     lock_path = path.with_suffix(".lock")
-    acquired = _acquire_file_lock(lock_path)
-    try:
+    with _file_lock(lock_path, path):
         # 락 보유 중 전이 검증 (read_state를 통하지 않고 직접 읽어 재진입 방지)
         if path == PIPELINE_STATE and "step" in data:
             _validate_transition_locked(path, "step", data)
@@ -306,9 +310,6 @@ def write_state(path: Path, data: dict):
         except Exception:
             Path(tmp_path).unlink(missing_ok=True)
             raise
-    finally:
-        if acquired:
-            _release_file_lock(lock_path)
 
 
 def _validate_transition_locked(path: Path, field: str, new_data: dict):
