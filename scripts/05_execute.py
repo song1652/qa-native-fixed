@@ -17,7 +17,7 @@ from pathlib import Path
 from datetime import datetime
 
 from _python import PYTHON_EXE
-from _paths import PIPELINE_STATE, PROJECT_ROOT, read_state, write_state, append_run_history
+from _paths import PIPELINE_STATE, PROJECT_ROOT, read_state, update_state, append_run_history
 from result_parser import parse_results, parse_skip_messages, parse_durations
 from structured_log import slog
 from report_html import case_row as _case_row, build_report
@@ -253,8 +253,9 @@ def generate_report_from_state(state_path: Path) -> None:
 
     execution_result["report_path"] = str(report_path)
     execution_result["report_name"] = report_path.name
-    state["execution_result"] = execution_result
-    write_state(state_path, state)
+    # read_state 이후 다른 프로세스가 갱신했을 수 있는 다른 필드를 덮어쓰지
+    # 않도록, 최신 상태 위에 execution_result만 병합한다 (RMW 경쟁 방지).
+    update_state(state_path, lambda fresh: {**fresh, "execution_result": execution_result})
 
     print()
     print("=" * 55)
@@ -373,13 +374,17 @@ def main():
         )
     except subprocess.TimeoutExpired:
         print("\n[05] pytest 실행 타임아웃 (3600초 초과)")
-        state["step"] = "timeout"
-        state["execution_result"] = {
+        _timeout_result = {
             "passed": 0, "failed": 0, "total": 0,
             "exit_code": -1, "summary": "타임아웃 (3600초 초과)",
             "executed_at": now, "heal_count": state.get("heal_count", 0),
         }
-        write_state(state_path, state)
+        # pytest 실행(최대 3600초)이 끝난 시점의 최신 상태 위에 이번 실행이
+        # 책임지는 필드(step, execution_result)만 병합해 쓴다 — 그 사이 다른
+        # 프로세스가 쓴 값을 덮어쓰지 않기 위함(RMW 경쟁 방지).
+        update_state(state_path, lambda fresh: {
+            **fresh, "step": "timeout", "execution_result": _timeout_result,
+        })
         sys.exit(1)
 
     report = {}
@@ -500,9 +505,15 @@ def main():
         "json_report_path": str(json_report_path),
     }
 
+    _new_step = "heal_needed" if failed_count > 0 else "done"
+    # pytest 실행(최대 3600초)이 끝난 시점의 최신 상태 위에 이번 실행이
+    # 책임지는 필드(step, execution_result)만 병합해 쓴다 — read_state 시점의
+    # 오래된 state 스냅샷으로 다른 프로세스의 갱신을 덮어쓰지 않기 위함.
+    update_state(state_path, lambda fresh: {
+        **fresh, "step": _new_step, "execution_result": execution_result,
+    })
+    state["step"] = _new_step
     state["execution_result"] = execution_result
-    state["step"] = "heal_needed" if failed_count > 0 else "done"
-    write_state(state_path, state)
     slog("step_end", step="05_execute", passed=passed_count,
          failed=failed_count, total=total, pass_rate=pass_rate)
 

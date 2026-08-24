@@ -24,7 +24,7 @@ if _SCRIPTS_DIR not in sys.path:
     sys.path.insert(0, _SCRIPTS_DIR)
 from _paths import (
     PROJECT_ROOT, PARALLEL_STATE, HEAL_CONTEXT_STATE, PIPELINE_STATE, QUICK_STATE,
-    read_state, write_state, append_run_history,
+    read_state, write_state, update_state, append_run_history,
 )
 from _python import PYTHON_EXE
 from _constants import MAX_HEAL
@@ -57,12 +57,18 @@ def _natural_sort_key(p: Path) -> list:
 
 
 def _update_parallel_status(status: str, extra: dict | None = None) -> None:
-    """state/parallel.json의 status 필드를 업데이트 (기존 데이터 보존)."""
-    state = read_state(PARALLEL_STATE)
-    state["status"] = status
-    if extra:
-        state.update(extra)
-    write_state(PARALLEL_STATE, state)
+    """state/parallel.json의 status 필드를 업데이트 (기존 데이터 보존).
+
+    락 보유 중 최신 상태를 읽어 병합·쓰기까지 원자적으로 수행해, 다른
+    프로세스가 그 사이 쓴 필드를 덮어쓰지 않는다(RMW 경쟁 방지).
+    """
+    def _mutator(fresh: dict) -> dict:
+        updated = {**fresh, "status": status}
+        if extra:
+            updated.update(extra)
+        return updated
+
+    update_state(PARALLEL_STATE, _mutator)
 
 
 # ── pytest 실행 ──────────────────────────────────────────────────
@@ -239,12 +245,18 @@ def build_heal_context(report: dict, heal_count: int, state_path: Path) -> dict 
         for f in healable if f.get("file")
     })
     pre_snap = snapshot_assertions(failing_files)
-    snap_state = read_state(state_path)
-    snap_state["pre_heal_assertions"] = pre_snap
-    snap_state["pre_heal_files"] = failing_files
-    if not snap_state.get("original_assertions"):
-        snap_state["original_assertions"] = pre_snap
-    write_state(state_path, snap_state)
+
+    def _snap_mutator(fresh: dict) -> dict:
+        updated = {
+            **fresh,
+            "pre_heal_assertions": pre_snap,
+            "pre_heal_files": failing_files,
+        }
+        if not fresh.get("original_assertions"):
+            updated["original_assertions"] = pre_snap
+        return updated
+
+    update_state(state_path, _snap_mutator)
 
     return ctx
 
@@ -588,16 +600,13 @@ def main():
             print(f"\n[99] 최대 힐링 횟수({MAX_HEAL}회) 초과 -- 수동 수정이 필요합니다.")
             HEAL_CONTEXT_STATE.unlink(missing_ok=True)
             # heal_count + heal_failed를 병렬 상태 파일에 반영 (단일 파이프라인 오염 방지)
-            _ps_fail = read_state(state_path)
-            _ps_fail["heal_count"] = heal_count
-            _ps_fail["heal_failed"] = True
-            write_state(state_path, _ps_fail)
+            update_state(state_path, lambda fresh: {
+                **fresh, "heal_count": heal_count, "heal_failed": True,
+            })
         else:
             heal_count += 1
             # heal_count를 병렬 상태 파일에 기록 (단일 파이프라인 오염 방지)
-            _ps_upd = read_state(state_path)
-            _ps_upd["heal_count"] = heal_count
-            write_state(state_path, _ps_upd)
+            update_state(state_path, lambda fresh: {**fresh, "heal_count": heal_count})
             heal_ctx = build_heal_context(report, heal_count, state_path)
             if heal_ctx:
                 # auto_heal 시도 (deterministic 패치)
@@ -639,8 +648,7 @@ def main():
                     print()
                 else:
                     print(f"[99] assertion 품질 이상 없음 ({integrity['baseline']}).")
-                prior_run_state["assertion_integrity"] = integrity
-                write_state(state_path, prior_run_state)
+                update_state(state_path, lambda fresh: {**fresh, "assertion_integrity": integrity})
 
     # 4. HTML 리포트 (힐링 완료 후에만 생성: 전체 통과 또는 최대 힐링 초과)
     is_final_run = (not has_issues) or heal_count >= MAX_HEAL or args.no_heal
@@ -689,10 +697,7 @@ def main():
             "outcome": outcome,
         })
 
-    run_state = read_state(state_path)
-
-    run_state["groups"] = args.group or []
-    run_state["execution_result"] = {
+    _new_execution_result = {
         "passed": passed,
         "failed": failed,
         "skipped": skipped,
@@ -705,14 +710,23 @@ def main():
         "heal_count": heal_count,
     }
     if failed == 0:
-        run_state["status"] = "done"
+        _new_status = "done"
     elif args.no_heal:
-        run_state["status"] = "done"
+        _new_status = "done"
     elif heal_count >= MAX_HEAL:
-        run_state["status"] = "heal_failed"
+        _new_status = "heal_failed"
     else:
-        run_state["status"] = "heal_needed"
-    write_state(state_path, run_state)
+        _new_status = "heal_needed"
+
+    # pytest 실행(전체 그룹, 수 분~수십 분 소요 가능)이 끝난 시점의 최신 상태
+    # 위에 이번 실행이 책임지는 필드만 병합해 쓴다 — read_state 시점의 오래된
+    # 스냅샷으로 다른 프로세스(대시보드 등)의 갱신을 덮어쓰지 않기 위함.
+    update_state(state_path, lambda fresh: {
+        **fresh,
+        "groups": args.group or [],
+        "execution_result": _new_execution_result,
+        "status": _new_status,
+    })
 
     # 실행 이력 기록
     _duration = round(_time.monotonic() - _start_time, 1)
