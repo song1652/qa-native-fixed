@@ -49,6 +49,22 @@ IMPORT_DIR = PROJECT_ROOT / "import"
 
 ALLOWED_ORIGIN = "http://localhost:8766"
 
+# ── 서버가 띄운 자식 프로세스 PID 추적 ─────────────────────────
+# 요청 바디로 받은 임의 PID를 kill하지 않도록, 이 서버가 직접 생성한
+# 프로세스인지 대조하는 용도. (이미 종료된 PID가 재사용될 여지는 남아 있음)
+_SPAWNED_PIDS: set[int] = set()
+_SPAWNED_PIDS_LOCK = threading.Lock()
+
+
+def _register_spawned_pid(pid: int):
+    with _SPAWNED_PIDS_LOCK:
+        _SPAWNED_PIDS.add(pid)
+
+
+def _is_spawned_pid(pid: int) -> bool:
+    with _SPAWNED_PIDS_LOCK:
+        return pid in _SPAWNED_PIDS
+
 # ── SSE 클라이언트 관리 ────────────────────────────────────────
 _sse_clients: list[queue.Queue] = []
 _sse_lock = threading.Lock()
@@ -603,8 +619,32 @@ class DashboardHandler(BaseHTTPRequestHandler):
         self.send_response(404)
         self.end_headers()
 
+    def _check_csrf_origin(self) -> bool:
+        """브라우저發 크로스사이트 POST를 차단한다.
+
+        Origin(없으면 Referer)이 ALLOWED_ORIGIN과 다르면 거부한다.
+        헤더가 아예 없는 요청(curl 등 로컬 CLI 도구)은 통과시킨다 —
+        브라우저는 크로스사이트 요청에 항상 Origin을 붙이므로
+        이것만으로 CSRF 방어 효과가 있다.
+        """
+        from urllib.parse import urlparse
+
+        origin = self.headers.get("Origin")
+        if origin is None:
+            referer = self.headers.get("Referer")
+            if referer is None:
+                return True
+            # Referer는 경로까지 포함하므로 스킴+호스트만 비교
+            parsed = urlparse(referer)
+            origin = f"{parsed.scheme}://{parsed.netloc}" if parsed.scheme else referer
+        return origin == ALLOWED_ORIGIN
+
     def do_POST(self):
         path = self.path.split("?")[0]
+        if not self._check_csrf_origin():
+            self.send_response(403)
+            self.end_headers()
+            return
         try:
             if path in self.POST_ROUTES:
                 getattr(self, self.POST_ROUTES[path])()
@@ -789,6 +829,10 @@ class DashboardHandler(BaseHTTPRequestHandler):
 
     def _get_report_file(self, path: str):
         fname = path[len("/reports/"):]
+        if ".." in fname or "/" in fname:
+            self.send_response(403)
+            self.end_headers()
+            return
         fpath = REPORTS_DIR / fname
         if fpath.exists() and fpath.suffix == ".html":
             content = fpath.read_bytes()
@@ -1084,6 +1128,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
             cwd=str(PROJECT_ROOT),
             stdout=log_file, stderr=sp.STDOUT,
         )
+        _register_spawned_pid(proc.pid)
         # 자식 프로세스가 fd를 상속했으므로 부모에서 닫아도 안전
         log_file.close()
         print(f"[Dashboard] run_qa.py 실행 (PID: {proc.pid}, URL: {url}, cases: {cases_dir})")
@@ -1102,6 +1147,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
             cwd=str(PROJECT_ROOT),
             stdout=log_file, stderr=sp.STDOUT,
         )
+        _register_spawned_pid(proc.pid)
         log_file.close()
         print(f"[Dashboard] run_qa_parallel.py 실행 (PID: {proc.pid})")
         self._serve_bytes(
@@ -1184,12 +1230,26 @@ class DashboardHandler(BaseHTTPRequestHandler):
         pid = body.get("pid") if body else None
         if pid:
             try:
+                pid_int = int(pid)
+            except (TypeError, ValueError):
+                self.send_response(400)
+                self.end_headers()
+                return
+            # 이 서버가 직접 띄운 프로세스만 종료 대상으로 허용
+            if not _is_spawned_pid(pid_int):
+                self._serve_bytes(
+                    json.dumps({"ok": False,
+                                "error": f"이 서버가 생성한 프로세스가 아닙니다 (PID: {pid_int})"},
+                               ensure_ascii=False).encode("utf-8"),
+                    "application/json; charset=utf-8", status=403)
+                return
+            try:
                 if sys.platform == "win32":
-                    sp.run(["taskkill", "/F", "/T", "/PID", str(pid)],
+                    sp.run(["taskkill", "/F", "/T", "/PID", str(pid_int)],
                            capture_output=True, timeout=5)
                 else:
                     import os as _os
-                    _os.kill(int(pid), 15)
+                    _os.kill(pid_int, 15)
             except Exception:
                 pass
         if QUICK_STATE_PATH.exists():
@@ -1232,6 +1292,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
             cwd=str(PROJECT_ROOT),
             stdout=log_file, stderr=sp.STDOUT,
         )
+        _register_spawned_pid(proc.pid)
         log_file.close()
         print(f"[Dashboard] 99_merge.py 실행 (PID: {proc.pid}, 로그: {log_path})")
         self._serve_bytes(
@@ -1288,6 +1349,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
             cmd, cwd=str(PROJECT_ROOT),
             stdout=log_file, stderr=sp.STDOUT,
         )
+        _register_spawned_pid(proc.pid)
         log_file.close()
         print(f"[Dashboard] 빠른 실행 (PID: {proc.pid}, groups: {groups})")
         self._serve_bytes(
@@ -1399,8 +1461,8 @@ class DashboardHandler(BaseHTTPRequestHandler):
         content = path.read_bytes() if path.exists() else b'{"pipeline_url":"","started_at":"","sessions":[]}'
         self._serve_bytes(content, "application/json; charset=utf-8")
 
-    def _serve_bytes(self, content: bytes, content_type: str):
-        self.send_response(200)
+    def _serve_bytes(self, content: bytes, content_type: str, status: int = 200):
+        self.send_response(status)
         self.send_header("Content-Type", content_type)
         self.send_header("Access-Control-Allow-Origin", ALLOWED_ORIGIN)
         self.send_header("Cache-Control", "no-cache")
