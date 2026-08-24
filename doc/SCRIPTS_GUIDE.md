@@ -150,7 +150,7 @@ python parallel/99_merge.py --quick --group mysite --no-heal
 | `--no-heal` | 힐링 생략. 실패해도 `heal_context.json`을 생성하지 않고 바로 리포트 생성. 상태는 `done`으로 설정 |
 
 **동작:**
-1. `tests/generated/` 폴더 pytest 일괄 실행 (병렬 8 workers, timeout=900s)
+1. `tests/generated/` 폴더 pytest 일괄 실행 (병렬 최대 4 workers, timeout=900s)
 2. **실패 시**: 단일 파이프라인과 동일한 힐링 플로우 실행 — 에러 분류(7종) → 사이트 사전 접근 체크 → 반복 실패 감지(2회 스킵) → `06_auto_heal.py` (deterministic 패치) → `state/heal_context.json` 생성 → Claude Code 패치 → 재실행 (최대 3회). `--no-heal` 시 이 단계를 건너뜀
 3. 전체 통과 시: `tests/reports/parallel_index_{날짜시간}.html` 리포트 생성
 4. `--group` 지정 시 리포트에 해당 그룹만 포함 (미선택 그룹 제외)
@@ -270,7 +270,7 @@ python run_team.py  # 주제를 대화형으로 입력
   → Claude가 lint 결과 + 코드를 보고 리뷰 진행
 
 05_execute.py
-  → pytest로 테스트 실행 (최대 8 workers 병렬)
+  → pytest로 테스트 실행 (최대 4 workers 병렬, spa: true 사이트는 세션 충돌 방지를 위해 1 worker 고정)
   → report_html.build_report()로 HTML 리포트 생성 (병렬과 동일 형식)
   → result_parser.parse_results()로 결과 파싱 (99_merge.py와 공유)
   → state/pipeline.json에 execution_result 저장 (heal_count는 읽기만, 증가 안 함)
@@ -278,10 +278,6 @@ python run_team.py  # 주제를 대화형으로 입력
   → `--only-failed` 플래그: 이전 실행에서 실패한 테스트만 재실행 (힐링 시 시간 대폭 절감)
   → 첫 실행 포함 모든 실행은 `--no-report`, 전체 통과 확인 후 마지막 1회만 리포트 생성
   → 매 실행 전 `tests/screenshots/`, `tests/traces/` 초기화
-  → 워커 자동 감소 재실행 (8→4→2→1):
-    처음엔 최대 8워커로 실행. 실패율 15% 이상이면 워커를 절반으로 줄여 실패분만 자동 재실행.
-    각 단계 결과를 원래 결과에 병합하여 최종 리포트에 반영.
-    (외부 사이트 rate limiting / 병렬 타이밍 이슈 자동 대응)
 
 06_heal.py
   → 05_execute가 생성한 JSON 리포트(json_report_path)에서 실패 정보를 파싱 (pytest 재실행 없음)
@@ -289,7 +285,7 @@ python run_team.py  # 주제를 대화형으로 입력
   → --lf 실행 시 0개 수집이면 --lf 없이 재실행 (fallback)
 
 06_auto_heal.py
-  → 06_heal.py 이후 자동 패치. 8개 정적 패턴:
+  → 06_heal.py 이후 자동 패치. 7개 정적 패턴:
      strict mode violation → .first 추가
      timeout 오류 → timeout 값 증가 (5000→15000, 10000→20000)
      to_have_class(r"...") → to_have_class(re.compile(r"..."))
@@ -297,7 +293,6 @@ python run_team.py  # 주제를 대화형으로 입력
      page.evaluate('return ...') → page.evaluate('() => ...')
      UnicodeDecodeError cp949 → open() 에 encoding='utf-8' 추가
      모달 wait_for timeout 10000 → 20000
-     광고 간섭 → adsbygoogle 제거 코드 삽입
   + heal_stats 빈출 패턴 Top 5 보고
   → 수정 파일만 재실행하여 검증. 전부 통과 시 Agent 불필요 (종료코드 0)
   → 잔여 실패 시 heal_context 업데이트 후 Agent에 위임 (종료코드 1)

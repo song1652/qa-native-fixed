@@ -174,7 +174,7 @@ Claude가 멀티라운드 티키타카 진행 (최소 3라운드)
 - **--force-refresh**: 캐시 무시 강제 재분석 플래그
 
 ### 병렬 테스트 실행 (05_execute.py)
-- **최대 8 workers** — pytest-xdist 기반 병렬 실행
+- **최대 4 workers** — pytest-xdist 기반 병렬 실행 (spa: true 사이트는 세션 충돌 방지를 위해 1 worker 고정)
 - **--only-failed 플래그** — 이전 실패 케이스만 선별 재실행
 - **--no-report 모드** — 힐링 루프 중 리포트 생성 스킵 (전체 통과 후 최종 1회만)
 

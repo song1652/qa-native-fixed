@@ -131,7 +131,7 @@
     "first_pass": true,
     "duration_sec": 12.3,
     "per_test_results": {
-      "tests/generated/{group}/tc_01_example.py::test_fn": true
+      "test_fn": "pass"
     }
   }
 ]
@@ -141,7 +141,7 @@
 |------|------|
 | `pipeline` | `single` (05_execute.py 단일 파이프라인) 또는 `quick` (99_merge.py --quick 빠른 실행) |
 | `skipped` | pytest가 skip한 테스트 수 |
-| `per_test_results` | 개별 테스트 nodeid → pass/fail 매핑 (대시보드 필터링용) |
+| `per_test_results` | 테스트 함수명(nodeid의 `::` 이후 부분) → `"pass"` \| `"fail"` \| `"skip"` 매핑 (대시보드 필터링용) |
 | `group` | 단일 파이프라인: 대상 그룹명 |
 | `groups` | 병렬 파이프라인: 실행된 그룹 목록 |
 | `first_pass` | 힐링 없이 첫 실행 통과 여부 (생성 코드 품질 프록시) |
@@ -236,7 +236,8 @@
     }
   },
   "targets": [
-    { "group": "{group}", "url": "https://...", "cases_count": 120 }
+    { "group_dir": "{group}", "group_label": "{group}", "batch_info": "",
+      "url": "https://...", "output_path": "tests/generated/{group}", "case_count": 120 }
   ]
 }
 ```
@@ -245,7 +246,7 @@
 |------|------|
 | `status` | 병렬 파이프라인 현재 상태 (대시보드 표시용) |
 | `execution_result.group_results` | 그룹별 개별 테스트 pass/fail 목록 |
-| `targets` | 실행 대상 그룹·URL·케이스 수 목록 |
+| `targets` | 실행 대상 그룹·URL·케이스 수 목록 (`group_dir`/`group_label`/`batch_info`/`url`/`output_path`/`case_count`) |
 
 ## state/quick.json 구조 (빠른 실행)
 
