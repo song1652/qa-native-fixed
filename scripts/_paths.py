@@ -13,19 +13,34 @@ from pathlib import Path
 
 # 파일 락 기본 대기 시간(초)
 LOCK_TIMEOUT_SECS = 10.0
+# 스테일 임계값은 타임아웃보다 충분히 커야 한다.
+# 두 값이 같으면 락을 정상적으로 오래 들고 있는 프로세스의 락을
+# 대기 중인 다른 프로세스가 조기에 강탈해 상호 배제가 깨진다.
+LOCK_STALE_SECS = 60.0
 
 
-def _acquire_file_lock(lock_path: Path, timeout_secs: float = LOCK_TIMEOUT_SECS) -> bool:
-    """크로스플랫폼 락 파일 획득 (스핀락). 획득 성공 시 True."""
+def _acquire_file_lock(
+    lock_path: Path,
+    timeout_secs: float = LOCK_TIMEOUT_SECS,
+    stale_secs: float | None = None,
+) -> bool:
+    """크로스플랫폼 락 파일 획득 (스핀락). 획득 성공 시 True.
+
+    stale_secs를 지정하지 않으면 max(timeout_secs * 3, LOCK_STALE_SECS)를 사용한다.
+    스테일 임계값이 타임아웃보다 크므로, 대기 중인 프로세스가 아직 살아 있는
+    보유자의 락을 강탈하지 않는다.
+    """
+    if stale_secs is None:
+        stale_secs = max(timeout_secs * 3, LOCK_STALE_SECS)
     deadline = time.monotonic() + timeout_secs
     while time.monotonic() < deadline:
         try:
             lock_path.touch(exist_ok=False)  # 원자적 생성 — 이미 존재하면 FileExistsError
             return True
         except FileExistsError:
-            # 10초 이상 방치된 스테일 락은 강제 제거
+            # stale_secs 이상 방치된 스테일 락(비정상 종료 잔재)만 강제 제거
             try:
-                if lock_path.exists() and (time.time() - lock_path.stat().st_mtime) > 10:
+                if lock_path.exists() and (time.time() - lock_path.stat().st_mtime) > stale_secs:
                     lock_path.unlink(missing_ok=True)
             except OSError:
                 pass
