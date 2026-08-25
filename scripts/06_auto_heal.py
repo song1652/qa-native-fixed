@@ -368,11 +368,12 @@ def main():
                 sys.exit(0)
             else:
                 print(f"[06-auto] {len(remaining)}건 잔여 실패 -- Agent 힐링 필요")
+                # 이 분기는 failed == 0 -- 재실행한 patched_nodeids는 전부 통과했다.
+                # 잔여 실패(remaining)는 애초에 패치 대상이 아니었던 테스트들이라
+                # 자동 힐링 건수에서 뺄 것이 없다.
                 update_state(
                     state_path,
-                    _make_heal_context_mutator(
-                        remaining, len(patched_nodeids) - failed
-                    ),
+                    _make_heal_context_mutator(remaining, len(patched_nodeids)),
                 )
                 sys.exit(1)
         else:
