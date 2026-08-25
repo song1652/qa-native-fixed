@@ -14,7 +14,7 @@ import re
 import subprocess
 import sys
 from pathlib import Path
-from _paths import PIPELINE_STATE, PROJECT_ROOT, read_state, write_state
+from _paths import PIPELINE_STATE, PROJECT_ROOT, read_state, update_state
 from _python import PYTHON_EXE
 
 HEAL_STATS_PATH = PROJECT_ROOT / "state" / "heal_stats.json"
@@ -203,6 +203,26 @@ PATCHERS = [
 # ── 메인 ─────────────────────────────────────────────────────────
 
 
+def _make_heal_context_mutator(failures_left: list, auto_healed: int):
+    """자동 힐링 결과 필드만 최신 상태 위에 덮어쓰는 mutator를 만든다.
+
+    state를 읽은 뒤 pytest 재실행(최대 300초) + assert_guard까지 시간이 크게
+    벌어지므로, 그 사이 다른 프로세스가 쓴 값을 통째로 덮어쓰지 않도록
+    read+write 대신 update_state(RMW)를 쓴다. heal_context 자체도 fresh 기준으로
+    병합해 다른 프로세스가 추가한 키를 잃지 않게 한다.
+    """
+    def _mutator(fresh: dict) -> dict:
+        ctx = {
+            **fresh.get("heal_context", {}),
+            "failures": failures_left,
+            "failure_count": len(failures_left),
+            "auto_healed": auto_healed,
+        }
+        return {**fresh, "heal_context": ctx}
+
+    return _mutator
+
+
 def main():
     state_path = PIPELINE_STATE
     if not state_path.exists():
@@ -335,12 +355,11 @@ def main():
 
             if not remaining:
                 print("[06-auto] 모든 실패 자동 수정 완료!")
-                # heal_context 업데이트
-                heal_context["failures"] = []
-                heal_context["failure_count"] = 0
-                heal_context["auto_healed"] = len(patched_nodeids)
-                state["heal_context"] = heal_context
-                write_state(state_path, state)
+                # heal_context 업데이트 (RMW — 재실행 사이의 변경을 덮어쓰지 않음)
+                update_state(
+                    state_path,
+                    _make_heal_context_mutator([], len(patched_nodeids)),
+                )
 
                 # 패치 후 assertion 무결성 검증 (assert_guard.py 자동 호출)
                 _scripts_dir = Path(__file__).parent
@@ -357,11 +376,12 @@ def main():
                 sys.exit(0)
             else:
                 print(f"[06-auto] {len(remaining)}건 잔여 실패 -- Agent 힐링 필요")
-                heal_context["failures"] = remaining
-                heal_context["failure_count"] = len(remaining)
-                heal_context["auto_healed"] = len(patched_nodeids) - failed
-                state["heal_context"] = heal_context
-                write_state(state_path, state)
+                update_state(
+                    state_path,
+                    _make_heal_context_mutator(
+                        remaining, len(patched_nodeids) - failed
+                    ),
+                )
                 sys.exit(1)
         else:
             print(f"[06-auto] 자동 패치 후에도 {failed}건 실패 -- Agent 힐링 필요")
