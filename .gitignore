@@ -11,6 +11,9 @@ pending_impl.json
 # Test outputs (screenshots/reports are now tracked)
 tests/traces/
 
+# 자동 힐링 롤백용 백업 (06_auto_heal.py)
+*.pre_autoheal
+
 # Log files in parallel/
 parallel/*.txt
 

@@ -8,6 +8,7 @@ LLM 없음. 알려진 패턴을 regex 기반으로 자동 패치.
   1 = 일부 실패 남음 (Agent 힐링 필요)
   3 = 스킵 (heal_needed 상태가 아님 / 실패 없음) — 단일·병렬 공통
 """
+import ast
 import json
 import re
 import subprocess
@@ -17,6 +18,47 @@ from _paths import PIPELINE_STATE, PROJECT_ROOT, read_state, write_state
 from _python import PYTHON_EXE
 
 HEAL_STATS_PATH = PROJECT_ROOT / "state" / "heal_stats.json"
+
+# 패치 실패 시 복원용 백업 확장자
+BACKUP_SUFFIX = ".pre_autoheal"
+
+
+def _insert_import(source: str, import_line: str) -> str:
+    """모듈 docstring / __future__ import 뒤에 import 문을 삽입.
+
+    `from __future__ import annotations` 는 반드시 파일 최상단(docstring 제외)에
+    와야 하므로 무조건 앞에 붙이면 SyntaxError가 난다.
+    """
+    lines = source.splitlines(keepends=True)
+
+    insert_at = 0
+    try:
+        tree = ast.parse(source)
+    except SyntaxError:
+        tree = None
+
+    if tree is not None:
+        for node in tree.body:
+            is_docstring = (
+                isinstance(node, ast.Expr)
+                and isinstance(node.value, ast.Constant)
+                and isinstance(node.value.value, str)
+            )
+            is_future = (
+                isinstance(node, ast.ImportFrom) and node.module == "__future__"
+            )
+            if is_docstring or is_future:
+                insert_at = node.end_lineno  # 1-based 끝줄 → 그 다음 줄 인덱스
+            else:
+                break
+    else:
+        # 파싱 실패 시 최소한 __future__ 라인만이라도 건너뛴다
+        for i, line in enumerate(lines):
+            if line.startswith("from __future__ import"):
+                insert_at = i + 1
+
+    lines.insert(insert_at, import_line)
+    return "".join(lines)
 
 
 # ── 자동 패치 함수들 ─────────────────────────────────────────────
@@ -48,11 +90,15 @@ def fix_timeout_increase(source: str, traceback: str) -> tuple[str, bool]:
 
     changed = False
     # timeout=5000 → 15000, timeout=10000 → 20000
+    # 주의: traceback에 "timeout"이 있으면 파일 내 모든 timeout을 올린다.
+    # 실패 지점 특정이 어려워 범위를 좁히지 못하므로, 대신 치환 내역을 로그로 남긴다.
     for old_val, new_val in [("timeout=5000", "timeout=15000"),
                               ("timeout=10000", "timeout=20000")]:
-        if old_val in source:
+        count = source.count(old_val)
+        if count:
             source = source.replace(old_val, new_val)
             changed = True
+            print(f"    [timeout] {old_val} → {new_val} ({count}곳)")
     return source, changed
 
 
@@ -67,9 +113,9 @@ def fix_to_have_class_regex(source: str, traceback: str) -> tuple[str, bool]:
     pattern2 = re.compile(r'not_to_have_class\(r"(.*?)",')
     new_source = pattern2.sub(r'not_to_have_class(re.compile(r"\1"),', new_source)
 
-    # import re 추가 (없으면)
+    # import re 추가 (없으면) — __future__ import 앞에 오면 SyntaxError
     if "re.compile" in new_source and "import re" not in new_source:
-        new_source = "import re\n" + new_source
+        new_source = _insert_import(new_source, "import re\n")
 
     return new_source, new_source != source
 
@@ -222,9 +268,30 @@ def main():
         print("[06-auto] 자동 패치 가능한 패턴 없음.")
         sys.exit(1)
 
-    # 패치된 파일 저장
-    for fpath, source in patched_files.items():
-        Path(fpath).write_text(source, encoding="utf-8")
+    # 패치된 파일 저장 (백업 → 쓰기 → 문법 검증 → 실패 시 복원)
+    for fpath, source in list(patched_files.items()):
+        target = Path(fpath)
+        backup = target.with_suffix(target.suffix + BACKUP_SUFFIX)
+        original_text = target.read_text(encoding="utf-8")
+        backup.write_text(original_text, encoding="utf-8")
+
+        try:
+            # ast.parse가 아닌 compile: ast.parse는 __future__ import 위치 규칙을
+            # 검사하지 않아 바로 이 버그를 놓친다.
+            compile(source, fpath, "exec")
+        except SyntaxError as e:
+            print(f"  [오류] {target.name}: 패치 결과가 문법 오류 — 원본 복원 "
+                  f"(line {e.lineno}: {e.msg})")
+            target.write_text(original_text, encoding="utf-8")
+            del patched_files[fpath]
+            continue
+
+        target.write_text(source, encoding="utf-8")
+        print(f"  [백업] {backup.name}")
+
+    if not patched_files:
+        print("[06-auto] 유효한 자동 패치 없음 (전부 문법 오류로 롤백).")
+        sys.exit(1)
 
     print(f"\n[06-auto] {len(patched_files)}개 파일, {patch_count}건 자동 패치 완료")
 
