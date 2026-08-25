@@ -123,6 +123,10 @@ class TestAssertValidParallelTransition:
         current_val이 falsy면 의도적으로 조기 return하므로 이 규칙은 실제
         파이프라인에서는 발동하지 않는다("초기 상태에서는 검증 건너뜀" 주석 참조).
         즉 표의 "" 항목은 사실상 죽은 설정이다. 여기서는 함수 자체의 계약만 고정한다.
+
+        그래도 표에서 지우지는 않는다. 지우면 ""가 "알 수 없는 status"가 되어
+        아래 test_unknown_current_status_is_skipped처럼 무검증으로 바뀌고,
+        이 테스트의 ""→done ValueError 기대가 사라진다(_constants.py 주석 참조).
         """
         assert_valid_parallel_transition("", "init")     # 허용
         assert_valid_parallel_transition("", "testing")  # 허용

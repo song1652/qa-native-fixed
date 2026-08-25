@@ -61,6 +61,15 @@ def assert_valid_transition(current: str, next_step: str) -> None:
 # parallel.json / quick.json의 status 필드 전이 규칙
 # {current_status: [allowed_next_statuses]}
 VALID_PARALLEL_TRANSITIONS: dict[str, list[str]] = {
+    # 주의: "" 항목은 실제 파이프라인 호출부에서는 발동하지 않는다.
+    # _validate_transition_locked / _validate_transition_locked_raw가
+    # current_val이 falsy면 "초기 상태에서는 검증 건너뜀"으로 조기 return하기
+    # 때문이다(의도된 설계, 근거는 커밋 912ab3f 참조).
+    # 그럼에도 남겨두는 이유: assert_valid_parallel_transition()을 직접 호출할
+    # 때는 이 표가 곧 함수의 계약이고, 항목을 지우면 ""가 "알 수 없는 status"가
+    # 되어 아래 `allowed is None` 분기로 빠져 ""→done 같은 위반이 ValueError
+    # 대신 조용히 통과한다(fail-closed → fail-open). 최초 기록으로 허용되는
+    # status가 무엇인지 적어둔 유일한 자리이기도 하다.
     "":            ["init", "testing"],      # 초기 → init 또는 직접 testing
     "init":        ["analyzing", "testing"], # 초기화 → 분석 중
     "analyzing":   ["ready", "error"],       # 분석 완료 or 오류
