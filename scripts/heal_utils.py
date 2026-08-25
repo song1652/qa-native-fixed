@@ -16,7 +16,7 @@ import re
 from datetime import datetime
 from pathlib import Path
 
-from _paths import PROJECT_ROOT, read_state, write_state
+from _paths import PROJECT_ROOT, update_state
 
 LESSONS_PATH = PROJECT_ROOT / "agents" / "lessons_learned.md"
 LESSONS_AUTO_PATH = PROJECT_ROOT / "agents" / "lessons_learned_auto.md"
@@ -253,40 +253,60 @@ def append_lessons(failures: list[dict]) -> None:
           f"{added}건 추가, {skipped}건 중복 건너뜀")
 
 
+def _summarize_failure(f: dict) -> tuple[str, str, str]:
+    """실패 1건 → (error_type, summary, pattern_key). 순수 계산 (상태 참조 없음)."""
+    error_type = classify_error(f["traceback"])
+    key_lines = extract_key_lines(f["traceback"])
+    if key_lines:
+        summary = key_lines[0].strip()[:120]
+    else:
+        # traceback 자체의 마지막 줄을 fallback으로 사용
+        tb_lines = [l.strip() for l in f["traceback"].splitlines() if l.strip()]
+        summary = tb_lines[-1][:120] if tb_lines else f"no_traceback::{f.get('test_name', 'unknown')}"
+    return error_type, summary, f"{error_type}::{summary}"
+
+
 def update_heal_stats(failures: list[dict]) -> None:
-    """heal_stats.json에 오류 패턴별 빈도를 업데이트한다."""
+    """heal_stats.json에 오류 패턴별 빈도를 업데이트한다.
+
+    병렬 파이프라인에서 여러 그룹이 동시에 호출하므로 read+write로 갱신하면
+    마지막 쓰기가 다른 그룹의 카운트를 덮어써 유실된다. 락 기반 원자적 RMW인
+    update_state()로 증가시킨다.
+    """
     if not failures:
         return
-    try:
-        if HEAL_STATS_PATH.exists():
-            stats = read_state(HEAL_STATS_PATH)
-        else:
-            stats = {"version": 1, "patterns": {}}
-        patterns = stats.setdefault("patterns", {})
-        for f in failures:
-            error_type = classify_error(f["traceback"])
-            key_lines = extract_key_lines(f["traceback"])
-            if key_lines:
-                summary = key_lines[0].strip()[:120]
-            else:
-                # traceback 자체의 마지막 줄을 fallback으로 사용
-                tb_lines = [l.strip() for l in f["traceback"].splitlines() if l.strip()]
-                summary = tb_lines[-1][:120] if tb_lines else f"no_traceback::{f.get('test_name', 'unknown')}"
-            pattern_key = f"{error_type}::{summary}"
-            if pattern_key in patterns:
-                patterns[pattern_key]["count"] += 1
-                patterns[pattern_key]["last_seen"] = datetime.now().isoformat()
+
+    # 순수 계산은 락 밖에서 미리 끝내 락 보유 시간을 줄인다.
+    computed = [_summarize_failure(f) for f in failures]
+
+    def _mutator(fresh: dict) -> dict:
+        # 파일이 없거나 비어 있으면 초기 구조로 시작 (기존 동작과 동일)
+        base = fresh if fresh else {"version": 1, "patterns": {}}
+        patterns = dict(base.get("patterns") or {})
+        for error_type, summary, pattern_key in computed:
+            now = datetime.now().isoformat()
+            entry = patterns.get(pattern_key)
+            if entry:
+                patterns[pattern_key] = {
+                    **entry,
+                    "count": entry.get("count", 0) + 1,
+                    "last_seen": now,
+                }
             else:
                 patterns[pattern_key] = {
                     "count": 1,
                     "error_type": error_type,
                     "summary": summary,
-                    "first_seen": datetime.now().isoformat(),
-                    "last_seen": datetime.now().isoformat(),
+                    "first_seen": now,
+                    "last_seen": now,
                 }
-        write_state(HEAL_STATS_PATH, stats)
+        return {**base, "patterns": patterns}
+
+    try:
+        update_state(HEAL_STATS_PATH, _mutator)
         print(f"[heal_utils] heal_stats.json 업데이트: {len(failures)}건 기록")
     except Exception as e:
+        # advisory — 통계 갱신 실패가 파이프라인을 막아서는 안 된다
         print(f"[heal_utils] heal_stats.json 업데이트 실패 (무시): {e}")
 
 
