@@ -295,11 +295,18 @@ class TestUpdateStateFsmIntegration:
         assert _read(p)["step"] == "done"
 
     def test_first_status_write_is_not_validated(self, tmp_path, monkeypatch):
-        """현재 status가 빈 문자열이면 전이 검증이 건너뛰어진다.
+        """현재 status가 빈 문자열이면 전이 검증이 건너뛰어진다 (의도된 설계).
 
-        VALID_PARALLEL_TRANSITIONS에는 "": ["init", "testing"] 규칙이 있지만
-        _validate_transition_locked_raw가 falsy한 current_val에서 조기 return하므로
-        실제로는 이 규칙이 적용되지 않는다. 현재 계약을 그대로 고정해 둔다.
+        근거: 같은 역할의 _validate_transition_locked(write_state 경로)에
+        "초기 상태(파일 없음 or 필드 없음)에서는 검증 건너뜀"이라는 주석과 함께
+        동일한 `if not current_val: return` 가드가 명시돼 있다. 두 검증 함수가
+        같은 규칙을 공유하므로 누락이 아니라 합의된 계약이다.
+
+        current.get(field, "")는 "필드 없음"과 "빈 문자열"을 구분하지 못하므로,
+        최초 기록을 검증하면 상태 파일이 갓 생성된 시점의 정상 기록까지 막힌다.
+
+        부작용: VALID_PARALLEL_TRANSITIONS의 "": ["init", "testing"] 규칙은
+        이 경로로는 절대 발동하지 않는 죽은 설정이 된다(함수 자체는 검증함).
         """
         p = tmp_path / "parallel.json"
         p.write_text(json.dumps({"status": ""}), encoding="utf-8")

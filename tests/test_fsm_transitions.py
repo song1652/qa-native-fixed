@@ -117,11 +117,12 @@ class TestAssertValidParallelTransition:
             assert_valid_parallel_transition(current, next_status)
 
     def test_empty_initial_status_is_validated(self):
-        """빈 status("")는 表에 키로 존재하므로 '모르는 상태'가 아니라 검증 대상이다.
+        """빈 status("")는 표에 키로 존재하므로 '모르는 상태'가 아니라 검증 대상이다.
 
-        주의: update_state 경로의 _validate_transition_locked_raw는 current가
-        falsy면 조기 return하므로 이 규칙이 실제로는 우회된다. 함수 자체의
-        계약은 아래와 같이 검증하는 쪽이다.
+        단, 호출부(_validate_transition_locked / _validate_transition_locked_raw)는
+        current_val이 falsy면 의도적으로 조기 return하므로 이 규칙은 실제
+        파이프라인에서는 발동하지 않는다("초기 상태에서는 검증 건너뜀" 주석 참조).
+        즉 표의 "" 항목은 사실상 죽은 설정이다. 여기서는 함수 자체의 계약만 고정한다.
         """
         assert_valid_parallel_transition("", "init")     # 허용
         assert_valid_parallel_transition("", "testing")  # 허용
