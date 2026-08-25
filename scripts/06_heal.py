@@ -15,7 +15,11 @@ from pathlib import Path
 from datetime import datetime
 from _python import PYTHON_EXE
 from _paths import PIPELINE_STATE, read_state, update_state
-from _constants import EXIT_SUCCESS, EXIT_HEAL_NEEDED, EXIT_HEAL_EXCEEDED, MAX_HEAL
+from _constants import (
+    EXIT_SUCCESS, EXIT_HEAL_NEEDED, EXIT_HEAL_EXCEEDED, MAX_HEAL,
+    DEFAULT_GENERATED_DIR, DEFAULT_GENERATED_FILE,
+    HEAL_PYTEST_WORKERS, PYTEST_HEAL_TIMEOUT_SEC,
+)
 from heal_utils import (
     classify_error, extract_key_lines,  # noqa: F401 (re-export for tests)
     find_screenshot_for_test, append_lessons, update_heal_stats,
@@ -150,7 +154,7 @@ def collect_failure_details_from_report(state: dict) -> tuple[list[dict], str]:
             pass
     # JSON report가 없으면 fallback: 실패 테스트만 재실행
     return _collect_failure_details_fallback(
-        state.get("generated_file_path", "tests/generated/")
+        state.get("generated_file_path", DEFAULT_GENERATED_DIR)
     )
 
 
@@ -160,12 +164,12 @@ def _collect_failure_details_fallback(file_path: str) -> tuple[list[dict], str]:
         cmd = [PYTHON_EXE, "-m", "pytest", file_path,
                "--tb=long", "-v", "--no-header", "--lf"]
         if Path(file_path).is_dir():
-            cmd += ["-n8", "--dist=load"]
+            cmd += [f"-n{HEAL_PYTEST_WORKERS}", "--dist=load"]
         result = subprocess.run(
             cmd,
             capture_output=True, text=True,
             encoding="utf-8", errors="replace",
-            timeout=600,
+            timeout=PYTEST_HEAL_TIMEOUT_SEC,
         )
         output = result.stdout + result.stderr
         if "no tests ran" in output or "collected 0 items" in output:
@@ -174,11 +178,11 @@ def _collect_failure_details_fallback(file_path: str) -> tuple[list[dict], str]:
                 cmd_full,
                 capture_output=True, text=True,
                 encoding="utf-8", errors="replace",
-                timeout=600,
+                timeout=PYTEST_HEAL_TIMEOUT_SEC,
             )
             output = result.stdout + result.stderr
     except subprocess.TimeoutExpired:
-        output = "[06] pytest 실행 타임아웃 (600초 초과)"
+        output = f"[06] pytest 실행 타임아웃 ({PYTEST_HEAL_TIMEOUT_SEC}초 초과)"
     failures = parse_failures(output, file_path)
     return failures, output
 
@@ -235,7 +239,7 @@ def main():
             update_state(state_path, lambda fresh: {**fresh, "step": "heal_failed", "heal_context": _ctx})
             sys.exit(EXIT_HEAL_EXCEEDED)
 
-    file_path = state.get("generated_file_path", "tests/generated/test_generated.py")
+    file_path = state.get("generated_file_path", DEFAULT_GENERATED_FILE)
     if not Path(file_path).exists():
         print(f"[오류] 테스트 파일 없음: {file_path}")
         sys.exit(1)

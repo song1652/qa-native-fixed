@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 from _python import PYTHON_EXE
 from _paths import PIPELINE_STATE, read_state, write_state
+from _constants import DEFAULT_GENERATED_FILE
 
 
 def main():
@@ -18,7 +19,7 @@ def main():
         sys.exit(1)
 
     state = read_state(state_path)
-    file_path = state.get("generated_file_path", "tests/generated/test_generated.py")
+    file_path = state.get("generated_file_path", DEFAULT_GENERATED_FILE)
 
     p = Path(file_path)
     if not p.exists():

@@ -20,6 +20,7 @@ import sys
 from pathlib import Path
 
 from _paths import PIPELINE_STATE, read_state, write_state
+from _constants import DEFAULT_GENERATED_DIR
 from heal_utils import snapshot_assertions, compare_assertions
 
 
@@ -43,7 +44,7 @@ def main():
     baseline_label = "최초 생성 기준" if is_cumulative else "직전 패치 기준"
 
     # 패치 후 현재 파일 스냅샷
-    generated_path = Path(state.get("generated_file_path", "tests/generated/"))
+    generated_path = Path(state.get("generated_file_path", DEFAULT_GENERATED_DIR))
     file_paths: list[str] = []
     for fname in baseline:
         if generated_path.is_dir():

@@ -29,6 +29,7 @@ if _venv_sp.exists():
             sys.path.insert(0, str(_sp))
 from _python import PYTHON_EXE
 from _validators import is_valid_url, is_valid_group_name, is_safe_filename
+from _constants import DEFAULT_GENERATED_FILE
 DIALOG_PATH = PROJECT_ROOT / "agents" / "dialog.json"
 STATE_PATH = PROJECT_ROOT / "state" / "pipeline.json"
 TEAM_NOTES_PATH = PROJECT_ROOT / "agents" / "team_notes.md"
@@ -1180,7 +1181,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
         init_state = {
             "url": "", "test_cases": [], "step": "init",
             "dom_info": {}, "plan": [],
-            "generated_file_path": "tests/generated/test_generated.py",
+            "generated_file_path": DEFAULT_GENERATED_FILE,
             "lint_result": {}, "review_summary": "",
             "approval_status": "", "rejection_reason": "",
             "rejection_count": 0, "execution_result": {},
@@ -1206,7 +1207,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
         init_state = {
             "url": "", "test_cases": [], "step": "init",
             "dom_info": {}, "plan": [],
-            "generated_file_path": "tests/generated/test_generated.py",
+            "generated_file_path": DEFAULT_GENERATED_FILE,
             "lint_result": {}, "review_summary": "",
             "approval_status": "", "rejection_reason": "",
             "rejection_count": 0, "execution_result": {},

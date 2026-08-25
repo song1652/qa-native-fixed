@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 from _paths import PIPELINE_STATE, read_state
+from _constants import DEFAULT_GENERATED_FILE
 
 
 def read_file(path):
@@ -30,7 +31,7 @@ def main():
         sys.exit(1)
 
     state = read_state(state_path)
-    generated_path = state.get("generated_file_path", "tests/generated/test_generated.py")
+    generated_path = state.get("generated_file_path", DEFAULT_GENERATED_FILE)
 
     if not state.get("lint_result"):
         print("[오류] lint_result 없음. 03_lint.py를 먼저 실행하세요.")

@@ -18,6 +18,7 @@ from datetime import datetime
 
 from _python import PYTHON_EXE
 from _paths import PIPELINE_STATE, PROJECT_ROOT, read_state, update_state, append_run_history
+from _constants import DEFAULT_GENERATED_FILE, MAX_PYTEST_WORKERS
 from result_parser import parse_results, parse_skip_messages, parse_durations
 from structured_log import slog
 from report_html import case_row as _case_row, build_report
@@ -288,7 +289,7 @@ def main():
 
     # heal_count는 06_heal.py에서만 증가시킴 (이중 증가 방지)
 
-    file_path = state.get("generated_file_path", "tests/generated/test_generated.py")
+    file_path = state.get("generated_file_path", DEFAULT_GENERATED_FILE)
     if not Path(file_path).exists():
         print(f"[오류] 테스트 파일 없음: {file_path}")
         sys.exit(1)
@@ -325,7 +326,7 @@ def main():
 
     if n_funcs > 1 and not _single_session:
         dist_mode = "loadfile" if has_dependent else "load"
-        n_workers = min(n_funcs, 4)
+        n_workers = min(n_funcs, MAX_PYTEST_WORKERS)
         parallel_opts = [f"-n{n_workers}", f"--dist={dist_mode}"]
         print(f"[05] 테스트 실행 중: {file_path}  ({n_cases}개 케이스, 병렬 workers={n_workers}, dist={dist_mode})")
     elif _single_session and n_funcs > 1:

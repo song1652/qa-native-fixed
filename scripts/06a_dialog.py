@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 from _paths import PIPELINE_STATE, PROJECT_ROOT, read_state
+from _constants import DEFAULT_GENERATED_FILE
 
 HEAL_STATS_PATH = PROJECT_ROOT / "state" / "heal_stats.json"
 
@@ -48,7 +49,7 @@ def main():
         print("[스킵] heal_needed 상태가 아님.")
         sys.exit(0)
 
-    generated_path = state.get("generated_file_path", "tests/generated/test_generated.py")
+    generated_path = state.get("generated_file_path", DEFAULT_GENERATED_FILE)
 
     # 실패 파일만 필터링 (힐링 시 전체 120개 대신 실패 3-5개만 Agent에 전달)
     failures = heal_context.get("failures", [])
