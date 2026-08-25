@@ -19,9 +19,6 @@ from _python import PYTHON_EXE
 
 HEAL_STATS_PATH = PROJECT_ROOT / "state" / "heal_stats.json"
 
-# 패치 실패 시 복원용 백업 확장자
-BACKUP_SUFFIX = ".pre_autoheal"
-
 
 def _insert_import(source: str, import_line: str) -> str:
     """모듈 docstring / __future__ import 뒤에 import 문을 삽입.
@@ -288,29 +285,24 @@ def main():
         print("[06-auto] 자동 패치 가능한 패턴 없음.")
         sys.exit(1)
 
-    # 패치된 파일 저장 (백업 → 쓰기 → 문법 검증 → 실패 시 복원)
+    # 패치된 파일 저장 (문법 검증을 통과한 것만 기록)
+    # 검증이 쓰기보다 앞서므로 원본이 훼손될 구간이 없다 → 별도 백업/복원 불필요.
     for fpath, source in list(patched_files.items()):
         target = Path(fpath)
-        backup = target.with_suffix(target.suffix + BACKUP_SUFFIX)
-        original_text = target.read_text(encoding="utf-8")
-        backup.write_text(original_text, encoding="utf-8")
-
         try:
             # ast.parse가 아닌 compile: ast.parse는 __future__ import 위치 규칙을
             # 검사하지 않아 바로 이 버그를 놓친다.
             compile(source, fpath, "exec")
         except SyntaxError as e:
-            print(f"  [오류] {target.name}: 패치 결과가 문법 오류 — 원본 복원 "
+            print(f"  [오류] {target.name}: 패치 결과가 문법 오류 — 패치 취소 "
                   f"(line {e.lineno}: {e.msg})")
-            target.write_text(original_text, encoding="utf-8")
             del patched_files[fpath]
             continue
 
         target.write_text(source, encoding="utf-8")
-        print(f"  [백업] {backup.name}")
 
     if not patched_files:
-        print("[06-auto] 유효한 자동 패치 없음 (전부 문법 오류로 롤백).")
+        print("[06-auto] 유효한 자동 패치 없음 (전부 문법 오류로 취소).")
         sys.exit(1)
 
     print(f"\n[06-auto] {len(patched_files)}개 파일, {patch_count}건 자동 패치 완료")
