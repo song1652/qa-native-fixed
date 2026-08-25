@@ -82,10 +82,12 @@ def _check_urls_accessible(urls: dict) -> dict | None:
         if not url:
             continue
         try:
-            req = urllib.request.Request(url, method="HEAD")
-            resp = urllib.request.urlopen(req, timeout=10)
-            if resp.getcode() >= 400:
-                return {"error": f"사이트 접근 불가 HTTP {resp.getcode()}", "url": url, "group": group}
+            # GET 사용: HEAD를 405/403으로 거부하는 서버가 있어 오탐이 났다.
+            req = urllib.request.Request(url, method="GET")
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                status = resp.getcode()
+            if status >= 400:
+                return {"error": f"사이트 접근 불가 HTTP {status}", "url": url, "group": group}
         except (urllib.error.URLError, OSError) as e:
             return {"error": f"사이트 접근 불가: {e}", "url": url, "group": group}
     return None

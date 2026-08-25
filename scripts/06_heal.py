@@ -218,9 +218,10 @@ def main():
         import urllib.request
         import urllib.error
         try:
-            req = urllib.request.Request(url, method="HEAD")
-            resp = urllib.request.urlopen(req, timeout=10)
-            status = resp.getcode()
+            # GET 사용: HEAD를 405/403으로 거부하는 서버가 있어 오탐이 났다.
+            req = urllib.request.Request(url, method="GET")
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                status = resp.getcode()
             if status >= 400:
                 print(f"[06] 사이트 접근 불가: {url} (HTTP {status})")
                 print("     사이트가 다운되었거나 접근이 차단되었습니다. 힐링을 건너뜁니다.")
