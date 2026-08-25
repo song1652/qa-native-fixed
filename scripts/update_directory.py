@@ -66,7 +66,6 @@ SCRIPT_DESCRIPTIONS: dict[str, str] = {
     "_paths.py":              "중앙 경로 상수 + read_state/write_state 원자적 I/O (FSM 전이 검증 내장)",
     "_constants.py":          "파이프라인 종료코드 + VALID_TRANSITIONS + assert_valid_transition",
     "_python.py":             ".venv 경로 자동 감지",
-    "_generate_plan.py":      "테스트케이스별 실행 계획 생성",
     "dom_helpers.js":         "JS 공통 유틸 (isVisible·esc·getSelectorsSimple) — _js()가 자동 주입",
     "team_discuss.py":        "팀 토론 초기화",
     "team_approve.py":        "팀 토론 승인 (터미널용)",

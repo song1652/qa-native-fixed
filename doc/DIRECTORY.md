@@ -31,7 +31,6 @@
 | `06_heal.py` | 실패 분석 (최대 3회 자동 패치) |
 | `06a_dialog.py` | 힐링 심의 컨텍스트 초기화 |
 | `_constants.py` | 파이프라인 종료코드 + VALID_TRANSITIONS + assert_valid_transition |
-| `_generate_plan.py` | 테스트케이스별 실행 계획 생성 |
 | `_paths.py` | 중앙 경로 상수 + read_state/write_state 원자적 I/O (FSM 전이 검증 내장) |
 | `_python.py` | .venv 경로 자동 감지 |
 | `check_pending_approve.py` | 훅: 승인 대기 상태 확인 (hook_utils.check_state) |
