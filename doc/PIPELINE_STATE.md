@@ -7,7 +7,7 @@
 {
   "url": "",
   "test_cases": [],
-  "step": "init | analyzed | generated | reviewed | done | heal_needed | heal_failed | timeout",
+  "step": "init | analyzed | planned | generated | reviewed | done | heal_needed | heal_failed | timeout",
   "dom_info": {
     "title": "",
     "url": "",
@@ -216,7 +216,7 @@
 
 ```json
 {
-  "status": "done | analyzing | ready | generating | testing | heal_needed | heal_failed",
+  "status": "\"\" | init | analyzing | ready | error | testing | done | heal_needed | heal_failed",
   "step": "done",
   "execution_result": {
     "passed": 237,
@@ -257,7 +257,7 @@
 
 ## step 전이 규칙
 
-`_constants.py`의 `VALID_TRANSITIONS` 맵에 정의. `write_state()`가 `pipeline.json` 기록 시 자동으로 `assert_valid_transition()`을 호출하여 잘못된 전이를 방지.
+`_pipeline_registry.py`의 `VALID_TRANSITIONS` 맵에 정의 (P35 이후 단일 소스). `write_state()`가 `pipeline.json` 기록 시 자동으로 `assert_valid_transition()`을 호출하여 잘못된 전이를 방지.
 
 ```
 init → analyzed → generated → reviewed → done
