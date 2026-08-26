@@ -59,6 +59,16 @@ claude mcp list
 
 > **Claude Code CLI 설치**: [claude.ai/code](https://claude.ai/code) 또는 `npm install -g @anthropic-ai/claude-code`
 
+### 3. 테스트 데이터
+
+`config/test_data.json`은 `.gitignore` 대상이라 새로 클론하면 없습니다. 템플릿을 복사해서 만드세요:
+
+```bash
+cp config/test_data.example.json config/test_data.json
+```
+
+`tests/generated/`의 생성 테스트가 이 파일의 `data_key`(예: `data["saucedemo"]["valid_user"]`)를 읽으므로, 없으면 생성 테스트가 전부 실패합니다. 새 테스트케이스에 새 `data_key`를 추가했다면 `python scripts/sync_test_data.py`로 빈 템플릿을 자동으로 채울 수 있습니다.
+
 ---
 
 ## 실행
@@ -166,6 +176,7 @@ python run_qa_parallel.py --no-auto
 | 증상 | 원인 | 해결 |
 |---|---|---|
 | `state/pipeline.json 없음` | 파이프라인 초기화 미실행 | `run_qa.py` 또는 `run_qa_parallel.py` 재실행 |
+| 생성 테스트 전부 실패 (`KeyError`/`FileNotFoundError`) | `config/test_data.json` 없음 (새 클론) | `cp config/test_data.example.json config/test_data.json` |
 | `tests/generated/` 파일 없음 | subagent 코드 생성 미완료 | Claude Code에 subagent 재실행 요청 |
 | 특정 케이스 FAIL | assertion / locator 오류 | 해당 `.py` 파일 직접 확인 후 수정, 또는 Healer 재실행 |
 | 스크린샷 미생성 | conftest.py 중복 로드 | `tests/generated/` 하위에 conftest.py 없어야 함 |
