@@ -14,7 +14,7 @@ from pathlib import Path
 from playwright.async_api import async_playwright
 from _paths import (
     PIPELINE_STATE, DOM_CACHE_DIR,
-    read_state, write_state,
+    read_state, update_state,
     get_cached_dom, save_dom_cache, url_cache_key,
 )
 
@@ -743,6 +743,32 @@ def extract_subpage_urls(test_cases: list, base_url: str) -> list:
     return sorted(urls)
 
 
+def _make_analyze_mutator(dom: dict, url: str, sub_doms):
+    """분석 결과 필드만 최신 상태 위에 병합하는 mutator를 만든다.
+
+    analyze_all()은 메인+서브 페이지를 브라우저로 순회하므로 수 분이 걸릴 수 있다.
+    그 사이 대시보드 등 다른 프로세스가 pipeline.json을 갱신하면, 미리 읽어둔 state를
+    통째로 되쓸 때 그 변경이 유실된다. 이 스크립트가 소유한 필드만 갱신한다.
+    """
+    def _mutator(fresh: dict) -> dict:
+        # dom_info는 다운스트림(02a_dialog, 06a_dialog 등)이 직접 참조 — 인라인 저장 필수
+        # dom_cache_key는 캐시 파일 참조용 (서브페이지는 sub_dom_keys로 캐시 키만 저장)
+        updated = {
+            **fresh,
+            "dom_info": dom,
+            "dom_cache_key": url_cache_key(url),
+            "step": "analyzed",
+        }
+        if sub_doms:
+            # pipeline.json에는 URL→캐시키 매핑만 저장 (경량화)
+            updated["sub_dom_keys"] = {
+                sub_url: url_cache_key(sub_url) for sub_url in sub_doms
+            }
+        return updated
+
+    return _mutator
+
+
 def main():
     state_path = PIPELINE_STATE
     if not state_path.exists():
@@ -770,20 +796,10 @@ def main():
         print(f"[오류] 페이지 접근 실패: {dom['error']}")
         sys.exit(1)
 
-    # dom_info는 다운스트림(02a_dialog, 06a_dialog 등)이 직접 참조 — 인라인 저장 필수
-    # dom_cache_key는 캐시 파일 참조용 (서브페이지는 sub_dom_keys로 캐시 키만 저장)
-    state["dom_info"] = dom
-    state["dom_cache_key"] = url_cache_key(url)
-    state["step"] = "analyzed"
+    update_state(state_path, _make_analyze_mutator(dom, url, sub_doms))
 
     if sub_doms:
-        # pipeline.json에는 URL→캐시키 매핑만 저장 (경량화)
-        state["sub_dom_keys"] = {
-            url: url_cache_key(url) for url in sub_doms
-        }
         print(f"[01] 서브페이지 {len(sub_doms)}개 분석 완료")
-
-    write_state(state_path, state)
 
     visible_inputs  = [i for i in dom.get('inputs',  []) if i.get('visible')]
     hidden_inputs   = [i for i in dom.get('inputs',  []) if not i.get('visible')]
