@@ -2,12 +2,15 @@
 UserPromptSubmit 훅에서 실행됨.
 state/parallel.json의 status=ready이면 subagent 실행 요청을
 stdout으로 출력해 Claude 컨텍스트에 주입한다.
+
+트리거 조건: ParallelStatus.READY (레지스트리 상수) — P44
 """
 import sys
 from _paths import PARALLEL_STATE, RUN_PARALLEL_LOG
+from _pipeline_registry import ParallelStatus
 from hook_utils import check_state
 
-state = check_state(PARALLEL_STATE, key="status", value="ready")
+state = check_state(PARALLEL_STATE, key="status", value=ParallelStatus.READY)
 if state is None:
     sys.exit(0)
 

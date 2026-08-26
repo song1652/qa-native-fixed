@@ -2,10 +2,14 @@
 UserPromptSubmit 훅에서 실행됨.
 state/pipeline.json의 step=init이고 url이 있으면
 대시보드에서 run_qa.py가 실행된 것이므로 파이프라인 시작을 Claude에 요청한다.
+
+트리거 조건: Step.INIT (레지스트리 상수) — P44
+실행 지시문: remaining_steps_hint()가 PIPELINE_STEP_DEFS 기반으로 자동 생성.
 """
 import sys
 from _paths import PIPELINE_STATE
-from hook_utils import check_state
+from _pipeline_registry import Step
+from hook_utils import check_state, remaining_steps_hint
 
 
 def _pipeline_ready(s: dict) -> bool:
@@ -18,7 +22,7 @@ def _pipeline_ready(s: dict) -> bool:
     return True
 
 
-state = check_state(PIPELINE_STATE, key="step", value="init", extra_check=_pipeline_ready)
+state = check_state(PIPELINE_STATE, key="step", value=Step.INIT, extra_check=_pipeline_ready)
 if state is None:
     sys.exit(0)
 
@@ -31,11 +35,6 @@ lines = [
     f"케이스: {case_count}개",
     "",
     "CLAUDE.md 파이프라인의 1번 단계부터 실행해주세요:",
-    "1. python scripts/01_analyze.py 실행 (DOM 추출)",
-    "2. python scripts/02a_dialog.py 실행 → 심의 Agent → plan 확정",
-    "3. python scripts/02_generate.py 실행 → 코드 완성",
-    "4. python scripts/03_lint.py 실행 → 03a_dialog.py → 심의 Agent → 코드 리뷰",
-    "5. 05_execute.py → 06_heal.py → 힐링 루프",
-]
+] + remaining_steps_hint(Step.INIT)
 
 print("\n".join(lines))

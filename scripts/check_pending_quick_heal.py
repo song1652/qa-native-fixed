@@ -2,12 +2,15 @@
 UserPromptSubmit 훅에서 실행됨.
 state/quick.json의 status=heal_needed이면 HEAL_SUBAGENT_CONTEXTS를
 stdout으로 출력해 Claude 컨텍스트에 주입한다.
+
+트리거 조건: ParallelStatus.HEAL_NEEDED (레지스트리 상수) — P44
 """
 import sys
 from _paths import QUICK_STATE, QUICK_RUN_LOG
+from _pipeline_registry import ParallelStatus
 from hook_utils import check_state
 
-state = check_state(QUICK_STATE, key="status", value="heal_needed")
+state = check_state(QUICK_STATE, key="status", value=ParallelStatus.HEAL_NEEDED)
 if state is None:
     sys.exit(0)
 
