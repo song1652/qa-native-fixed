@@ -102,6 +102,17 @@ RUN_PARALLEL_LOG = LOGS_DIR / "run_parallel.txt"
 MERGE_LOG = LOGS_DIR / "merge.txt"
 QUICK_RUN_LOG = LOGS_DIR / "quick_run.txt"
 
+# 테스트 아티팩트
+GENERATED_DIR = PROJECT_ROOT / "tests" / "generated"
+REPORTS_DIR = PROJECT_ROOT / "tests" / "reports"
+SCREENSHOTS_DIR = PROJECT_ROOT / "tests" / "screenshots"
+VIDEOS_DIR = PROJECT_ROOT / "tests" / "videos"
+IMPORT_DIR = PROJECT_ROOT / "import"
+
+# 힐링·통계
+HEAL_STATS_PATH = STATE_DIR / "heal_stats.json"
+FLAKY_TESTS_PATH = STATE_DIR / "flaky_tests.json"
+
 
 def append_run_history(entry: dict):
     """실행 이력을 state/run_history.json에 append한다.

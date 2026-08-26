@@ -16,12 +16,10 @@ import re
 from datetime import datetime
 from pathlib import Path
 
-from _paths import PROJECT_ROOT, update_state
+from _paths import PROJECT_ROOT, update_state, SCREENSHOTS_DIR, HEAL_STATS_PATH
 
 LESSONS_PATH = PROJECT_ROOT / "agents" / "lessons_learned.md"
 LESSONS_AUTO_PATH = PROJECT_ROOT / "agents" / "lessons_learned_auto.md"
-SCREENSHOTS_DIR = PROJECT_ROOT / "tests" / "screenshots"
-HEAL_STATS_PATH = PROJECT_ROOT / "state" / "heal_stats.json"
 
 HEAL_BATCH_SIZE = 6  # 힐링 배치당 실패 테스트 수
 MCP_SNAPSHOT_ERROR_TYPES = frozenset({"Locator", "Assertion", "Timeout"})

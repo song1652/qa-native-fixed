@@ -17,16 +17,17 @@ from pathlib import Path
 from datetime import datetime
 
 from _python import PYTHON_EXE
-from _paths import PIPELINE_STATE, PROJECT_ROOT, read_state, update_state, append_run_history
+from _paths import (
+    PIPELINE_STATE, PROJECT_ROOT, read_state, update_state, append_run_history,
+    SCREENSHOTS_DIR, VIDEOS_DIR,
+)
 from _constants import DEFAULT_GENERATED_FILE, MAX_PYTEST_WORKERS
 from result_parser import parse_results, parse_skip_messages, parse_durations
 from structured_log import slog
 from report_html import case_row as _case_row, build_report
 
 TESTCASES_DIR = PROJECT_ROOT / "testcases"
-SCREENSHOTS_DIR = PROJECT_ROOT / "tests" / "screenshots"
 TRACES_DIR = PROJECT_ROOT / "tests" / "traces"
-VIDEOS_DIR = PROJECT_ROOT / "tests" / "videos"
 
 
 def _scan_meta_files() -> dict:

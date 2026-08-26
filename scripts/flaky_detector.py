@@ -8,9 +8,7 @@ import json
 from datetime import datetime
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).parent.parent
-RUN_HISTORY_PATH = PROJECT_ROOT / "state" / "run_history.json"
-FLAKY_TESTS_PATH = PROJECT_ROOT / "state" / "flaky_tests.json"
+from _paths import PROJECT_ROOT, RUN_HISTORY as RUN_HISTORY_PATH, FLAKY_TESTS_PATH
 
 
 def detect_flaky(

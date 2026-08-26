@@ -15,10 +15,8 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
-from _paths import PIPELINE_STATE, PROJECT_ROOT, read_state, update_state
+from _paths import PIPELINE_STATE, PROJECT_ROOT, read_state, update_state, HEAL_STATS_PATH
 from _python import PYTHON_EXE
-
-HEAL_STATS_PATH = PROJECT_ROOT / "state" / "heal_stats.json"
 
 
 def _insert_import(source: str, import_line: str) -> str:

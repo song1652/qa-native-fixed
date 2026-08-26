@@ -8,10 +8,8 @@ import json
 import sys
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
-from _paths import PIPELINE_STATE, PROJECT_ROOT, read_state
+from _paths import PIPELINE_STATE, PROJECT_ROOT, read_state, HEAL_STATS_PATH
 from _constants import DEFAULT_GENERATED_FILE
-
-HEAL_STATS_PATH = PROJECT_ROOT / "state" / "heal_stats.json"
 
 
 def read_file(path, filter_files=None):

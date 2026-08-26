@@ -44,19 +44,19 @@ from _paths import (
     write_state as _safe_write_json,
     update_state as _safe_update_json,
     reset_state,
+    GENERATED_DIR,
+    REPORTS_DIR,
+    SCREENSHOTS_DIR,
+    VIDEOS_DIR,
+    HEAL_STATS_PATH,
+    FLAKY_TESTS_PATH,
+    LOGS_DIR,
+    IMPORT_DIR,
 )
 DIALOG_PATH = PROJECT_ROOT / "agents" / "dialog.json"
 TEAM_NOTES_PATH = PROJECT_ROOT / "agents" / "team_notes.md"
 PENDING_IMPL_PATH = PROJECT_ROOT / "pending_impl.json"
-GENERATED_DIR = PROJECT_ROOT / "tests" / "generated"
-REPORTS_DIR = PROJECT_ROOT / "tests" / "reports"
-SCREENSHOTS_DIR = PROJECT_ROOT / "tests" / "screenshots"
-VIDEOS_DIR = PROJECT_ROOT / "tests" / "videos"
-HEAL_STATS_PATH = PROJECT_ROOT / "state" / "heal_stats.json"
-FLAKY_TESTS_PATH = PROJECT_ROOT / "state" / "flaky_tests.json"
-LOGS_DIR = PROJECT_ROOT / "logs"
 LOGS_DIR.mkdir(exist_ok=True)
-IMPORT_DIR = PROJECT_ROOT / "import"
 
 ALLOWED_ORIGIN = "http://localhost:8766"
 
