@@ -326,15 +326,17 @@ python scripts/05_execute.py
 
 > `.claude/settings.json`에 등록되어 사용자 프롬프트 제출 시 자동 실행됩니다.
 > 모든 훅은 `hook_utils.check_state(path, key, value, extra_check)` 공통 함수를 사용합니다.
+> P44부터 트리거 조건 값은 `_pipeline_registry.py`의 `Step.*` / `ParallelStatus.*` 레지스트리 상수를 사용합니다.
+> 실행 지시문은 `hook_utils.remaining_steps_hint(from_step)`이 레지스트리 기반으로 자동 생성합니다.
 
-| 파일 | 감지 대상 | 동작 |
-|---|---|---|
-| `scripts/check_pending_approve.py` | `state/pipeline.json`의 리뷰 완료 상태 | Claude에게 테스트 실행 지시 |
-| `scripts/check_pending_discuss.py` | `state/discuss.json`의 토론 요청 | Claude에게 팀 토론 진행 지시 |
-| `scripts/check_pending_impl.py` | `pending_impl.json` 존재 여부 | Claude에게 승인 항목 자동 구현 지시 |
-| `scripts/check_pending_parallel.py` | `state/parallel.json`의 `status=ready` | Claude에게 병렬 subagent 실행 지시 |
-| `scripts/check_pending_pipeline.py` | `state/pipeline.json`의 실행 대기 상태 | Claude에게 단일 파이프라인 실행 지시 |
-| `scripts/check_pending_quick_heal.py` | `state/quick.json`의 `status=heal_needed` | 빠른 실행 실패 시 HEAL_SUBAGENT_CONTEXTS 주입해 힐링 자동 시작 |
+| 파일 | 감지 대상 | 트리거 상수 | 동작 |
+|---|---|---|---|
+| `scripts/check_pending_pipeline.py` | `state/pipeline.json` | `Step.INIT` | 단일 파이프라인 시작 지시 + 잔여 단계 목록 자동 출력 |
+| `scripts/check_pending_approve.py` | `state/pipeline.json` | `Step.REVIEWED` | 테스트 실행 지시 + 잔여 단계 목록 자동 출력 |
+| `scripts/check_pending_parallel.py` | `state/parallel.json` | `ParallelStatus.READY` | 병렬 subagent 실행 지시 + PARALLEL_SUBAGENT_CONTEXTS 주입 |
+| `scripts/check_pending_quick_heal.py` | `state/quick.json` | `ParallelStatus.HEAL_NEEDED` | HEAL_SUBAGENT_CONTEXTS 주입해 힐링 자동 시작 |
+| `scripts/check_pending_discuss.py` | `state/discuss.json` | `step="pending"` | Claude에게 팀 토론 진행 지시 |
+| `scripts/check_pending_impl.py` | `pending_impl.json` | `status="pending"` | Claude에게 승인 항목 자동 구현 지시 |
 
 ---
 
@@ -346,7 +348,7 @@ python scripts/05_execute.py
 | `scripts/_paths.py` | 중앙 경로 상수 (`STATE_DIR`, `LOGS_DIR`, `DOM_CACHE_DIR`, `RUN_HISTORY` 등) + `DOM_CACHE_TTL_HOURS=168`(7일) / `DOM_DYNAMIC_CACHE_TTL_HOURS=24`(24시간) TTL 상수 + `read_state()` (락 파일 기반 크로스플랫폼 잠금) / `write_state()` (atomic rename + **pipeline.json FSM 전이 자동 검증**) / `append_run_history()` (락 파일로 read-modify-write 보호, Windows 포함 크로스플랫폼) / `get_cached_dom()` (정적·동적 TTL 분리 체크 — 동적 만료 시 `dynamic_elements`/`contextmenu_elements`만 제거) / `save_dom_cache()` (atomic write + `_cached_at` / `_dynamic_cached_at` 분리 저장) / `resolve_sub_doms(state)` (sub_dom_keys → {url:dom} 매핑) 유틸 | ❌ (다른 스크립트가 import) |
 | `scripts/_constants.py` | 파이프라인 종료 코드 상수 (`EXIT_SUCCESS=0`, `EXIT_HEAL_NEEDED=10`, `EXIT_HEAL_EXCEEDED=2`, `EXIT_REJECTED=2`) + `VALID_TRANSITIONS` step 전이 맵 + `assert_valid_transition()` 검증 함수 | ❌ (다른 스크립트가 import) |
 | `scripts/result_parser.py` | pytest JSON 리포트 → `{nodeid: passed}` 매핑 파싱. `05_execute.py`와 `99_merge.py`가 공유 | ❌ (다른 스크립트가 import) |
-| `scripts/hook_utils.py` | 훅 스크립트 공통 유틸. `check_state(path, key, value, extra_check)` — 5개 `check_pending_*.py`가 공유 | ❌ (다른 스크립트가 import) |
+| `scripts/hook_utils.py` | 훅 스크립트 공통 유틸. `check_state(path, key, value, extra_check)` + `remaining_steps_hint(from_step)` (레지스트리 기반 잔여 단계 지시문 자동 생성, P44) — 5개 `check_pending_*.py`가 공유 | ❌ (다른 스크립트가 import) |
 | `scripts/structured_log.py` | 구조화된 로그 (JSON Lines). `slog(event, **kwargs)` → `logs/structured.jsonl`에 기록. 05_execute, 06_heal, 99_merge에서 사용. 파이프라인 병목 분석·이벤트 추적용 | ❌ (다른 스크립트가 import) |
 | `scripts/heal_utils.py` (힐링 배치 병렬화: `build_heal_batches()` + `print_heal_batches()` — 단일/병렬/빠른 공통, HEAL_BATCH_SIZE=6) | 힐링 공용 유틸리티. `classify_error` (7분류: Locator/Assertion/Timeout/URL/JS평가/Python런타임/Playwright일반/기타), `MCP_SNAPSHOT_ERROR_TYPES`, `extract_key_lines`, `find_screenshot_for_test`, `append_lessons` (→ `lessons_learned_auto.md`에 자동 기록), `update_heal_stats` — `06_heal.py`와 `99_merge.py`에서 공유 | ❌ (다른 스크립트가 import) |
 | `scripts/parse_cases.py` | `.md`/`.json` 테스트케이스 파일 파서 (YAML frontmatter 지원) | ❌ (run_qa.py가 import해서 사용) |

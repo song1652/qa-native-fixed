@@ -62,9 +62,10 @@
 | `/api/reports` | `[{ name, path, mtime }]` | HTML 리포트 목록 |
 | `/api/run_history` | run_history.json 전체 | 실행 이력 배열 |
 | `/api/heal_stats` | heal_stats.json 전체 | 힐링 오류 패턴 통계 |
+| `/api/pipeline_registry` | `{ pipeline: {steps, step_labels, step_compat}, parallel: {steps, step_labels} }` | `_pipeline_registry.py` 상수 노출 — constants.js가 fetch해 전역 변수 갱신 (P45) |
 | `/api/coverage` | coverage.json (없으면 실시간 생성) | 테스트 커버리지 매트릭스 |
 | `/api/flaky_tests` | flaky_tests.json | Flaky 테스트 목록 |
-| `/api/import_files` | Excel 파일 목록 | import/ 폴더 파일 |
+| `/api/import/files` | Excel 파일 목록 | import/ 폴더 파일 |
 
 ### 상태 변경 (POST)
 

@@ -31,7 +31,8 @@
 | `06_heal.py` | 실패 분석 (최대 3회 자동 패치) |
 | `06a_dialog.py` | 힐링 심의 컨텍스트 초기화 |
 | `_constants.py` | 파이프라인 종료코드 + VALID_TRANSITIONS + assert_valid_transition |
-| `_paths.py` | 중앙 경로 상수 + read_state/write_state 원자적 I/O (FSM 전이 검증 내장) |
+| `_paths.py` | 중앙 경로 상수 + read_state/write_state/update_state 원자적 I/O (FSM 전이 검증 내장) |
+| `_pipeline_registry.py` | FSM 단일 소스: Step·ParallelStatus 상수, PIPELINE_STEP_DEFS(메타), VALID_TRANSITIONS/VALID_PARALLEL_TRANSITIONS, make_initial_pipeline_state() 팩토리 (P35·P39·P41) |
 | `_python.py` | .venv 경로 자동 감지 |
 | `check_pending_approve.py` | 훅: 승인 대기 상태 확인 (hook_utils.check_state) |
 | `check_pending_discuss.py` | 훅: 토론 대기 상태 확인 |
@@ -43,7 +44,7 @@
 | `dom_helpers.js` | JS 공통 유틸 (isVisible·esc·getSelectorsSimple) — _js()가 자동 주입 |
 | `flaky_detector.py` | Flaky Test 감지기 (run_history.json 분석 → state/flaky_tests.json) |
 | `heal_utils.py` | 힐링 공용 유틸 (classify_error 7분류, append_lessons) |
-| `hook_utils.py` | 훅 스크립트 공통 유틸 (check_state) |
+| `hook_utils.py` | 훅 스크립트 공통 유틸: `check_state()` + `remaining_steps_hint(from_step)` — 레지스트리 기반 잔여 단계 지시문 자동 생성 (P44) |
 | `parse_cases.py` | tc_*.md 파싱 |
 | `report_html.py` | HTML 리포트 생성 (단일/병렬 공통) |
 | `result_parser.py` | pytest JSON 리포트 파싱 (단일/병렬 공유) |
@@ -75,7 +76,24 @@
 | `tests/screenshots/` | 실패 시 스크린샷 + meta.json (conftest.py 기반 자동 캡처) |
 | `tests/traces/` | 실패 시 Playwright Trace (`retain-on-failure`). 뷰어: `npx playwright show-trace <파일>.zip` |
 | `tests/conftest.py` | pytest 전역 픽스처 (tracing 포함) |
-| `tests/test_core_parsers.py` | 핵심 파서 유닛 테스트 |
+| `tests/test_99_merge.py` | 99_merge.py FSM·quick 모드 크래시·배치 힐링 (P41) |
+| `tests/test_analyze_state.py` | 01_analyze.py state 저장 검증 |
+| `tests/test_approve_gate.py` | 04_approve.py 원자적 RMW·rejection_count 증가 (P43) |
+| `tests/test_auto_heal.py` | 06_auto_heal.py 자동 패치 패턴 |
+| `tests/test_check_pending_hooks.py` | check_pending 4개 트리거 조건·remaining_steps_hint 레지스트리 기반 (P44) |
+| `tests/test_core_parsers.py` | tc_*.md 파서 유닛 테스트 |
+| `tests/test_dashboard_state_wiring.py` | 대시보드 상태 배선 통합 |
+| `tests/test_doc_registry_sync.py` | PIPELINE_STATE.md·SCRIPTS_GUIDE.md ↔ 레지스트리 드리프트 감지 (P38) |
+| `tests/test_fsm_transitions.py` | VALID_TRANSITIONS·VALID_PARALLEL_TRANSITIONS FSM 규칙 |
+| `tests/test_generate_state.py` | 02_generate.py 원자적 RMW (P43) |
+| `tests/test_headless_entrypoints.py` | headless 자동 실행 진입점 |
+| `tests/test_heal_stats.py` | heal_stats.json 빈도 카운터 |
+| `tests/test_lint_state.py` | 03_lint.py state 저장 검증 |
+| `tests/test_pipeline_registry.py` | Step·ParallelStatus·make_initial_pipeline_state() 팩토리 (P39) |
+| `tests/test_pipeline_registry_api.py` | /api/pipeline_registry 응답 구조·레지스트리 일관성 (P45) |
+| `tests/test_serve_security.py` | 대시보드 보안·quick heal_count 리셋 (P42) |
+| `tests/test_test_data_bootstrap.py` | test_data.json 부트스트랩 |
+| `tests/test_update_state.py` | update_state() 원자성·FSM 검증 |
 
 ## agents/ — 사수-부사수 에이전트 시스템 (페르소나·교훈·대시보드)
 
