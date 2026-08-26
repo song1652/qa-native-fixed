@@ -7,7 +7,8 @@
 - 이미 읽은 파일은 재읽기 금지
 - 독립적 도구 호출은 반드시 병렬 실행
 - 완료 보고 시 이미 설명한 내용 반복 금지
-- **state/pipeline.json 수동 덮어쓰기 금지**: `heal_count` 등 누적 필드가 리셋됨. 반드시 스크립트(06_heal 등)를 통해 상태 변경. `write_state()`가 FSM 전이 규칙을 자동 검증
+- **state/pipeline.json 수동 덮어쓰기 금지**: `heal_count` 등 누적 필드가 리셋됨. 반드시 스크립트(06_heal 등)를 통해 상태 변경. `write_state()`/`update_state()`가 FSM 전이 규칙을 자동 검증
+- **상태 수정은 `update_state(path, mutator)` 사용**: `read_state → 수정 → write_state` 패턴은 RMW 경쟁이 발생한다. 상태 필드를 변경하는 코드는 `update_state(path, lambda s: {**s, "field": value})` 원자적 패턴을 사용 (P43)
 - **Sequential Thinking 우선 사용**: 판단이 필요한 모든 단계(심의·코드 완성·힐링)에서 `mcp__sequential-thinking__sequentialthinking`을 먼저 호출해 단계적으로 추론한 뒤 실행한다
 
 API 호출 없이 Claude Code 자체가 LLM 역할을 수행하는 QA 자동화 시스템.
@@ -17,6 +18,7 @@ API 호출 없이 Claude Code 자체가 LLM 역할을 수행하는 QA 자동화 
 - `anthropic`, `langchain`, `openai` 등 외부 LLM SDK import 절대 금지. API 키 사용 금지
 - 모든 단계 결과는 반드시 state/pipeline.json에 저장 후 다음 단계 진행
 - 코드 생성은 Claude Code가 직접 파일로 작성 (문자열 출력 후 저장 아님)
+- **레지스트리 상수 사용**: pipeline step·parallel status 값은 반드시 `scripts/_pipeline_registry.py`의 `Step.*` / `ParallelStatus.*` 상수를 사용. 문자열 리터럴 하드코딩 금지 (예: `"init"` 대신 `Step.INIT`, `"heal_needed"` 대신 `ParallelStatus.HEAL_NEEDED`) (P44/P45)
 - **lessons_learned 필수 참조**: 코드 작성·리뷰·힐링 전 [lessons_learned.md](agents/lessons_learned.md) 확인 (큐레이션된 패턴). 자동 기록 로그는 [lessons_learned_auto.md](agents/lessons_learned_auto.md)
 - **lessons_learned 즉시 기록**: 코드 패치(힐링·lint 수정·생성 오류 등) 시 교훈을 lessons_learned.md에 수동 기록 (자동 기록은 heal_utils.py가 _auto.md에 처리). 중복 시 생략
 - **테스트 함수명**: 반드시 영문 snake_case `test_{english_snake_case}` (한글 제목도 영어로 번역)
@@ -38,6 +40,23 @@ API 호출 없이 Claude Code 자체가 LLM 역할을 수행하는 QA 자동화 
 - **병렬 우선**: 독립 작업은 반드시 동시 실행
 - **심의 Agent 1회 호출**: 사수/부사수를 단일 agent가 내부 시뮬레이션
 - **컨텍스트 주입**: `*_dialog.py`가 출력하는 `DELIBERATION_CONTEXT` JSON을 심의 agent 프롬프트에 직접 포함
+
+## 훅 레이어 (UserPromptSubmit 자동 주입)
+
+`.claude/settings.json`에 등록된 `check_pending_*.py` 6개가 매 프롬프트 제출 시 자동 실행됩니다.
+파이프라인 상태가 특정 조건에 해당하면 stdout에 지시문을 출력하여 Claude 컨텍스트에 주입합니다.
+
+| 훅 스크립트 | 트리거 조건 | 주입 내용 |
+|---|---|---|
+| `check_pending_pipeline.py` | `pipeline.json` `step=`**`Step.INIT`** + url 있음 | 단일 파이프라인 시작 지시 + 레지스트리 기반 잔여 단계 목록 |
+| `check_pending_approve.py` | `pipeline.json` `step=`**`Step.REVIEWED`** + 미실행 | 테스트 실행 지시 + 잔여 단계 목록 |
+| `check_pending_parallel.py` | `parallel.json` `status=`**`ParallelStatus.READY`** | subagent 실행 지시 + PARALLEL_SUBAGENT_CONTEXTS |
+| `check_pending_quick_heal.py` | `quick.json` `status=`**`ParallelStatus.HEAL_NEEDED`** | HEAL_SUBAGENT_CONTEXTS 주입 |
+| `check_pending_discuss.py` | `discuss.json` `step=pending` | 팀 토론 진행 지시 |
+| `check_pending_impl.py` | `pending_impl.json` 승인 항목 있음 | 구현 요청 주입 |
+
+> 훅이 주입한 지시문이 보이면 해당 파이프라인 단계를 즉시 실행합니다.
+> 트리거 조건 값은 모두 `_pipeline_registry.py` 레지스트리 상수 기반 (P44).
 
 ## 스킬 프레임워크 & OMC 적용
 
