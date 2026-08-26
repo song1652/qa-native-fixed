@@ -1,3 +1,5 @@
 {
-  "_comment": "테스트 대상 사이트 URL 매핑. 키 = testcases/ 폴더명. spa: true이면 단일세션 모드(순차 실행)."
+  "_comment": "테스트 대상 사이트 URL 매핑. 키 = testcases/ 폴더명. spa: true이면 단일세션 모드(순차 실행).",
+  "customer_login": "https://mall.serveone.co.kr/M3/cmm/login.dev",
+  "partner_login": "https://mall.serveone.co.kr/M3/cmm/login.dev"
 }

@@ -40,7 +40,8 @@ function renderParallelPipeline(main) {
   const ps = batch.parallel_state || {};
   const files = batch.generated_files || [];
   const status = ps.status || '';
-  const totalTargets = ps.total_count || 0;
+  // total_cases = TC 파일 기준 (total_count는 그룹 수라 케이스 수와 다름)
+  const totalTargets = ps.total_cases || ps.total_count || 0;
   const execResult = ps.execution_result || null;
 
   // step-progress 바
@@ -190,7 +191,7 @@ function waitForParallelReady() {
       const data = await res.json();
       if (data.parallel_state && data.parallel_state.status === 'ready') {
         clearInterval(check);
-        const count = data.parallel_state.total_count || '?';
+        const count = data.parallel_state.total_cases || data.parallel_state.total_count || '?';
         showHookAlert('parallel', count + '개 테스트 대상이 준비되었습니다');
       }
     } catch (e) { }
