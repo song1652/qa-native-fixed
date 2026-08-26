@@ -393,3 +393,98 @@ def test_update_parallel_status_without_extra():
 
     assert captured[0]["status"] == "heal_needed"
     assert captured[0]["x"] == 99
+
+
+# ── quick 모드 FSM 크래시 회귀 테스트 (P41) ──────────────────────────────────
+
+
+class TestQuickModeFsmCrash:
+    """P41: quick 파이프라인 재실행 시 ValueError 크래시 회귀 방지.
+
+    quick 모드는 pytest 실행 전 QUICK_STATE에 'testing' 상태를 기록한 뒤
+    최종 결과(done|heal_needed|heal_failed)를 쓴다.
+    이전에는 'testing' 단계를 건너뛰어, 두 번째 실행에서
+    done → heal_needed 같은 FSM 허용 불가 전이가 발생해 크래시했다.
+    """
+
+    def test_update_parallel_status_accepts_path_kwarg(self):
+        """path 키워드 인자로 quick.json 등 임의 경로를 지정할 수 있다."""
+        from pathlib import Path as _Path
+        captured_path = []
+        captured_data = []
+
+        def fake_update(path, mutator):
+            captured_path.append(path)
+            captured_data.append(mutator({}))
+
+        fake_path = _Path("/tmp/fake_quick.json")
+        with patch.object(_mod, "update_state", side_effect=fake_update):
+            _update_status("testing", path=fake_path)
+
+        assert captured_path[0] == fake_path, "path 인자가 update_state에 전달돼야 함"
+        assert captured_data[0]["status"] == "testing"
+
+    def test_update_parallel_status_default_path_is_parallel_state(self):
+        """path 생략 시 기존처럼 PARALLEL_STATE를 사용한다."""
+        captured_path = []
+
+        def fake_update(path, mutator):
+            captured_path.append(path)
+
+        with patch.object(_mod, "update_state", side_effect=fake_update):
+            _update_status("done")
+
+        assert captured_path[0] == _mod.PARALLEL_STATE
+
+    def test_quick_fsm_done_to_testing_to_heal_needed(self):
+        """done → testing → heal_needed 전이 체인이 FSM에서 허용됨 (P41 핵심 경로)."""
+        from _pipeline_registry import (
+            ParallelStatus,
+            assert_valid_parallel_transition,
+        )
+        # quick 모드 재실행: 이전 상태 done → testing (pytest 시작)
+        assert_valid_parallel_transition(ParallelStatus.DONE, ParallelStatus.TESTING)
+        # testing → heal_needed (테스트 실패)
+        assert_valid_parallel_transition(ParallelStatus.TESTING, ParallelStatus.HEAL_NEEDED)
+
+    def test_quick_fsm_done_to_testing_to_done(self):
+        """done → testing → done 전이 체인이 허용됨 (재실행 성공 경로)."""
+        from _pipeline_registry import ParallelStatus, assert_valid_parallel_transition
+        assert_valid_parallel_transition(ParallelStatus.DONE, ParallelStatus.TESTING)
+        assert_valid_parallel_transition(ParallelStatus.TESTING, ParallelStatus.DONE)
+
+    def test_quick_fsm_heal_failed_to_testing_to_done(self):
+        """heal_failed → testing → done 전이가 허용됨 (heal_failed 후 재실행 성공)."""
+        from _pipeline_registry import ParallelStatus, assert_valid_parallel_transition
+        assert_valid_parallel_transition(ParallelStatus.HEAL_FAILED, ParallelStatus.TESTING)
+        assert_valid_parallel_transition(ParallelStatus.TESTING, ParallelStatus.DONE)
+
+    def test_quick_fsm_heal_needed_to_testing_to_done(self):
+        """heal_needed → testing → done 전이가 허용됨."""
+        from _pipeline_registry import ParallelStatus, assert_valid_parallel_transition
+        assert_valid_parallel_transition(ParallelStatus.HEAL_NEEDED, ParallelStatus.TESTING)
+        assert_valid_parallel_transition(ParallelStatus.TESTING, ParallelStatus.DONE)
+
+    def test_direct_done_to_heal_needed_is_invalid(self):
+        """done → heal_needed 직접 전이는 여전히 차단된다 (FSM 무결성 유지)."""
+        from _pipeline_registry import ParallelStatus, assert_valid_parallel_transition
+        import pytest as _pytest
+        with _pytest.raises(ValueError, match="잘못된 parallel status 전이"):
+            assert_valid_parallel_transition(ParallelStatus.DONE, ParallelStatus.HEAL_NEEDED)
+
+    def test_update_status_with_extra_and_path(self):
+        """extra와 path를 동시에 지정할 수 있다."""
+        from pathlib import Path as _Path
+        captured = []
+
+        def fake_update(path, mutator):
+            captured.append((path, mutator({"existing": True})))
+
+        fake_path = _Path("/tmp/quick.json")
+        with patch.object(_mod, "update_state", side_effect=fake_update):
+            _update_status("testing", extra={"heal_count": 0}, path=fake_path)
+
+        assert captured[0][0] == fake_path
+        assert captured[0][1]["status"] == "testing"
+        assert captured[0][1]["heal_count"] == 0
+        assert captured[0][1]["existing"] is True

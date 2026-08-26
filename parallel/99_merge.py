@@ -57,11 +57,22 @@ def _natural_sort_key(p: Path) -> list:
 # ── 상태 업데이트 헬퍼 ──────────────────────────────────────────
 
 
-def _update_parallel_status(status: str, extra: dict | None = None) -> None:
-    """state/parallel.json의 status 필드를 업데이트 (기존 데이터 보존).
+def _update_parallel_status(
+    status: str,
+    extra: dict | None = None,
+    *,
+    path: "Path | None" = None,
+) -> None:
+    """state/parallel.json(또는 path)의 status 필드를 업데이트 (기존 데이터 보존).
 
     락 보유 중 최신 상태를 읽어 병합·쓰기까지 원자적으로 수행해, 다른
     프로세스가 그 사이 쓴 필드를 덮어쓰지 않는다(RMW 경쟁 방지).
+
+    Args:
+        status: 설정할 새 status 값.
+        extra:  추가로 병합할 필드 딕셔너리.
+        path:   상태 파일 경로. None이면 PARALLEL_STATE(state/parallel.json).
+                quick 모드에서는 QUICK_STATE를 전달한다 (P41 FSM 크래시 수정).
     """
     def _mutator(fresh: dict) -> dict:
         updated = {**fresh, "status": status}
@@ -69,7 +80,7 @@ def _update_parallel_status(status: str, extra: dict | None = None) -> None:
             updated.update(extra)
         return updated
 
-    update_state(PARALLEL_STATE, _mutator)
+    update_state(path or PARALLEL_STATE, _mutator)
 
 
 # ── pytest 실행 ──────────────────────────────────────────────────
@@ -517,8 +528,11 @@ def main():
     # --group 단독 사용 시에는 parallel.json 업데이트
     state_path = QUICK_STATE if quick_mode else PARALLEL_STATE
 
-    if not quick_mode:
-        _update_parallel_status(ParallelStatus.TESTING)
+    # pytest 실행 시작 전 status를 "testing"으로 설정 (P41 FSM 크래시 수정).
+    # quick 모드도 포함: quick.json이 이전 실행의 done/heal_needed/heal_failed 상태일 때
+    # 최종 결과(done|heal_needed|heal_failed)로 직접 전이하면 FSM이 ValueError를 냈다.
+    # done→testing→(done|heal_needed|heal_failed) 경로를 거치면 기존 FSM 전이표로 해결됨.
+    _update_parallel_status(ParallelStatus.TESTING, path=state_path)
 
     # heal_count는 병렬 상태 파일(state_path)에서 읽기 (단일 파이프라인 오염 방지)
     heal_count = 0
