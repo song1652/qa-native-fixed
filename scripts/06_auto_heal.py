@@ -351,7 +351,7 @@ def main():
 
     print(f"\n[06-auto] {len(patched_files)}개 파일, {patch_count}건 자동 패치 완료")
 
-    # 패치된 파일만 재��행
+    # 패치된 파일만 재실행
     patched_nodeids = []
     for f in failures:
         test_id = f.get("test_id", "")
