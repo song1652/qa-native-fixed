@@ -414,6 +414,14 @@ def build_html(test_results: dict, summary: dict,
                      if case_id and (f"/{case_id}." in k or f"/{case_id}_" in k)),
                     None,
                 )
+                # id(예: "CL-01")가 nodeid 패턴(tc_01_...)과 다를 때 위치 기반 폴백.
+                # tc_*.md는 정렬 순서가 tc_01, tc_02 ... 와 일치하므로
+                # case_idx+1 번호로 "tc_01_" 패턴 매칭을 시도한다.
+                if not matched_nodeid:
+                    tc_prefix = f"/tc_{case_idx + 1:02d}_"
+                    matched_nodeid = next(
+                        (k for k in group_tests if tc_prefix in k), None
+                    )
                 case_outcome = group_tests.get(matched_nodeid, "failed") if matched_nodeid else "failed"
                 if case_outcome == "skipped" and matched_nodeid and matched_nodeid in skip_messages:
                     case = dict(case, skip_reason=skip_messages[matched_nodeid])
