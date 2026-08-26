@@ -8,8 +8,21 @@ import subprocess
 import sys
 from pathlib import Path
 from _python import PYTHON_EXE
-from _paths import PIPELINE_STATE, read_state, write_state
+from _paths import PIPELINE_STATE, read_state, update_state
 from _constants import DEFAULT_GENERATED_FILE
+
+
+def _make_lint_mutator(lint_result: dict):
+    """lint 결과 필드만 최신 상태 위에 병합하는 mutator를 만든다.
+
+    state를 읽은 뒤 flake8 서브프로세스를 거쳐 쓰기까지 시간이 벌어지므로,
+    미리 읽어둔 state를 통째로 되쓰면 그 사이 다른 프로세스가 쓴 값이 유실된다.
+    이 스크립트가 소유한 필드만 갱신한다.
+    """
+    def _mutator(fresh: dict) -> dict:
+        return {**fresh, "lint_result": lint_result, "step": "reviewed"}
+
+    return _mutator
 
 
 def main():
@@ -57,9 +70,7 @@ def main():
         "file":        file_path,
     }
 
-    state["lint_result"] = lint_result
-    state["step"] = "reviewed"
-    write_state(state_path, state)
+    update_state(state_path, _make_lint_mutator(lint_result))
 
     status = "통과" if lint_result["passed"] else f"이슈 {lint_result['issue_count']}건"
     print(f"[03] lint {status}")
