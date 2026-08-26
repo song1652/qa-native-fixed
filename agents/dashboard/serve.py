@@ -30,18 +30,28 @@ if _venv_sp.exists():
 from _python import PYTHON_EXE
 from _validators import is_valid_url, is_valid_group_name, is_safe_filename
 from _constants import DEFAULT_GENERATED_FILE
+# 상태 파일 경로 + 안전한 쓰기 함수는 _paths.py가 단일 소스다 (#25).
+# 예전엔 이 파일이 자체 STATE_PATH 등을 재선언하고 _safe_write_json/
+# _safe_update_json을 따로 구현했는데, 그 사본은 (a) 락 획득 실패를 무시하고
+# 진행했고 (b) FSM 전이 검증을 안 거쳐 대시보드로 상태를 조작하면 CLI 경로의
+# 안전장치가 전부 우회됐다. 이름은 기존 호출부와의 diff를 줄이려고 별칭으로 유지.
+from _paths import (
+    PIPELINE_STATE as STATE_PATH,
+    PARALLEL_STATE as PARALLEL_STATE_PATH,
+    QUICK_STATE as QUICK_STATE_PATH,
+    RUN_HISTORY as RUN_HISTORY_PATH,
+    DISCUSS_STATE as DISCUSS_PATH,
+    write_state as _safe_write_json,
+    update_state as _safe_update_json,
+    reset_state,
+)
 DIALOG_PATH = PROJECT_ROOT / "agents" / "dialog.json"
-STATE_PATH = PROJECT_ROOT / "state" / "pipeline.json"
 TEAM_NOTES_PATH = PROJECT_ROOT / "agents" / "team_notes.md"
-DISCUSS_PATH = PROJECT_ROOT / "state" / "discuss.json"
 PENDING_IMPL_PATH = PROJECT_ROOT / "pending_impl.json"
-PARALLEL_STATE_PATH = PROJECT_ROOT / "state" / "parallel.json"
 GENERATED_DIR = PROJECT_ROOT / "tests" / "generated"
 REPORTS_DIR = PROJECT_ROOT / "tests" / "reports"
 SCREENSHOTS_DIR = PROJECT_ROOT / "tests" / "screenshots"
 VIDEOS_DIR = PROJECT_ROOT / "tests" / "videos"
-QUICK_STATE_PATH = PROJECT_ROOT / "state" / "quick.json"
-RUN_HISTORY_PATH = PROJECT_ROOT / "state" / "run_history.json"
 HEAL_STATS_PATH = PROJECT_ROOT / "state" / "heal_stats.json"
 FLAKY_TESTS_PATH = PROJECT_ROOT / "state" / "flaky_tests.json"
 LOGS_DIR = PROJECT_ROOT / "logs"
@@ -121,74 +131,13 @@ def load_json(path: Path):
     return None
 
 
-def _safe_write_json(path: Path, data) -> None:
-    """원자적 쓰기 + 파일 락으로 JSON 상태 파일 저장.
-
-    serve.py 내에서 state 파일을 직접 write_text()로 쓰는 대신 이 함수를 사용한다.
-    - tempfile + replace  → 파이프라인 실행 중 부분 쓰기(partial write) 방지
-    - 파일 락(*.lock)     → ThreadingHTTPServer 멀티스레드/멀티프로세스 경쟁 조건 방지
-    """
-    import tempfile as _tempfile
-    from _paths import _acquire_file_lock, _release_file_lock
-
-    path.parent.mkdir(parents=True, exist_ok=True)
-    if isinstance(data, str):
-        content = data
-    else:
-        content = json.dumps(data, ensure_ascii=False, indent=2)
-
-    lock_path = path.with_suffix(".lock")
-    acquired = _acquire_file_lock(lock_path)
-    try:
-        fd, tmp_path = _tempfile.mkstemp(dir=path.parent, suffix=".tmp")
-        try:
-            with open(fd, "w", encoding="utf-8") as f:
-                f.write(content)
-            Path(tmp_path).replace(path)
-        except Exception:
-            Path(tmp_path).unlink(missing_ok=True)
-            raise
-    finally:
-        if acquired:
-            _release_file_lock(lock_path)
-
-
-def _safe_update_json(path: Path, mutator) -> dict:
-    """락 보유 중 read-modify-write를 원자적으로 수행한다.
-
-    mutator(current: dict) -> dict 를 받아 현재 상태를 수정하고 쓴다.
-    ThreadingHTTPServer 멀티스레드 환경에서 RMW 경쟁 조건 방지.
-
-    예시:
-        _safe_update_json(DISCUSS_PATH, lambda d: {**d, "step": "approved"})
-    """
-    import tempfile as _tempfile
-    from _paths import _acquire_file_lock, _release_file_lock
-
-    path.parent.mkdir(parents=True, exist_ok=True)
-    lock_path = path.with_suffix(".lock")
-    acquired = _acquire_file_lock(lock_path)
-    try:
-        current: dict = {}
-        if path.exists():
-            try:
-                current = json.loads(path.read_text(encoding="utf-8"))
-            except Exception:
-                pass
-        new_data = mutator(current)
-        content = json.dumps(new_data, ensure_ascii=False, indent=2)
-        fd, tmp_path = _tempfile.mkstemp(dir=path.parent, suffix=".tmp")
-        try:
-            with open(fd, "w", encoding="utf-8") as f:
-                f.write(content)
-            Path(tmp_path).replace(path)
-        except Exception:
-            Path(tmp_path).unlink(missing_ok=True)
-            raise
-        return new_data
-    finally:
-        if acquired:
-            _release_file_lock(lock_path)
+# _safe_write_json/_safe_update_json은 원래 이 파일이 자체 구현했다 (#25).
+# 지금은 모듈 상단에서 _paths.write_state/update_state를 같은 이름으로
+# import해서 쓴다 — 그래야 락 획득 실패가 조용히 무시되지 않고(TimeoutError로
+# 승격) pipeline.json/parallel.json/quick.json 쓰기가 FSM 전이 검증을 받는다.
+# (state/pipeline.json·parallel.json을 "init"/""로 되돌리는 리셋 핸들러는
+# 예외 — FSM 규칙상 모든 상태에서 init으로 못 돌아가므로 검증을 우회하는
+# reset_state()를 별도로 쓴다. 아래 _post_*_reset 참조.)
 
 
 def parse_conclusion_items(conclusion: str) -> list:
@@ -1187,10 +1136,14 @@ class DashboardHandler(BaseHTTPRequestHandler):
             "rejection_count": 0, "execution_result": {},
             "heal_count": 0, "heal_context": {}
         }
-        _safe_write_json(STATE_PATH, init_state)
+        # step/status를 "init"/""로 되돌리는 리셋이라 FSM 전이 검증을 건너뛰는
+        # reset_state()를 쓴다 — write_state()를 쓰면 예: step="generated"에서
+        # reset하면 VALID_TRANSITIONS에 "generated"→"init" 전이가 없어
+        # ValueError로 리셋 자체가 실패한다.
+        reset_state(STATE_PATH, init_state)
         # parallel
-        _safe_write_json(PARALLEL_STATE_PATH,
-                         {"status": "", "total_count": 0, "targets": []})
+        reset_state(PARALLEL_STATE_PATH,
+                    {"status": "", "total_count": 0, "targets": []})
         heal_ctx = PROJECT_ROOT / "state" / "heal_context.json"
         if heal_ctx.exists():
             heal_ctx.unlink()
@@ -1213,12 +1166,12 @@ class DashboardHandler(BaseHTTPRequestHandler):
             "rejection_count": 0, "execution_result": {},
             "heal_count": 0, "heal_context": {}
         }
-        _safe_write_json(STATE_PATH, init_state)
+        reset_state(STATE_PATH, init_state)  # FSM 검증 우회 이유는 _post_reset_all 참조
         self._serve_bytes(b'{"ok":true}', "application/json; charset=utf-8")
 
     def _post_parallel_reset(self):
         init_state = {"status": "", "total_count": 0, "targets": []}
-        _safe_write_json(PARALLEL_STATE_PATH, init_state)
+        reset_state(PARALLEL_STATE_PATH, init_state)
         # heal_context도 정리
         heal_ctx = PROJECT_ROOT / "state" / "heal_context.json"
         if heal_ctx.exists():
