@@ -28,6 +28,7 @@ from _paths import (
 )
 from _python import PYTHON_EXE
 from _constants import MAX_HEAL
+from _pipeline_registry import ParallelStatus
 from heal_utils import (
     classify_error, extract_key_lines,
     find_screenshot_for_test, append_lessons, update_heal_stats,
@@ -517,7 +518,7 @@ def main():
     state_path = QUICK_STATE if quick_mode else PARALLEL_STATE
 
     if not quick_mode:
-        _update_parallel_status("testing")
+        _update_parallel_status(ParallelStatus.TESTING)
 
     # heal_count는 병렬 상태 파일(state_path)에서 읽기 (단일 파이프라인 오염 방지)
     heal_count = 0
@@ -712,13 +713,13 @@ def main():
         "heal_count": heal_count,
     }
     if failed == 0:
-        _new_status = "done"
+        _new_status = ParallelStatus.DONE
     elif args.no_heal:
-        _new_status = "done"
+        _new_status = ParallelStatus.DONE
     elif heal_count >= MAX_HEAL:
-        _new_status = "heal_failed"
+        _new_status = ParallelStatus.HEAL_FAILED
     else:
-        _new_status = "heal_needed"
+        _new_status = ParallelStatus.HEAL_NEEDED
 
     # pytest 실행(전체 그룹, 수 분~수십 분 소요 가능)이 끝난 시점의 최신 상태
     # 위에 이번 실행이 책임지는 필드만 병합해 쓴다 — read_state 시점의 오래된
