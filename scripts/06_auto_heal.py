@@ -13,6 +13,7 @@ import json
 import re
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 from _paths import PIPELINE_STATE, PROJECT_ROOT, read_state, update_state
 from _python import PYTHON_EXE
@@ -200,6 +201,26 @@ PATCHERS = [
 # ── 메인 ─────────────────────────────────────────────────────────
 
 
+def _atomic_write_text(target: Path, content: str, encoding: str = "utf-8") -> None:
+    """tempfile + os.replace로 원자적 쓰기 (#28).
+
+    예전엔 target.write_text(content)로 바로 truncate-write했다. 쓰는
+    도중 프로세스가 죽으면(kill, OOM) 대상 파일이 절반만 쓰인 채로
+    남을 수 있다 — 예전엔 패치 전 원본을 백업해뒀지만(f9fe4ec에서 죽은
+    코드로 제거됨) 지금은 복구 수단이 아예 없다. 임시 파일을 target과
+    같은 디렉터리(같은 파일시스템)에 만들어야 replace()가 원자적임이
+    보장된다.
+    """
+    fd, tmp_path = tempfile.mkstemp(dir=target.parent, suffix=".tmp")
+    try:
+        with open(fd, "w", encoding=encoding) as f:
+            f.write(content)
+        Path(tmp_path).replace(target)
+    except Exception:
+        Path(tmp_path).unlink(missing_ok=True)
+        raise
+
+
 def _make_heal_context_mutator(failures_left: list, auto_healed: int):
     """자동 힐링 결과 필드만 최신 상태 위에 덮어쓰는 mutator를 만든다.
 
@@ -322,7 +343,7 @@ def main():
             del patched_files[fpath]
             continue
 
-        target.write_text(source, encoding="utf-8")
+        _atomic_write_text(target, source)
 
     if not patched_files:
         print("[06-auto] 유효한 자동 패치 없음 (전부 문법 오류로 취소).")

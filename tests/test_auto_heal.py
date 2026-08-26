@@ -122,6 +122,47 @@ class TestHealContextMutator:
         assert out["heal_context"]["failures"] == remaining
 
 
+class TestAtomicWriteText:
+    """#28 — target.write_text()는 비원자적 truncate-write. tempfile+replace로 교체.
+
+    죽은 .pre_autoheal 백업이 제거된 뒤(f9fe4ec) 남은 유일한 안전장치라,
+    쓰기 도중 실패해도 원본이 훼손되지 않아야 한다.
+    """
+
+    def test_writes_content(self, auto_heal, tmp_path):
+        target = tmp_path / "f.py"
+        auto_heal._atomic_write_text(target, "print('hi')\n")
+        assert target.read_text(encoding="utf-8") == "print('hi')\n"
+
+    def test_overwrites_existing_file(self, auto_heal, tmp_path):
+        target = tmp_path / "f.py"
+        target.write_text("old\n", encoding="utf-8")
+        auto_heal._atomic_write_text(target, "new\n")
+        assert target.read_text(encoding="utf-8") == "new\n"
+
+    def test_no_leftover_tmp_files_on_success(self, auto_heal, tmp_path):
+        target = tmp_path / "f.py"
+        auto_heal._atomic_write_text(target, "x = 1\n")
+        leftovers = [p for p in tmp_path.iterdir() if p.suffix == ".tmp"]
+        assert leftovers == []
+
+    def test_original_preserved_if_write_fails(self, auto_heal, tmp_path, monkeypatch):
+        """쓰기 도중 실패(디스크 오류 등 시뮬레이션)해도 원본이 그대로 남아야 한다."""
+        target = tmp_path / "f.py"
+        target.write_text("original\n", encoding="utf-8")
+
+        def _boom(*a, **k):
+            raise OSError("simulated disk failure")
+
+        monkeypatch.setattr("builtins.open", _boom)
+        with pytest.raises(OSError):
+            auto_heal._atomic_write_text(target, "new content\n")
+
+        assert target.read_text(encoding="utf-8") == "original\n"
+        leftovers = [p for p in tmp_path.iterdir() if p.suffix == ".tmp"]
+        assert leftovers == [], "실패 시 임시파일이 청소되지 않고 남음"
+
+
 class TestRerunOutcome:
     """#24 — pytest ERROR가 섞이면 failed==0이라도 실패인데 크래시 가드가 못 잡았다.
 
