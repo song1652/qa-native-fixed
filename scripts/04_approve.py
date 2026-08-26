@@ -3,9 +3,16 @@ Step 4 -- QA 리드 승인 게이트
 LLM 없음. state.json의 review_summary를 출력하고 y/n 입력 대기.
 결과를 state.json의 approval_status에 저장.
 
-종료코드: 0=승인  2=반려(재작성)  3=대시보드 대기
+종료코드: 0=승인  2=반려(재작성)  1=stdin 없음(비대화형 환경, 승인 UI 없음)
 step은 변경하지 않음 (reviewed 유지) — 05_execute.py가 done/heal_needed로 전이.
 auto_approve: config/pipeline.json의 auto_approve=true 또는 --yes 플래그로 활성화.
+
+비대화형(headless) 환경에서는 반드시 auto_approve 또는 --yes를 써야 한다.
+예전엔 stdin이 없으면 "대시보드 대기"(exit 3)로 빠졌는데, 대시보드엔 이
+승인/반려 UI가 실제로 없어(#26) 켜두면 파이프라인이 영구 정지하는
+데드엔드였다. 그 폴백은 제거했다 — check_pending_approve.py도 이미
+"승인 단계 제거 -- 심의 완료 후 바로 실행"으로 문서화돼 있어 실제 훅
+주도 흐름은 이 게이트를 기다리지 않는다.
 """
 import argparse
 import json
@@ -24,8 +31,6 @@ def _parse_args():
     parser = argparse.ArgumentParser(description="Step 4: QA 리드 승인 게이트")
     parser.add_argument("--yes", action="store_true",
                         help="자동 승인 (CI/headless 환경)")
-    parser.add_argument("--auto", action="store_true",
-                        help="대시보드 대기 모드 (stdin 없는 headless 환경)")
     return parser.parse_args()
 
 
@@ -78,15 +83,6 @@ def main():
         print("  [자동 승인] config/pipeline.json auto_approve=true")
         return
 
-    # --auto 플래그 또는 stdin 불가 시 대시보드 대기
-    if args.auto:
-        state["approval_status"] = "pending"
-        write_state(state_path, state)
-        print()
-        print("  [대기] 대시보드에서 승인/반려를 기다립니다.")
-        print("  대시보드 URL: http://localhost:8766")
-        sys.exit(3)
-
     # CLI 모드: stdin 입력 대기
     try:
         while True:
@@ -95,11 +91,13 @@ def main():
                 break
             print("  y 또는 n을 입력하세요.")
     except EOFError:
-        state["approval_status"] = "pending"
-        write_state(state_path, state)
+        # state는 건드리지 않는다 -- approval_status="pending"을 썼다간 아무도
+        # 소비하지 않는 채로 파이프라인이 조용히 멈춘 것처럼 보인다 (#26).
         print()
-        print("  [대기] stdin 없음 -- 대시보드에서 승인/반려를 기다립니다.")
-        sys.exit(3)
+        print("  [오류] stdin이 없어 승인 입력을 받을 수 없습니다.")
+        print("  이 파이프라인엔 승인 대기 UI가 없습니다.")
+        print("  config/pipeline.json의 auto_approve=true 또는 --yes 플래그를 사용하세요.")
+        sys.exit(1)
 
     approved = answer in ("y", "yes")
 

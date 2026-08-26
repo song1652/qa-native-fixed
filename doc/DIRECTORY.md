@@ -25,7 +25,7 @@
 | `02a_dialog.py` | Plan 심의 컨텍스트 초기화 |
 | `03_lint.py` | flake8 검사 → step=reviewed 설정 |
 | `03a_dialog.py` | 코드 리뷰 심의 컨텍스트 초기화 |
-| `04_approve.py` | lint 리뷰 승인/반려 (종료코드 0=승인, 2=반려, 3=대기) |
+| `04_approve.py` | lint 리뷰 승인/반려 (종료코드 0=승인, 2=반려; auto_approve=true가 기본값) |
 | `05_execute.py` | pytest 실행 (--only-failed, --no-report 플래그, 최대 4 workers) |
 | `06_auto_heal.py` | 자동 힐링 패치 (7개 정적 패턴 + heal_stats 빈출 패턴) |
 | `06_heal.py` | 실패 분석 (최대 3회 자동 패치) |
