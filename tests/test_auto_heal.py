@@ -122,6 +122,57 @@ class TestHealContextMutator:
         assert out["heal_context"]["failures"] == remaining
 
 
+class TestRerunOutcome:
+    """#24 — pytest ERROR가 섞이면 failed==0이라도 실패인데 크래시 가드가 못 잡았다.
+
+    _rerun_outcome은 "전부 성공"을 passed == expected_count로 판정해야
+    ERROR가 섞인 재실행을 성공으로 오판하지 않는다.
+    """
+
+    def test_all_passed(self, auto_heal):
+        stdout = (
+            "tests/t.py::test_a PASSED [ 50%]\n"
+            "tests/t.py::test_b PASSED [100%]\n"
+            "=== 2 passed in 0.01s ===\n"
+        )
+        out = auto_heal._rerun_outcome(stdout, 0, expected_count=2)
+        assert out == {
+            "passed": 2, "failed": 0, "errors": 0,
+            "crashed": False, "all_passed": True,
+        }
+
+    def test_error_mixed_with_passed_is_not_all_passed(self, auto_heal):
+        """실제 회귀 재현: 3개 중 2 PASSED / 1 ERROR — 예전엔 failed==0이라 성공 오판."""
+        stdout = (
+            "tests/t.py::test_a PASSED [ 33%]\n"
+            "tests/t.py::test_b PASSED [ 66%]\n"
+            "tests/t.py::test_c ERROR [100%]\n"
+            "=== 2 passed, 1 error in 0.01s ===\n"
+        )
+        out = auto_heal._rerun_outcome(stdout, 1, expected_count=3)
+        assert out["passed"] == 2
+        assert out["failed"] == 0
+        assert out["errors"] == 1
+        assert out["crashed"] is False
+        assert out["all_passed"] is False
+
+    def test_all_failed(self, auto_heal):
+        stdout = (
+            "tests/t.py::test_a FAILED [ 50%]\n"
+            "tests/t.py::test_b FAILED [100%]\n"
+        )
+        out = auto_heal._rerun_outcome(stdout, 1, expected_count=2)
+        assert out["all_passed"] is False
+        assert out["crashed"] is False
+
+    def test_full_crash_no_passed_no_failed(self, auto_heal):
+        """수집 실패 등으로 아무 테스트도 안 돌면 crashed=True."""
+        stdout = "ImportError while importing test module.\n"
+        out = auto_heal._rerun_outcome(stdout, 2, expected_count=1)
+        assert out["crashed"] is True
+        assert out["all_passed"] is False
+
+
 class TestBackupCodeRemoved:
     """디스크 백업은 읽는 곳이 없어 제거됐다 (재도입 방지)."""
 

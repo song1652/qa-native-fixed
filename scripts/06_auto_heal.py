@@ -220,6 +220,29 @@ def _make_heal_context_mutator(failures_left: list, auto_healed: int):
     return _mutator
 
 
+def _rerun_outcome(stdout: str, returncode: int, expected_count: int) -> dict:
+    """패치 재실행 pytest stdout을 해석해 전부 통과했는지 판정한다.
+
+    pytest는 수집/픽스처 오류를 FAILED가 아니라 ERROR로 출력한다. 예전에는
+    `failed == 0`을 성공 기준으로 썼는데, 이러면 "2 PASSED / 1 ERROR"처럼
+    ERROR가 섞여도 failed=0이라 성공으로 오판했다(#24). 그래서 "전부 성공"은
+    반드시 실제로 통과한 개수(passed)가 기대 개수(expected_count)와
+    같은지로 판정한다.
+    """
+    passed = stdout.count(" PASSED")
+    failed = stdout.count(" FAILED")
+    errors = stdout.count(" ERROR")
+    # 크래시(수집 실패, import 오류 등)면 passed=0, failed=0인데 returncode != 0.
+    crashed = returncode != 0 and passed == 0 and failed == 0
+    return {
+        "passed": passed,
+        "failed": failed,
+        "errors": errors,
+        "crashed": crashed,
+        "all_passed": passed == expected_count,
+    }
+
+
 def main():
     state_path = PIPELINE_STATE
     if not state_path.exists():
@@ -326,21 +349,20 @@ def main():
             print("[06-auto] pytest 재실행 타임아웃 (300s) — Agent 힐링 필요")
             sys.exit(1)
 
-        # 결과 파싱 (stdout 카운트 방식 유지 + 크래시 감지 보강)
-        passed = result.stdout.count(" PASSED")
-        failed = result.stdout.count(" FAILED")
+        # 결과 파싱 — "전부 성공"은 passed == 기대 개수로 판정 (#24: ERROR가
+        # 섞이면 failed==0이라도 실패다. _rerun_outcome 참조)
+        outcome = _rerun_outcome(result.stdout, result.returncode, len(patched_nodeids))
+        passed, failed, errors = outcome["passed"], outcome["failed"], outcome["errors"]
 
-        # pytest가 크래시(수집 실패, import 오류 등)하면 passed=0, failed=0이 되지만
-        # returncode != 0이므로 이를 실패로 처리 (성공 오판 방지)
-        if result.returncode != 0 and passed == 0 and failed == 0:
+        if outcome["crashed"]:
             print(f"[06-auto] pytest 크래시 (exit {result.returncode}) — Agent 힐링 필요")
             if result.stderr:
                 print(result.stderr[:300])
             sys.exit(1)
 
-        print(f"[06-auto] 재실행 결과: {passed} passed, {failed} failed")
+        print(f"[06-auto] 재실행 결과: {passed} passed, {failed} failed, {errors} error")
 
-        if failed == 0:
+        if outcome["all_passed"]:
             # 모든 자동 패치 성공 -- 남은 실패에서 패치된 것 제거
             patched_ids = {nid for nid in patched_nodeids}
             remaining = [f for f in failures if f.get("test_id") not in patched_ids]
@@ -377,7 +399,8 @@ def main():
                 )
                 sys.exit(1)
         else:
-            print(f"[06-auto] 자동 패치 후에도 {failed}건 실패 -- Agent 힐링 필요")
+            not_passed = len(patched_nodeids) - passed
+            print(f"[06-auto] 자동 패치 후에도 {not_passed}건 미통과(FAILED/ERROR) -- Agent 힐링 필요")
             sys.exit(1)
 
     sys.exit(1)
