@@ -29,8 +29,7 @@ if _venv_sp.exists():
             sys.path.insert(0, str(_sp))
 from _python import PYTHON_EXE
 from _validators import is_valid_url, is_valid_group_name, is_safe_filename
-from _constants import DEFAULT_GENERATED_FILE
-from _pipeline_registry import Step, ParallelStatus
+from _pipeline_registry import Step, ParallelStatus, make_initial_pipeline_state
 # 상태 파일 경로 + 안전한 쓰기 함수는 _paths.py가 단일 소스다 (#25).
 # 예전엔 이 파일이 자체 STATE_PATH 등을 재선언하고 _safe_write_json/
 # _safe_update_json을 따로 구현했는데, 그 사본은 (a) 락 획득 실패를 무시하고
@@ -1126,21 +1125,12 @@ class DashboardHandler(BaseHTTPRequestHandler):
         # dialog
         empty = {"pipeline_url": "", "started_at": "", "sessions": []}
         _safe_write_json(DIALOG_PATH, empty)
-        # pipeline
-        init_state = {
-            "url": "", "test_cases": [], "step": Step.INIT,
-            "dom_info": {}, "plan": [],
-            "generated_file_path": DEFAULT_GENERATED_FILE,
-            "lint_result": {}, "review_summary": "",
-            "approval_status": "", "rejection_reason": "",
-            "rejection_count": 0, "execution_result": {},
-            "heal_count": 0, "heal_context": {}
-        }
+        # pipeline — 팩토리 함수로 단일화 (P39)
         # step/status를 Step.INIT/ParallelStatus.EMPTY로 되돌리는 리셋이라
         # FSM 전이 검증을 건너뛰는 reset_state()를 쓴다 — write_state()를 쓰면
         # 예: step="generated"에서 reset하면 VALID_TRANSITIONS에
         # "generated"→"init" 전이가 없어 ValueError로 리셋 자체가 실패한다.
-        reset_state(STATE_PATH, init_state)
+        reset_state(STATE_PATH, make_initial_pipeline_state())
         # parallel
         reset_state(PARALLEL_STATE_PATH,
                     {"status": ParallelStatus.EMPTY, "total_count": 0, "targets": []})
@@ -1157,16 +1147,8 @@ class DashboardHandler(BaseHTTPRequestHandler):
         self._serve_bytes(b'{"ok":true}', "application/json; charset=utf-8")
 
     def _post_pipeline_reset(self):
-        init_state = {
-            "url": "", "test_cases": [], "step": Step.INIT,
-            "dom_info": {}, "plan": [],
-            "generated_file_path": DEFAULT_GENERATED_FILE,
-            "lint_result": {}, "review_summary": "",
-            "approval_status": "", "rejection_reason": "",
-            "rejection_count": 0, "execution_result": {},
-            "heal_count": 0, "heal_context": {}
-        }
-        reset_state(STATE_PATH, init_state)  # FSM 검증 우회 이유는 _post_reset_all 참조
+        # 팩토리 함수로 단일화 (P39). FSM 검증 우회 이유는 _post_reset_all 참조.
+        reset_state(STATE_PATH, make_initial_pipeline_state())
         self._serve_bytes(b'{"ok":true}', "application/json; charset=utf-8")
 
     def _post_parallel_reset(self):

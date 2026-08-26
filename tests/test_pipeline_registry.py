@@ -32,6 +32,7 @@ from _pipeline_registry import (
     is_terminal_step,
     all_step_names,
     all_parallel_status_names,
+    make_initial_pipeline_state,
 )
 from _constants import (
     VALID_TRANSITIONS as CONST_TRANSITIONS,
@@ -338,3 +339,109 @@ class TestHelpers:
 
     def test_all_parallel_status_names_includes_empty(self):
         assert "" in all_parallel_status_names()
+
+
+# ─── make_initial_pipeline_state (P39) ───────────────────────────────────────
+
+
+class TestMakeInitialPipelineState:
+    """make_initial_pipeline_state() 팩토리 함수 계약 검증."""
+
+    def test_default_step_is_init(self):
+        state = make_initial_pipeline_state()
+        assert state["step"] == Step.INIT
+
+    def test_required_keys_present(self):
+        """pipeline.json 필수 필드가 모두 존재해야 함."""
+        required = {
+            "url", "test_cases", "step", "created_at", "cases_path",
+            "group_dir", "dom_info", "plan", "generated_file_path",
+            "generated_files", "generated_code", "lint_result",
+            "review_summary", "approval_status", "rejection_reason",
+            "rejection_count", "execution_result", "heal_count",
+            "heal_context",
+        }
+        state = make_initial_pipeline_state()
+        missing = required - state.keys()
+        assert not missing, f"팩토리 반환값에 필드 누락: {missing}"
+
+    def test_url_injected(self):
+        state = make_initial_pipeline_state(url="https://example.com")
+        assert state["url"] == "https://example.com"
+
+    def test_test_cases_injected(self):
+        cases = [{"title": "t1"}, {"title": "t2"}]
+        state = make_initial_pipeline_state(test_cases=cases)
+        assert state["test_cases"] == cases
+
+    def test_default_test_cases_is_empty_list(self):
+        state = make_initial_pipeline_state()
+        assert state["test_cases"] == []
+
+    def test_group_dir_derived_from_cases_path_directory(self, tmp_path):
+        """cases_path가 디렉터리이면 group_dir = 디렉터리 이름."""
+        d = tmp_path / "my_group"
+        d.mkdir()
+        state = make_initial_pipeline_state(cases_path=str(d))
+        assert state["group_dir"] == "my_group"
+        assert "my_group" in state["generated_file_path"]
+
+    def test_group_dir_derived_from_cases_path_file(self, tmp_path):
+        """cases_path가 파일이면 group_dir = 부모 디렉터리 이름."""
+        d = tmp_path / "some_group"
+        d.mkdir()
+        f = d / "tc_01_test.md"
+        f.write_text("# test")
+        state = make_initial_pipeline_state(cases_path=str(f))
+        assert state["group_dir"] == "some_group"
+
+    def test_explicit_group_dir_wins_over_cases_path(self, tmp_path):
+        """group_dir을 명시하면 cases_path에서 유도하지 않음."""
+        state = make_initial_pipeline_state(
+            cases_path=str(tmp_path / "other"),
+            group_dir="explicit_group",
+        )
+        assert state["group_dir"] == "explicit_group"
+        assert "explicit_group" in state["generated_file_path"]
+
+    def test_created_at_set_automatically(self):
+        state = make_initial_pipeline_state()
+        assert state["created_at"]  # 비어있지 않아야 함
+        # ISO datetime 형식 최소 검증 (YYYY-MM-DD 포함)
+        assert "-" in state["created_at"]
+
+    def test_created_at_can_be_overridden(self):
+        ts = "2026-01-01T00:00:00"
+        state = make_initial_pipeline_state(created_at=ts)
+        assert state["created_at"] == ts
+
+    def test_unset_fields_are_none(self):
+        """분석/생성 전이라 아직 값이 없는 필드는 None이어야 함."""
+        state = make_initial_pipeline_state()
+        for key in ("dom_info", "plan", "generated_code", "lint_result",
+                    "review_summary", "approval_status", "rejection_reason",
+                    "execution_result", "heal_context"):
+            assert state[key] is None, f"'{key}'는 None이어야 하는데 {state[key]!r}"
+
+    def test_counters_zero(self):
+        state = make_initial_pipeline_state()
+        assert state["rejection_count"] == 0
+        assert state["heal_count"] == 0
+
+    def test_generated_files_empty_list(self):
+        state = make_initial_pipeline_state()
+        assert state["generated_files"] == []
+
+    def test_two_calls_are_independent(self):
+        """서로 다른 호출이 같은 리스트 객체를 공유하지 않음 (뮤터블 기본값 함정 방지)."""
+        s1 = make_initial_pipeline_state()
+        s2 = make_initial_pipeline_state()
+        s1["test_cases"].append("x")
+        assert s2["test_cases"] == [], "두 호출이 test_cases 리스트를 공유하면 안 됨"
+        s1["generated_files"].append("y")
+        assert s2["generated_files"] == [], "두 호출이 generated_files를 공유하면 안 됨"
+
+    def test_fallback_generated_file_path_when_no_group(self):
+        """group_dir이 없으면 기본 경로가 설정됨."""
+        state = make_initial_pipeline_state()
+        assert state["generated_file_path"]  # 빈 문자열이 아님

@@ -38,37 +38,20 @@ QA 자동화 진입점.
 import argparse
 import sys
 from pathlib import Path
-from datetime import datetime
 
 import _bootstrap  # noqa: F401 — scripts/ 경로 설정
 from parse_cases import load_cases
 from _paths import PIPELINE_STATE, STATE_DIR, PROJECT_ROOT, write_state, reset_state
+from _pipeline_registry import make_initial_pipeline_state
 
 
 def init_state(url: str, test_cases: list, cases_path: str) -> dict:
-    p = Path(cases_path)
-    group_dir = p.name if p.is_dir() else p.parent.name
-    return {
-        "url": url,
-        "test_cases": test_cases,
-        "step": "init",
-        "created_at": datetime.now().isoformat(),
-        "cases_path": str(cases_path),
-        "group_dir": group_dir,
-        "dom_info": None,
-        "plan": None,
-        "generated_file_path": f"tests/generated/{group_dir}/",
-        "generated_files": [],
-        "generated_code": None,
-        "lint_result": None,
-        "review_summary": None,
-        "approval_status": None,
-        "rejection_reason": None,
-        "rejection_count": 0,
-        "execution_result": None,
-        "heal_count": 0,
-        "heal_context": None,
-    }
+    """pipeline.json 초기 상태 생성 — make_initial_pipeline_state() 에 위임 (P39)."""
+    return make_initial_pipeline_state(
+        url=url,
+        test_cases=test_cases,
+        cases_path=str(cases_path),
+    )
 
 
 def print_cases(test_cases: list):

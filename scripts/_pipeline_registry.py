@@ -252,3 +252,66 @@ def all_step_names() -> list[str]:
 def all_parallel_status_names() -> list[str]:
     """등록된 모든 병렬 파이프라인 status 이름 목록."""
     return list(VALID_PARALLEL_TRANSITIONS.keys())
+
+
+# ── 초기 스키마 팩토리 (P39) ─────────────────────────────────────────────────
+# pipeline.json 초기값이 run_qa.py / serve.py 두 곳에 중복 선언되어 필드가 어긋남.
+# 이 팩토리를 단일 소스로 삼는다.
+
+def make_initial_pipeline_state(
+    url: str = "",
+    test_cases: Optional[list] = None,
+    cases_path: str = "",
+    group_dir: str = "",
+    created_at: Optional[str] = None,
+) -> dict:
+    """pipeline.json 초기 상태 딕셔너리를 반환하는 팩토리 함수 (단일 소스).
+
+    Args:
+        url:        분석 대상 URL. 대시보드 리셋 시에는 빈 문자열.
+        test_cases: 케이스 목록. None이면 빈 리스트로 초기화.
+        cases_path: testcases/ 하위 경로. 빈 문자열이면 group_dir을 유도하지 않음.
+        group_dir:  그룹 디렉터리 이름. 빈 문자열이면 cases_path에서 자동 유도.
+        created_at: ISO datetime 문자열. None이면 현재 시각으로 자동 설정.
+
+    Returns:
+        pipeline.json 에 쓰기 적합한 초기 상태 딕셔너리.
+        step = Step.INIT, 나머지 분석/생성 필드는 None(미계산).
+    """
+    from datetime import datetime
+
+    if test_cases is None:
+        test_cases = []
+    if created_at is None:
+        created_at = datetime.now().isoformat()
+    if not group_dir and cases_path:
+        p = Path(cases_path)
+        group_dir = p.name if p.is_dir() else p.parent.name
+
+    generated_file_path = (
+        f"tests/generated/{group_dir}/" if group_dir else "tests/generated/test_generated.py"
+    )
+
+    return {
+        "url":                url,
+        "test_cases":         test_cases,
+        "step":               Step.INIT,
+        "created_at":         created_at,
+        "cases_path":         cases_path,
+        "group_dir":          group_dir,
+        "dom_info":           None,
+        "sub_dom_keys":       {},
+        "dom_cache_key":      "",
+        "plan":               None,
+        "generated_file_path": generated_file_path,
+        "generated_files":    [],
+        "generated_code":     None,
+        "lint_result":        None,
+        "review_summary":     None,
+        "approval_status":    None,
+        "rejection_reason":   None,
+        "rejection_count":    0,
+        "execution_result":   None,
+        "heal_count":         0,
+        "heal_context":       None,
+    }
