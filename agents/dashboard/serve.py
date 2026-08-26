@@ -29,7 +29,7 @@ if _venv_sp.exists():
             sys.path.insert(0, str(_sp))
 from _python import PYTHON_EXE
 from _validators import is_valid_url, is_valid_group_name, is_safe_filename
-from _pipeline_registry import Step, ParallelStatus, make_initial_pipeline_state
+from _pipeline_registry import Step, ParallelStatus, make_initial_pipeline_state, PIPELINE_STEP_DEFS
 # 상태 파일 경로 + 안전한 쓰기 함수는 _paths.py가 단일 소스다 (#25).
 # 예전엔 이 파일이 자체 STATE_PATH 등을 재선언하고 _safe_write_json/
 # _safe_update_json을 따로 구현했는데, 그 사본은 (a) 락 획득 실패를 무시하고
@@ -230,6 +230,64 @@ def build_batch_state() -> dict:
                             "size": f.stat().st_size,
                         })
     return {"parallel_state": parallel, "generated_files": generated_files}
+
+
+def build_pipeline_registry() -> dict:
+    """프론트엔드용 파이프라인 레지스트리 상수 (P45).
+
+    /api/pipeline_registry GET 엔드포인트가 반환하는 데이터.
+    _pipeline_registry.py가 단일 소스 — 이 함수가 프론트 표현 형식으로 변환.
+    constants.js가 이 값을 fetch해 PIPELINE_STEPS / STEP_LABELS 등 전역 변수를 갱신.
+    """
+    # 단일 파이프라인 스텝바 순서 (heal/timeout은 표시 이탈 상태이므로 제외)
+    _terminal_excl = {Step.HEAL_NEEDED, Step.HEAL_FAILED, Step.TIMEOUT}
+    pipeline_steps = [s.step for s in PIPELINE_STEP_DEFS if s.step not in _terminal_excl]
+
+    # 모든 step 라벨 (heal 포함 — STEP_LABELS 전체 대체용)
+    step_labels: dict[str, str] = {s.step: s.label for s in PIPELINE_STEP_DEFS}
+    # 구 step 값 호환 맵 — pipeline.js STEP_COMPAT과 동기화
+    step_compat = {
+        "scaffolded": Step.GENERATED,
+        "linted":     Step.GENERATED,
+        "approved":   Step.REVIEWED,
+    }
+    # compat step에도 라벨 추가 (STEP_LABELS[compat_step] 조회 지원)
+    for alias, canonical in step_compat.items():
+        step_labels.setdefault(alias, step_labels.get(canonical, alias))
+
+    # 병렬 파이프라인 스텝바 순서
+    # "generating"은 레지스트리 미등록 UI 파생 상태 (ready + files>0 조건)
+    parallel_steps = [
+        ParallelStatus.INIT,
+        ParallelStatus.ANALYZING,
+        ParallelStatus.READY,
+        "generating",          # UI 파생 상태: parallel.js가 ready에서 추론
+        ParallelStatus.TESTING,
+        ParallelStatus.DONE,
+    ]
+    parallel_step_labels = {
+        ParallelStatus.INIT:        "초기화",
+        ParallelStatus.ANALYZING:   "DOM 분석",
+        ParallelStatus.READY:       "코드 생성 대기",
+        "generating":               "코드 생성",
+        ParallelStatus.TESTING:     "테스트 실행",
+        ParallelStatus.DONE:        "완료",
+        ParallelStatus.HEAL_NEEDED: "힐링 필요",
+        ParallelStatus.HEAL_FAILED: "힐링 초과",
+        ParallelStatus.ERROR:       "오류",
+    }
+
+    return {
+        "pipeline": {
+            "steps":       pipeline_steps,
+            "step_labels": step_labels,
+            "step_compat": step_compat,
+        },
+        "parallel": {
+            "steps":       parallel_steps,
+            "step_labels": parallel_step_labels,
+        },
+    }
 
 
 PAGES_JSON = PROJECT_ROOT / "config" / "pages.json"
@@ -503,6 +561,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
         "/api/quick_state":      "_get_quick_state",
         "/api/run_history":      "_get_run_history",
         "/api/heal_stats":       "_get_heal_stats",
+        "/api/pipeline_registry": "_get_pipeline_registry",
         "/api/flaky_tests":      "_get_flaky_tests",
         "/api/generated_groups": "_get_generated_groups",
         "/api/reports":          "_get_reports",
@@ -680,6 +739,14 @@ class DashboardHandler(BaseHTTPRequestHandler):
 
     def _get_heal_stats(self):
         payload = load_json(HEAL_STATS_PATH) or {}
+        self._serve_bytes(
+            json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+            "application/json; charset=utf-8"
+        )
+
+    def _get_pipeline_registry(self):
+        """P45: _pipeline_registry.py 상수를 JSON으로 노출. constants.js가 fetch."""
+        payload = build_pipeline_registry()
         self._serve_bytes(
             json.dumps(payload, ensure_ascii=False).encode("utf-8"),
             "application/json; charset=utf-8"

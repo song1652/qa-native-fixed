@@ -138,7 +138,7 @@ function renderSinglePipeline(main) {
   const currentStep = state.step || 'init';
   // heal_needed/heal_failed는 reviewed 이후 단계이므로 done 위치(5)에 active로 표시
   const isHeal = currentStep === 'heal_needed' || currentStep === 'heal_failed';
-  const STEP_COMPAT = { scaffolded: 'generated', linted: 'generated', approved: 'reviewed' };
+  // STEP_COMPAT은 constants.js 전역 변수 — /api/pipeline_registry fetch 후 갱신 (P45)
   let stepIdx = isHeal ? 5 : PIPELINE_STEPS.indexOf(currentStep);
   if (stepIdx === -1) stepIdx = PIPELINE_STEPS.indexOf(STEP_COMPAT[currentStep] || 'init');
 
