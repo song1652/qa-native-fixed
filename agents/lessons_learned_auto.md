@@ -7,4 +7,6 @@
 ---
 ## Timeout 오류
 
+- **Timeout**: `TimeoutError: site unreachable` -- expect(..., timeout=10000) 또는 wait_for_selector 추가
+
 - **Timeout**: `tests/generated/login/tc_99_heal_test.py:15: in test_heal_timeout_example` -- expect(..., timeout=10000) 또는 wait_for_selector 추가

@@ -1,26 +1,3 @@
 {
-  "_comment": "테스트 대상 사이트 URL 매핑. 키 = testcases/ 폴더명. spa: true이면 단일세션 모드(순차 실행).",
-  "login": {
-    "url": "https://www.saucedemo.com",
-    "spa": false,
-    "preconditions": [],
-    "notes": "SauceDemo 로그인 페이지 (수정됨)",
-    "project": "saucedemo"
-  },
-  "inventory": {
-    "url": "https://www.saucedemo.com/inventory.html",
-    "spa": false,
-    "preconditions": [
-      "standard_user / secret_sauce 로 로그인 후 접근"
-    ],
-    "notes": "SauceDemo 상품 목록 페이지 (각 TC가 내부에서 로그인 처리)"
-  },
-  "cart": {
-    "url": "https://www.saucedemo.com/cart.html",
-    "spa": false,
-    "preconditions": [
-      "로그인 + 상품 추가 후 접근"
-    ],
-    "notes": "SauceDemo 장바구니 페이지 (각 TC가 내부에서 로그인 + 상품 추가 처리)"
-  }
+  "_comment": "테스트 대상 사이트 URL 매핑. 키 = testcases/ 폴더명. spa: true이면 단일세션 모드(순차 실행)."
 }
