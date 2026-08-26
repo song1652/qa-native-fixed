@@ -255,8 +255,18 @@ def update_state(path: Path, mutator) -> dict:
         if path.exists():
             try:
                 current = json.loads(path.read_text(encoding="utf-8"))
-            except Exception:
-                pass
+            except Exception as _parse_err:
+                # 손상 JSON → 백업 후 예외 재발생 (조용한 데이터 소실 방지) (P51)
+                import shutil as _shutil
+                from datetime import datetime as _dt
+                _ts = _dt.now().strftime("%Y%m%d_%H%M%S")
+                _backup = path.with_name(f"{path.stem}.corrupt.{_ts}{path.suffix}")
+                try:
+                    _shutil.copy2(path, _backup)
+                    print(f"[경고] {path.name} 파싱 실패 — 백업: {_backup.name}", file=sys.stderr)
+                except Exception:
+                    pass
+                raise ValueError(f"상태 파일 파싱 실패: {path} — {_parse_err}") from _parse_err
         new_data = mutator(current)
         # 전이 검증 (락 보유 중 직접)
         if path == PIPELINE_STATE and "step" in new_data:

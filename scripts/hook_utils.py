@@ -14,28 +14,12 @@ _STALE_THRESHOLD_MINUTES = 30
 def _is_stale(path: Path) -> bool:
     """상태 파일이 오래되어 이전 실행의 잔존 상태인지 판단.
 
-    JSON 내부의 타임스탬프 필드(executed_at, created_at, analyzed_at)를 우선 사용.
-    없으면 파일 mtime으로 fallback.
+    파일 mtime 기준으로 판단한다 (P52).
+    created_at 기준이면 파이프라인 시작 30분 후부터 정상 상태에서도
+    훅이 침묵하는 문제가 있어 mtime으로 변경.
+    각 단계 스크립트가 상태 파일을 갱신할 때마다 mtime이 업데이트되므로
+    실제 활성 파이프라인은 stale로 판정되지 않는다.
     """
-    try:
-        state = read_state(path)
-        # JSON 내부 타임스탬프 (여러 필드 중 가장 최근 것)
-        ts_fields = ["executed_at", "created_at", "analyzed_at"]
-        latest_ts = None
-        for field in ts_fields:
-            val = state.get(field) or (state.get("execution_result") or {}).get(field)
-            if val:
-                try:
-                    t = datetime.fromisoformat(val)
-                    if latest_ts is None or t > latest_ts:
-                        latest_ts = t
-                except (ValueError, TypeError):
-                    pass
-        if latest_ts:
-            return datetime.now() - latest_ts > timedelta(minutes=_STALE_THRESHOLD_MINUTES)
-    except Exception:
-        pass
-    # fallback: 파일 mtime
     try:
         mtime = datetime.fromtimestamp(path.stat().st_mtime)
         return datetime.now() - mtime > timedelta(minutes=_STALE_THRESHOLD_MINUTES)

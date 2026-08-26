@@ -275,8 +275,13 @@ def build_heal_context(report: dict, heal_count: int, state_path: Path) -> dict 
     return ctx
 
 
-def _try_auto_heal() -> bool:
-    """06_auto_heal.py를 subprocess로 호출하여 deterministic 패치 시도.
+def _try_auto_heal(state_path: "Path | None" = None) -> bool:
+    """06_auto_heal.py를 subprocess로 호출하여 deterministic 패치 시도 (P53).
+
+    Args:
+        state_path: 힐링 상태 파일 경로. None이면 단일 파이프라인 기본값
+                    (state/pipeline.json). 병렬 파이프라인에서는
+                    PARALLEL_STATE_PATH를 전달해야 한다.
 
     Returns:
         True: auto_heal이 일부/전부 패치 성공 (재실행 필요)
@@ -285,9 +290,15 @@ def _try_auto_heal() -> bool:
     auto_heal_script = PROJECT_ROOT / "scripts" / "06_auto_heal.py"
     if not auto_heal_script.exists():
         return False
+    cmd = [PYTHON_EXE, str(auto_heal_script)]
+    if state_path is not None:
+        cmd += ["--state-path", str(state_path)]
+        # parallel.json / quick.json은 status 키를 사용
+        if state_path.name in ("parallel.json", "quick.json"):
+            cmd += ["--state-key", "status"]
     try:
         result = subprocess.run(
-            [PYTHON_EXE, str(auto_heal_script)],
+            cmd,
             cwd=str(PROJECT_ROOT),
             capture_output=True, text=True,
             timeout=120,
@@ -627,7 +638,7 @@ def main():
             heal_ctx = build_heal_context(report, heal_count, state_path)
             if heal_ctx:
                 # auto_heal 시도 (deterministic 패치)
-                auto_heal_applied = _try_auto_heal()
+                auto_heal_applied = _try_auto_heal(state_path=state_path)  # P53: 병렬 상태 경로 전달
                 pl = "quick" if quick_mode else "parallel"
                 if auto_heal_applied:
                     print("[99] auto_heal 성공 -- Agent 힐링 불필요할 수 있습니다.")

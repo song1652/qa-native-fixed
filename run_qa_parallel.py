@@ -26,7 +26,7 @@ from datetime import datetime
 
 import _bootstrap  # noqa: F401 — scripts/ 경로 설정
 from parse_cases import load_cases
-from _paths import PROJECT_ROOT, PARALLEL_STATE, STATE_DIR, read_state, write_state
+from _paths import PROJECT_ROOT, PARALLEL_STATE, STATE_DIR, read_state, write_state, reset_state, update_state
 
 # 01_analyze.py의 analyze() 직접 import
 from importlib import import_module as _im
@@ -37,10 +37,13 @@ PARALLEL_STATE_PATH = PARALLEL_STATE
 
 
 def _save_state(state: dict) -> None:
-    """state/parallel.json에 상태 저장 (기존 상태와 원자적 병합, 파일 잠금 적용)."""
-    existing = read_state(PARALLEL_STATE_PATH)
-    existing.update(state)
-    write_state(PARALLEL_STATE_PATH, existing)
+    """state/parallel.json에 상태 저장 (원자적 RMW, P50).
+
+    update_state()를 사용해 락 보유 중 read-modify-write를 수행한다.
+    기존의 read_state → update → write_state 패턴은 비원자적 RMW 경쟁이
+    발생하므로 update_state로 대체.
+    """
+    update_state(PARALLEL_STATE_PATH, lambda s: {**s, **state})
 
 
 def load_pages() -> dict:
@@ -296,7 +299,8 @@ def main():
     parallel_dir = PROJECT_ROOT / "parallel"
     parallel_dir.mkdir(exist_ok=True)
     STATE_DIR.mkdir(exist_ok=True)
-    _save_state({"status": "init", "created_at": datetime.now().isoformat()})
+    # FSM 전이 검증 없이 초기 상태로 리셋 (재실행 시 ValueError 방지, P50)
+    reset_state(PARALLEL_STATE_PATH, {"status": "init", "created_at": datetime.now().isoformat()})
 
     # 등록된 페이지 표시
     active = {k: v for k, v in pages.items() if v}

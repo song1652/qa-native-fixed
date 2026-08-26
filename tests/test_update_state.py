@@ -64,12 +64,20 @@ class TestUpdateStateBasics:
         update_state(p, lambda c: {**c, "created": True})
         assert _read(p) == {"created": True}
 
-    def test_corrupt_json_yields_empty_dict(self, tmp_path):
-        """깨진 JSON은 예외 대신 빈 dict로 취급 (파이프라인 중단 방지)."""
+    def test_corrupt_json_raises_and_backs_up(self, tmp_path):
+        """손상 JSON은 ValueError를 발생시키고 .corrupt.* 백업을 생성 (P51).
+
+        조용히 빈 dict로 덮어쓰면 사용자 데이터가 소실되므로,
+        예외 발생 + 백업 파일 생성으로 동작을 변경함.
+        """
         p = tmp_path / "s.json"
         p.write_text("{ not json", encoding="utf-8")
-        update_state(p, lambda c: {**c, "recovered": True})
-        assert _read(p) == {"recovered": True}
+        import pytest as _pytest
+        with _pytest.raises((ValueError, Exception)):
+            update_state(p, lambda c: {**c, "recovered": True})
+        # 백업 파일이 생성됐는지 확인
+        backups = list(tmp_path.glob("s.corrupt.*.json"))
+        assert backups, "손상 JSON 백업 파일이 생성되어야 함"
 
     def test_creates_parent_directory(self, tmp_path):
         p = tmp_path / "deep" / "nested" / "s.json"

@@ -59,6 +59,8 @@ PENDING_IMPL_PATH = PROJECT_ROOT / "pending_impl.json"
 LOGS_DIR.mkdir(exist_ok=True)
 
 ALLOWED_ORIGIN = "http://localhost:8766"
+# DNS rebinding 방어: 허용할 Host 헤더 값 목록 (P49)
+ALLOWED_HOSTS = {"localhost:8766", "127.0.0.1:8766"}
 
 # ── 서버가 띄운 자식 프로세스 PID 추적 ─────────────────────────
 # 요청 바디로 받은 임의 PID를 kill하지 않도록, 이 서버가 직접 생성한
@@ -629,19 +631,31 @@ class DashboardHandler(BaseHTTPRequestHandler):
         self.end_headers()
 
     def _check_csrf_origin(self) -> bool:
-        """브라우저發 크로스사이트 POST를 차단한다.
+        """브라우저發 크로스사이트 POST 및 DNS rebinding을 차단한다 (P49).
 
-        Origin(없으면 Referer)이 ALLOWED_ORIGIN과 다르면 거부한다.
-        헤더가 아예 없는 요청(curl 등 로컬 CLI 도구)은 통과시킨다 —
-        브라우저는 크로스사이트 요청에 항상 Origin을 붙이므로
-        이것만으로 CSRF 방어 효과가 있다.
+        1. Host 헤더 검증 (DNS rebinding 방어):
+           Host가 ALLOWED_HOSTS 목록에 없으면 거부.
+           Origin/Referer 유무와 무관하게 항상 적용.
+
+        2. Origin/Referer 검증 (CSRF 방어):
+           Origin이 있으면 ALLOWED_ORIGIN과 비교.
+           Referer가 있으면 스킴+호스트만 비교.
+           둘 다 없는 요청(curl 등 로컬 CLI)은 Host 검증 통과 시 허용.
         """
         from urllib.parse import urlparse
 
+        # ── (1) Host 헤더 검증 ─────────────────────────────────
+        host = self.headers.get("Host", "")
+        # Host가 아예 없으면(HTTP/1.0) localhost로 간주해 허용
+        if host and host not in ALLOWED_HOSTS:
+            return False
+
+        # ── (2) Origin / Referer 검증 ──────────────────────────
         origin = self.headers.get("Origin")
         if origin is None:
             referer = self.headers.get("Referer")
             if referer is None:
+                # 헤더 없음 = curl 등 로컬 CLI → Host 검증 통과했으면 허용
                 return True
             # Referer는 경로까지 포함하므로 스킴+호스트만 비교
             parsed = urlparse(referer)
@@ -973,6 +987,14 @@ class DashboardHandler(BaseHTTPRequestHandler):
         if project and not is_valid_group_name(project):
             self._serve_bytes(b'{"ok":false,"error":"project name: alphanumeric/underscore/hyphen only"}', "application/json; charset=utf-8"); return
 
+        # pages.json 파싱 실패 시 설정 소실 방지 (P54)
+        if PAGES_JSON.exists():
+            raw = load_json(PAGES_JSON)
+            if raw is None:
+                self._serve_bytes(
+                    b'{"ok":false,"error":"pages.json \xed\x8c\x8c\xec\x8b\xb1 \xec\x8b\xa4\xed\x8c\xa8 \xe2\x80\x94 \xec\x88\x98\xeb\x8f\x99 \xed\x99\x95\xec\x9d\xb8 \xed\x95\x84\xec\x9a\x94"}',
+                    "application/json; charset=utf-8"); return
+
         error_msg = None
         def _update_mutator(cur: dict) -> dict:
             nonlocal error_msg
@@ -1007,6 +1029,14 @@ class DashboardHandler(BaseHTTPRequestHandler):
         group = body.get("group", "").strip()
         if not group or not is_valid_group_name(group) or group.startswith("_"):
             self._serve_bytes(b'{"ok":false,"error":"valid group required"}', "application/json; charset=utf-8"); return
+
+        # pages.json 파싱 실패 시 설정 소실 방지 (P54)
+        if PAGES_JSON.exists():
+            raw = load_json(PAGES_JSON)
+            if raw is None:
+                self._serve_bytes(
+                    b'{"ok":false,"error":"pages.json \xed\x8c\x8c\xec\x8b\xb1 \xec\x8b\xa4\xed\x8c\xa8 \xe2\x80\x94 \xec\x88\x98\xeb\x8f\x99 \xed\x99\x95\xec\x9d\xb8 \xed\x95\x84\xec\x9a\x94"}',
+                    "application/json; charset=utf-8"); return
 
         # RMW 원자적 처리
         error_msg = None
@@ -1490,7 +1520,19 @@ class ReusableHTTPServer(ThreadingHTTPServer):
     allow_reuse_port = True
 
 
+def _is_port_in_use(port: int) -> bool:
+    import socket
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.settimeout(0.5)
+        return s.connect_ex(("127.0.0.1", port)) == 0
+
+
 def main():
+    if _is_port_in_use(PORT):
+        url = f"http://localhost:{PORT}"
+        print(f"[Dashboard] 이미 실행 중: {url}")
+        webbrowser.open(url)
+        return
     server = ReusableHTTPServer(("127.0.0.1", PORT), DashboardHandler)
     url = f"http://localhost:{PORT}"
     print(f"[Dashboard] 서버 시작: {url}")

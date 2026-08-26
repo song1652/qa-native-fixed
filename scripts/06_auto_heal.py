@@ -263,15 +263,40 @@ def _rerun_outcome(stdout: str, returncode: int, expected_count: int) -> dict:
 
 
 def main():
-    state_path = PIPELINE_STATE
+    import argparse
+    from _paths import PARALLEL_STATE, QUICK_STATE
+    parser = argparse.ArgumentParser(add_help=False)
+    parser.add_argument(
+        "--state-path",
+        default=None,
+        help=(
+            "상태 JSON 경로 (기본: state/pipeline.json). "
+            "병렬 파이프라인에서는 state/parallel.json을 지정 (P53)."
+        ),
+    )
+    parser.add_argument(
+        "--state-key",
+        default=None,
+        help="상태 파일의 heal_needed 판정 키 (기본: step; parallel은 status).",
+    )
+    args, _ = parser.parse_known_args()
+
+    # state-path / state-key 결정
+    if args.state_path:
+        state_path = Path(args.state_path)
+        state_key = args.state_key or ("status" if state_path in (PARALLEL_STATE, QUICK_STATE) else "step")
+    else:
+        state_path = PIPELINE_STATE
+        state_key = "step"
+
     if not state_path.exists():
-        print("[오류] state/pipeline.json 없음.")
+        print(f"[오류] {state_path.name} 없음.")
         sys.exit(1)
 
     state = read_state(state_path)
     heal_context = state.get("heal_context")
 
-    if not heal_context or state.get("step") != "heal_needed":
+    if not heal_context or state.get(state_key) != "heal_needed":
         print("[스킵] heal_needed 상태가 아님.")
         sys.exit(3)  # 스킵 코드 — 호출자가 "자동 완료"와 구분할 수 있어야 함
 
