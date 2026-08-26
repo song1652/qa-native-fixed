@@ -241,3 +241,140 @@ class TestSpawnedPidGuard:
             t.join()
         for p in pids:
             assert _is_spawned_pid(p) is True, f"PID {p} lost after concurrent register"
+
+
+# ── quick heal_count 미리셋 버그 회귀 테스트 (P42) ─────────────────────────────
+
+
+class TestQuickHealCountReset:
+    """P42: _post_run_quick이 quick.json의 heal_count를 리셋하는지 확인.
+
+    이전에는 quick.json에 이전 실패 사이클의 heal_count(예: 3)가 남아있으면,
+    새 실행에서 99_merge.py가 즉시 heal_failed를 판정해 힐링을 건너뜀.
+    수정: _post_run_quick이 Popen 전에 heal_count=0으로 리셋.
+    """
+
+    def test_post_run_quick_resets_heal_count(self, tmp_path):
+        """quick.json에 stale heal_count=3이 있을 때 _post_run_quick이 0으로 리셋."""
+        import json as _json
+        from unittest.mock import patch, MagicMock
+
+        # quick.json에 이전 실패 사이클 데이터 설정
+        quick_json = tmp_path / "quick.json"
+        quick_json.write_text(_json.dumps({
+            "status": "heal_failed",
+            "heal_count": 3,
+            "execution_result": {"passed": 0, "failed": 5},
+        }), encoding="utf-8")
+
+        # serve._safe_update_json이 실제로 호출되는지, 인자가 올바른지 확인
+        captured_args = []
+
+        def fake_update(path, mutator):
+            captured_args.append((path, mutator({"status": "heal_failed", "heal_count": 3})))
+            # 실제 파일에 쓰기
+            data = mutator(_json.loads(quick_json.read_text()))
+            quick_json.write_text(_json.dumps(data), encoding="utf-8")
+
+        handler = object.__new__(QAHandler)
+        body = {"groups": ["login"]}
+
+        with (
+            patch.object(_serve, "QUICK_STATE_PATH", quick_json),
+            patch.object(_serve, "_safe_update_json", side_effect=fake_update),
+            patch.object(_serve, "GENERATED_DIR", tmp_path),
+            patch.object(_serve, "_register_spawned_pid"),
+            patch("subprocess.Popen") as mock_popen,
+            patch.object(handler, "_serve_bytes"),
+            patch.object(_serve, "_read_body", return_value=body),
+        ):
+            # GENERATED_DIR / "login" 폴더 생성 (폴더 존재 검증 통과)
+            (tmp_path / "login").mkdir()
+            # LOGS_DIR mock
+            logs_dir = tmp_path / "logs"
+            logs_dir.mkdir()
+            patch.object(_serve, "LOGS_DIR", logs_dir).start()
+            mock_proc = MagicMock()
+            mock_proc.pid = 12345
+            mock_popen.return_value = mock_proc
+
+            handler._post_run_quick()
+
+        # heal_count가 0으로 리셋됐는지 확인
+        assert len(captured_args) == 1, "_safe_update_json이 1회 호출돼야 함"
+        result_data = captured_args[0][1]
+        assert result_data["heal_count"] == 0, f"heal_count가 0이어야 하는데: {result_data['heal_count']}"
+        # status는 변경하지 않음 (UI 유지)
+        assert result_data["status"] == "heal_failed", "status는 그대로 유지돼야 함"
+
+    def test_post_run_quick_no_reset_when_file_absent(self, tmp_path):
+        """quick.json이 없으면 _safe_update_json을 호출하지 않음 (생성하지 않음)."""
+        from unittest.mock import patch, MagicMock
+
+        quick_json = tmp_path / "quick.json"  # 파일 없음
+        assert not quick_json.exists()
+
+        update_called = []
+
+        handler = object.__new__(QAHandler)
+        body = {"groups": ["login"]}
+
+        with (
+            patch.object(_serve, "QUICK_STATE_PATH", quick_json),
+            patch.object(_serve, "_safe_update_json", side_effect=lambda *a, **k: update_called.append(True)),
+            patch.object(_serve, "GENERATED_DIR", tmp_path),
+            patch.object(_serve, "_register_spawned_pid"),
+            patch("subprocess.Popen") as mock_popen,
+            patch.object(handler, "_serve_bytes"),
+            patch.object(_serve, "_read_body", return_value=body),
+        ):
+            (tmp_path / "login").mkdir()
+            logs_dir = tmp_path / "logs"
+            logs_dir.mkdir()
+            patch.object(_serve, "LOGS_DIR", logs_dir).start()
+            mock_proc = MagicMock()
+            mock_proc.pid = 99
+            mock_popen.return_value = mock_proc
+
+            handler._post_run_quick()
+
+        assert not update_called, "quick.json이 없으면 update를 호출하면 안 됨"
+
+    def test_post_run_quick_heal_count_zero_stays_zero(self, tmp_path):
+        """heal_count가 이미 0이면 리셋 후에도 0."""
+        import json as _json
+        from unittest.mock import patch, MagicMock
+
+        quick_json = tmp_path / "quick.json"
+        quick_json.write_text(_json.dumps({
+            "status": "done",
+            "heal_count": 0,
+        }), encoding="utf-8")
+
+        captured = []
+
+        def fake_update(path, mutator):
+            result = mutator(_json.loads(quick_json.read_text()))
+            captured.append(result)
+
+        handler = object.__new__(QAHandler)
+        body = {"groups": ["g1"]}
+
+        with (
+            patch.object(_serve, "QUICK_STATE_PATH", quick_json),
+            patch.object(_serve, "_safe_update_json", side_effect=fake_update),
+            patch.object(_serve, "GENERATED_DIR", tmp_path),
+            patch.object(_serve, "_register_spawned_pid"),
+            patch("subprocess.Popen") as mock_popen,
+            patch.object(handler, "_serve_bytes"),
+            patch.object(_serve, "_read_body", return_value=body),
+        ):
+            (tmp_path / "g1").mkdir()
+            logs_dir = tmp_path / "logs"
+            logs_dir.mkdir()
+            patch.object(_serve, "LOGS_DIR", logs_dir).start()
+            mock_popen.return_value = MagicMock(pid=1)
+
+            handler._post_run_quick()
+
+        assert captured[0]["heal_count"] == 0

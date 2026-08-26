@@ -1274,6 +1274,14 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 ensure_ascii=False).encode("utf-8")
             self._serve_bytes(msg, "application/json; charset=utf-8")
             return
+
+        # P42: 새 빠른 실행 전 heal_count를 0으로 리셋한다.
+        # quick.json이 이전 실패 사이클의 heal_count(예: 3 = MAX_HEAL)를 보유한 채로
+        # 새 실행이 시작되면, 99_merge.py가 즉시 heal_failed를 판정해 힐링을 영구 스킵한다.
+        # status는 변경하지 않아 UI가 직전 결과를 유지하다가 새 실행 결과로 자연스럽게 전환된다.
+        if QUICK_STATE_PATH.exists():
+            _safe_update_json(QUICK_STATE_PATH, lambda s: {**s, "heal_count": 0})
+
         log_path = LOGS_DIR / "quick_run.txt"
         merge_script = PROJECT_ROOT / "parallel" / "99_merge.py"
         log_file = open(log_path, "w", encoding="utf-8")
