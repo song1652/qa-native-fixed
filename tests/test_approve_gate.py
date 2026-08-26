@@ -118,3 +118,149 @@ class TestEofFallbackFailsClosed:
         import json
         after = json.loads(state_path.read_text(encoding="utf-8"))
         assert "approval_status" not in after
+
+
+# ── P43: update_state 원자적 RMW 전환 회귀 테스트 ────────────────────────────
+
+
+class TestApproveAtomicRmw:
+    """04_approve.py가 write_state 대신 update_state를 쓰는지 확인 (P43).
+
+    update_state는 락 보유 중 최신 파일을 읽어 병합·쓰기를 수행하므로
+    read_state 이후 다른 프로세스가 쓴 필드를 덮어쓰지 않는다.
+    """
+
+    @pytest.fixture
+    def _approve(self, tmp_path, monkeypatch):
+        """approve_mod + state 파일 세팅 헬퍼."""
+        import importlib.util as _ilu
+        _ROOT = Path(__file__).resolve().parent.parent
+        spec = _ilu.spec_from_file_location(
+            "approve_p43", str(_ROOT / "scripts" / "04_approve.py")
+        )
+        mod = _ilu.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+
+        import json
+        state_data = {
+            "url": "https://example.com", "test_cases": [],
+            "step": "reviewed", "review_summary": "OK",
+            "lint_result": {"passed": True}, "generated_file_path": "tests/generated/x/",
+            "approval_status": None, "rejection_reason": None, "rejection_count": 0,
+        }
+        state_path = tmp_path / "pipeline.json"
+        state_path.write_text(json.dumps(state_data), encoding="utf-8")
+
+        cfg_path = tmp_path / "cfg.json"
+        cfg_path.write_text('{"auto_approve": true}', encoding="utf-8")
+
+        monkeypatch.setattr(mod, "PIPELINE_STATE", state_path)
+        monkeypatch.setattr(mod, "_PIPELINE_CONFIG", cfg_path)
+        monkeypatch.setattr(sys, "argv", ["04_approve.py"])
+        return mod, state_path
+
+    def test_auto_approve_uses_update_state_not_write_state(self, _approve, monkeypatch):
+        """auto_approve 경로에서 update_state가 호출되고 write_state는 호출 안 됨."""
+        mod, _ = _approve
+        update_called = []
+        write_called = []
+
+        original_update = mod.update_state
+
+        def spy_update(path, mutator):
+            update_called.append(True)
+            return original_update(path, mutator)
+
+        monkeypatch.setattr(mod, "update_state", spy_update)
+        # write_state가 있으면 spy 추가 (없으면 무시)
+        if hasattr(mod, "write_state"):
+            monkeypatch.setattr(mod, "write_state",
+                                lambda *a, **k: write_called.append(True))
+
+        mod.main()
+
+        assert update_called, "update_state가 호출돼야 함"
+        assert not write_called, "write_state는 호출되면 안 됨 (P43)"
+
+    def test_auto_approve_sets_correct_field(self, _approve):
+        """auto_approve 경로에서 approval_status='approved'가 기록됨."""
+        import json
+        mod, state_path = _approve
+        mod.main()
+        after = json.loads(state_path.read_text())
+        assert after["approval_status"] == "approved"
+
+    def test_auto_approve_preserves_other_fields(self, _approve):
+        """update_state 사용으로 읽기 이후 추가된 필드가 보존됨 (동시성 시뮬레이션)."""
+        import json
+        mod, state_path = _approve
+
+        # update_state 호출 직전에 외부 프로세스가 필드를 추가했다고 시뮬레이션
+        original_update = mod.update_state
+
+        def inject_then_update(path, mutator):
+            # mutator 적용 전 파일에 외부 필드 주입
+            current = json.loads(path.read_text())
+            current["injected_by_external"] = "should_survive"
+            path.write_text(json.dumps(current), encoding="utf-8")
+            return original_update(path, mutator)
+
+        import importlib.util as _ilu
+        _ROOT = Path(__file__).resolve().parent.parent
+        spec = _ilu.spec_from_file_location(
+            "approve_p43b", str(_ROOT / "scripts" / "04_approve.py")
+        )
+        mod2 = _ilu.module_from_spec(spec)
+        spec.loader.exec_module(mod2)
+
+        mod2.PIPELINE_STATE = mod.PIPELINE_STATE
+        mod2._PIPELINE_CONFIG = mod._PIPELINE_CONFIG
+        import sys as _sys
+        _sys.argv = ["04_approve.py"]
+
+        mod2.update_state = inject_then_update
+        mod2.main()
+
+        after = json.loads(mod.PIPELINE_STATE.read_text())
+        assert after.get("injected_by_external") == "should_survive", (
+            "update_state를 쓰면 외부 필드가 보존돼야 함 (write_state를 쓰면 덮어씀)"
+        )
+        assert after["approval_status"] == "approved"
+
+    def test_rejection_count_incremented_atomically(self, tmp_path, monkeypatch):
+        """반려 시 rejection_count가 mutator 안에서 증가해 원자적으로 기록됨."""
+        import importlib.util as _ilu, json
+        _ROOT = Path(__file__).resolve().parent.parent
+        spec = _ilu.spec_from_file_location(
+            "approve_p43c", str(_ROOT / "scripts" / "04_approve.py")
+        )
+        mod = _ilu.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+
+        state_data = {
+            "url": "https://x.com", "test_cases": [], "step": "reviewed",
+            "review_summary": "OK", "lint_result": {"passed": True},
+            "generated_file_path": "", "approval_status": None,
+            "rejection_reason": None, "rejection_count": 1,  # 이미 1회 반려됨
+        }
+        state_path = tmp_path / "pipeline.json"
+        state_path.write_text(json.dumps(state_data), encoding="utf-8")
+
+        cfg_path = tmp_path / "cfg.json"
+        cfg_path.write_text('{"auto_approve": false}', encoding="utf-8")
+
+        monkeypatch.setattr(mod, "PIPELINE_STATE", state_path)
+        monkeypatch.setattr(mod, "_PIPELINE_CONFIG", cfg_path)
+        monkeypatch.setattr(sys, "argv", ["04_approve.py"])
+        # n → 반려 → 사유 입력
+        inputs = iter(["n", "테스트 사유"])
+        monkeypatch.setattr("builtins.input", lambda *_: next(inputs))
+
+        with pytest.raises(SystemExit) as exc:
+            mod.main()
+        assert exc.value.code == 2  # 반려 종료코드
+
+        after = json.loads(state_path.read_text())
+        assert after["rejection_count"] == 2, "이전 값(1)에서 1 증가해 2여야 함"
+        assert after["approval_status"] == "rejected"
+        assert after["rejection_reason"] == "테스트 사유"

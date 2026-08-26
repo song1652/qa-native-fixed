@@ -11,7 +11,7 @@ Claude Code가 각 뼈대를 완성해 tests/generated/{group}/ 에 저장.
 import re
 import sys
 from pathlib import Path
-from _paths import PIPELINE_STATE, read_state, write_state
+from _paths import PIPELINE_STATE, read_state, update_state
 
 
 CONFTEST_TEMPLATE = '''import pytest
@@ -175,11 +175,15 @@ def main():
         out_path.write_text(scaffold, encoding="utf-8")
         generated_files.append(str(out_path))
 
-    # state 업데이트
-    state["step"] = "generated"
-    state["generated_file_path"] = str(out_dir) + "/"
-    state["generated_files"] = generated_files
-    write_state(state_path, state)
+    # state 업데이트 — 원자적 RMW (P43)
+    # read_state 이후 다른 프로세스(대시보드 등)가 쓴 필드를 보존한다.
+    _gfp = str(out_dir) + "/"
+    update_state(state_path, lambda s: {
+        **s,
+        "step": "generated",
+        "generated_file_path": _gfp,
+        "generated_files": generated_files,
+    })
 
     print(f"[02] 파일별 뼈대 생성 완료: {out_dir}/  ({len(plan)}개 파일)")
     for f in generated_files:

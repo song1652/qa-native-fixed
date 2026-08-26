@@ -18,7 +18,7 @@ import argparse
 import json
 import sys
 from pathlib import Path
-from _paths import PIPELINE_STATE, read_state, write_state
+from _paths import PIPELINE_STATE, read_state, update_state
 
 MAX_REJECTION = 3  # 반려 최대 횟수 — 초과 시 파이프라인 강제 종료
 
@@ -78,8 +78,7 @@ def main():
 
     # config/pipeline.json auto_approve=true 또는 --yes → 즉시 승인
     if _auto_approve_enabled(args.yes):
-        state["approval_status"] = "approved"
-        write_state(state_path, state)
+        update_state(state_path, lambda s: {**s, "approval_status": "approved"})  # P43
         print("  [자동 승인] config/pipeline.json auto_approve=true")
         return
 
@@ -102,8 +101,7 @@ def main():
     approved = answer in ("y", "yes")
 
     if approved:
-        state["approval_status"] = "approved"
-        write_state(state_path, state)
+        update_state(state_path, lambda s: {**s, "approval_status": "approved"})  # P43
         print()
         print("  [승인] 테스트를 실행합니다.")
     else:
@@ -111,13 +109,17 @@ def main():
             reason = input("  반려 사유를 입력하세요: ").strip()
         except EOFError:
             reason = ""
-        state["approval_status"] = "rejected"
-        state["rejection_reason"] = reason or "사유 미입력"
-        state["rejection_count"] = state.get("rejection_count", 0) + 1
-        write_state(state_path, state)
+        _rejection_reason = reason or "사유 미입력"
+        # rejection_count 증가를 mutator 내부에서 수행 → 원자적 RMW (P43)
+        updated = update_state(state_path, lambda s: {
+            **s,
+            "approval_status": "rejected",
+            "rejection_reason": _rejection_reason,
+            "rejection_count": s.get("rejection_count", 0) + 1,
+        })
         print()
-        print(f"  [반려] 사유: {state['rejection_reason']}")
-        rejection_count = state["rejection_count"]
+        print(f"  [반려] 사유: {_rejection_reason}")
+        rejection_count = updated["rejection_count"]
         print(f"  반려 횟수: {rejection_count}회")
         if rejection_count >= MAX_REJECTION:
             print(f"  [경고] {MAX_REJECTION}회 반려 한도 초과. 파이프라인을 종료합니다.")
