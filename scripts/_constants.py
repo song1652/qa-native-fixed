@@ -1,4 +1,9 @@
-"""파이프라인 종료 코드 상수 및 step 전이 규칙."""
+"""파이프라인 종료 코드 상수 및 step 전이 규칙.
+
+VALID_TRANSITIONS / VALID_PARALLEL_TRANSITIONS / assert_valid_transition /
+assert_valid_parallel_transition 은 _pipeline_registry.py가 단일 소스다 (P35).
+이 모듈은 하위 호환을 위해 re-export만 한다 — 직접 수정하지 말 것.
+"""
 
 # 공통
 EXIT_SUCCESS = 0          # 정상 완료
@@ -28,68 +33,11 @@ HEAL_PYTEST_WORKERS = 8
 # 06_heal.py fallback 재실행 타임아웃(초)
 PYTEST_HEAL_TIMEOUT_SEC = 600
 
-# ── Step 전이 규칙 ──────────────────────────────────────────────
-# {current_step: [allowed_next_steps]}
-VALID_TRANSITIONS = {
-    "init":         ["analyzed"],
-    "analyzed":     ["planned", "generated"],  # planned: 심의 Agent가 plan 저장 시 경유하는 선택적 중간 단계
-    "planned":      ["generated"],
-    "generated":    ["reviewed"],
-    "reviewed":     ["done", "heal_needed", "timeout"],
-    "done":         ["heal_needed", "analyzed", "init"],  # init: 재실행 전체 리셋 경로
-    "heal_needed":  ["done", "heal_failed", "timeout"],
-    "heal_failed":  ["analyzed", "init"],  # init: 재실행 가능
-    "timeout":      ["done", "heal_needed", "init"],  # init: 재실행 가능
-}
-
-
-def assert_valid_transition(current: str, next_step: str) -> None:
-    """step 전이가 허용되는지 검증. 잘못된 전이 시 ValueError."""
-    allowed = VALID_TRANSITIONS.get(current)
-    if allowed is None:
-        return  # 알 수 없는 step이면 검증 건너뜀 (하위 호환)
-    if next_step not in allowed:
-        raise ValueError(
-            f"잘못된 step 전이: '{current}' → '{next_step}'. "
-            f"허용: {allowed}. "
-            f"파이프라인 단계가 건너뛰어졌을 수 있습니다. "
-            f"state/pipeline.json을 확인하세요."
-        )
-
-
-# ── 병렬 파이프라인 status 전이 규칙 ──────────────────────────────
-# parallel.json / quick.json의 status 필드 전이 규칙
-# {current_status: [allowed_next_statuses]}
-VALID_PARALLEL_TRANSITIONS: dict[str, list[str]] = {
-    # 주의: "" 항목은 실제 파이프라인 호출부에서는 발동하지 않는다.
-    # _validate_transition_locked / _validate_transition_locked_raw가
-    # current_val이 falsy면 "초기 상태에서는 검증 건너뜀"으로 조기 return하기
-    # 때문이다(의도된 설계, 근거는 커밋 912ab3f 참조).
-    # 그럼에도 남겨두는 이유: assert_valid_parallel_transition()을 직접 호출할
-    # 때는 이 표가 곧 함수의 계약이고, 항목을 지우면 ""가 "알 수 없는 status"가
-    # 되어 아래 `allowed is None` 분기로 빠져 ""→done 같은 위반이 ValueError
-    # 대신 조용히 통과한다(fail-closed → fail-open). 최초 기록으로 허용되는
-    # status가 무엇인지 적어둔 유일한 자리이기도 하다.
-    "":            ["init", "testing"],      # 초기 → init 또는 직접 testing
-    "init":        ["analyzing", "testing"], # 초기화 → 분석 중
-    "analyzing":   ["ready", "error"],       # 분석 완료 or 오류
-    "ready":       ["testing"],              # 준비 → 실행
-    "error":       ["init", "testing"],      # 오류 → 재시작 또는 재실행
-    "testing":     ["done", "heal_needed", "heal_failed"],
-    "done":        ["testing", "init"],      # init: 재실행 전체 리셋
-    "heal_needed": ["done", "heal_failed", "testing"],
-    "heal_failed": ["testing", "init"],      # init: 재실행 가능
-}
-
-
-def assert_valid_parallel_transition(current: str, next_status: str) -> None:
-    """parallel.json / quick.json의 status 전이가 허용되는지 검증."""
-    allowed = VALID_PARALLEL_TRANSITIONS.get(current)
-    if allowed is None:
-        return  # 알 수 없는 status이면 건너뜀 (하위 호환)
-    if next_status not in allowed:
-        raise ValueError(
-            f"잘못된 parallel status 전이: '{current}' → '{next_status}'. "
-            f"허용: {allowed}. "
-            f"state/parallel.json 또는 state/quick.json을 확인하세요."
-        )
+# ── Step 전이 규칙 + 검증 함수 (단일/병렬) ────────────────────────
+# 단일 소스는 _pipeline_registry.py. 이 모듈은 하위 호환 re-export만 제공.
+from _pipeline_registry import (       # noqa: E402
+    VALID_TRANSITIONS,
+    VALID_PARALLEL_TRANSITIONS,
+    assert_valid_transition,
+    assert_valid_parallel_transition,
+)
