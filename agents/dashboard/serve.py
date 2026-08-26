@@ -779,7 +779,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
 
     def _get_report_file(self, path: str):
         fname = path[len("/reports/"):]
-        if ".." in fname or "/" in fname:
+        if not is_safe_filename(fname):
             self.send_response(403)
             self.end_headers()
             return
@@ -806,7 +806,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
     def _get_artifact_file(self, path: str, prefix: str, base_dir: Path, content_type: str):
         """screenshots / videos 등 아티팩트 파일 서빙."""
         fname = path[len(prefix):]
-        if ".." in fname or "/" in fname:
+        if not is_safe_filename(fname):
             self.send_response(403)
             self.end_headers()
             return
@@ -1108,8 +1108,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
     def _post_run_log(self):
         body = _read_body(self)
         log_name = body.get("log", "run_qa.txt")
-        # 보안: 상위 디렉토리 접근 방지
-        if ".." in log_name or "/" in log_name:
+        if not is_safe_filename(log_name):
             self._serve_bytes(b'{"ok":false,"log":""}', "application/json; charset=utf-8")
             return
         log_path = LOGS_DIR / log_name

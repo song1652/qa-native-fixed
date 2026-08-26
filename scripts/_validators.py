@@ -7,6 +7,7 @@ serve.py와 테스트 양쪽에서 부작용 없이 재사용한다.
 from __future__ import annotations
 
 import re
+from pathlib import Path
 
 
 def is_valid_url(url: str) -> bool:
@@ -15,10 +16,25 @@ def is_valid_url(url: str) -> bool:
 
 
 def is_valid_group_name(name: str) -> bool:
-    """그룹명이 영숫자/언더스코어/하이픈만 포함하는지 검증 (경로 탈출 방지)."""
-    return bool(re.match(r'^[\w\-]+$', name))
+    """그룹명이 영숫자/언더스코어/하이픈만 포함하는지 검증 (경로 탈출 방지).
+
+    Note: $가 아닌 \\Z를 사용해 'abc\\n' 같은 개행 포함 값이 통과하지 못하게 한다.
+    """
+    return bool(re.match(r'^[\w\-]+\Z', name))
 
 
 def is_safe_filename(name: str) -> bool:
-    """파일명에 상위 디렉토리 접근 패턴이 없는지 검증 (경로 탈출 방지)."""
-    return bool(name) and ".." not in name
+    """파일명(단일 컴포넌트) 검증 — 경로 탈출·절대경로·구분자를 모두 차단.
+
+    강화 이유: 이전 구현은 '..' 만 검사해 다음 케이스를 허용했음:
+      - '/' 포함 → Path(base) / 'sub/../../etc' 탈출 가능
+      - 백슬래시 '\\' 포함 (Windows 경로)
+      - 절대경로 '/etc/passwd' → Path(base) / '/etc/passwd' == Path('/etc/passwd')
+    """
+    if not name or ".." in name:
+        return False
+    if "/" in name or "\\" in name:
+        return False
+    if Path(name).is_absolute():
+        return False
+    return True
