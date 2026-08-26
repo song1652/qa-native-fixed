@@ -29,7 +29,10 @@ if _venv_sp.exists():
             sys.path.insert(0, str(_sp))
 from _python import PYTHON_EXE
 from _validators import is_valid_url, is_valid_group_name, is_safe_filename
-from _pipeline_registry import Step, ParallelStatus, make_initial_pipeline_state, PIPELINE_STEP_DEFS
+from _pipeline_registry import (
+    Step, ParallelStatus, make_initial_pipeline_state, PIPELINE_STEP_DEFS,
+    STEP_COMPAT, PARALLEL_STEP_LABELS,  # P58: 단일 소스에서 임포트
+)
 # 상태 파일 경로 + 안전한 쓰기 함수는 _paths.py가 단일 소스다 (#25).
 # 예전엔 이 파일이 자체 STATE_PATH 등을 재선언하고 _safe_write_json/
 # _safe_update_json을 따로 구현했는데, 그 사본은 (a) 락 획득 실패를 무시하고
@@ -62,21 +65,30 @@ ALLOWED_ORIGIN = "http://localhost:8766"
 # DNS rebinding 방어: 허용할 Host 헤더 값 목록 (P49)
 ALLOWED_HOSTS = {"localhost:8766", "127.0.0.1:8766"}
 
-# ── 서버가 띄운 자식 프로세스 PID 추적 ─────────────────────────
-# 요청 바디로 받은 임의 PID를 kill하지 않도록, 이 서버가 직접 생성한
-# 프로세스인지 대조하는 용도. (이미 종료된 PID가 재사용될 여지는 남아 있음)
-_SPAWNED_PIDS: set[int] = set()
+# ── 서버가 띄운 자식 프로세스 추적 (P61) ────────────────────────
+# set[int] → dict[int, Popen] 으로 변경해 liveness 확인(poll()) 가능.
+# kill 전 poll()로 이미 종료된 프로세스를 확인해 PID 재사용 오살 위험 감소.
+_SPAWNED_PROCS: dict = {}   # dict[int, subprocess.Popen]
 _SPAWNED_PIDS_LOCK = threading.Lock()
 
 
-def _register_spawned_pid(pid: int):
+def _register_spawned_proc(proc) -> None:
+    """Popen 객체를 등록하고 죽은 프로세스를 정리한다 (P61)."""
     with _SPAWNED_PIDS_LOCK:
-        _SPAWNED_PIDS.add(pid)
+        dead = [pid for pid, p in _SPAWNED_PROCS.items() if p.poll() is not None]
+        for pid in dead:
+            del _SPAWNED_PROCS[pid]
+        _SPAWNED_PROCS[proc.pid] = proc
+
+
+# 하위 호환 별칭 — 기존 호출부(proc.pid 전달)가 있을 경우를 위해 유지.
+def _register_spawned_pid(pid: int):  # type: ignore[override]
+    pass  # 직접 PID만 전달하는 구 호출 경로. _register_spawned_proc를 쓸 것.
 
 
 def _is_spawned_pid(pid: int) -> bool:
     with _SPAWNED_PIDS_LOCK:
-        return pid in _SPAWNED_PIDS
+        return pid in _SPAWNED_PROCS
 
 # ── SSE 클라이언트 관리 ────────────────────────────────────────
 _sse_clients: list[queue.Queue] = []
@@ -247,12 +259,8 @@ def build_pipeline_registry() -> dict:
 
     # 모든 step 라벨 (heal 포함 — STEP_LABELS 전체 대체용)
     step_labels: dict[str, str] = {s.step: s.label for s in PIPELINE_STEP_DEFS}
-    # 구 step 값 호환 맵 — pipeline.js STEP_COMPAT과 동기화
-    step_compat = {
-        "scaffolded": Step.GENERATED,
-        "linted":     Step.GENERATED,
-        "approved":   Step.REVIEWED,
-    }
+    # 구 step 값 호환 맵 — P58: _pipeline_registry.STEP_COMPAT이 단일 소스
+    step_compat = STEP_COMPAT
     # compat step에도 라벨 추가 (STEP_LABELS[compat_step] 조회 지원)
     for alias, canonical in step_compat.items():
         step_labels.setdefault(alias, step_labels.get(canonical, alias))
@@ -267,17 +275,8 @@ def build_pipeline_registry() -> dict:
         ParallelStatus.TESTING,
         ParallelStatus.DONE,
     ]
-    parallel_step_labels = {
-        ParallelStatus.INIT:        "초기화",
-        ParallelStatus.ANALYZING:   "DOM 분석",
-        ParallelStatus.READY:       "코드 생성 대기",
-        "generating":               "코드 생성",
-        ParallelStatus.TESTING:     "테스트 실행",
-        ParallelStatus.DONE:        "완료",
-        ParallelStatus.HEAL_NEEDED: "힐링 필요",
-        ParallelStatus.HEAL_FAILED: "힐링 초과",
-        ParallelStatus.ERROR:       "오류",
-    }
+    # P58: _pipeline_registry.PARALLEL_STEP_LABELS이 단일 소스
+    parallel_step_labels = PARALLEL_STEP_LABELS
 
     return {
         "pipeline": {
@@ -379,12 +378,14 @@ def build_dialogs() -> dict:
     full_dialog = load_json(DIALOG_PATH) or {"sessions": []}
     discuss_state = load_json(DISCUSS_PATH) or {}
 
-    # step=discussed 이고 conclusion_items 없으면 자동 파싱
+    # step=discussed 이고 conclusion_items 없으면 메모리에서만 파싱 (P56: GET에서 write 금지)
+    # 파싱 결과는 이 호출의 반환값에만 포함되고 파일에는 기록하지 않는다.
+    # 영속화가 필요하면 별도 POST 엔드포인트를 사용한다.
     if (discuss_state.get("step") == "discussed"
             and discuss_state.get("conclusion")
             and not discuss_state.get("conclusion_items")):
-        discuss_state["conclusion_items"] = parse_conclusion_items(discuss_state["conclusion"])
-        _safe_write_json(DISCUSS_PATH, discuss_state)
+        discuss_state = {**discuss_state,
+                         "conclusion_items": parse_conclusion_items(discuss_state["conclusion"])}
 
     all_sessions = full_dialog.get("sessions", [])
     team_sessions = [s for s in all_sessions if s.get("stage") == "team_discussion"]
@@ -1105,22 +1106,27 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 "application/json; charset=utf-8")
             return
 
-        discuss = json.loads(DISCUSS_PATH.read_text(encoding="utf-8"))
-        items = discuss.get("conclusion_items", [])
-        for item in items:
-            if item["id"] == item_id:
-                item["status"] = "approved" if vote == "approve" else "rejected"
-                break
-        discuss["conclusion_items"] = items
+        # P55: 비원자 read_text+write → _safe_update_json 원자적 RMW
+        _result: dict = {}
 
-        all_voted = bool(items) and all(i["status"] != "pending" for i in items)
-        if all_voted:
-            finalize_team_notes(discuss)
-            discuss["step"] = "approved"
+        def _mutate_vote(s: dict) -> dict:
+            items = [dict(i) for i in s.get("conclusion_items", [])]
+            for item in items:
+                if item["id"] == item_id:
+                    item["status"] = "approved" if vote == "approve" else "rejected"
+                    break
+            s = {**s, "conclusion_items": items}
+            all_voted = bool(items) and all(i["status"] != "pending" for i in items)
+            if all_voted:
+                finalize_team_notes(s)
+                s["step"] = "approved"
+            _result["all_voted"] = all_voted
+            return s
 
-        _safe_write_json(DISCUSS_PATH, discuss)
+        _safe_update_json(DISCUSS_PATH, _mutate_vote)
         self._serve_bytes(
-            json.dumps({"ok": True, "all_voted": all_voted}, ensure_ascii=False).encode("utf-8"),
+            json.dumps({"ok": True, "all_voted": _result.get("all_voted", False)},
+                       ensure_ascii=False).encode("utf-8"),
             "application/json; charset=utf-8"
         )
 
@@ -1132,11 +1138,13 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 json.dumps({"ok": False, "error": "state/discuss.json 없음"}, ensure_ascii=False).encode("utf-8"),
                 "application/json; charset=utf-8")
             return
-        discuss = json.loads(DISCUSS_PATH.read_text(encoding="utf-8"))
-        discuss["step"] = "rejected"
-        discuss["rejection_reason"] = reason
-        discuss["rejection_count"] = discuss.get("rejection_count", 0) + 1
-        _safe_write_json(DISCUSS_PATH, discuss)
+        # P55: 비원자 read_text+write → _safe_update_json 원자적 RMW
+        _safe_update_json(DISCUSS_PATH, lambda s: {
+            **s,
+            "step": "rejected",
+            "rejection_reason": reason,
+            "rejection_count": s.get("rejection_count", 0) + 1,
+        })
         self._serve_bytes(b'{"ok":true}', "application/json; charset=utf-8")
 
     def _post_run_qa(self):
@@ -1175,7 +1183,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
             cwd=str(PROJECT_ROOT),
             stdout=log_file, stderr=sp.STDOUT,
         )
-        _register_spawned_pid(proc.pid)
+        _register_spawned_proc(proc)
         # 자식 프로세스가 fd를 상속했으므로 부모에서 닫아도 안전
         log_file.close()
         print(f"[Dashboard] run_qa.py 실행 (PID: {proc.pid}, URL: {url}, cases: {cases_dir})")
@@ -1194,7 +1202,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
             cwd=str(PROJECT_ROOT),
             stdout=log_file, stderr=sp.STDOUT,
         )
-        _register_spawned_pid(proc.pid)
+        _register_spawned_proc(proc)
         log_file.close()
         print(f"[Dashboard] run_qa_parallel.py 실행 (PID: {proc.pid})")
         self._serve_bytes(
@@ -1277,12 +1285,15 @@ class DashboardHandler(BaseHTTPRequestHandler):
                     "application/json; charset=utf-8", status=403)
                 return
             try:
-                if sys.platform == "win32":
-                    sp.run(["taskkill", "/F", "/T", "/PID", str(pid_int)],
-                           capture_output=True, timeout=5)
-                else:
-                    import os as _os
-                    _os.kill(pid_int, 15)
+                with _SPAWNED_PIDS_LOCK:
+                    tracked = _SPAWNED_PROCS.get(pid_int)
+                if tracked is not None and tracked.poll() is None:
+                    # P61: poll()으로 생존 확인 후 terminate
+                    if sys.platform == "win32":
+                        sp.run(["taskkill", "/F", "/T", "/PID", str(pid_int)],
+                               capture_output=True, timeout=5)
+                    else:
+                        tracked.terminate()
             except Exception:
                 pass
         if QUICK_STATE_PATH.exists():
@@ -1325,7 +1336,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
             cwd=str(PROJECT_ROOT),
             stdout=log_file, stderr=sp.STDOUT,
         )
-        _register_spawned_pid(proc.pid)
+        _register_spawned_proc(proc)
         log_file.close()
         print(f"[Dashboard] 99_merge.py 실행 (PID: {proc.pid}, 로그: {log_path})")
         self._serve_bytes(
@@ -1390,7 +1401,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
             cmd, cwd=str(PROJECT_ROOT),
             stdout=log_file, stderr=sp.STDOUT,
         )
-        _register_spawned_pid(proc.pid)
+        _register_spawned_proc(proc)
         log_file.close()
         print(f"[Dashboard] 빠른 실행 (PID: {proc.pid}, groups: {groups})")
         self._serve_bytes(

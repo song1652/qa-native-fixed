@@ -37,10 +37,24 @@ _spec.loader.exec_module(_serve)
 
 ALLOWED_ORIGIN = _serve.ALLOWED_ORIGIN          # "http://localhost:8766"
 QAHandler = _serve.DashboardHandler
-_register_spawned_pid = _serve._register_spawned_pid
+_register_spawned_proc = _serve._register_spawned_proc  # P61: proc 기반 등록 함수
 _is_spawned_pid = _serve._is_spawned_pid
-_SPAWNED_PIDS = _serve._SPAWNED_PIDS
+_SPAWNED_PROCS = _serve._SPAWNED_PROCS  # P61: set → dict
 _SPAWNED_PIDS_LOCK = _serve._SPAWNED_PIDS_LOCK
+
+
+class _MockProc:
+    """P61 테스트용 최소 Popen 대체 객체 (poll() 항상 None = 살아있음)."""
+    def __init__(self, pid: int):
+        self.pid = pid
+
+    def poll(self):
+        return None  # 살아 있음
+
+
+def _register_spawned_pid(pid: int):
+    """구 인터페이스 호환 래퍼 — _MockProc으로 _register_spawned_proc 호출."""
+    _register_spawned_proc(_MockProc(pid))
 
 
 # ── CSRF 방어 테스트 ──────────────────────────────────────────────────────────
@@ -189,18 +203,18 @@ class TestSpawnedPidGuard:
     """_register_spawned_pid / _is_spawned_pid: 이 서버가 생성한 PID만 kill 허용.
 
     요청 바디의 임의 PID를 그대로 kill하면 시스템 프로세스까지 종료 가능하므로,
-    _SPAWNED_PIDS 목록에 등록된 PID만 허용한다.
+    _SPAWNED_PROCS 목록에 등록된 PID만 허용한다.
     """
 
     def setup_method(self):
         """각 테스트 전 _SPAWNED_PIDS 초기화 (테스트 간 격리)."""
         with _SPAWNED_PIDS_LOCK:
-            _SPAWNED_PIDS.clear()
+            _SPAWNED_PROCS.clear()
 
     def teardown_method(self):
         """테스트 후 _SPAWNED_PIDS 정리."""
         with _SPAWNED_PIDS_LOCK:
-            _SPAWNED_PIDS.clear()
+            _SPAWNED_PROCS.clear()
 
     def test_unknown_pid_not_spawned(self):
         """등록하지 않은 PID는 spawned 아님."""

@@ -100,9 +100,20 @@ class TestParallelStatusConstants:
 class TestPipelineStepDefs:
     """PIPELINE_STEP_DEFS 완결성 검증."""
 
-    def test_no_duplicate_step_names(self):
-        names = [s.step for s in PIPELINE_STEP_DEFS]
-        assert len(names) == len(set(names)), "PIPELINE_STEP_DEFS에 중복 step 이름"
+    def test_script_paths_are_unique(self):
+        """P57: step 이름은 서브 단계 때문에 중복될 수 있지만, script 경로는 고유해야 함."""
+        scripts = [s.script for s in PIPELINE_STEP_DEFS if s.script]
+        assert len(scripts) == len(set(scripts)), "PIPELINE_STEP_DEFS에 중복 script 경로"
+
+    def test_sub_step_duplicates_are_only_reviewed_or_heal_needed(self):
+        """P57: step 이름 중복은 reviewed / heal_needed 서브 단계에서만 허용된다."""
+        from collections import Counter
+        counts = Counter(s.step for s in PIPELINE_STEP_DEFS)
+        duplicates = {step for step, cnt in counts.items() if cnt > 1}
+        allowed_duplicates = {"reviewed", "heal_needed"}
+        assert duplicates <= allowed_duplicates, (
+            f"예상치 못한 step 이름 중복: {duplicates - allowed_duplicates}"
+        )
 
     def test_all_fsm_steps_have_def(self):
         """VALID_TRANSITIONS의 모든 step + 전이 대상이 정의되어 있음."""
@@ -132,10 +143,17 @@ class TestPipelineStepDefs:
         for expected in (Step.DONE, Step.HEAL_FAILED, Step.TIMEOUT):
             assert expected in terminal_names, f"'{expected}'이 종료 단계로 표시되지 않음"
 
-    def test_step_def_by_name_consistent_with_list(self):
-        """STEP_DEF_BY_NAME과 PIPELINE_STEP_DEFS가 동일한 데이터를 가리킴."""
+    def test_step_def_by_name_contains_first_entry_per_step(self):
+        """P57: 중복 step 이름은 STEP_DEF_BY_NAME에 첫 번째(canonical) 항목이 남는다.
+        get_step_label(Step.HEAL_NEEDED) → '힐링 필요' 유지를 위한 설계."""
+        first_by_step: dict = {}
         for defn in PIPELINE_STEP_DEFS:
-            assert STEP_DEF_BY_NAME[defn.step] is defn
+            if defn.step not in first_by_step:
+                first_by_step[defn.step] = defn
+        for step, expected_first in first_by_step.items():
+            assert STEP_DEF_BY_NAME[step] is expected_first, (
+                f"step '{step}': STEP_DEF_BY_NAME가 첫 번째 항목을 가리켜야 함"
+            )
 
 
 # ─── VALID_TRANSITIONS (단일) ────────────────────────────────────────────────
@@ -333,9 +351,14 @@ class TestHelpers:
             if not attr.startswith("_"):
                 assert getattr(Step, attr) in names
 
-    def test_all_step_names_no_duplicates(self):
+    def test_all_step_names_may_have_sub_step_duplicates(self):
+        """P57: all_step_names()는 서브 단계로 인해 중복을 포함할 수 있다.
+        unique step 이름 집합은 Step 상수 전체를 포함해야 한다."""
         names = all_step_names()
-        assert len(names) == len(set(names))
+        unique_names = set(names)
+        for attr in vars(Step):
+            if not attr.startswith("_"):
+                assert getattr(Step, attr) in unique_names
 
     def test_all_parallel_status_names_includes_empty(self):
         assert "" in all_parallel_status_names()

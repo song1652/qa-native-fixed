@@ -117,6 +117,20 @@ PIPELINE_STEP_DEFS: list[PipelineStepDef] = [
         script="scripts/03_lint.py",
         is_terminal=False,
     ),
+    # P57: 03a_dialog, 04_approve는 REVIEWED 상태에서 실행되는 서브 단계.
+    # STEP_DEF_BY_NAME은 마지막 선언이 우선(step 중복 시)이므로 조회보다 순서가 중요.
+    PipelineStepDef(
+        step=Step.REVIEWED,
+        label="리뷰 심의",
+        script="scripts/03a_dialog.py",
+        is_terminal=False,
+    ),
+    PipelineStepDef(
+        step=Step.REVIEWED,
+        label="승인",
+        script="scripts/04_approve.py",
+        is_terminal=False,
+    ),
     PipelineStepDef(
         step=Step.DONE,
         label="실행 완료",
@@ -127,6 +141,19 @@ PIPELINE_STEP_DEFS: list[PipelineStepDef] = [
         step=Step.HEAL_NEEDED,
         label="힐링 필요",
         script="scripts/06_heal.py",
+        is_terminal=False,
+    ),
+    # P57: 06_auto_heal, 06a_dialog는 HEAL_NEEDED 상태에서 실행되는 서브 단계.
+    PipelineStepDef(
+        step=Step.HEAL_NEEDED,
+        label="자동 힐링",
+        script="scripts/06_auto_heal.py",
+        is_terminal=False,
+    ),
+    PipelineStepDef(
+        step=Step.HEAL_NEEDED,
+        label="힐링 심의",
+        script="scripts/06a_dialog.py",
         is_terminal=False,
     ),
     PipelineStepDef(
@@ -144,8 +171,36 @@ PIPELINE_STEP_DEFS: list[PipelineStepDef] = [
 ]
 
 # 이름 → 메타데이터 조회 딕셔너리 (O(1) 접근)
-STEP_DEF_BY_NAME: dict[str, PipelineStepDef] = {
-    s.step: s for s in PIPELINE_STEP_DEFS
+# P57: 서브 단계(같은 step 이름)가 여럿이면 첫 번째 선언이 대표(canonical) 항목이 된다.
+# 이유: get_step_label(Step.HEAL_NEEDED) → "힐링 필요" (첫 항목 06_heal.py 라벨) 유지.
+# remaining_steps_hint()는 PIPELINE_STEP_DEFS 전체를 선형 탐색하므로 이 dict와 무관.
+STEP_DEF_BY_NAME: dict[str, PipelineStepDef] = {}
+for _s in PIPELINE_STEP_DEFS:
+    if _s.step not in STEP_DEF_BY_NAME:
+        STEP_DEF_BY_NAME[_s.step] = _s
+
+# ── 구 step 호환 맵 (P58) ─────────────────────────────────────────────────────
+# pipeline.json에 기록된 구버전 step 값을 현재 상수로 매핑.
+# serve.py build_pipeline_registry()가 이 dict를 단일 소스로 사용한다.
+STEP_COMPAT: dict[str, str] = {
+    "scaffolded": Step.GENERATED,
+    "linted":     Step.GENERATED,
+    "approved":   Step.REVIEWED,
+}
+
+# ── 병렬 파이프라인 step 라벨 (P58) ──────────────────────────────────────────
+# serve.py build_pipeline_registry()의 parallel_step_labels 단일 소스.
+# "generating"은 레지스트리 미등록 UI 파생 상태 (ready + files>0 조건에서 추론).
+PARALLEL_STEP_LABELS: dict[str, str] = {
+    ParallelStatus.INIT:        "초기화",
+    ParallelStatus.ANALYZING:   "DOM 분석",
+    ParallelStatus.READY:       "코드 생성 대기",
+    "generating":               "코드 생성",
+    ParallelStatus.TESTING:     "테스트 실행",
+    ParallelStatus.DONE:        "완료",
+    ParallelStatus.HEAL_NEEDED: "힐링 필요",
+    ParallelStatus.HEAL_FAILED: "힐링 초과",
+    ParallelStatus.ERROR:       "오류",
 }
 
 
@@ -157,7 +212,7 @@ VALID_TRANSITIONS: dict[str, list[str]] = {
     Step.ANALYZED:    [Step.PLANNED, Step.GENERATED],   # planned: 선택적 중간 단계
     Step.PLANNED:     [Step.GENERATED],
     Step.GENERATED:   [Step.REVIEWED],
-    Step.REVIEWED:    [Step.DONE, Step.HEAL_NEEDED, Step.TIMEOUT],
+    Step.REVIEWED:    [Step.DONE, Step.HEAL_NEEDED, Step.TIMEOUT, Step.GENERATED],  # P60: 반려→재작성
     Step.DONE:        [Step.HEAL_NEEDED, Step.ANALYZED, Step.INIT],  # init: 재실행 전체 리셋
     Step.HEAL_NEEDED: [Step.DONE, Step.HEAL_FAILED, Step.TIMEOUT],
     Step.HEAL_FAILED: [Step.ANALYZED, Step.INIT],

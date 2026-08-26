@@ -20,6 +20,7 @@ from _constants import (
     DEFAULT_GENERATED_DIR, DEFAULT_GENERATED_FILE,
     HEAL_PYTEST_WORKERS, PYTEST_HEAL_TIMEOUT_SEC,
 )
+from _pipeline_registry import Step  # P62: 문자열 리터럴 대신 Step 상수 사용
 from heal_utils import (
     classify_error, extract_key_lines,  # noqa: F401 (re-export for tests)
     find_screenshot_for_test, append_lessons, update_heal_stats,
@@ -213,7 +214,7 @@ def main():
     heal_count = state.get("heal_count", 0)
     if heal_count >= MAX_HEAL:
         print(f"[06] 최대 힐링 횟수({MAX_HEAL}회) 초과. 파이프라인을 중단합니다.")
-        update_state(state_path, lambda fresh: {**fresh, "step": "heal_failed"})
+        update_state(state_path, lambda fresh: {**fresh, "step": Step.HEAL_FAILED})
         sys.exit(EXIT_HEAL_EXCEEDED)
 
     # 힐링 전 사이트 접근 가능 체크
@@ -230,13 +231,13 @@ def main():
                 print(f"[06] 사이트 접근 불가: {url} (HTTP {status})")
                 print("     사이트가 다운되었거나 접근이 차단되었습니다. 힐링을 건너뜁니다.")
                 _ctx = {"error": f"사이트 접근 불가 HTTP {status}", "url": url}
-                update_state(state_path, lambda fresh: {**fresh, "step": "heal_failed", "heal_context": _ctx})
+                update_state(state_path, lambda fresh: {**fresh, "step": Step.HEAL_FAILED, "heal_context": _ctx})
                 sys.exit(EXIT_HEAL_EXCEEDED)
         except (urllib.error.URLError, OSError) as e:
             print(f"[06] 사이트 접근 불가: {url} ({e})")
             print("     사이트가 다운되었거나 네트워크 문제입니다. 힐링을 건너뜁니다.")
             _ctx = {"error": f"사이트 접근 불가: {e}", "url": url}
-            update_state(state_path, lambda fresh: {**fresh, "step": "heal_failed", "heal_context": _ctx})
+            update_state(state_path, lambda fresh: {**fresh, "step": Step.HEAL_FAILED, "heal_context": _ctx})
             sys.exit(EXIT_HEAL_EXCEEDED)
 
     file_path = state.get("generated_file_path", DEFAULT_GENERATED_FILE)
@@ -281,7 +282,7 @@ def main():
             "error": "모든 실패가 동일 오류 2회 반복. 수동 수정 필요.",
             "analyzed_at": datetime.now().isoformat(),
         }
-        update_state(state_path, lambda fresh: {**fresh, "step": "heal_failed", "heal_context": _ctx})
+        update_state(state_path, lambda fresh: {**fresh, "step": Step.HEAL_FAILED, "heal_context": _ctx})
         sys.exit(EXIT_HEAL_EXCEEDED)
 
     # 에러 타입별 그룹핑 (Agent가 같은 유형 일괄 처리 가능)
@@ -327,7 +328,7 @@ def main():
             "pre_heal_assertions": pre_heal_assertions,
             "heal_context": heal_context,
             "heal_count": _new_heal_count,
-            "step": "heal_needed",
+            "step": Step.HEAL_NEEDED,
         }
         # original_assertions: 최초 생성 시점 기준으로 고정 (이후 라운드에서 덮어쓰지 않음).
         # "설정되어 있는지" 여부는 최신 상태(fresh) 기준으로 판단해야

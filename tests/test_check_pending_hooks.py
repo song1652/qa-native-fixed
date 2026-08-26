@@ -70,13 +70,21 @@ class TestRemainingStepsHint:
         # Step.DONE은 terminal이지만 05_execute.py 스크립트가 있으므로 포함됨
         assert any("05_execute" in h for h in hints)
 
-    def test_from_heal_needed_returns_empty(self):
-        """heal_needed 이후(heal_failed, timeout)는 script=None이므로 목록이 비어야 함."""
+    def test_from_heal_needed_returns_sub_steps(self):
+        """P57: heal_needed 이후 06_auto_heal / 06a_dialog 서브 단계가 반환됨.
+
+        06_heal.py(첫 HEAL_NEEDED 항목) 다음에 등록된 06_auto_heal.py / 06a_dialog.py가
+        remaining_steps_hint에 포함되어야 한다. heal_failed/timeout은 script=None이므로 제외.
+        """
         from _pipeline_registry import Step
         from hook_utils import remaining_steps_hint
         hints = remaining_steps_hint(Step.HEAL_NEEDED)
-        # heal_failed/timeout은 script=None → 빈 리스트
-        assert hints == [], f"heal_needed 이후 힌트가 비어있어야 함: {hints}"
+        # 서브 단계가 포함돼야 함
+        assert any("06_auto_heal" in h for h in hints), f"06_auto_heal 힌트 없음: {hints}"
+        assert any("06a_dialog" in h for h in hints), f"06a_dialog 힌트 없음: {hints}"
+        # heal_failed/timeout은 script=None → 제외
+        assert not any("heal_failed" in h for h in hints)
+        assert not any("timeout" in h for h in hints)
 
     def test_unknown_step_returns_empty(self):
         from hook_utils import remaining_steps_hint

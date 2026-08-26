@@ -19,6 +19,7 @@ import json
 import sys
 from pathlib import Path
 from _paths import PIPELINE_STATE, read_state, update_state
+from _constants import EXIT_REJECTED
 
 MAX_REJECTION = 3  # 반려 최대 횟수 — 초과 시 파이프라인 강제 종료
 
@@ -124,7 +125,7 @@ def main():
         if rejection_count >= MAX_REJECTION:
             print(f"  [경고] {MAX_REJECTION}회 반려 한도 초과. 파이프라인을 종료합니다.")
             print("  수동으로 코드를 검토하거나 테스트케이스를 수정하세요.")
-            sys.exit(2)
+            sys.exit(EXIT_REJECTED)
         print()
         print("[다음] Claude Code가 반려 사유를 반영해 코드를 재작성합니다.")
         sys.exit(2)

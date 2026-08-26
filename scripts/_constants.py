@@ -15,7 +15,7 @@ EXIT_HEAL_EXCEEDED = 2    # 최대 힐링 횟수 초과
 MAX_HEAL = 3              # 최대 힐링 횟수 (단일/병렬 파이프라인 공통)
 
 # 승인 (04_approve.py)
-EXIT_REJECTED = 2         # 반려 → 코드 재작성
+EXIT_REJECTED = 4         # 반려 → 코드 재작성 (P59: EXIT_HEAL_EXCEEDED=2와 충돌 해소)
 EXIT_AWAITING_APPROVAL = 3  # 대시보드 승인 대기
 
 # ── 생성 테스트 경로 기본값 ──────────────────────────────────────
