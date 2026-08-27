@@ -279,6 +279,15 @@ def main():
         default=None,
         help="상태 파일의 heal_needed 판정 키 (기본: step; parallel은 status).",
     )
+    parser.add_argument(
+        "--heal-context-path",
+        default=None,
+        help=(
+            "heal_context를 읽어올 JSON 파일 경로 (P65). "
+            "지정 시 state 파일의 heal_context를 무시하고 이 파일을 사용한다. "
+            "병렬 파이프라인에서 heal_context.json을 별도 저장하는 경우에 사용."
+        ),
+    )
     args, _ = parser.parse_known_args()
 
     # state-path / state-key 결정
@@ -294,11 +303,24 @@ def main():
         sys.exit(1)
 
     state = read_state(state_path)
-    heal_context = state.get("heal_context")
 
-    if not heal_context or state.get(state_key) != "heal_needed":
-        print("[스킵] heal_needed 상태가 아님.")
-        sys.exit(3)  # 스킵 코드 — 호출자가 "자동 완료"와 구분할 수 있어야 함
+    # P65: --heal-context-path가 지정된 경우 외부 파일에서 heal_context 로드.
+    # 병렬 파이프라인은 heal_context를 state와 별도 파일(heal_context.json)에 저장하므로
+    # state.get("heal_context")가 항상 None → 스킵되는 dead path를 방지한다.
+    if args.heal_context_path:
+        hc_path = Path(args.heal_context_path)
+        if not hc_path.exists():
+            print(f"[오류] --heal-context-path 파일 없음: {hc_path}")
+            sys.exit(1)
+        import json as _json
+        heal_context = _json.loads(hc_path.read_text(encoding="utf-8"))
+        # 외부 heal_context를 사용할 때는 상태 파일의 status 검사를 건너뜀.
+        # (99_merge.py가 이미 heal_needed 상태임을 확인한 뒤 호출하기 때문)
+    else:
+        heal_context = state.get("heal_context")
+        if not heal_context or state.get(state_key) != "heal_needed":
+            print("[스킵] heal_needed 상태가 아님.")
+            sys.exit(3)  # 스킵 코드 — 호출자가 "자동 완료"와 구분할 수 있어야 함
 
     failures = heal_context.get("failures", [])
     if not failures:

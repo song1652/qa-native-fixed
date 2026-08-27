@@ -320,14 +320,17 @@ def main():
         else:
             failing_files = [str(gen_path)]
     pre_heal_assertions = snapshot_assertions(failing_files)
-    _new_heal_count = heal_count + 1
+    _new_heal_count = heal_count + 1  # 표시·slog 용 로컬 값
 
     def _mutator(fresh: dict) -> dict:
+        # P70: heal_count는 fresh 기준으로 증가 (RMW 경쟁 방지).
+        # read_state 이후 다른 프로세스(병렬 subagent 등)가 heal_count를 먼저
+        # 증가시켰을 경우, 캡처된 _new_heal_count로 덮어쓰면 카운터가 리셋된다.
         updated = {
             **fresh,
             "pre_heal_assertions": pre_heal_assertions,
             "heal_context": heal_context,
-            "heal_count": _new_heal_count,
+            "heal_count": fresh.get("heal_count", 0) + 1,
             "step": Step.HEAL_NEEDED,
         }
         # original_assertions: 최초 생성 시점 기준으로 고정 (이후 라운드에서 덮어쓰지 않음).

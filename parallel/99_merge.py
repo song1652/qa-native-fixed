@@ -296,6 +296,11 @@ def _try_auto_heal(state_path: "Path | None" = None) -> bool:
         # parallel.json / quick.json은 status 키를 사용
         if state_path.name in ("parallel.json", "quick.json"):
             cmd += ["--state-key", "status"]
+    # P65: 병렬 파이프라인은 heal_context를 HEAL_CONTEXT_STATE에 별도 저장한다.
+    # 06_auto_heal.py가 state 파일에서 heal_context를 찾으면 항상 None이라 스킵됨(dead path).
+    # --heal-context-path로 직접 전달해 dead path를 제거한다.
+    if HEAL_CONTEXT_STATE.exists():
+        cmd += ["--heal-context-path", str(HEAL_CONTEXT_STATE)]
     try:
         result = subprocess.run(
             cmd,
@@ -628,6 +633,7 @@ def main():
     #      collection error 등은 JSON summary에 안 잡히므로 종료코드로 보완
     failed_count = pytest_summary.get("failed", 0) + pytest_summary.get("error", 0)
     has_issues = pytest_exit_code != 0 or failed_count > 0
+    _heal_impossible = False  # P67: 힐링 불가 플래그 (사이트 불가 / 전체 반복)
     if has_issues:
         if args.no_heal:
             print(f"\n[99] 실패 {failed_count}건 -- 힐링 생략 (--no-heal)")
@@ -641,8 +647,11 @@ def main():
             })
         else:
             heal_count += 1
-            # heal_count를 병렬 상태 파일에 기록 (단일 파이프라인 오염 방지)
-            update_state(state_path, lambda fresh: {**fresh, "heal_count": heal_count})
+            # P70: heal_count는 fresh 기준으로 증가 (RMW 경쟁 방지).
+            # 병렬 파이프라인 오염 방지를 위해 별도 상태 파일에 기록.
+            update_state(state_path, lambda fresh: {
+                **fresh, "heal_count": fresh.get("heal_count", 0) + 1,
+            })
             heal_ctx = build_heal_context(report, heal_count, state_path)
             if heal_ctx:
                 # auto_heal 시도 (deterministic 패치)
@@ -653,8 +662,13 @@ def main():
                     print("     python parallel/99_merge.py 를 다시 실행하여 확인하세요.")
                 print_heal_instructions(heal_ctx, pipeline=pl)
             else:
-                # build_heal_context가 None 반환 (사이트 불가 또는 전체 반복)
+                # P67: build_heal_context가 None 반환 = 사이트 불가 또는 전체 반복.
+                # 이 경우 힐링이 불가능하므로 HEAL_NEEDED가 아닌 HEAL_FAILED로 전이.
+                # (이전 동작: HEAL_CONTEXT_STATE만 삭제하고 _new_status는 HEAL_NEEDED로
+                #  설정되어 파이프라인이 무한 힐링 루프에 빠질 수 있었음)
+                _heal_impossible = True
                 HEAL_CONTEXT_STATE.unlink(missing_ok=True)
+                print("[99] 힐링 불가 (사이트 접근 불가 또는 전체 반복) → HEAL_FAILED 전이")
     else:
         HEAL_CONTEXT_STATE.unlink(missing_ok=True)
 
@@ -687,7 +701,7 @@ def main():
                 update_state(state_path, lambda fresh: {**fresh, "assertion_integrity": integrity})
 
     # 4. HTML 리포트 (힐링 완료 후에만 생성: 전체 통과 또는 최대 힐링 초과)
-    is_final_run = (not has_issues) or heal_count >= MAX_HEAL or args.no_heal
+    is_final_run = (not has_issues) or heal_count >= MAX_HEAL or args.no_heal or _heal_impossible
     index_path = None
     if is_final_run:
         report_dir = PROJECT_ROOT / "tests" / "reports"
@@ -748,8 +762,14 @@ def main():
     if failed == 0:
         _new_status = ParallelStatus.DONE
     elif args.no_heal:
-        _new_status = ParallelStatus.DONE
+        # P72: 실패가 있는데 --no-heal로 힐링을 생략한 경우 DONE이 아닌 HEAL_FAILED로 설정.
+        # 이전 동작(DONE)은 실제로 테스트가 실패했음에도 "완료"로 오해하게 했다.
+        _new_status = ParallelStatus.HEAL_FAILED
     elif heal_count >= MAX_HEAL:
+        _new_status = ParallelStatus.HEAL_FAILED
+    elif _heal_impossible:
+        # P67: build_heal_context가 None 반환 = 사이트 불가 또는 전체 반복.
+        # 힐링이 불가능하므로 HEAL_FAILED로 전이 (HEAL_NEEDED로 두면 무한 루프).
         _new_status = ParallelStatus.HEAL_FAILED
     else:
         _new_status = ParallelStatus.HEAL_NEEDED
