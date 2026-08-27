@@ -38,8 +38,8 @@ API 호출 없이 Claude Code 자체가 LLM 역할을 수행하는 QA 자동화 
 
 ## 실행 원칙
 - **병렬 우선**: 독립 작업은 반드시 동시 실행
-- **심의 Agent 1회 호출**: 사수/부사수를 단일 agent가 내부 시뮬레이션
-- **컨텍스트 주입**: `*_dialog.py`가 출력하는 `DELIBERATION_CONTEXT` JSON을 심의 agent 프롬프트에 직접 포함
+- **페르소나는 힐링 심의(06a)에만 적용**: 02a(계획)·03a(리뷰)는 Claude Code가 체크리스트 기반으로 직접 plan/review 생성. 06a(힐링)만 사수/부사수 진단→패치 구조 유지 (P64)
+- **컨텍스트 주입**: `*_dialog.py`가 출력하는 `DELIBERATION_CONTEXT` JSON을 프롬프트에 직접 포함. 02a/03a는 lessons_learned+DOM+코드만 포함 (team_charter/persona 제외)
 
 ## 훅 레이어 (UserPromptSubmit 자동 주입)
 
