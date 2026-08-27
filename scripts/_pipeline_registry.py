@@ -209,14 +209,15 @@ PARALLEL_STEP_LABELS: dict[str, str] = {
 
 VALID_TRANSITIONS: dict[str, list[str]] = {
     Step.INIT:        [Step.ANALYZED],
-    Step.ANALYZED:    [Step.GENERATED],   # m4(P96): Step.PLANNED 미사용 — 전이표에서 제거
-    # Step.PLANNED 전이는 제거됨(m4). 상수(Step.PLANNED)는 미래 확장용으로 유지.
+    Step.ANALYZED:    [Step.PLANNED, Step.GENERATED],  # C-1(P97): 프롬프트가 planned를 사용 — 복원
+    Step.PLANNED:     [Step.GENERATED],
     Step.GENERATED:   [Step.REVIEWED],
     Step.REVIEWED:    [Step.DONE, Step.HEAL_NEEDED, Step.TIMEOUT, Step.GENERATED,
                        Step.HEAL_FAILED],  # P60: 반려→재작성 / C2: 사이트 불가 즉시 HEAL_FAILED
     Step.DONE:        [Step.HEAL_NEEDED, Step.ANALYZED, Step.INIT, Step.HEAL_FAILED],  # init: 재실행 전체 리셋
     Step.HEAL_NEEDED: [Step.DONE, Step.HEAL_FAILED, Step.TIMEOUT],
-    Step.HEAL_FAILED: [Step.ANALYZED, Step.INIT],
+    Step.HEAL_FAILED: [Step.ANALYZED, Step.INIT,
+                       Step.DONE, Step.HEAL_NEEDED],  # C-2(P98): 복구 경로 확장
     Step.TIMEOUT:     [Step.DONE, Step.HEAL_NEEDED, Step.INIT, Step.HEAL_FAILED],  # C2: 타임아웃→힐링실패 경로
 }
 

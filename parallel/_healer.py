@@ -65,10 +65,17 @@ def _detect_repeated_failures_parallel(
 ) -> tuple[list[dict], list[dict]]:
     """이전 heal_context와 비교하여 동일 (test_name, error_type) 반복 감지.
 
+    M-3(P101): prev_failures(안정 스냅샷) 우선 사용.
+    auto_heal이 heal_context["failures"]를 잔여 목록으로 덮어쓰므로
+    "failures"만 보면 다음 라운드의 반복 감지 기준선이 어긋난다.
+
     Returns:
         (healable, skipped)
     """
-    prev_failures = prev_ctx.get("failures", [])
+    prev_failures = (
+        prev_ctx.get("prev_failures")
+        or prev_ctx.get("failures", [])
+    )
     if not prev_failures:
         return current_failures, []
 
@@ -193,6 +200,13 @@ def _build_heal_context(report: dict, heal_count: int, state_path: Path) -> dict
         "heal_count":      heal_count,
         "failure_count":   len(healable),
         "failures":        healable,
+        # M-3(P101): 다음 라운드 반복 감지용 안정 스냅샷.
+        # auto_heal이 "failures"를 잔여 목록으로 덮어써도 이 키는 유지된다.
+        "prev_failures":   [
+            {"test_name": f.get("test_name", ""), "test_id": f.get("test_id", ""),
+             "error_type": f.get("error_type", ""), "traceback": f.get("traceback", "")}
+            for f in healable
+        ],
         "failure_groups":  dict(failure_groups),
         "skipped_repeated": [f["test_name"] for f in skipped],
         "urls":            urls,
@@ -209,6 +223,12 @@ def _build_heal_context(report: dict, heal_count: int, state_path: Path) -> dict
     # 실수 패턴 자동 기록 + heal_stats 빈도 업데이트
     append_lessons(healable + skipped)
     update_heal_stats(healable + skipped)
+
+    # M-1(P100): auto-append 완료 직후 타임스탬프 저장.
+    # verify_lessons_learned_updated가 이 시각 이후의 갱신만 "Agent 기록"으로 인정한다.
+    # (analyzed_at 직후 append_lessons()가 auto.md를 갱신하므로 analyzed_at 기준은 항상 통과)
+    _post_auto_at = datetime.now().isoformat()
+    write_state(HEAL_CONTEXT_STATE, {**ctx, "post_auto_lessons_at": _post_auto_at})
 
     # 힐링 전 assertion 스냅샷 저장 (06_heal.py와 동일한 정책)
     failing_files = sorted({
@@ -343,14 +363,20 @@ def print_heal_instructions(heal_context: dict, pipeline: str = "parallel",
 def verify_lessons_learned_updated(heal_start_time: str) -> bool:
     """힐링 후 lessons_learned.md 또는 lessons_learned_auto.md가 업데이트되었는지 검증.
 
-    heal_start_time 이후에 LESSONS_PATH(수동 큐레이션) 또는 LESSONS_AUTO_PATH(자동 기록)
-    중 하나라도 수정되었으면 통과. 둘 다 존재하지 않으면 경고 출력.
+    M-1(P100): 기준 시각으로 heal_context의 post_auto_lessons_at을 우선 사용한다.
+    _build_heal_context()가 append_lessons() 직후 이 타임스탬프를 저장하므로,
+    auto-append 이전에 기록된 변경만 통과 → "Agent가 직접 기록했는가"를 올바르게 감지.
+    post_auto_lessons_at 없으면 heal_start_time(analyzed_at)을 fallback으로 사용.
     """
+    # post_auto_lessons_at: _build_heal_context()가 append_lessons() 직후 저장
+    _ctx = read_state(HEAL_CONTEXT_STATE) if HEAL_CONTEXT_STATE.exists() else {}
+    effective_start = _ctx.get("post_auto_lessons_at") or heal_start_time
+
     if not LESSONS_PATH.exists() and not LESSONS_AUTO_PATH.exists():
         return False
     try:
         from datetime import datetime as dt
-        start = dt.fromisoformat(heal_start_time)
+        start = dt.fromisoformat(effective_start)
         mtimes = []
         for lpath in [LESSONS_PATH, LESSONS_AUTO_PATH]:
             if lpath.exists():

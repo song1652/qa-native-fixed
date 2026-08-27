@@ -206,12 +206,12 @@ class TestCriticalPathsArePreserved:
         _walk(assert_valid_transition,
               ["init", "analyzed", "generated", "reviewed", "done"])
 
-    def test_planned_not_in_fsm(self):
-        """m4(P96): Step.PLANNED 전이 제거 확인 — analyzed→planned 미허용."""
-        from scripts._pipeline_registry import VALID_TRANSITIONS, Step
-        assert "planned" not in VALID_TRANSITIONS.get("analyzed", []), (
-            "Step.PLANNED이 FSM 전이표에 남아 있습니다. m4(P96) 수정을 확인하세요."
-        )
+    def test_happy_path_via_planned(self):
+        """planned는 02a_dialog 심의 Agent가 plan을 저장할 때 경유하는 선택적 단계.
+        C-1(P97): prompts/plan_deliberation.md가 step=planned를 지시하므로 FSM 복원.
+        """
+        _walk(assert_valid_transition,
+              ["init", "analyzed", "planned", "generated", "reviewed"])
 
     def test_heal_path(self):
         _walk(assert_valid_transition, ["reviewed", "heal_needed", "done"])
@@ -238,3 +238,29 @@ class TestCriticalPathsArePreserved:
 
     def test_parallel_error_recovery(self):
         _walk(assert_valid_parallel_transition, ["init", "analyzing", "error", "init"])
+
+    # ── C-1/C-2/C-3 경로 (HEAL_FAILED/TIMEOUT/ERROR 커버) ─────────
+
+    def test_timeout_to_heal_failed(self):
+        """C-2: timeout 후 heal_failed로 직행할 수 있어야 한다."""
+        assert_valid_transition("timeout", "heal_failed")
+
+    def test_heal_failed_to_done(self):
+        """C-2: heal_failed 상태에서 done으로 전이 (부분 통과 처리)."""
+        assert_valid_transition("heal_failed", "done")
+
+    def test_heal_failed_to_heal_needed(self):
+        """C-2: heal_failed 후 heal_needed로 재시도 경로."""
+        assert_valid_transition("heal_failed", "heal_needed")
+
+    def test_reviewed_to_heal_failed(self):
+        """C-2: reviewed에서 사이트 불가 시 즉시 heal_failed."""
+        assert_valid_transition("reviewed", "heal_failed")
+
+    def test_parallel_testing_to_error(self):
+        """C-1: pytest exit 5(수집 0건) → testing→error 전이."""
+        assert_valid_parallel_transition("testing", "error")
+
+    def test_parallel_testing_to_heal_failed(self):
+        """C-3: 힐링 불가(사이트 접근 불가/전체 반복) → testing→heal_failed 전이."""
+        assert_valid_parallel_transition("testing", "heal_failed")

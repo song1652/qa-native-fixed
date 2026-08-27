@@ -57,6 +57,24 @@ def _valid_py_files(group_dir: Path) -> list[Path]:
     return files
 
 
+def is_spa_group(groups: list[str] | None) -> bool:
+    """그룹 이름 목록에 spa: true 항목이 하나라도 있으면 True 반환.
+
+    pages.json 구조: 키 = 그룹명, 값 = URL 문자열 또는 {"url": ..., "spa": true}.
+    groups=None(전체 실행)이면 pages.json 전 항목을 검사.
+    """
+    pages_json = PROJECT_ROOT / "config" / "pages.json"
+    if not pages_json.exists():
+        return False
+    pages: dict = json.loads(pages_json.read_text(encoding="utf-8"))
+    check_keys = groups if groups else [k for k in pages if not k.startswith("_")]
+    for key in check_keys:
+        cfg = pages.get(key, {})
+        if isinstance(cfg, dict) and cfg.get("spa", False):
+            return True
+    return False
+
+
 def collect_test_files(group: list[str] | None) -> tuple[list[Path], str]:
     """실행 대상 .py 파일을 수집하고 자연 정렬된 목록과 scope 라벨을 반환.
 
@@ -101,11 +119,12 @@ def collect_test_files(group: list[str] | None) -> tuple[list[Path], str]:
     return sorted_files, scope_label
 
 
-def run_pytest(sorted_files: list[Path]) -> tuple[int, dict]:
+def run_pytest(sorted_files: list[Path], *, single_session: bool = False) -> tuple[int, dict]:
     """정렬된 파일 목록으로 pytest를 실행하고 결과를 반환.
 
     Args:
         sorted_files: 실행할 .py 파일 목록 (자연 정렬 완료 상태).
+        single_session: True이면 SPA/세션 충돌 방지를 위해 -n 플래그 생략 (순차 실행).
 
     Returns:
         (pytest_exit_code, report)
@@ -126,13 +145,18 @@ def run_pytest(sorted_files: list[Path]) -> tuple[int, dict]:
         if cmd_len > 20000:
             # 커맨드라인 길이 제한 우회: 임시 runner 스크립트로 pytest.main() 직접 호출
             _json_report_str = str(json_report_path).replace("\\", "\\\\")
+            if single_session:
+                # spa: true — -n 생략하여 순차 실행 (세션 충돌 방지)
+                n_line = ""
+            else:
+                n_line = f"    '-n', '{MAX_PYTEST_WORKERS}',\n"  # m3(P95): 병렬 실행
             runner_code = (
                 "import sys, pytest\n"
                 f"files = {file_args!r}\n"
                 "args = files + [\n"
                 "    '--json-report',\n"
                 f"    '--json-report-file={_json_report_str}',\n"
-                f"    '-n', '{MAX_PYTEST_WORKERS}',\n"  # m3(P95): 병렬 실행
+                f"{n_line}"
                 "    '--tb=short', '-v',\n"
                 "]\n"
                 "sys.exit(pytest.main(args))\n"
@@ -146,10 +170,14 @@ def run_pytest(sorted_files: list[Path]) -> tuple[int, dict]:
             cmd = [PYTHON_EXE, str(_runner_script)]
             print(f"[99] 파일 수 {len(sorted_files)}개 — runner 스크립트 방식으로 pytest 실행")
         else:
+            _parallel_flags = (
+                [] if single_session
+                else ["-n", str(MAX_PYTEST_WORKERS)]  # m3(P95): 병렬 실행
+            )
             cmd = [PYTHON_EXE, "-m", "pytest"] + file_args + [
                 "--json-report",
                 f"--json-report-file={json_report_path}",
-                "-n", str(MAX_PYTEST_WORKERS),  # m3(P95): 병렬 실행
+                *_parallel_flags,
                 "--tb=short", "-v",
             ]
 
