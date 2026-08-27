@@ -265,7 +265,8 @@ def build_batch_state() -> dict:
                         })
     # completed_count: parallel.json 값이 아닌 실제 생성 파일 수로 보정.
     # subagent 완료 후 parallel.json이 갱신되기 전에도 정확한 진행률을 표시하기 위함.
-    if parallel.get("status") in ("ready", "generating", "testing", "done"):
+    if parallel.get("status") in (ParallelStatus.READY, "generating",  # P82: 상수 교체 ("generating"은 UI 파생 상태)
+                                    ParallelStatus.TESTING, ParallelStatus.DONE):
         parallel = {**parallel, "completed_count": len(generated_files)}
     return {"parallel_state": parallel, "generated_files": generated_files}
 

@@ -103,7 +103,7 @@ lint 수정·코드 생성 시 반복 오류도 동일하게 lessons_learned.md�
 3. `python scripts/02_generate.py` — scaffold 생성 후 plan 기반 개별 완성
 4. `python scripts/03_lint.py` — flake8 + step=reviewed 설정
 5. `python scripts/03a_dialog.py` → [심의] [review_deliberation.md](prompts/review_deliberation.md) + ctx
-6. `python scripts/04_approve.py` — QA 리드 승인 게이트. 종료코드 0: 승인 / 2: 반려→재작성 (config/pipeline.json의 auto_approve=true가 기본값이라 보통 즉시 승인됨; "대시보드 대기" 폴백은 UI가 없는 데드엔드라 #26에서 제거)
+6. `python scripts/04_approve.py` — QA 리드 승인 게이트. 종료코드 0: 승인 / **4**: 반려→재작성 (EXIT_REJECTED=4, P59에서 EXIT_HEAL_EXCEEDED=2와 충돌 해소) (config/pipeline.json의 auto_approve=true가 기본값이라 보통 즉시 승인됨; "대시보드 대기" 폴백은 UI가 없는 데드엔드라 #26에서 제거)
 7. `python scripts/05_execute.py` — pytest 실행
 8. `python scripts/06_heal.py` — 종료코드 0: 완료 / 10: 힐링→재실행 반복 / 2: 초과→수동 수정
 9. `python scripts/06_auto_heal.py` — 결정적 패턴 자동 패치 (Agent 호출 전). 종료코드 0: 완료·재실행 / 1: 잔여 실패→10번으로 / 3: 스킵(heal_needed 아님)

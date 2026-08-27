@@ -30,6 +30,6 @@ lines = [
     f"케이스: {case_count}개",
     "",
     "CLAUDE.md 파이프라인의 실행 단계부터 시작해주세요:",
-] + remaining_steps_hint(Step.REVIEWED)
+] + remaining_steps_hint(Step.REVIEWED, start_after_last=True)  # P78: 03a/04 서브 단계 생략
 
 print("\n".join(lines))

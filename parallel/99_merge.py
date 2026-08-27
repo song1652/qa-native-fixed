@@ -740,7 +740,7 @@ def main():
         parts = nodeid.split("/")
         group = None
         for i, p in enumerate(parts):
-            if p == "generated" and i + 1 < len(parts):
+            if p == GENERATED_DIR.name and i + 1 < len(parts):  # P83: 리터럴 → 경로 상수 참조
                 group = parts[i + 1]
                 break
         if not group:

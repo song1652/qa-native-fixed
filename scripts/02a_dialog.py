@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 from _paths import PIPELINE_STATE, read_state, resolve_sub_doms
+from _pipeline_registry import Step  # P80: step 검증용
 
 
 def read_file(path):
@@ -24,6 +25,14 @@ def main():
         sys.exit(1)
 
     state = read_state(state_path)
+
+    # P80: 단계 검증 — 이미 plan이 완성된 상태에서 재실행되면 plan을 덮어쓸 위험.
+    # analyzed/init 이후에만 실행이 의미 있다.
+    current_step = state.get("step", "")
+    _allowed = {Step.INIT, Step.ANALYZED}
+    if current_step and current_step not in _allowed:
+        print(f"[02a] [경고] 현재 step={current_step!r} — 02a_dialog는 analyzed 직후에 실행하세요.")
+        print(f"     (이미 plan이 있으면 덮어쓰일 수 있습니다. 강제 진행하려면 이 경고를 무시하세요.)")
 
     if not state.get("dom_info"):
         print("[오류] dom_info 없음. 01_analyze.py를 먼저 실행하세요.")

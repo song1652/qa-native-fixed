@@ -10,6 +10,7 @@ from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 from _paths import PIPELINE_STATE, read_state
 from _constants import DEFAULT_GENERATED_FILE
+from _pipeline_registry import Step  # P80: step 검증용
 
 
 def read_file(path):
@@ -32,6 +33,11 @@ def main():
 
     state = read_state(state_path)
     generated_path = state.get("generated_file_path", DEFAULT_GENERATED_FILE)
+
+    # P80: 단계 검증 — REVIEWED(린트 완료) 이후에만 실행이 의미 있다.
+    current_step = state.get("step", "")
+    if current_step and current_step not in {Step.REVIEWED, Step.GENERATED}:
+        print(f"[03a] [경고] 현재 step={current_step!r} — 03a_dialog는 reviewed 직후에 실행하세요.")
 
     if not state.get("lint_result"):
         print("[오류] lint_result 없음. 03_lint.py를 먼저 실행하세요.")

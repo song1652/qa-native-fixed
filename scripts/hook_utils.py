@@ -5,7 +5,8 @@ import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 from _paths import read_state
-# _pipeline_registry는 지연 임포트(remaining_steps_hint 내부)로 순환 방지
+# P79: 지연 import → 모듈 레벨로 이동 (순환 의존 없음 — 직접 검증 완료)
+from _pipeline_registry import PIPELINE_STEP_DEFS
 
 # 상태 파일이 이 시간보다 오래되면 stale로 간주 (훅 무시)
 _STALE_THRESHOLD_MINUTES = 30
@@ -62,7 +63,7 @@ def check_state(path: Path, key: str, value: str, extra_check=None) -> dict | No
     return state
 
 
-def remaining_steps_hint(from_step: str) -> list[str]:
+def remaining_steps_hint(from_step: str, *, start_after_last: bool = False) -> list[str]:
     """from_step 이후 실행해야 할 스크립트 목록을 레지스트리 기반으로 반환 (P44).
 
     _pipeline_registry.PIPELINE_STEP_DEFS 정의 순서를 따르며,
@@ -71,7 +72,10 @@ def remaining_steps_hint(from_step: str) -> list[str]:
     레지스트리 변경 시 훅 지시문도 자동 갱신된다.
 
     Args:
-        from_step: 현재 단계 (Step.* 상수). 이 단계 이후부터 나열.
+        from_step:        현재 단계 (Step.* 상수). 이 단계 이후부터 나열.
+        start_after_last: P78 — True이면 from_step의 마지막 서브 단계 이후부터 나열.
+                          REVIEWED처럼 서브 단계가 여럿이고 모두 완료된 상태에서
+                          훅이 발동할 때 사용한다 (기본값 False = 첫 번째 발생 기준).
 
     Returns:
         "N. python <script>  # <label>" 형식의 문자열 리스트.
@@ -82,16 +86,24 @@ def remaining_steps_hint(from_step: str) -> list[str]:
         remaining_steps_hint(Step.INIT)
         # → ["1. python scripts/01_analyze.py  # DOM 분석",
         #     "2. python scripts/02a_dialog.py  # 심의 (계획)", ...]
+
+        remaining_steps_hint(Step.REVIEWED, start_after_last=True)
+        # → ["1. python scripts/05_execute.py  # 실행 완료", ...]  (03a/04 서브 단계 생략)
     """
-    from _pipeline_registry import PIPELINE_STEP_DEFS
     # terminal 여부와 무관하게 모든 단계 순서 유지
     # (Step.DONE은 is_terminal=True지만 05_execute.py 실행이 필요하기 때문)
     all_steps = list(PIPELINE_STEP_DEFS)
     step_names = [s.step for s in all_steps]
-    try:
-        start_idx = step_names.index(from_step) + 1
-    except ValueError:
+    # P78: REVIEWED·HEAL_NEEDED처럼 같은 step 값이 여러 번 등록된 경우
+    # - start_after_last=False(기본): 첫 번째 발생 직후부터 → HEAL_NEEDED 서브 단계 표시
+    # - start_after_last=True: 마지막 발생 직후부터 → REVIEWED 서브 단계 생략
+    if start_after_last:
+        anchor = max((i for i, s in enumerate(step_names) if s == from_step), default=-1)
+    else:
+        anchor = next((i for i, s in enumerate(step_names) if s == from_step), -1)
+    if anchor == -1:
         return []
+    start_idx = anchor + 1
     hints: list[str] = []
     for s in all_steps[start_idx:]:
         if s.script:
