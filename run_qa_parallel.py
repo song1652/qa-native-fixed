@@ -27,6 +27,7 @@ from datetime import datetime
 import _bootstrap  # noqa: F401 — scripts/ 경로 설정
 from parse_cases import load_cases
 from _paths import PROJECT_ROOT, PARALLEL_STATE, STATE_DIR, read_state, write_state, reset_state, update_state
+from _pipeline_registry import ParallelStatus  # P68: ParallelStatus 상수 사용
 
 # 01_analyze.py의 analyze() 직접 import
 from importlib import import_module as _im
@@ -300,7 +301,7 @@ def main():
     parallel_dir.mkdir(exist_ok=True)
     STATE_DIR.mkdir(exist_ok=True)
     # FSM 전이 검증 없이 초기 상태로 리셋 (재실행 시 ValueError 방지, P50)
-    reset_state(PARALLEL_STATE_PATH, {"status": "init", "created_at": datetime.now().isoformat()})
+    reset_state(PARALLEL_STATE_PATH, {"status": ParallelStatus.INIT, "created_at": datetime.now().isoformat()})  # P68: 리터럴 → 상수
 
     # 등록된 페이지 표시
     active = {k: v for k, v in pages.items() if v}
@@ -316,7 +317,7 @@ def main():
     print(f"[준비] {len(targets)}개 대상 확인")
 
     # 2. URL별 DOM 분석 (캐시)
-    _save_state({"status": "analyzing",
+    _save_state({"status": ParallelStatus.ANALYZING,  # P68: 리터럴 → 상수
                  "created_at": datetime.now().isoformat(),
                  "total_count": len(targets)})
     unique_urls = list(dict.fromkeys(t["url"] for t in targets))
@@ -332,7 +333,7 @@ def main():
             else:
                 print(f"  완료 — 입력:{len(dom.get('inputs',[]))} 버튼:{len(dom.get('buttons',[]))}")
     except Exception as e:
-        _save_state({"status": "error", "error": str(e)})
+        _save_state({"status": ParallelStatus.ERROR, "error": str(e)})  # P68: 리터럴 → 상수
         print(f"[오류] DOM 분석 중 실패: {e}")
         raise
 
@@ -378,7 +379,7 @@ def main():
     # 5. 상태 파일 저장 (ready = subagent 대기)
     total_cases = sum(len(c["test_cases"]) for c in contexts)
     _save_state({
-        "status": "ready",
+        "status": ParallelStatus.READY,  # P68: 리터럴 → 상수
         "total_count": len(contexts),
         "total_cases": total_cases,
         "completed_count": 0,

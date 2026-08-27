@@ -632,6 +632,19 @@ def main():
     # 3-b. 실패 판정: pytest 종료코드 + JSON 리포트 모두 확인
     #      collection error 등은 JSON summary에 안 잡히므로 종료코드로 보완
     failed_count = pytest_summary.get("failed", 0) + pytest_summary.get("error", 0)
+
+    # P73: pytest exit 5 = 수집된 테스트 없음 (빈 디렉토리 / tc_*.py 없음 / __init__.py만 존재).
+    # 이 경우 has_issues=True로 판정되면 heal_count를 소모하고 build_heal_context(failures=[])가
+    # None을 반환해 3회 만에 HEAL_FAILED로 전이되는 오진이 발생한다.
+    # 힐링이 아닌 코드 생성 단계를 재확인해야 하므로 ERROR 상태로 즉시 전이한다.
+    if pytest_exit_code == 5 and failed_count == 0:
+        print("\n[99] ⚠️ pytest 종료코드 5 — 수집된 테스트 없음")
+        print("     tests/generated/ 디렉토리가 비어있거나 tc_*.py 파일이 없습니다.")
+        print("     힐링이 아닌 코드 생성(02_generate) 단계를 확인하세요.")
+        _update_parallel_status(ParallelStatus.ERROR, path=state_path,
+                                extra={"error": "pytest exit 5: 테스트 수집 없음 — 코드 생성 문제"})
+        sys.exit(0)  # 대화형 메시지만 출력 후 종료
+
     has_issues = pytest_exit_code != 0 or failed_count > 0
     _heal_impossible = False  # P67: 힐링 불가 플래그 (사이트 불가 / 전체 반복)
     if has_issues:

@@ -10,6 +10,7 @@ from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 from _paths import PIPELINE_STATE, PROJECT_ROOT, read_state, HEAL_STATS_PATH
 from _constants import DEFAULT_GENERATED_FILE
+from _pipeline_registry import Step  # P68: Step 상수 사용 — 문자열 리터럴 대신
 
 
 def read_file(path, filter_files=None):
@@ -43,7 +44,7 @@ def main():
         print("[오류] heal_context 없음. 06_heal.py를 먼저 실행하세요.")
         sys.exit(1)
 
-    if state.get("step") != "heal_needed":
+    if state.get("step") != Step.HEAL_NEEDED:  # P68: 리터럴 → 상수
         print("[스킵] heal_needed 상태가 아님.")
         sys.exit(0)
 

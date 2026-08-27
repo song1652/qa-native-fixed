@@ -12,6 +12,7 @@ import re
 import sys
 from pathlib import Path
 from _paths import PIPELINE_STATE, read_state, update_state
+from _pipeline_registry import Step  # P68: Step 상수 사용 — 문자열 리터럴 대신
 
 
 CONFTEST_TEMPLATE = '''import pytest
@@ -180,7 +181,7 @@ def main():
     _gfp = str(out_dir) + "/"
     update_state(state_path, lambda s: {
         **s,
-        "step": "generated",
+        "step": Step.GENERATED,  # P68: 리터럴 → 상수
         "generated_file_path": _gfp,
         "generated_files": generated_files,
     })

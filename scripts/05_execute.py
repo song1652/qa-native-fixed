@@ -22,6 +22,7 @@ from _paths import (
     SCREENSHOTS_DIR, VIDEOS_DIR,
 )
 from _constants import DEFAULT_GENERATED_FILE, MAX_PYTEST_WORKERS
+from _pipeline_registry import Step  # P68: Step 상수 사용 — 문자열 리터럴 대신
 from result_parser import parse_results, parse_skip_messages, parse_durations
 from structured_log import slog
 from report_html import case_row as _case_row, build_report
@@ -385,7 +386,7 @@ def main():
         # 책임지는 필드(step, execution_result)만 병합해 쓴다 — 그 사이 다른
         # 프로세스가 쓴 값을 덮어쓰지 않기 위함(RMW 경쟁 방지).
         update_state(state_path, lambda fresh: {
-            **fresh, "step": "timeout", "execution_result": _timeout_result,
+            **fresh, "step": Step.TIMEOUT, "execution_result": _timeout_result,  # P68: 리터럴 → 상수
         })
         sys.exit(1)
 
@@ -507,7 +508,7 @@ def main():
         "json_report_path": str(json_report_path),
     }
 
-    _new_step = "heal_needed" if failed_count > 0 else "done"
+    _new_step = Step.HEAL_NEEDED if failed_count > 0 else Step.DONE  # P68: 리터럴 → 상수
     # pytest 실행(최대 3600초)이 끝난 시점의 최신 상태 위에 이번 실행이
     # 책임지는 필드(step, execution_result)만 병합해 쓴다 — read_state 시점의
     # 오래된 state 스냅샷으로 다른 프로세스의 갱신을 덮어쓰지 않기 위함.

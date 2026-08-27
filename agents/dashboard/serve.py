@@ -71,14 +71,34 @@ ALLOWED_HOSTS = {"localhost:8766", "127.0.0.1:8766"}
 _SPAWNED_PROCS: dict = {}   # dict[int, subprocess.Popen]
 _SPAWNED_PIDS_LOCK = threading.Lock()
 
+# P77: 스크립트 태그별 실행 중 프로세스 추적 — 중복 spawn 방지.
+# 대시보드 Run 버튼 더블클릭 시 동일 파이프라인이 두 번 기동되어 state 파일 충돌 발생.
+# {tag: Popen} — tag는 파이프라인 종류를 나타내는 짧은 문자열.
+_SCRIPT_RUNNING: dict[str, object] = {}  # dict[str, subprocess.Popen]
 
-def _register_spawned_proc(proc) -> None:
-    """Popen 객체를 등록하고 죽은 프로세스를 정리한다 (P61)."""
+
+def _register_spawned_proc(proc, tag: str = "") -> None:
+    """Popen 객체를 등록하고 죽은 프로세스를 정리한다 (P61).
+
+    P77: tag를 지정하면 동종 프로세스를 _SCRIPT_RUNNING에도 기록해
+    _is_script_running()으로 중복 실행을 사전 차단할 수 있다.
+    """
     with _SPAWNED_PIDS_LOCK:
         dead = [pid for pid, p in _SPAWNED_PROCS.items() if p.poll() is not None]
         for pid in dead:
             del _SPAWNED_PROCS[pid]
         _SPAWNED_PROCS[proc.pid] = proc
+        if tag:
+            _SCRIPT_RUNNING[tag] = proc
+
+
+def _is_script_running(tag: str) -> bool:
+    """동종(같은 tag) 프로세스가 이미 실행 중인지 확인 (P77: 중복 spawn 방지)."""
+    if not tag:
+        return False
+    with _SPAWNED_PIDS_LOCK:
+        proc = _SCRIPT_RUNNING.get(tag)
+        return proc is not None and proc.poll() is None  # type: ignore[union-attr]
 
 
 # 하위 호환 별칭 — 기존 호출부(proc.pid 전달)가 있을 경우를 위해 유지.
@@ -1155,6 +1175,12 @@ class DashboardHandler(BaseHTTPRequestHandler):
 
     def _post_run_qa(self):
         import subprocess as sp
+        # P77: 중복 spawn 방지 — 이미 실행 중이면 거부
+        if _is_script_running("run_qa"):
+            self._serve_bytes(
+                b'{"ok":false,"error":"run_qa already running"}',
+                "application/json; charset=utf-8")
+            return
         body = _read_body(self)
         url = body.get("url", "").strip()
         cases_dir = body.get("cases_dir", "").strip()  # e.g. "login"
@@ -1189,7 +1215,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
             cwd=str(PROJECT_ROOT),
             stdout=log_file, stderr=sp.STDOUT,
         )
-        _register_spawned_proc(proc)
+        _register_spawned_proc(proc, tag="run_qa")  # P77: tag 등록
         # 자식 프로세스가 fd를 상속했으므로 부모에서 닫아도 안전
         log_file.close()
         print(f"[Dashboard] run_qa.py 실행 (PID: {proc.pid}, URL: {url}, cases: {cases_dir})")
@@ -1200,6 +1226,12 @@ class DashboardHandler(BaseHTTPRequestHandler):
 
     def _post_run_qa_parallel(self):
         import subprocess as sp
+        # P77: 중복 spawn 방지
+        if _is_script_running("run_qa_parallel"):
+            self._serve_bytes(
+                b'{"ok":false,"error":"run_qa_parallel already running"}',
+                "application/json; charset=utf-8")
+            return
         log_path = LOGS_DIR / "run_parallel.txt"
         script = PROJECT_ROOT / "run_qa_parallel.py"
         log_file = open(log_path, "w", encoding="utf-8")
@@ -1208,7 +1240,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
             cwd=str(PROJECT_ROOT),
             stdout=log_file, stderr=sp.STDOUT,
         )
-        _register_spawned_proc(proc)
+        _register_spawned_proc(proc, tag="run_qa_parallel")  # P77: tag 등록
         log_file.close()
         print(f"[Dashboard] run_qa_parallel.py 실행 (PID: {proc.pid})")
         self._serve_bytes(
@@ -1329,6 +1361,12 @@ class DashboardHandler(BaseHTTPRequestHandler):
 
     def _post_run_merge(self):
         import subprocess as sp
+        # P77: 중복 spawn 방지
+        if _is_script_running("run_merge"):
+            self._serve_bytes(
+                b'{"ok":false,"error":"99_merge already running"}',
+                "application/json; charset=utf-8")
+            return
         merge_script = PROJECT_ROOT / "parallel" / "99_merge.py"
         if not merge_script.exists():
             self._serve_bytes(b'{"ok":false,"error":"99_merge.py not found"}',
@@ -1342,7 +1380,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
             cwd=str(PROJECT_ROOT),
             stdout=log_file, stderr=sp.STDOUT,
         )
-        _register_spawned_proc(proc)
+        _register_spawned_proc(proc, tag="run_merge")  # P77: tag 등록
         log_file.close()
         print(f"[Dashboard] 99_merge.py 실행 (PID: {proc.pid}, 로그: {log_path})")
         self._serve_bytes(
@@ -1365,6 +1403,12 @@ class DashboardHandler(BaseHTTPRequestHandler):
 
     def _post_run_quick(self):
         import subprocess as sp
+        # P77: 중복 spawn 방지
+        if _is_script_running("run_quick"):
+            self._serve_bytes(
+                b'{"ok":false,"error":"run_quick already running"}',
+                "application/json; charset=utf-8")
+            return
         body = _read_body(self)
         groups = body.get("groups", [])
         if not groups:
@@ -1407,7 +1451,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
             cmd, cwd=str(PROJECT_ROOT),
             stdout=log_file, stderr=sp.STDOUT,
         )
-        _register_spawned_proc(proc)
+        _register_spawned_proc(proc, tag="run_quick")  # P77: tag 등록
         log_file.close()
         print(f"[Dashboard] 빠른 실행 (PID: {proc.pid}, groups: {groups})")
         self._serve_bytes(

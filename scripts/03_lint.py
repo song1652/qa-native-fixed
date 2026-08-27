@@ -10,6 +10,7 @@ from pathlib import Path
 from _python import PYTHON_EXE
 from _paths import PIPELINE_STATE, read_state, update_state
 from _constants import DEFAULT_GENERATED_FILE
+from _pipeline_registry import Step  # P68: Step 상수 사용 — 문자열 리터럴 대신
 
 
 def _make_lint_mutator(lint_result: dict):
@@ -20,7 +21,7 @@ def _make_lint_mutator(lint_result: dict):
     이 스크립트가 소유한 필드만 갱신한다.
     """
     def _mutator(fresh: dict) -> dict:
-        return {**fresh, "lint_result": lint_result, "step": "reviewed"}
+        return {**fresh, "lint_result": lint_result, "step": Step.REVIEWED}  # P68: 리터럴 → 상수
 
     return _mutator
 

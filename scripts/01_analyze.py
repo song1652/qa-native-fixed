@@ -17,6 +17,7 @@ from _paths import (
     read_state, update_state,
     get_cached_dom, save_dom_cache, url_cache_key,
 )
+from _pipeline_registry import Step  # P68: Step 상수 사용 — 문자열 리터럴 대신
 
 _DOM_HELPERS_JS = (Path(__file__).parent / "dom_helpers.js").read_text(encoding="utf-8")
 
@@ -757,7 +758,7 @@ def _make_analyze_mutator(dom: dict, url: str, sub_doms):
             **fresh,
             "dom_info": dom,
             "dom_cache_key": url_cache_key(url),
-            "step": "analyzed",
+            "step": Step.ANALYZED,  # P68: 리터럴 → 상수
         }
         if sub_doms:
             # pipeline.json에는 URL→캐시키 매핑만 저장 (경량화)
