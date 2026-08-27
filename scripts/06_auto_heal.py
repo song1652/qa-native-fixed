@@ -16,6 +16,7 @@ import sys
 import tempfile
 from pathlib import Path
 from _paths import PIPELINE_STATE, PROJECT_ROOT, read_state, update_state, HEAL_STATS_PATH
+from _pipeline_registry import ParallelStatus  # m1(P93): 문자열 하드코딩 제거
 from _python import PYTHON_EXE
 
 
@@ -318,7 +319,7 @@ def main():
         # (99_merge.py가 이미 heal_needed 상태임을 확인한 뒤 호출하기 때문)
     else:
         heal_context = state.get("heal_context")
-        if not heal_context or state.get(state_key) != "heal_needed":
+        if not heal_context or state.get(state_key) != ParallelStatus.HEAL_NEEDED:  # m1(P93)
             print("[스킵] heal_needed 상태가 아님.")
             sys.exit(3)  # 스킵 코드 — 호출자가 "자동 완료"와 구분할 수 있어야 함
 

@@ -16,7 +16,7 @@ import re
 from datetime import datetime
 from pathlib import Path
 
-from _paths import PROJECT_ROOT, update_state, SCREENSHOTS_DIR, HEAL_STATS_PATH
+from _paths import PROJECT_ROOT, update_state, SCREENSHOTS_DIR, HEAL_STATS_PATH, _file_lock
 
 LESSONS_PATH = PROJECT_ROOT / "agents" / "lessons_learned.md"
 LESSONS_AUTO_PATH = PROJECT_ROOT / "agents" / "lessons_learned_auto.md"
@@ -172,6 +172,9 @@ def append_lessons(failures: list[dict]) -> None:
 
     자동 기록은 _auto.md에만 추가. 큐레이션된 lessons_learned.md는 수동 관리.
     중복 검사는 양쪽 파일 모두 대상.
+
+    m2(P94): 배치 힐링 시 여러 서브에이전트가 동시에 호출할 수 있으므로
+    _file_lock으로 read→write 구간을 보호한다. update_heal_stats와 동일 패턴.
     """
     if not failures:
         return
@@ -188,67 +191,70 @@ def append_lessons(failures: list[dict]) -> None:
             encoding="utf-8",
         )
 
-    auto_content = target_path.read_text(encoding="utf-8")
-    # 큐레이션 파일도 중복 검사 대상에 포함
-    curated_content = ""
-    if LESSONS_PATH.exists():
-        curated_content = LESSONS_PATH.read_text(encoding="utf-8")
+    # m2(P94): 배치 힐링 동시 호출 시 race condition 방지 — _file_lock으로 read→write 보호
+    lock_path = target_path.parent / (target_path.name + ".lock")
+    with _file_lock(lock_path, target_path):
+        auto_content = target_path.read_text(encoding="utf-8")
+        # 큐레이션 파일도 중복 검사 대상에 포함
+        curated_content = ""
+        if LESSONS_PATH.exists():
+            curated_content = LESSONS_PATH.read_text(encoding="utf-8")
 
-    # 기존 파일에서 백틱(`) 안의 summary를 정확히 추출하여 set 구성
-    existing_summaries: set[str] = set()
-    for content in (auto_content, curated_content):
-        for m in re.finditer(r'`([^`]+)`', content):
-            existing_summaries.add(m.group(1).strip())
+        # 기존 파일에서 백틱(`) 안의 summary를 정확히 추출하여 set 구성
+        existing_summaries: set[str] = set()
+        for content in (auto_content, curated_content):
+            for m in re.finditer(r'`([^`]+)`', content):
+                existing_summaries.add(m.group(1).strip())
 
-    new_entries: dict[str, list[str]] = {}
-    seen_summaries: set[str] = set()  # 같은 배치 내 중복 방지
-    skipped = 0
+        new_entries: dict[str, list[str]] = {}
+        seen_summaries: set[str] = set()  # 같은 배치 내 중복 방지
+        skipped = 0
 
-    for f in failures:
-        error_type = classify_error(f["traceback"])
-        key_lines = extract_key_lines(f["traceback"])
-        error_summary = key_lines[0] if key_lines else "(traceback 없음)"
+        for f in failures:
+            error_type = classify_error(f["traceback"])
+            key_lines = extract_key_lines(f["traceback"])
+            error_summary = key_lines[0] if key_lines else "(traceback 없음)"
 
-        summary_normalized = error_summary.strip()
-        # 중복 판정: (1) traceback 없음 (2) 기존 파일에 이미 존재 (3) 같은 배치 내 중복
-        if (summary_normalized == "(traceback 없음)"
-                or summary_normalized in existing_summaries
-                or summary_normalized in seen_summaries):
-            skipped += 1
-            continue
-        seen_summaries.add(summary_normalized)
+            summary_normalized = error_summary.strip()
+            # 중복 판정: (1) traceback 없음 (2) 기존 파일에 이미 존재 (3) 같은 배치 내 중복
+            if (summary_normalized == "(traceback 없음)"
+                    or summary_normalized in existing_summaries
+                    or summary_normalized in seen_summaries):
+                skipped += 1
+                continue
+            seen_summaries.add(summary_normalized)
 
-        fix_hint = {
-            "Locator": "dom_info 셀렉터 재확인, #id 우선 사용",
-            "Assertion": "실제 페이지 텍스트/상태로 기댓값 수정",
-            "Timeout": "expect(..., timeout=10000) 또는 wait_for_selector 추가",
-            "URL": "BASE_URL 또는 goto 인자 재확인",
-            "JS평가": "page.evaluate() 내 JS 문법 확인, arrow function 래핑",
-            "Python런타임": "test_data 키/import/변수명 확인",
-            "Playwright일반": "브라우저 상태 확인, 페이지 닫힘/크래시 대응",
-        }.get(error_type, "")
+            fix_hint = {
+                "Locator": "dom_info 셀렉터 재확인, #id 우선 사용",
+                "Assertion": "실제 페이지 텍스트/상태로 기댓값 수정",
+                "Timeout": "expect(..., timeout=10000) 또는 wait_for_selector 추가",
+                "URL": "BASE_URL 또는 goto 인자 재확인",
+                "JS평가": "page.evaluate() 내 JS 문법 확인, arrow function 래핑",
+                "Python런타임": "test_data 키/import/변수명 확인",
+                "Playwright일반": "브라우저 상태 확인, 페이지 닫힘/크래시 대응",
+            }.get(error_type, "")
 
-        entry = f"- **{error_type}**: `{error_summary}` -- {fix_hint}\n"
-        new_entries.setdefault(error_type, []).append(entry)
+            entry = f"- **{error_type}**: `{error_summary}` -- {fix_hint}\n"
+            new_entries.setdefault(error_type, []).append(entry)
 
-    if not new_entries:
-        if skipped:
-            print(f"[heal_utils] lessons_learned_auto.md: {skipped}건 중복 → 추가 없음")
-        return
+        if not new_entries:
+            if skipped:
+                print(f"[heal_utils] lessons_learned_auto.md: {skipped}건 중복 → 추가 없음")
+            return
 
-    for section, entries in new_entries.items():
-        section_header = f"## {section} 오류" if section != "기타" else "## 기타"
-        insert_text = "\n" + "".join(entries)
-        pattern = rf"({re.escape(section_header)}[^\n]*\n(?:<!--[^>]*-->\n)?)"
-        if re.search(pattern, auto_content):
-            auto_content = re.sub(pattern, r"\1" + insert_text, auto_content, count=1)
-        else:
-            auto_content += f"\n{section_header}\n{insert_text}"
+        for section, entries in new_entries.items():
+            section_header = f"## {section} 오류" if section != "기타" else "## 기타"
+            insert_text = "\n" + "".join(entries)
+            pattern = rf"({re.escape(section_header)}[^\n]*\n(?:<!--[^>]*-->\n)?)"
+            if re.search(pattern, auto_content):
+                auto_content = re.sub(pattern, r"\1" + insert_text, auto_content, count=1)
+            else:
+                auto_content += f"\n{section_header}\n{insert_text}"
 
-    target_path.write_text(auto_content, encoding="utf-8")
-    added = sum(len(v) for v in new_entries.values())
-    print(f"[heal_utils] lessons_learned_auto.md 업데이트: "
-          f"{added}건 추가, {skipped}건 중복 건너뜀")
+        target_path.write_text(auto_content, encoding="utf-8")
+        added = sum(len(v) for v in new_entries.values())
+        print(f"[heal_utils] lessons_learned_auto.md 업데이트: "
+              f"{added}건 추가, {skipped}건 중복 건너뜀")
 
 
 def _summarize_failure(f: dict) -> tuple[str, str, str]:

@@ -18,6 +18,7 @@ if _SCRIPTS_DIR not in sys.path:
     sys.path.insert(0, _SCRIPTS_DIR)
 
 from _python import PYTHON_EXE
+from _constants import MAX_PYTEST_WORKERS  # m3(P95): 병렬 실행 워커 수
 
 PROJECT_ROOT = Path(__file__).parent.parent
 GENERATED_DIR = PROJECT_ROOT / "tests" / "generated"
@@ -131,6 +132,7 @@ def run_pytest(sorted_files: list[Path]) -> tuple[int, dict]:
                 "args = files + [\n"
                 "    '--json-report',\n"
                 f"    '--json-report-file={_json_report_str}',\n"
+                f"    '-n', '{MAX_PYTEST_WORKERS}',\n"  # m3(P95): 병렬 실행
                 "    '--tb=short', '-v',\n"
                 "]\n"
                 "sys.exit(pytest.main(args))\n"
@@ -147,6 +149,7 @@ def run_pytest(sorted_files: list[Path]) -> tuple[int, dict]:
             cmd = [PYTHON_EXE, "-m", "pytest"] + file_args + [
                 "--json-report",
                 f"--json-report-file={json_report_path}",
+                "-n", str(MAX_PYTEST_WORKERS),  # m3(P95): 병렬 실행
                 "--tb=short", "-v",
             ]
 

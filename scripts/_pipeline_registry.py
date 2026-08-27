@@ -209,8 +209,8 @@ PARALLEL_STEP_LABELS: dict[str, str] = {
 
 VALID_TRANSITIONS: dict[str, list[str]] = {
     Step.INIT:        [Step.ANALYZED],
-    Step.ANALYZED:    [Step.PLANNED, Step.GENERATED],   # planned: 선택적 중간 단계
-    Step.PLANNED:     [Step.GENERATED],
+    Step.ANALYZED:    [Step.GENERATED],   # m4(P96): Step.PLANNED 미사용 — 전이표에서 제거
+    # Step.PLANNED 전이는 제거됨(m4). 상수(Step.PLANNED)는 미래 확장용으로 유지.
     Step.GENERATED:   [Step.REVIEWED],
     Step.REVIEWED:    [Step.DONE, Step.HEAL_NEEDED, Step.TIMEOUT, Step.GENERATED,
                        Step.HEAL_FAILED],  # P60: 반려→재작성 / C2: 사이트 불가 즉시 HEAL_FAILED
