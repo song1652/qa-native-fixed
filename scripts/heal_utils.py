@@ -439,11 +439,13 @@ def build_heal_batches(failures: list[dict], batch_size: int = HEAL_BATCH_SIZE) 
 
 
 def print_heal_batches(batches: list[list[dict]], url: str = "",
-                       pipeline: str = "single") -> None:
+                       pipeline: str = "single",
+                       state_path: "Path | None" = None) -> None:
     """배치 분할된 힐링 지시를 HEAL_SUBAGENT_CONTEXTS 형식으로 출력.
 
     Claude Code가 이 출력을 읽고 Agent tool로 각 배치를 동시 실행한다.
     단일/병렬/빠른 실행 모두 동일한 출력 형식을 사용.
+    state_path가 주어지면 컨텍스트를 해당 상태 파일에도 저장 (P89: 훅 로그 경로 불일치 수정).
     """
     if not batches:
         return
@@ -497,6 +499,10 @@ def print_heal_batches(batches: list[list[dict]], url: str = "",
             "mcp_snapshot_url": url if needs_mcp else "",
         }
         contexts.append(ctx)
+
+    # 훅이 로그 파일 없이도 컨텍스트를 읽을 수 있도록 상태 파일에 저장 (P89)
+    if state_path is not None:
+        update_state(state_path, lambda s: {**s, "heal_subagent_contexts": contexts})
 
     print()
     print("=== HEAL_SUBAGENT_CONTEXTS_START ===")

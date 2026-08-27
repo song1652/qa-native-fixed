@@ -3,7 +3,7 @@ Step 4 -- QA 리드 승인 게이트
 LLM 없음. state.json의 review_summary를 출력하고 y/n 입력 대기.
 결과를 state.json의 approval_status에 저장.
 
-종료코드: 0=승인  2=반려(재작성)  1=stdin 없음(비대화형 환경, 승인 UI 없음)
+종료코드: 0=승인  4=반려(재작성)  1=stdin 없음(비대화형 환경, 승인 UI 없음)  2=3회 반려 초과
 step은 변경하지 않음 (reviewed 유지) — 05_execute.py가 done/heal_needed로 전이.
 auto_approve: config/pipeline.json의 auto_approve=true 또는 --yes 플래그로 활성화.
 
@@ -19,7 +19,7 @@ import json
 import sys
 from pathlib import Path
 from _paths import PIPELINE_STATE, read_state, update_state
-from _constants import EXIT_REJECTED
+from _constants import EXIT_REJECTED, EXIT_HEAL_EXCEEDED
 
 MAX_REJECTION = 3  # 반려 최대 횟수 — 초과 시 파이프라인 강제 종료
 
@@ -125,10 +125,10 @@ def main():
         if rejection_count >= MAX_REJECTION:
             print(f"  [경고] {MAX_REJECTION}회 반려 한도 초과. 파이프라인을 종료합니다.")
             print("  수동으로 코드를 검토하거나 테스트케이스를 수정하세요.")
-            sys.exit(EXIT_REJECTED)
+            sys.exit(EXIT_HEAL_EXCEEDED)
         print()
         print("[다음] Claude Code가 반려 사유를 반영해 코드를 재작성합니다.")
-        sys.exit(2)
+        sys.exit(EXIT_REJECTED)
 
 
 if __name__ == "__main__":

@@ -319,7 +319,7 @@ def main():
     _page_cfg = _pages.get(_group_name, {})
     if isinstance(_page_cfg, str):
         _page_cfg = {}
-    _single_session = state.get("spa", False) or any(
+    _single_session = _page_cfg.get("spa", False) or any(
         h in _url for h in _page_cfg.get("single_session_hosts", [])
     )
 

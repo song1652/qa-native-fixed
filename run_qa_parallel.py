@@ -402,6 +402,9 @@ def main():
         "subagents": contexts,
     }
 
+    # 훅이 로그 파일 없이도 컨텍스트를 읽을 수 있도록 state/parallel.json에 저장 (P89)
+    _save_state({"subagent_contexts": output_payload})
+
     if not args.no_auto:
         # --auto(기본): headless Claude가 state/parallel_contexts.json을 읽으므로
         # 터미널에 대용량 JSON을 출력할 필요 없음

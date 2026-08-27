@@ -212,11 +212,12 @@ VALID_TRANSITIONS: dict[str, list[str]] = {
     Step.ANALYZED:    [Step.PLANNED, Step.GENERATED],   # planned: 선택적 중간 단계
     Step.PLANNED:     [Step.GENERATED],
     Step.GENERATED:   [Step.REVIEWED],
-    Step.REVIEWED:    [Step.DONE, Step.HEAL_NEEDED, Step.TIMEOUT, Step.GENERATED],  # P60: 반려→재작성
-    Step.DONE:        [Step.HEAL_NEEDED, Step.ANALYZED, Step.INIT],  # init: 재실행 전체 리셋
+    Step.REVIEWED:    [Step.DONE, Step.HEAL_NEEDED, Step.TIMEOUT, Step.GENERATED,
+                       Step.HEAL_FAILED],  # P60: 반려→재작성 / C2: 사이트 불가 즉시 HEAL_FAILED
+    Step.DONE:        [Step.HEAL_NEEDED, Step.ANALYZED, Step.INIT, Step.HEAL_FAILED],  # init: 재실행 전체 리셋
     Step.HEAL_NEEDED: [Step.DONE, Step.HEAL_FAILED, Step.TIMEOUT],
     Step.HEAL_FAILED: [Step.ANALYZED, Step.INIT],
-    Step.TIMEOUT:     [Step.DONE, Step.HEAL_NEEDED, Step.INIT],
+    Step.TIMEOUT:     [Step.DONE, Step.HEAL_NEEDED, Step.INIT, Step.HEAL_FAILED],  # C2: 타임아웃→힐링실패 경로
 }
 
 
@@ -233,7 +234,7 @@ VALID_PARALLEL_TRANSITIONS: dict[str, list[str]] = {
     ParallelStatus.READY:       [ParallelStatus.TESTING],
     ParallelStatus.ERROR:       [ParallelStatus.INIT, ParallelStatus.TESTING],
     ParallelStatus.TESTING:     [ParallelStatus.DONE, ParallelStatus.HEAL_NEEDED,
-                                 ParallelStatus.HEAL_FAILED],
+                                 ParallelStatus.HEAL_FAILED, ParallelStatus.ERROR],  # C1: exit 5(수집 0건) 처리
     ParallelStatus.DONE:        [ParallelStatus.TESTING, ParallelStatus.INIT],
     ParallelStatus.HEAL_NEEDED: [ParallelStatus.DONE, ParallelStatus.HEAL_FAILED,
                                  ParallelStatus.TESTING],

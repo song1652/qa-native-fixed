@@ -5,15 +5,17 @@ HEAL_SUBAGENT_CONTEXTS를 stdout으로 출력해 Claude 컨텍스트에 주입�
 
 트리거 조건: ParallelStatus.HEAL_NEEDED (레지스트리 상수) — P44
 P76: state/parallel.json도 감지 대상에 추가 (99_merge.py 실행 후 heal_needed 자동 감지)
+P89: 로그 파일 스크레이핑 대신 상태 파일의 heal_subagent_contexts 키를 읽음
 """
+import json
 import sys
-from _paths import QUICK_STATE, QUICK_RUN_LOG, PARALLEL_STATE, RUN_PARALLEL_LOG
+from _paths import QUICK_STATE, PARALLEL_STATE
 from _pipeline_registry import ParallelStatus
 from hook_utils import check_state
 
 # 1. quick.json 우선 확인
 state = check_state(QUICK_STATE, key="status", value=ParallelStatus.HEAL_NEEDED)
-log_path = QUICK_RUN_LOG
+is_quick = state is not None
 pipeline_label = "빠른 실행"
 restart_cmd = ""  # 아래에서 설정
 
@@ -21,7 +23,6 @@ restart_cmd = ""  # 아래에서 설정
 if state is None:
     state = check_state(PARALLEL_STATE, key="status", value=ParallelStatus.HEAL_NEEDED)
     if state is not None:
-        log_path = RUN_PARALLEL_LOG
         pipeline_label = "병렬"
 
 if state is None:
@@ -30,27 +31,21 @@ if state is None:
 failed = state.get("execution_result", {}).get("failed", 0)
 groups = state.get("groups", []) or list(state.get("execution_result", {}).get("group_results", {}).keys())
 
-# 로그 파일에서 HEAL_SUBAGENT_CONTEXTS 추출
+# 상태 파일의 heal_subagent_contexts에서 HEAL_SUBAGENT_CONTEXTS 읽기 (P89)
 contexts_json = ""
-if log_path.exists():
-    log_text = log_path.read_text(encoding="utf-8")
-    start_marker = "=== HEAL_SUBAGENT_CONTEXTS_START ==="
-    end_marker = "=== HEAL_SUBAGENT_CONTEXTS_END ==="
-    start_idx = log_text.rfind(start_marker)  # 가장 최근 힐링 컨텍스트
-    end_idx = log_text.rfind(end_marker)
-    if start_idx != -1 and end_idx != -1:
-        contexts_json = log_text[start_idx + len(start_marker):end_idx].strip()
+heal_contexts = state.get("heal_subagent_contexts")
+if heal_contexts:
+    contexts_json = json.dumps(heal_contexts, ensure_ascii=False, indent=2)
 
 if not contexts_json:
     sys.exit(0)
 
 # 재실행 명령 결정
-if log_path == RUN_PARALLEL_LOG:
-    group_args = " --group " + " ".join(groups) if groups else ""
-    restart_cmd = f"python parallel/99_merge.py{group_args}"
-else:
-    group_args = " --group " + " ".join(groups) if groups else ""
+group_args = " --group " + " ".join(groups) if groups else ""
+if is_quick:
     restart_cmd = f"python parallel/99_merge.py --quick{group_args}"
+else:
+    restart_cmd = f"python parallel/99_merge.py{group_args}"
 
 lines = [
     f"[{pipeline_label} 힐링 자동 시작] status=heal_needed 상태가 감지되었습니다.",

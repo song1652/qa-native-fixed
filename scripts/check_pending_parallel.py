@@ -4,9 +4,11 @@ state/parallel.json의 status=ready이면 subagent 실행 요청을
 stdout으로 출력해 Claude 컨텍스트에 주입한다.
 
 트리거 조건: ParallelStatus.READY (레지스트리 상수) — P44
+P89: 로그 파일 스크레이핑 대신 state/parallel.json의 subagent_contexts 키를 읽음
 """
+import json
 import sys
-from _paths import PARALLEL_STATE, RUN_PARALLEL_LOG
+from _paths import PARALLEL_STATE
 from _pipeline_registry import ParallelStatus
 from hook_utils import check_state
 
@@ -17,17 +19,11 @@ if state is None:
 total = state.get("total_count", 0)
 targets = state.get("targets", [])
 
-# 로그 파일에서 PARALLEL_SUBAGENT_CONTEXTS 추출
-log_path = RUN_PARALLEL_LOG
+# state/parallel.json의 subagent_contexts에서 PARALLEL_SUBAGENT_CONTEXTS 읽기 (P89)
 contexts_json = ""
-if log_path.exists():
-    log_text = log_path.read_text(encoding="utf-8")
-    start_marker = "=== PARALLEL_SUBAGENT_CONTEXTS_START ==="
-    end_marker = "=== PARALLEL_SUBAGENT_CONTEXTS_END ==="
-    start_idx = log_text.find(start_marker)
-    end_idx = log_text.find(end_marker)
-    if start_idx != -1 and end_idx != -1:
-        contexts_json = log_text[start_idx + len(start_marker):end_idx].strip()
+subagent_contexts = state.get("subagent_contexts")
+if subagent_contexts:
+    contexts_json = json.dumps(subagent_contexts, ensure_ascii=False, indent=2)
 
 lines = [
     f"[병렬 파이프라인 자동 실행] state/parallel.json에 ready 상태가 감지되었습니다. 즉시 subagent를 실행해주세요.",

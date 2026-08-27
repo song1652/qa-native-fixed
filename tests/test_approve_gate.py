@@ -258,7 +258,7 @@ class TestApproveAtomicRmw:
 
         with pytest.raises(SystemExit) as exc:
             mod.main()
-        assert exc.value.code == 2  # 반려 종료코드
+        assert exc.value.code == 4  # 반려 종료코드 (EXIT_REJECTED=4)
 
         after = json.loads(state_path.read_text())
         assert after["rejection_count"] == 2, "이전 값(1)에서 1 증가해 2여야 함"

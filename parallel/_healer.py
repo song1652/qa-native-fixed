@@ -326,32 +326,36 @@ def run_heal_cycle(
     if auto_heal_applied:
         print("[99] auto_heal 성공 -- Agent 힐링 불필요할 수 있습니다.")
         print("     python parallel/99_merge.py 를 다시 실행하여 확인하세요.")
-    print_heal_instructions(heal_ctx, pipeline=pipeline_label)
+    print_heal_instructions(heal_ctx, pipeline=pipeline_label, state_path=state_path)
     return auto_heal_applied, False
 
 
-def print_heal_instructions(heal_context: dict, pipeline: str = "parallel") -> None:
+def print_heal_instructions(heal_context: dict, pipeline: str = "parallel",
+                            state_path: "Path | None" = None) -> None:
     """배치 분할 병렬 힐링 지시를 출력."""
     failures = heal_context.get("failures", [])
     urls = heal_context.get("urls", {})
     url = next(iter(urls.values()), "") if urls else ""
     batches = build_heal_batches(failures)
-    print_heal_batches(batches, url=url, pipeline=pipeline)
+    print_heal_batches(batches, url=url, pipeline=pipeline, state_path=state_path)
 
 
 def verify_lessons_learned_updated(heal_start_time: str) -> bool:
-    """힐링 후 lessons_learned.md가 업데이트되었는지 검증.
+    """힐링 후 lessons_learned.md 또는 lessons_learned_auto.md가 업데이트되었는지 검증.
 
-    heal_start_time 이후에 lessons_learned.md가 수정되었는지 확인.
-    누락 시 경고 출력.
+    heal_start_time 이후에 LESSONS_PATH(수동 큐레이션) 또는 LESSONS_AUTO_PATH(자동 기록)
+    중 하나라도 수정되었으면 통과. 둘 다 존재하지 않으면 경고 출력.
     """
-    if not LESSONS_PATH.exists():
+    if not LESSONS_PATH.exists() and not LESSONS_AUTO_PATH.exists():
         return False
     try:
         from datetime import datetime as dt
         start = dt.fromisoformat(heal_start_time)
-        mtime = dt.fromtimestamp(LESSONS_PATH.stat().st_mtime)
-        if mtime > start:
+        mtimes = []
+        for lpath in [LESSONS_PATH, LESSONS_AUTO_PATH]:
+            if lpath.exists():
+                mtimes.append(dt.fromtimestamp(lpath.stat().st_mtime))
+        if mtimes and max(mtimes) > start:
             return True
     except Exception:
         pass

@@ -196,6 +196,14 @@ def main():
 
     state = read_state(state_path)
 
+    # C2: step 가드 — 힐링이 불가능한 상태(TIMEOUT 등)에서 HEAL_FAILED 전이 시 FSM 크래시 방지
+    _current_step = state.get("step", "")
+    _UNHEALABLE_STEPS = {Step.TIMEOUT, Step.HEAL_FAILED, Step.ANALYZED, Step.INIT}
+    if _current_step in _UNHEALABLE_STEPS:
+        print(f"[06] step={_current_step!r} — 힐링 대상 상태가 아닙니다. 건너뜁니다.")
+        slog("heal_skip_invalid_step", step="06_heal", current_step=_current_step)
+        sys.exit(EXIT_SUCCESS)
+
     execution_result = state.get("execution_result", {})
     if execution_result.get("failed", 0) == 0 and execution_result.get("exit_code", 1) == 0:
         print("[06] 모든 테스트 통과 - 힐링 불필요.")
@@ -261,7 +269,13 @@ def main():
 
     # 동일 오류 2회 연속 반복 감지 → 해당 테스트 스킵
     prev_heal_context = state.get("heal_context") or {}
-    prev_failures = prev_heal_context.get("failures", [])
+    # M2: prev_failures(06_heal이 저장한 안정 스냅샷) 우선 사용.
+    # auto_heal이 heal_context["failures"]를 잔여 목록으로 덮어쓰므로
+    # "failures" 키만 보면 다음 라운드의 반복 감지 기준선이 어긋난다.
+    prev_failures = (
+        prev_heal_context.get("prev_failures")
+        or prev_heal_context.get("failures", [])
+    )
     healable, skipped = _detect_repeated_failures(failures, prev_failures)
 
     if skipped:
@@ -298,6 +312,13 @@ def main():
         "heal_count": heal_count + 1,
         "failure_count": len(healable),
         "failures": healable,
+        # M2: 다음 라운드 반복 감지용 안정 스냅샷. auto_heal이 "failures"를 덮어써도
+        # 이 키는 유지되어 _detect_repeated_failures 기준선이 어긋나지 않는다.
+        "prev_failures": [
+            {"test_name": f["test_name"], "test_id": f.get("test_id", ""),
+             "error_type": f.get("error_type", ""), "traceback": f.get("traceback", "")}
+            for f in healable
+        ],
         "failure_groups": dict(failure_groups),
         "skipped_repeated": [f["test_name"] for f in skipped],
         "url": state.get("url", ""),

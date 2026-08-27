@@ -1373,6 +1373,13 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self._serve_bytes(b'{"ok":false,"error":"99_merge.py not found"}',
                               "application/json; charset=utf-8")
             return
+        # P90: 새 병렬 실행 전 heal_count를 0으로 리셋한다.
+        # parallel.json이 이전 실패 사이클의 heal_count(예: 3 = MAX_HEAL)를 보유한 채로
+        # 새 실행이 시작되면, 99_merge.py가 즉시 heal_failed를 판정해 힐링을 영구 스킵한다.
+        # status는 변경하지 않아 UI가 직전 결과를 유지하다가 새 실행 결과로 자연스럽게 전환된다.
+        if PARALLEL_STATE_PATH.exists():
+            _safe_update_json(PARALLEL_STATE_PATH, lambda s: {**s, "heal_count": 0})
+
         # 로그 파일로 출력 저장
         log_path = LOGS_DIR / "merge.txt"
         log_file = open(log_path, "w", encoding="utf-8")
