@@ -1,15 +1,20 @@
 """
-테스트: parallel/99_merge.py 핵심 경로 커버리지 (P32)
+테스트: parallel/ 모듈 핵심 경로 커버리지 (P32, P84 모듈 분리 반영)
 
-99_merge.py 파일명이 숫자로 시작해 직접 import 불가 → importlib.util로 로드.
+P84에서 99_merge.py 로직이 3개 모듈로 분리됨:
+  _exec.py    — collect_test_files, run_pytest, _natural_sort_key
+  _healer.py  — _detect_repeated_failures_parallel, verify_lessons_learned_updated,
+                 _build_heal_context, check_assertion_integrity
+  _report.py  — build_parallel_html, _scan_generated_groups
+  99_merge.py — _update_parallel_status (오케스트레이션)
 
 커버 대상:
-  _natural_sort_key                   — 자연 정렬 (숫자 혼합)
-  _detect_repeated_failures_parallel  — 반복 실패 감지 로직
-  verify_lessons_learned_updated      — lessons_learned.md 수정 여부 확인
-  _scan_generated_groups              — tests/generated/ 그룹 스캔
-  build_heal_context                  — heal_context 빌드 (실패 없음 / 있음 / 전체 반복)
-  _update_parallel_status             — 병렬 상태 status 필드 업데이트
+  _natural_sort_key                   — 자연 정렬 (숫자 혼합)           → _exec
+  _detect_repeated_failures_parallel  — 반복 실패 감지 로직             → _healer
+  verify_lessons_learned_updated      — lessons_learned.md 수정 여부 확인 → _healer
+  _scan_generated_groups              — tests/generated/ 그룹 스캔      → _report
+  build_heal_context (_build_heal_context) — heal_context 빌드           → _healer
+  _update_parallel_status             — 병렬 상태 status 필드 업데이트  → 99_merge
 """
 from __future__ import annotations
 
@@ -23,27 +28,32 @@ import pytest
 
 # ── 모듈 로드 ─────────────────────────────────────────────────────────────────
 
-_REPO_ROOT = Path(__file__).parent.parent
-_SCRIPTS_DIR = _REPO_ROOT / "scripts"
+_REPO_ROOT    = Path(__file__).parent.parent
+_SCRIPTS_DIR  = _REPO_ROOT / "scripts"
 _PARALLEL_DIR = _REPO_ROOT / "parallel"
 
 for _p in (str(_SCRIPTS_DIR), str(_PARALLEL_DIR)):
     if _p not in sys.path:
         sys.path.insert(0, _p)
 
-_spec = importlib.util.spec_from_file_location(
-    "merge_99", str(_PARALLEL_DIR / "99_merge.py")
-)
-_mod = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(_mod)
+def _load_module(name: str, path: Path):
+    spec = importlib.util.spec_from_file_location(name, str(path))
+    mod  = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
 
-# 함수 별칭
-_natural_sort_key = _mod._natural_sort_key
-_detect_repeated = _mod._detect_repeated_failures_parallel
-verify_lessons = _mod.verify_lessons_learned_updated
-_scan_groups = _mod._scan_generated_groups
-build_heal_ctx = _mod.build_heal_context
-_update_status = _mod._update_parallel_status
+_exec_mod   = _load_module("_exec",   _PARALLEL_DIR / "_exec.py")
+_healer_mod = _load_module("_healer", _PARALLEL_DIR / "_healer.py")
+_report_mod = _load_module("_report", _PARALLEL_DIR / "_report.py")
+_merge_mod  = _load_module("merge_99", _PARALLEL_DIR / "99_merge.py")
+
+# 함수 별칭 (테스트에서 직접 사용)
+_natural_sort_key = _exec_mod._natural_sort_key
+_detect_repeated  = _healer_mod._detect_repeated_failures_parallel
+verify_lessons    = _healer_mod.verify_lessons_learned_updated
+_scan_groups      = _report_mod._scan_generated_groups
+build_heal_ctx    = _healer_mod._build_heal_context
+_update_status    = _merge_mod._update_parallel_status
 
 
 # ─── _natural_sort_key ────────────────────────────────────────────────────────
@@ -141,7 +151,7 @@ def test_detect_repeated_same_name_different_type_not_skipped():
 
 def test_verify_lessons_false_when_file_missing(tmp_path):
     """lessons_learned.md가 없으면 False 반환."""
-    with patch.object(_mod, "LESSONS_PATH", tmp_path / "nonexistent.md"):
+    with patch.object(_healer_mod, "LESSONS_PATH", tmp_path / "nonexistent.md"):
         assert verify_lessons(datetime.now().isoformat()) is False
 
 
@@ -149,9 +159,8 @@ def test_verify_lessons_true_when_recently_modified(tmp_path):
     """heal_start_time 이후 파일 수정 → True."""
     lessons = tmp_path / "lessons_learned.md"
     lessons.write_text("# lessons")
-    # start_time을 5초 전으로 설정 → 파일 mtime > start_time
     start_iso = (datetime.now() - timedelta(seconds=5)).isoformat()
-    with patch.object(_mod, "LESSONS_PATH", lessons):
+    with patch.object(_healer_mod, "LESSONS_PATH", lessons):
         assert verify_lessons(start_iso) is True
 
 
@@ -159,9 +168,8 @@ def test_verify_lessons_false_when_not_modified(tmp_path, capsys):
     """heal_start_time 이후 수정 없으면 False + 경고 출력."""
     lessons = tmp_path / "lessons_learned.md"
     lessons.write_text("# old content")
-    # start_time을 미래로 설정 → 파일 mtime < start_time
     start_iso = (datetime.now() + timedelta(hours=1)).isoformat()
-    with patch.object(_mod, "LESSONS_PATH", lessons):
+    with patch.object(_healer_mod, "LESSONS_PATH", lessons):
         result = verify_lessons(start_iso)
     assert result is False
     captured = capsys.readouterr()
@@ -173,7 +181,7 @@ def test_verify_lessons_false_when_not_modified(tmp_path, capsys):
 
 def test_scan_generated_groups_empty_when_missing(tmp_path):
     """GENERATED_DIR가 없으면 빈 dict 반환."""
-    with patch.object(_mod, "GENERATED_DIR", tmp_path / "no_generated"):
+    with patch.object(_report_mod, "GENERATED_DIR", tmp_path / "no_generated"):
         assert _scan_groups() == {}
 
 
@@ -184,7 +192,7 @@ def test_scan_generated_groups_collects_py_files(tmp_path):
     grp.mkdir(parents=True)
     (grp / "tc_01_login.py").write_text("")
     (grp / "tc_02_logout.py").write_text("")
-    with patch.object(_mod, "GENERATED_DIR", gen):
+    with patch.object(_report_mod, "GENERATED_DIR", gen):
         result = _scan_groups()
     assert "login" in result
     assert len(result["login"]) == 2
@@ -198,7 +206,7 @@ def test_scan_generated_groups_excludes_conftest(tmp_path):
     (grp / "tc_01_cart.py").write_text("")
     (grp / "conftest.py").write_text("")
     (grp / "__init__.py").write_text("")
-    with patch.object(_mod, "GENERATED_DIR", gen):
+    with patch.object(_report_mod, "GENERATED_DIR", gen):
         result = _scan_groups()
     names = [f.name for f in result.get("shop", [])]
     assert "conftest.py" not in names
@@ -211,7 +219,7 @@ def test_scan_generated_groups_skips_hidden(tmp_path):
     gen = tmp_path / "generated"
     (gen / ".git").mkdir(parents=True)
     (gen / ".git" / "tc_01.py").write_text("")
-    with patch.object(_mod, "GENERATED_DIR", gen):
+    with patch.object(_report_mod, "GENERATED_DIR", gen):
         result = _scan_groups()
     assert ".git" not in result
 
@@ -223,22 +231,22 @@ def test_scan_generated_groups_natural_sort_order(tmp_path):
     grp.mkdir(parents=True)
     for n in [10, 2, 9, 1]:
         (grp / f"tc_{n:02d}_test.py").write_text("")
-    with patch.object(_mod, "GENERATED_DIR", gen):
+    with patch.object(_report_mod, "GENERATED_DIR", gen):
         result = _scan_groups()
     names = [f.name for f in result["order"]]
-    nums = [int(n.split("_")[1]) for n in names]
+    nums  = [int(n.split("_")[1]) for n in names]
     assert nums == sorted(nums)
 
 
-# ─── build_heal_context ───────────────────────────────────────────────────────
+# ─── _build_heal_context ─────────────────────────────────────────────────────
 
 
 def test_build_heal_context_none_when_no_failures():
     """실패가 없는 리포트 → None 반환."""
     report = {"tests": [{"outcome": "passed", "nodeid": "t::test_ok", "call": {}}]}
-    with patch.object(_mod, "write_state"), \
-         patch.object(_mod, "update_state"), \
-         patch.object(_mod, "read_state", return_value={}):
+    with patch.object(_healer_mod, "write_state"), \
+         patch.object(_healer_mod, "update_state"), \
+         patch.object(_healer_mod, "read_state", return_value={}):
         result = build_heal_ctx(report, 0, Path("/fake/state.json"))
     assert result is None
 
@@ -259,39 +267,32 @@ def test_build_heal_context_returns_ctx_with_failures(tmp_path):
     def fake_write(path, data):
         written.update(data)
 
-    with patch.object(_mod, "write_state", side_effect=fake_write), \
-         patch.object(_mod, "update_state"), \
-         patch.object(_mod, "read_state", return_value={}), \
-         patch.object(_mod, "find_screenshot_for_test", return_value=None), \
-         patch.object(_mod, "append_lessons"), \
-         patch.object(_mod, "update_heal_stats"), \
-         patch.object(_mod, "snapshot_assertions", return_value={}), \
-         patch.object(_mod, "LESSONS_PATH", tmp_path / "ll.md"), \
-         patch.object(_mod, "LESSONS_AUTO_PATH", tmp_path / "ll_auto.md"), \
-         patch.object(_mod, "_check_urls_accessible", return_value=None):
+    with patch.object(_healer_mod, "write_state", side_effect=fake_write), \
+         patch.object(_healer_mod, "update_state"), \
+         patch.object(_healer_mod, "read_state", return_value={}), \
+         patch.object(_healer_mod, "find_screenshot_for_test", return_value=None), \
+         patch.object(_healer_mod, "append_lessons"), \
+         patch.object(_healer_mod, "update_heal_stats"), \
+         patch.object(_healer_mod, "snapshot_assertions", return_value={}), \
+         patch.object(_healer_mod, "LESSONS_PATH", tmp_path / "ll.md"), \
+         patch.object(_healer_mod, "LESSONS_AUTO_PATH", tmp_path / "ll_auto.md"), \
+         patch.object(_healer_mod, "_check_urls_accessible", return_value=None):
         ctx = build_heal_ctx(report, 1, Path("/fake/state.json"))
 
     assert ctx is not None
     assert ctx["heal_count"] == 1
     assert ctx["failure_count"] == 1
     assert len(ctx["failures"]) == 1
-    # write_state가 HEAL_CONTEXT_STATE에 올바른 데이터를 썼는지 확인
     assert "failures" in written
 
 
 def test_build_heal_context_site_down_returns_none(tmp_path):
-    """사이트 접근 불가 → None 반환 (힐링 중단).
-
-    _check_urls_accessible는 urls가 비어 있으면 호출되지 않는다.
-    pages.json에 해당 그룹의 URL을 등록해 urls를 채워야 사이트 체크가 동작한다.
-    """
-    # pages.json에 shop 그룹 URL 등록 → build_heal_context가 urls를 채움
+    """사이트 접근 불가 → None 반환 (힐링 중단)."""
     config_dir = tmp_path / "config"
     config_dir.mkdir()
     (config_dir / "pages.json").write_text(
         '{"shop": {"url": "http://shop.local"}}', encoding="utf-8"
     )
-
     report = {
         "tests": [
             {
@@ -303,14 +304,14 @@ def test_build_heal_context_site_down_returns_none(tmp_path):
     }
     site_err = {"error": "Connection refused", "url": "http://shop.local", "group": "shop"}
 
-    with patch.object(_mod, "PROJECT_ROOT", tmp_path), \
-         patch.object(_mod, "write_state"), \
-         patch.object(_mod, "update_state"), \
-         patch.object(_mod, "read_state", return_value={}), \
-         patch.object(_mod, "find_screenshot_for_test", return_value=None), \
-         patch.object(_mod, "_check_urls_accessible", return_value=site_err), \
-         patch.object(_mod, "LESSONS_PATH", tmp_path / "ll.md"), \
-         patch.object(_mod, "LESSONS_AUTO_PATH", tmp_path / "ll_auto.md"):
+    with patch.object(_healer_mod, "PROJECT_ROOT", tmp_path), \
+         patch.object(_healer_mod, "write_state"), \
+         patch.object(_healer_mod, "update_state"), \
+         patch.object(_healer_mod, "read_state", return_value={}), \
+         patch.object(_healer_mod, "find_screenshot_for_test", return_value=None), \
+         patch.object(_healer_mod, "_check_urls_accessible", return_value=site_err), \
+         patch.object(_healer_mod, "LESSONS_PATH", tmp_path / "ll.md"), \
+         patch.object(_healer_mod, "LESSONS_AUTO_PATH", tmp_path / "ll_auto.md"):
         ctx = build_heal_ctx(report, 1, Path("/fake/state.json"))
 
     assert ctx is None
@@ -333,15 +334,15 @@ def test_build_heal_context_all_repeated_returns_none(tmp_path):
         ]
     }
 
-    with patch.object(_mod, "write_state"), \
-         patch.object(_mod, "update_state"), \
-         patch.object(_mod, "read_state", return_value=prev_ctx), \
-         patch.object(_mod, "find_screenshot_for_test", return_value=None), \
-         patch.object(_mod, "append_lessons"), \
-         patch.object(_mod, "update_heal_stats"), \
-         patch.object(_mod, "_check_urls_accessible", return_value=None), \
-         patch.object(_mod, "LESSONS_PATH", tmp_path / "ll.md"), \
-         patch.object(_mod, "LESSONS_AUTO_PATH", tmp_path / "ll_auto.md"):
+    with patch.object(_healer_mod, "write_state"), \
+         patch.object(_healer_mod, "update_state"), \
+         patch.object(_healer_mod, "read_state", return_value=prev_ctx), \
+         patch.object(_healer_mod, "find_screenshot_for_test", return_value=None), \
+         patch.object(_healer_mod, "append_lessons"), \
+         patch.object(_healer_mod, "update_heal_stats"), \
+         patch.object(_healer_mod, "_check_urls_accessible", return_value=None), \
+         patch.object(_healer_mod, "LESSONS_PATH", tmp_path / "ll.md"), \
+         patch.object(_healer_mod, "LESSONS_AUTO_PATH", tmp_path / "ll_auto.md"):
         ctx = build_heal_ctx(report, 2, Path("/fake/state.json"))
 
     assert ctx is None
@@ -357,13 +358,13 @@ def test_update_parallel_status_sets_status_field():
     def fake_update(path, mutator):
         captured.append(mutator({"heal_count": 1, "groups": ["login"]}))
 
-    with patch.object(_mod, "update_state", side_effect=fake_update):
+    with patch.object(_merge_mod, "update_state", side_effect=fake_update):
         _update_status("testing")
 
     assert len(captured) == 1
     assert captured[0]["status"] == "testing"
-    assert captured[0]["heal_count"] == 1      # 기존 필드 보존
-    assert captured[0]["groups"] == ["login"]  # 기존 필드 보존
+    assert captured[0]["heal_count"] == 1
+    assert captured[0]["groups"] == ["login"]
 
 
 def test_update_parallel_status_with_extra_dict():
@@ -373,7 +374,7 @@ def test_update_parallel_status_with_extra_dict():
     def fake_update(path, mutator):
         captured.append(mutator({}))
 
-    with patch.object(_mod, "update_state", side_effect=fake_update):
+    with patch.object(_merge_mod, "update_state", side_effect=fake_update):
         _update_status("done", extra={"heal_count": 2, "pass_rate": 100.0})
 
     assert captured[0]["status"] == "done"
@@ -388,7 +389,7 @@ def test_update_parallel_status_without_extra():
     def fake_update(path, mutator):
         captured.append(mutator({"x": 99}))
 
-    with patch.object(_mod, "update_state", side_effect=fake_update):
+    with patch.object(_merge_mod, "update_state", side_effect=fake_update):
         _update_status("heal_needed")
 
     assert captured[0]["status"] == "heal_needed"
@@ -399,17 +400,10 @@ def test_update_parallel_status_without_extra():
 
 
 class TestQuickModeFsmCrash:
-    """P41: quick 파이프라인 재실행 시 ValueError 크래시 회귀 방지.
-
-    quick 모드는 pytest 실행 전 QUICK_STATE에 'testing' 상태를 기록한 뒤
-    최종 결과(done|heal_needed|heal_failed)를 쓴다.
-    이전에는 'testing' 단계를 건너뛰어, 두 번째 실행에서
-    done → heal_needed 같은 FSM 허용 불가 전이가 발생해 크래시했다.
-    """
+    """P41: quick 파이프라인 재실행 시 ValueError 크래시 회귀 방지."""
 
     def test_update_parallel_status_accepts_path_kwarg(self):
         """path 키워드 인자로 quick.json 등 임의 경로를 지정할 수 있다."""
-        from pathlib import Path as _Path
         captured_path = []
         captured_data = []
 
@@ -417,11 +411,11 @@ class TestQuickModeFsmCrash:
             captured_path.append(path)
             captured_data.append(mutator({}))
 
-        fake_path = _Path("/tmp/fake_quick.json")
-        with patch.object(_mod, "update_state", side_effect=fake_update):
+        fake_path = Path("/tmp/fake_quick.json")
+        with patch.object(_merge_mod, "update_state", side_effect=fake_update):
             _update_status("testing", path=fake_path)
 
-        assert captured_path[0] == fake_path, "path 인자가 update_state에 전달돼야 함"
+        assert captured_path[0] == fake_path
         assert captured_data[0]["status"] == "testing"
 
     def test_update_parallel_status_default_path_is_parallel_state(self):
@@ -431,30 +425,25 @@ class TestQuickModeFsmCrash:
         def fake_update(path, mutator):
             captured_path.append(path)
 
-        with patch.object(_mod, "update_state", side_effect=fake_update):
+        with patch.object(_merge_mod, "update_state", side_effect=fake_update):
             _update_status("done")
 
-        assert captured_path[0] == _mod.PARALLEL_STATE
+        assert captured_path[0] == _merge_mod.PARALLEL_STATE
 
     def test_quick_fsm_done_to_testing_to_heal_needed(self):
-        """done → testing → heal_needed 전이 체인이 FSM에서 허용됨 (P41 핵심 경로)."""
-        from _pipeline_registry import (
-            ParallelStatus,
-            assert_valid_parallel_transition,
-        )
-        # quick 모드 재실행: 이전 상태 done → testing (pytest 시작)
+        """done → testing → heal_needed 전이 체인이 FSM에서 허용됨."""
+        from _pipeline_registry import ParallelStatus, assert_valid_parallel_transition
         assert_valid_parallel_transition(ParallelStatus.DONE, ParallelStatus.TESTING)
-        # testing → heal_needed (테스트 실패)
         assert_valid_parallel_transition(ParallelStatus.TESTING, ParallelStatus.HEAL_NEEDED)
 
     def test_quick_fsm_done_to_testing_to_done(self):
-        """done → testing → done 전이 체인이 허용됨 (재실행 성공 경로)."""
+        """done → testing → done 전이 체인이 허용됨."""
         from _pipeline_registry import ParallelStatus, assert_valid_parallel_transition
         assert_valid_parallel_transition(ParallelStatus.DONE, ParallelStatus.TESTING)
         assert_valid_parallel_transition(ParallelStatus.TESTING, ParallelStatus.DONE)
 
     def test_quick_fsm_heal_failed_to_testing_to_done(self):
-        """heal_failed → testing → done 전이가 허용됨 (heal_failed 후 재실행 성공)."""
+        """heal_failed → testing → done 전이가 허용됨."""
         from _pipeline_registry import ParallelStatus, assert_valid_parallel_transition
         assert_valid_parallel_transition(ParallelStatus.HEAL_FAILED, ParallelStatus.TESTING)
         assert_valid_parallel_transition(ParallelStatus.TESTING, ParallelStatus.DONE)
@@ -466,22 +455,20 @@ class TestQuickModeFsmCrash:
         assert_valid_parallel_transition(ParallelStatus.TESTING, ParallelStatus.DONE)
 
     def test_direct_done_to_heal_needed_is_invalid(self):
-        """done → heal_needed 직접 전이는 여전히 차단된다 (FSM 무결성 유지)."""
+        """done → heal_needed 직접 전이는 여전히 차단된다."""
         from _pipeline_registry import ParallelStatus, assert_valid_parallel_transition
-        import pytest as _pytest
-        with _pytest.raises(ValueError, match="잘못된 parallel status 전이"):
+        with pytest.raises(ValueError, match="잘못된 parallel status 전이"):
             assert_valid_parallel_transition(ParallelStatus.DONE, ParallelStatus.HEAL_NEEDED)
 
     def test_update_status_with_extra_and_path(self):
         """extra와 path를 동시에 지정할 수 있다."""
-        from pathlib import Path as _Path
         captured = []
 
         def fake_update(path, mutator):
             captured.append((path, mutator({"existing": True})))
 
-        fake_path = _Path("/tmp/quick.json")
-        with patch.object(_mod, "update_state", side_effect=fake_update):
+        fake_path = Path("/tmp/quick.json")
+        with patch.object(_merge_mod, "update_state", side_effect=fake_update):
             _update_status("testing", extra={"heal_count": 0}, path=fake_path)
 
         assert captured[0][0] == fake_path
