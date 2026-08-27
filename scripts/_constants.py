@@ -35,9 +35,16 @@ PYTEST_HEAL_TIMEOUT_SEC = 600
 
 # ── Step 전이 규칙 + 검증 함수 (단일/병렬) ────────────────────────
 # 단일 소스는 _pipeline_registry.py. 이 모듈은 하위 호환 re-export만 제공.
+# ── pytest 종료 코드 정책 (M-2/P119) ──────────────────────────────────────
+# 0=전체 통과, 1=실패 있음 — 둘 다 정상 pytest 종료. 이외(2=내부오류, 3=중단, 4=사용오류)는 비정상.
+# 단일(05_execute.py)과 병렬(99_merge.py) 파이프라인이 공통으로 사용.
+PYTEST_NORMAL_EXIT_CODES: frozenset = frozenset({0, 1})
+
 from _pipeline_registry import (       # noqa: E402
     VALID_TRANSITIONS,
     VALID_PARALLEL_TRANSITIONS,
     assert_valid_transition,
     assert_valid_parallel_transition,
+    RESETTABLE_STEPS,
+    RESETTABLE_PARALLEL_STATUSES,
 )

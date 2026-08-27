@@ -27,8 +27,8 @@ from _paths import (
     PROJECT_ROOT, PARALLEL_STATE, HEAL_CONTEXT_STATE, QUICK_STATE,
     read_state, update_state, append_run_history,
 )
-from _constants import MAX_HEAL
-from _pipeline_registry import ParallelStatus
+from _constants import MAX_HEAL, PYTEST_NORMAL_EXIT_CODES  # M-2(P119): 단일 소스
+from _pipeline_registry import ParallelStatus, RESETTABLE_PARALLEL_STATUSES  # M-4(P121)
 from result_parser import parse_results, parse_skip_messages
 from structured_log import slog
 
@@ -115,17 +115,12 @@ def main() -> None:
     if SCREENSHOTS_DIR.exists():
         shutil.rmtree(SCREENSHOTS_DIR, ignore_errors=True)
 
-    # M-4(P110): RESETTABLE 상태에서 새 실행 시작 시 heal_count 리셋.
+    # M-4(P110/P121): RESETTABLE 상태에서 새 실행 시작 시 heal_count 리셋.
     # HEAL_NEEDED(힐링 재실행) 상태이면 리셋하지 않아 누적 카운트를 유지.
-    # TESTING 추가: pytest 실행 중 강제 종료되면 status=testing이 잔류 → 재실행 시 리셋 필요.
+    # RESETTABLE_PARALLEL_STATUSES는 _pipeline_registry.py 단일 소스 (M-4/P121 통합).
     _pre_run_state = read_state(state_path)
     _prev_run_status = (_pre_run_state or {}).get("status", "")
-    _RESETTABLE_STATUSES = {
-        ParallelStatus.DONE, ParallelStatus.HEAL_FAILED,
-        ParallelStatus.ERROR, ParallelStatus.INIT, ParallelStatus.EMPTY,
-        ParallelStatus.TESTING,  # M-4(P110): 크래시 후 TESTING 잔류 시 heal_count 리셋
-    }
-    if _prev_run_status in _RESETTABLE_STATUSES:
+    if _prev_run_status in RESETTABLE_PARALLEL_STATUSES:
         update_state(state_path, lambda fresh: {**fresh, "heal_count": 0})
 
     # FSM: TESTING으로 전이 (P41 — done→testing→결과 경로 확보)
@@ -179,8 +174,8 @@ def main() -> None:
     elif decision == "over_limit":
         print(f"\n[99] 최대 힐링 횟수({MAX_HEAL}회) 초과 -- 수동 수정이 필요합니다.")
         HEAL_CONTEXT_STATE.unlink(missing_ok=True)
-        update_state(state_path, lambda fresh: {
-            **fresh, "heal_count": heal_count, "heal_failed": True,
+        update_state(state_path, lambda fresh: {  # L-3(P125): heal_failed 죽은 필드 제거
+            **fresh, "heal_count": heal_count,
         })
 
     else:  # decision == "heal"
@@ -195,7 +190,9 @@ def main() -> None:
         if _heal_impossible:
             # P67: 사이트 불가·전체 반복 → HEAL_FAILED
             HEAL_CONTEXT_STATE.unlink(missing_ok=True)
-            print("[99] 힐링 불가 (사이트 접근 불가 또는 전체 반복) → HEAL_FAILED 전이")
+            # L-2(P124): "HEAL_FAILED 전이" 직접 출력 제거 — exit code 가드(C-2) 우선 시
+            # ERROR가 될 수 있으므로, 최종 상태는 아래 _new_status 결정 후 출력함.
+            print("[99] 힐링 불가 (사이트 접근 불가 또는 전체 반복)")
 
     # ── (D) HTML 리포트 ────────────────────────────────────────────
     is_final_run = decision in ("ok", "skip", "over_limit") or _heal_impossible
@@ -247,11 +244,12 @@ def main() -> None:
         })
 
     # 최종 status 결정
-    # C-2(P103): exit code 가드 — 타임아웃/비정상 종료(exit -1/3/4)를 DONE으로 처리 방지.
-    # report={} 시 total=0이 되므로 pytest_exit_code까지 함께 확인한다.
-    # 단일(05_execute.py:407-410)과 동일한 패턴.
-    if total == 0 and pytest_exit_code != 0:
+    # M-2(P119): PYTEST_NORMAL_EXIT_CODES 기반 강화 — exit 2/3/4에서 partial pass도 ERROR 처리.
+    # C-2(P103) 기존 "total==0 and exit!=0" 가드를 포함하는 더 넓은 조건.
+    # exit 5(수집 없음)는 위 154-163행에서 이미 처리 후 sys.exit(0) → 여기 도달 안 함.
+    if pytest_exit_code not in PYTEST_NORMAL_EXIT_CODES:
         _new_status = ParallelStatus.ERROR
+        print(f"[99] 비정상 pytest 종료 (exit {pytest_exit_code}) → ERROR 상태")
     elif failed == 0:
         _new_status = ParallelStatus.DONE
     elif decision == "skip":

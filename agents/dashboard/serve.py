@@ -32,6 +32,7 @@ from _validators import is_valid_url, is_valid_group_name, is_safe_filename
 from _pipeline_registry import (
     Step, ParallelStatus, make_initial_pipeline_state, PIPELINE_STEP_DEFS,
     STEP_COMPAT, PARALLEL_STEP_LABELS,  # P58: 단일 소스에서 임포트
+    RESETTABLE_PARALLEL_STATUSES,       # M-4(P121): heal_count 리셋 정책 단일 소스
 )
 # 상태 파일 경로 + 안전한 쓰기 함수는 _paths.py가 단일 소스다 (#25).
 # 예전엔 이 파일이 자체 STATE_PATH 등을 재선언하고 _safe_write_json/
@@ -1375,14 +1376,10 @@ class DashboardHandler(BaseHTTPRequestHandler):
             return
         # C-3(P99): heal_count 리셋은 "새 실행" 시작 시에만. 힐링 재실행(HEAL_NEEDED)에서
         # 리셋하면 MAX_HEAL 가드가 무력화되어 무한 루프가 발생한다.
-        # 새 실행 = 이전 사이클이 완전히 종료된 상태 (DONE/HEAL_FAILED/ERROR/INIT/EMPTY)
-        _TERMINAL_STATUSES = {
-            ParallelStatus.DONE, ParallelStatus.HEAL_FAILED,
-            ParallelStatus.ERROR, ParallelStatus.INIT, ParallelStatus.EMPTY,
-        }
+        # M-4(P121): RESETTABLE_PARALLEL_STATUSES를 단일 소스에서 임포트 (3중 하드코딩 통합).
         if PARALLEL_STATE_PATH.exists():
             _cur_status = (load_json(PARALLEL_STATE_PATH) or {}).get("status", "")
-            if _cur_status in _TERMINAL_STATUSES:
+            if _cur_status in RESETTABLE_PARALLEL_STATUSES:
                 _safe_update_json(PARALLEL_STATE_PATH, lambda s: {**s, "heal_count": 0})
 
         # 로그 파일로 출력 저장
@@ -1446,16 +1443,12 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self._serve_bytes(msg, "application/json; charset=utf-8")
             return
 
-        # M-1(P107): heal_count 리셋은 TERMINAL 상태에서만 (_post_run_merge와 동일 정책).
+        # M-1(P107): heal_count 리셋은 RESETTABLE 상태에서만 (_post_run_merge와 동일 정책).
         # quick.json status=heal_needed(힐링 재실행) 시 리셋하면 MAX_HEAL 가드 무력화 → 무한루프.
-        # UI heal_count 표시는 다음 실행 결과가 오기 전까지 이전 값을 유지 (1사이클 지연은 허용).
-        _QUICK_TERMINAL_STATUSES = {
-            ParallelStatus.DONE, ParallelStatus.HEAL_FAILED,
-            ParallelStatus.ERROR, ParallelStatus.INIT, ParallelStatus.EMPTY,
-        }
+        # M-4(P121): RESETTABLE_PARALLEL_STATUSES 단일 소스 사용.
         if QUICK_STATE_PATH.exists():
             _quick_status = (load_json(QUICK_STATE_PATH) or {}).get("status", "")
-            if _quick_status in _QUICK_TERMINAL_STATUSES:
+            if _quick_status in RESETTABLE_PARALLEL_STATUSES:
                 _safe_update_json(QUICK_STATE_PATH, lambda s: {**s, "heal_count": 0})
 
         log_path = LOGS_DIR / "quick_run.txt"

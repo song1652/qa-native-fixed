@@ -244,6 +244,19 @@ VALID_PARALLEL_TRANSITIONS: dict[str, list[str]] = {
     ParallelStatus.HEAL_FAILED: [ParallelStatus.TESTING, ParallelStatus.INIT],
 }
 
+# ── heal_count 리셋 정책 단일 소스 (M-4/P121) ──────────────────────────────
+# 05_execute.py / 99_merge.py / serve.py가 각자 하드코딩하던 집합을 통합.
+# "새 실행 시작" = 이전 사이클이 완전히 종료된 상태 (DONE/HEAL_FAILED 등).
+# HEAL_NEEDED는 힐링 재실행이므로 포함하지 않음 → heal_count 누적 유지.
+RESETTABLE_STEPS: frozenset = frozenset({
+    Step.DONE, Step.HEAL_FAILED, Step.TIMEOUT,
+})
+RESETTABLE_PARALLEL_STATUSES: frozenset = frozenset({
+    ParallelStatus.DONE, ParallelStatus.HEAL_FAILED,
+    ParallelStatus.ERROR, ParallelStatus.INIT, ParallelStatus.EMPTY,
+    ParallelStatus.TESTING,  # 크래시 후 TESTING 잔류 시 heal_count 리셋 (P110)
+})
+
 
 # ── 검증 함수 ────────────────────────────────────────────────────────────────
 

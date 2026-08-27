@@ -19,8 +19,8 @@ if _SCRIPTS_DIR not in sys.path:
 
 from _python import PYTHON_EXE
 from _constants import MAX_PYTEST_WORKERS  # m3(P95): 병렬 실행 워커 수
+from _paths import PROJECT_ROOT, is_spa_group  # L-5(P127): is_spa_group 단일 소스 (_paths.py)
 
-PROJECT_ROOT = Path(__file__).parent.parent
 GENERATED_DIR = PROJECT_ROOT / "tests" / "generated"
 TESTCASES_DIR = PROJECT_ROOT / "testcases"
 
@@ -57,22 +57,8 @@ def _valid_py_files(group_dir: Path) -> list[Path]:
     return files
 
 
-def is_spa_group(groups: list[str] | None) -> bool:
-    """그룹 이름 목록에 spa: true 항목이 하나라도 있으면 True 반환.
-
-    pages.json 구조: 키 = 그룹명, 값 = URL 문자열 또는 {"url": ..., "spa": true}.
-    groups=None(전체 실행)이면 pages.json 전 항목을 검사.
-    """
-    pages_json = PROJECT_ROOT / "config" / "pages.json"
-    if not pages_json.exists():
-        return False
-    pages: dict = json.loads(pages_json.read_text(encoding="utf-8"))
-    check_keys = groups if groups else [k for k in pages if not k.startswith("_")]
-    for key in check_keys:
-        cfg = pages.get(key, {})
-        if isinstance(cfg, dict) and cfg.get("spa", False):
-            return True
-    return False
+# L-5(P127): is_spa_group은 _paths.py에서 단일 소스로 관리.
+# 이 모듈이 re-export하므로 99_merge.py의 `from _exec import is_spa_group`은 그대로 유지됨.
 
 
 def collect_test_files(group: list[str] | None) -> tuple[list[Path], str]:
@@ -199,7 +185,10 @@ def run_pytest(sorted_files: list[Path], *, single_session: bool = False) -> tup
 
     report: dict = {}
     if json_report_path.exists():
-        report = json.loads(json_report_path.read_text(encoding="utf-8"))
-        json_report_path.unlink()
+        try:  # L-4(P126): JSON 파싱 실패(truncated/corrupted) 시 빈 리포트로 처리
+            report = json.loads(json_report_path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError) as _e:
+            print(f"[99] JSON 리포트 파싱 실패 ({_e}) — 빈 리포트로 처리")
+        json_report_path.unlink(missing_ok=True)
 
     return pytest_exit_code, report

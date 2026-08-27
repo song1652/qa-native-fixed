@@ -203,10 +203,16 @@ def main():
     if _current_step == Step.TIMEOUT:
         print(f"[06] step=timeout — 타임아웃 상태: HEAL_FAILED로 전환하고 종료합니다.")
         slog("heal_timeout_to_failed", step="06_heal", current_step=_current_step)
-        update_state(state_path, lambda fresh: {**fresh, "step": Step.HEAL_FAILED})
+        update_state(state_path, lambda fresh: {
+            **fresh, "step": Step.HEAL_FAILED,
+            # M-1(P118): heal_context 기록 — 대시보드가 "이유 없음" 오표시 방지
+            "heal_context": {"error": "pytest 실행 타임아웃 → 힐링 포기", "url": fresh.get("url", "")},
+        })
         sys.exit(EXIT_HEAL_EXCEEDED)
-    _UNHEALABLE_STEPS = {Step.HEAL_FAILED, Step.ANALYZED, Step.INIT}
-    if _current_step in _UNHEALABLE_STEPS:
+    # L-6(P128): 화이트리스트 방식 — 향후 신규 step 추가 시 자동으로 거부됨.
+    # (블랙리스트는 새 state가 추가될 때 한쪽만 수정될 위험이 있음)
+    _HEALABLE_STEPS = {Step.REVIEWED, Step.DONE, Step.HEAL_NEEDED}
+    if _current_step not in _HEALABLE_STEPS:
         print(f"[06] step={_current_step!r} — 힐링 대상 상태가 아닙니다. 건너뜁니다.")
         slog("heal_skip_invalid_step", step="06_heal", current_step=_current_step)
         sys.exit(EXIT_SUCCESS)

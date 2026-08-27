@@ -355,6 +355,11 @@ def run_heal_cycle(
         # H-3(P106): auto_heal이 모든 실패를 수정한 경우 힐링 지시 스킵.
         # heal_ctx.failures=[] 이면 subagent에게 전달할 작업이 없음.
         if not heal_ctx.get("failures"):
+            # H-1(P116): stale heal_subagent_contexts 소거 — P106(H-3) 조기 반환 시
+            # 이전 라운드 배치가 훅(check_pending_quick_heal.py)에 재주입되는 것을 방지한다.
+            update_state(state_path, lambda fresh: {
+                k: v for k, v in fresh.items() if k != "heal_subagent_contexts"
+            })
             return auto_heal_applied, False
     print_heal_instructions(heal_ctx, pipeline=pipeline_label, state_path=state_path)
     return auto_heal_applied, False

@@ -19,7 +19,7 @@ from datetime import datetime
 from _python import PYTHON_EXE
 from _paths import (
     PIPELINE_STATE, PROJECT_ROOT, read_state, update_state, append_run_history,
-    SCREENSHOTS_DIR, VIDEOS_DIR,
+    SCREENSHOTS_DIR, VIDEOS_DIR, is_spa_group,  # L-5(P127): 단일 소스
 )
 from _constants import DEFAULT_GENERATED_FILE, MAX_PYTEST_WORKERS
 from _pipeline_registry import Step  # P68: Step 상수 사용 — 문자열 리터럴 대신
@@ -289,10 +289,13 @@ def main():
 
     state = read_state(state_path)
 
+    # H-2(P117): 리셋 전 heal_count 캡처 → execution_result/run_history에 실제 힐링 횟수 기록.
+    # C-1(P102) 리셋 후 state.get("heal_count")가 0이 되므로 미리 저장해야 한다.
+    _prev_heal_count = state.get("heal_count", 0)
     # C-1(P102): TERMINAL 상태에서 새 실행 시작 시 heal_count 리셋 (99_merge.py:115-124와 동일 정책).
     # 힐링 루프 중(step=heal_needed)에는 발동 안 함 → P99가 막은 무한루프 재발 없음.
-    _TERMINAL_STEPS = {Step.DONE, Step.HEAL_FAILED, Step.TIMEOUT}
-    if state.get("step") in _TERMINAL_STEPS:
+    from _pipeline_registry import RESETTABLE_STEPS  # M-4(P121): 단일 소스 집합
+    if state.get("step") in RESETTABLE_STEPS:
         update_state(state_path, lambda s: {**s, "heal_count": 0})
         state = read_state(state_path)
 
@@ -318,16 +321,10 @@ def main():
 
     n_funcs, has_dependent = count_test_functions(file_path)
     parallel_opts = []
-    # M-3(P109)+L-5(P115): is_spa_group([_group_name])과 동일 로직으로 SPA 판정 통일.
-    # 이전 코드는 single_session_hosts(고아 설정, pages.json에 존재하지 않음)를 함께 확인했으나 제거.
-    # parallel/_exec.py의 is_spa_group과 동일 조건: pages.json의 spa:true 키만 사용.
+    # L-5(P127): is_spa_group(_paths.py 단일 소스) 사용 — 인라인 복붙 제거.
+    # M-3(P109): single_session_hosts 고아 설정 제거. spa:true 키만 사용.
     _group_name = _extract_group_name(state)
-    _pages_json = PROJECT_ROOT / "config" / "pages.json"
-    _pages = json.loads(_pages_json.read_text(encoding="utf-8")) if _pages_json.exists() else {}
-    _page_cfg = _pages.get(_group_name, {})
-    if isinstance(_page_cfg, str):
-        _page_cfg = {}
-    _single_session = isinstance(_page_cfg, dict) and _page_cfg.get("spa", False)
+    _single_session = is_spa_group([_group_name]) if _group_name else False
 
     # 표시용 케이스 수: state의 test_cases(테스트 데이터) 우선, 없으면 파일/함수 수 사용
     n_cases = len(state.get("test_cases", [])) or n_funcs
@@ -510,11 +507,16 @@ def main():
         "report_name": report_path.name if not no_report else "",
         "group_results": group_results,
         "executed_at": now,
-        "heal_count":  state.get("heal_count", 0),
+        "heal_count":  _prev_heal_count,  # H-2(P117): 리셋 전 캡처값 사용 (리셋 후 0이 아닌 실제 횟수)
         "json_report_path": str(json_report_path),
     }
 
-    _new_step = Step.HEAL_NEEDED if failed_count > 0 else Step.DONE  # P68: 리터럴 → 상수
+    # M-2(P119): 비정상 종료(exit 2/3/4) 시에도 HEAL_NEEDED 처리 — 테스트 수집 실패 등
+    from _constants import PYTEST_NORMAL_EXIT_CODES
+    if result.returncode not in PYTEST_NORMAL_EXIT_CODES:
+        _new_step = Step.HEAL_NEEDED  # exit 2/3/4는 실패로 간주 (exit 1과 동일 처리)
+    else:
+        _new_step = Step.HEAL_NEEDED if failed_count > 0 else Step.DONE  # P68: 리터럴 → 상수
     # pytest 실행(최대 3600초)이 끝난 시점의 최신 상태 위에 이번 실행이
     # 책임지는 필드(step, execution_result)만 병합해 쓴다 — read_state 시점의
     # 오래된 state 스냅샷으로 다른 프로세스의 갱신을 덮어쓰지 않기 위함.
@@ -543,8 +545,8 @@ def main():
         "skipped": skipped_count,
         "total": total,
         "pass_rate": pass_rate,
-        "heal_count": state.get("heal_count", 0),
-        "first_pass": state.get("heal_count", 0) == 0 and failed_count == 0,
+        "heal_count": _prev_heal_count,  # H-2(P117): 리셋 전 캡처값 사용
+        "first_pass": _prev_heal_count == 0 and failed_count == 0,
         "duration_sec": None,
         "per_test_results": per_test_results,
     })

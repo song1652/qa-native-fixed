@@ -16,7 +16,9 @@ state = check_state(
     PIPELINE_STATE,
     key="step",
     value=Step.REVIEWED,
-    extra_check=lambda s: not s.get("execution_result"),
+    # L-7(P129): execution_result 조건 제거 — 반려→재생성 후 step=reviewed로 돌아왔을 때
+    # 이전 실행 결과가 남아 있어도 훅이 재발동해야 한다.
+    # 05_execute가 실행되면 step이 DONE/HEAL_NEEDED로 전이되므로 중복 발동 없음.
 )
 if state is None:
     sys.exit(0)

@@ -113,6 +113,27 @@ IMPORT_DIR = PROJECT_ROOT / "import"
 HEAL_STATS_PATH = STATE_DIR / "heal_stats.json"
 FLAKY_TESTS_PATH = STATE_DIR / "flaky_tests.json"
 
+PAGES_JSON = PROJECT_ROOT / "config" / "pages.json"
+
+
+def is_spa_group(group: "list[str] | None") -> bool:
+    """그룹 목록 중 하나라도 pages.json에서 spa:true 설정을 가지면 True.
+
+    L-5(P127): 단일 소스 — scripts/05_execute.py와 parallel/_exec.py가 공유.
+    두 파일에서 복붙하던 코드를 이 함수 한 곳으로 통합한다.
+
+    group=None (전체 실행)이면 pages.json 전 항목을 검사한다 (_exec.py 동일 동작 유지).
+    """
+    if not PAGES_JSON.exists():
+        return False
+    pages_cfg: dict = json.loads(PAGES_JSON.read_text(encoding="utf-8"))
+    check_keys = group if group else [k for k in pages_cfg if not k.startswith("_")]
+    for g in check_keys:
+        cfg = pages_cfg.get(g, {})
+        if isinstance(cfg, dict) and cfg.get("spa", False):
+            return True
+    return False
+
 
 def append_run_history(entry: dict):
     """실행 이력을 state/run_history.json에 append한다.

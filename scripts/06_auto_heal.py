@@ -416,6 +416,12 @@ def main():
             )
         except subprocess.TimeoutExpired:
             print("[06-auto] pytest 재실행 타임아웃 (300s) — Agent 힐링 필요")
+            # M-5(P122): 파일이 패치됐으나 재실행 실패 → hc_path에 경고 기록 (traceback 불일치 방지)
+            if args.heal_context_path and patched_files:
+                _hc_timeout_note = {**heal_context,
+                                    "files_patched_by_auto_heal": list(patched_files.keys()),
+                                    "auto_heal_rerun_error": "timeout"}
+                _atomic_write_text(hc_path, json.dumps(_hc_timeout_note, ensure_ascii=False, indent=2))
             sys.exit(1)
 
         # 결과 파싱 — "전부 성공"은 passed == 기대 개수로 판정 (#24: ERROR가
@@ -427,6 +433,12 @@ def main():
             print(f"[06-auto] pytest 크래시 (exit {result.returncode}) — Agent 힐링 필요")
             if result.stderr:
                 print(result.stderr[:300])
+            # M-5(P122): 파일이 패치됐으나 재실행 크래시 → hc_path에 경고 기록
+            if args.heal_context_path and patched_files:
+                _hc_crash_note = {**heal_context,
+                                  "files_patched_by_auto_heal": list(patched_files.keys()),
+                                  "auto_heal_rerun_error": f"crashed(exit {result.returncode})"}
+                _atomic_write_text(hc_path, json.dumps(_hc_crash_note, ensure_ascii=False, indent=2))
             sys.exit(1)
 
         print(f"[06-auto] 재실행 결과: {passed} passed, {failed} failed, {errors} error")
@@ -439,10 +451,13 @@ def main():
             if not remaining:
                 print("[06-auto] 모든 실패 자동 수정 완료!")
                 # heal_context 업데이트 (RMW — 재실행 사이의 변경을 덮어쓰지 않음)
-                update_state(
-                    state_path,
-                    _make_heal_context_mutator([], len(patched_nodeids)),
-                )
+                # L-1(P123): --heal-context-path 지정 시 state_path(parallel.json)에 truncated
+                # heal_context를 쓰지 않음 — 병렬 파이프라인은 heal_context.json이 단일 소스.
+                if not args.heal_context_path:
+                    update_state(
+                        state_path,
+                        _make_heal_context_mutator([], len(patched_nodeids)),
+                    )
                 # H-2(P105): --heal-context-path 지정 시 해당 파일에도 동기화
                 # (06_auto_heal은 그 파일에서 읽지만 update_state는 state_path에만 씀 → 불일치 해소)
                 if args.heal_context_path:
@@ -468,10 +483,12 @@ def main():
                 # 이 분기는 failed == 0 -- 재실행한 patched_nodeids는 전부 통과했다.
                 # 잔여 실패(remaining)는 애초에 패치 대상이 아니었던 테스트들이라
                 # 자동 힐링 건수에서 뺄 것이 없다.
-                update_state(
-                    state_path,
-                    _make_heal_context_mutator(remaining, len(patched_nodeids)),
-                )
+                # L-1(P123): --heal-context-path 지정 시 state_path에 쓰지 않음 (스키마 오염 방지)
+                if not args.heal_context_path:
+                    update_state(
+                        state_path,
+                        _make_heal_context_mutator(remaining, len(patched_nodeids)),
+                    )
                 # H-2(P105): --heal-context-path 지정 시 해당 파일에도 동기화
                 if args.heal_context_path:
                     _hc_updated = {**heal_context, "failures": remaining,
@@ -481,6 +498,12 @@ def main():
         else:
             not_passed = len(patched_nodeids) - passed
             print(f"[06-auto] 자동 패치 후에도 {not_passed}건 미통과(FAILED/ERROR) -- Agent 힐링 필요")
+            # M-5(P122): 파일이 패치됐으나 일부 미통과 → hc_path에 경고 기록
+            if args.heal_context_path and patched_files:
+                _hc_notpass_note = {**heal_context,
+                                    "files_patched_by_auto_heal": list(patched_files.keys()),
+                                    "auto_heal_rerun_error": f"not_all_passed({not_passed}건 미통과)"}
+                _atomic_write_text(hc_path, json.dumps(_hc_notpass_note, ensure_ascii=False, indent=2))
             sys.exit(1)
 
     sys.exit(1)

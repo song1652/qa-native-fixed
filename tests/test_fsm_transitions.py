@@ -311,7 +311,20 @@ class TestFsmBidirectionalContract:
         - 표에서 전이를 제거하면 여기서도 제거.
     """
 
-    # (from_step, to_step) → writer 스크립트 목록
+    # 자동화된 writer가 없고 대시보드 리셋·사용자 직접 조작으로만 발생하는 전이.
+    # FSM에서는 허용하지만 test_all_step_transitions_have_writers 검사에서 면제한다.
+    # (M-3/P120: 허위 writer 제거 → 이 집합으로 수동 전이를 명시적으로 선언)
+    MANUAL_STEP_TRANSITIONS: frozenset = frozenset({
+        ("done",        "analyzed"),    # reset_state() via serve.py 리셋 엔드포인트
+        ("done",        "init"),        # 동일
+        ("heal_failed", "analyzed"),    # 동일
+        ("heal_failed", "init"),        # 동일
+        ("heal_failed", "done"),        # 대시보드 수동 완료 처리 (자동화 경로 없음)
+        ("heal_failed", "heal_needed"), # 대시보드 수동 재시도 (자동화 경로 없음)
+        ("timeout",     "init"),        # reset_state() via serve.py
+    })
+
+    # (from_step, to_step) → writer 스크립트 목록 (자동화된 전이만 등록)
     KNOWN_STEP_WRITERS: dict[tuple[str, str], list[str]] = {
         ("init",        "analyzed"):    ["01_analyze.py"],
         ("analyzed",    "planned"):     ["02a_dialog.py(Agent)"],
@@ -324,21 +337,14 @@ class TestFsmBidirectionalContract:
         ("reviewed",    "generated"):   ["04_approve.py"],  # P60: 반려→재작성
         ("reviewed",    "heal_failed"): ["06_heal.py"],     # 사이트 불가
         ("done",        "heal_needed"): ["05_execute.py"],
-        ("done",        "analyzed"):    ["run_qa.py(reset)"],
-        ("done",        "init"):        ["run_qa.py(reset)"],
-        ("done",        "heal_failed"): ["06_heal.py(guard)"],
+        ("done",        "heal_failed"): ["06_heal.py"],     # over-limit guard
         ("done",        "timeout"):     ["05_execute.py"],  # H-1(P104)
         ("heal_needed", "done"):        ["05_execute.py"],
         ("heal_needed", "heal_failed"): ["06_heal.py"],
         ("heal_needed", "timeout"):     ["05_execute.py"],
-        ("heal_failed", "analyzed"):    ["run_qa.py(reset)"],
-        ("heal_failed", "init"):        ["run_qa.py(reset)"],
-        ("heal_failed", "done"):        ["run_qa.py(manual)"],
-        ("heal_failed", "heal_needed"): ["06_heal.py(manual)"],
         ("heal_failed", "timeout"):     ["05_execute.py"],  # H-1(P104)
         ("timeout",     "done"):        ["05_execute.py"],
         ("timeout",     "heal_needed"): ["05_execute.py"],
-        ("timeout",     "init"):        ["run_qa.py(reset)"],
         ("timeout",     "heal_failed"): ["06_heal.py"],     # M-2(P108)
     }
 
@@ -372,14 +378,19 @@ class TestFsmBidirectionalContract:
 
         표에만 있고 writer가 없으면 "FSM은 허용하지만 실제로 발생하지 않는 전이"로
         C-1(P102) · H-1(P104) · M-2(P108) 같은 조용한 버그가 숨을 수 있다.
+
+        M-3(P120): MANUAL_STEP_TRANSITIONS에 선언된 수동 전이는 자동화 writer가 없으므로
+        이 검사에서 면제한다 (허위 writer 대신 명시적 면제 목록으로 관리).
         """
         missing = []
         for from_step, allowed in VALID_TRANSITIONS.items():
             for to_step in allowed:
                 if (from_step, to_step) not in self.KNOWN_STEP_WRITERS:
-                    missing.append((from_step, to_step))
+                    if (from_step, to_step) not in self.MANUAL_STEP_TRANSITIONS:
+                        missing.append((from_step, to_step))
         assert not missing, (
-            "다음 전이에 writer가 등록되지 않았습니다 — KNOWN_STEP_WRITERS에 추가하세요:\n"
+            "다음 전이에 writer가 등록되지 않았습니다 — KNOWN_STEP_WRITERS 또는 "
+            "MANUAL_STEP_TRANSITIONS에 추가하세요:\n"
             + "\n".join(f"  {f!r} → {t!r}" for f, t in sorted(missing))
         )
 
