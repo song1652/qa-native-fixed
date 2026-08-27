@@ -289,6 +289,13 @@ def main():
 
     state = read_state(state_path)
 
+    # C-1(P102): TERMINAL 상태에서 새 실행 시작 시 heal_count 리셋 (99_merge.py:115-124와 동일 정책).
+    # 힐링 루프 중(step=heal_needed)에는 발동 안 함 → P99가 막은 무한루프 재발 없음.
+    _TERMINAL_STEPS = {Step.DONE, Step.HEAL_FAILED, Step.TIMEOUT}
+    if state.get("step") in _TERMINAL_STEPS:
+        update_state(state_path, lambda s: {**s, "heal_count": 0})
+        state = read_state(state_path)
+
     # heal_count는 06_heal.py에서만 증가시킴 (이중 증가 방지)
 
     file_path = state.get("generated_file_path", DEFAULT_GENERATED_FILE)

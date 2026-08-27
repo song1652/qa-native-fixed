@@ -214,10 +214,12 @@ VALID_TRANSITIONS: dict[str, list[str]] = {
     Step.GENERATED:   [Step.REVIEWED],
     Step.REVIEWED:    [Step.DONE, Step.HEAL_NEEDED, Step.TIMEOUT, Step.GENERATED,
                        Step.HEAL_FAILED],  # P60: 반려→재작성 / C2: 사이트 불가 즉시 HEAL_FAILED
-    Step.DONE:        [Step.HEAL_NEEDED, Step.ANALYZED, Step.INIT, Step.HEAL_FAILED],  # init: 재실행 전체 리셋
+    Step.DONE:        [Step.HEAL_NEEDED, Step.ANALYZED, Step.INIT, Step.HEAL_FAILED,
+                       Step.TIMEOUT],  # H-1(P104): 재실행 타임아웃 처리 경로
     Step.HEAL_NEEDED: [Step.DONE, Step.HEAL_FAILED, Step.TIMEOUT],
     Step.HEAL_FAILED: [Step.ANALYZED, Step.INIT,
-                       Step.DONE, Step.HEAL_NEEDED],  # C-2(P98): 복구 경로 확장
+                       Step.DONE, Step.HEAL_NEEDED,
+                       Step.TIMEOUT],  # C-2(P98) + H-1(P104): 복구·타임아웃 경로
     Step.TIMEOUT:     [Step.DONE, Step.HEAL_NEEDED, Step.INIT, Step.HEAL_FAILED],  # C2: 타임아웃→힐링실패 경로
 }
 

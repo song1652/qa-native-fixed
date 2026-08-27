@@ -264,3 +264,11 @@ class TestCriticalPathsArePreserved:
     def test_parallel_testing_to_heal_failed(self):
         """C-3: 힐링 불가(사이트 접근 불가/전체 반복) → testing→heal_failed 전이."""
         assert_valid_parallel_transition("testing", "heal_failed")
+
+    def test_done_to_timeout(self):
+        """H-1(P104): step=done 후 재실행이 타임아웃되면 done→timeout 전이 필요."""
+        assert_valid_transition("done", "timeout")
+
+    def test_heal_failed_to_timeout(self):
+        """H-1(P104): step=heal_failed 상태 재실행이 타임아웃 → heal_failed→timeout."""
+        assert_valid_transition("heal_failed", "timeout")

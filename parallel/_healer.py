@@ -342,10 +342,20 @@ def run_heal_cycle(
 
     # auto_heal 시도 (deterministic 패치)
     auto_heal_applied = _try_auto_heal(state_path=state_path)
+    # H-2(P105): auto_heal 후 heal_ctx 재로드 — 06_auto_heal이 HEAL_CONTEXT_STATE를 갱신했을 수 있음.
+    # (--heal-context-path 지정 시 H-2 수정으로 해당 파일에도 동기화됨)
+    if HEAL_CONTEXT_STATE.exists():
+        _reloaded = read_state(HEAL_CONTEXT_STATE)
+        if _reloaded:
+            heal_ctx = _reloaded
     pipeline_label = "quick" if quick_mode else "parallel"
     if auto_heal_applied:
         print("[99] auto_heal 성공 -- Agent 힐링 불필요할 수 있습니다.")
         print("     python parallel/99_merge.py 를 다시 실행하여 확인하세요.")
+        # H-3(P106): auto_heal이 모든 실패를 수정한 경우 힐링 지시 스킵.
+        # heal_ctx.failures=[] 이면 subagent에게 전달할 작업이 없음.
+        if not heal_ctx.get("failures"):
+            return auto_heal_applied, False
     print_heal_instructions(heal_ctx, pipeline=pipeline_label, state_path=state_path)
     return auto_heal_applied, False
 

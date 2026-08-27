@@ -441,6 +441,12 @@ def main():
                     state_path,
                     _make_heal_context_mutator([], len(patched_nodeids)),
                 )
+                # H-2(P105): --heal-context-path 지정 시 해당 파일에도 동기화
+                # (06_auto_heal은 그 파일에서 읽지만 update_state는 state_path에만 씀 → 불일치 해소)
+                if args.heal_context_path:
+                    _hc_updated = {**heal_context, "failures": [], "failure_count": 0,
+                                   "auto_healed": len(patched_nodeids)}
+                    _atomic_write_text(hc_path, json.dumps(_hc_updated, ensure_ascii=False, indent=2))
 
                 # 패치 후 assertion 무결성 검증 (assert_guard.py 자동 호출)
                 _scripts_dir = Path(__file__).parent
@@ -464,6 +470,11 @@ def main():
                     state_path,
                     _make_heal_context_mutator(remaining, len(patched_nodeids)),
                 )
+                # H-2(P105): --heal-context-path 지정 시 해당 파일에도 동기화
+                if args.heal_context_path:
+                    _hc_updated = {**heal_context, "failures": remaining,
+                                   "failure_count": len(remaining), "auto_healed": len(patched_nodeids)}
+                    _atomic_write_text(hc_path, json.dumps(_hc_updated, ensure_ascii=False, indent=2))
                 sys.exit(1)
         else:
             not_passed = len(patched_nodeids) - passed

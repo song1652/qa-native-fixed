@@ -242,7 +242,12 @@ def main() -> None:
         })
 
     # 최종 status 결정
-    if failed == 0:
+    # C-2(P103): exit code 가드 — 타임아웃/비정상 종료(exit -1/3/4)를 DONE으로 처리 방지.
+    # report={} 시 total=0이 되므로 pytest_exit_code까지 함께 확인한다.
+    # 단일(05_execute.py:407-410)과 동일한 패턴.
+    if total == 0 and pytest_exit_code != 0:
+        _new_status = ParallelStatus.ERROR
+    elif failed == 0:
         _new_status = ParallelStatus.DONE
     elif decision == "skip":
         _new_status = ParallelStatus.HEAL_FAILED   # P72
