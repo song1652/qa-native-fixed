@@ -905,11 +905,13 @@ class DashboardHandler(BaseHTTPRequestHandler):
 
     def _get_static_file(self, path: str):
         rel = path[len("/static/"):]
-        if ".." in rel:
+        # P66: ".." 단독 검사는 절대경로 주입을 막지 못함 → resolve 후 봉쇄
+        _static_root = (HERE / "static").resolve()
+        fpath = (_static_root / rel).resolve()
+        if not fpath.is_relative_to(_static_root):
             self.send_response(403)
             self.end_headers()
             return
-        fpath = HERE / "static" / rel
         if fpath.exists() and fpath.is_file():
             ext = fpath.suffix.lower()
             mime_map = {

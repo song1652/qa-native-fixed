@@ -229,7 +229,7 @@ VALID_PARALLEL_TRANSITIONS: dict[str, list[str]] = {
     # 이 표가 계약이므로 항목을 유지한다 (fail-closed 보장).
     ParallelStatus.EMPTY:       [ParallelStatus.INIT, ParallelStatus.TESTING],
     ParallelStatus.INIT:        [ParallelStatus.ANALYZING, ParallelStatus.TESTING],
-    ParallelStatus.ANALYZING:   [ParallelStatus.READY, ParallelStatus.ERROR],
+    ParallelStatus.ANALYZING:   [ParallelStatus.READY, ParallelStatus.TESTING, ParallelStatus.ERROR],  # P71: 재실행 경로 크래시 방지
     ParallelStatus.READY:       [ParallelStatus.TESTING],
     ParallelStatus.ERROR:       [ParallelStatus.INIT, ParallelStatus.TESTING],
     ParallelStatus.TESTING:     [ParallelStatus.DONE, ParallelStatus.HEAL_NEEDED,

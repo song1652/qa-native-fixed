@@ -26,7 +26,8 @@ def test_example_is_valid_json():
 def _extract_data_key_paths(py_source: str) -> list[tuple[str, ...]]:
     """`data["a"]["b"]["c"]` 형태의 체인을 ("a","b","c") 튜플로 뽑는다."""
     paths = []
-    for m in re.finditer(r'data((?:\["[^"]+"\])+)', py_source):
+    # P74: 단어 경계 추가 — login_data["key"] 같은 중간 변수 오탐 방지
+    for m in re.finditer(r'(?<![A-Za-z0-9_])data((?:\["[^"]+"\])+)', py_source):
         keys = tuple(re.findall(r'\["([^"]+)"\]', m.group(1)))
         if keys not in paths:
             paths.append(keys)

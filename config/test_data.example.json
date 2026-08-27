@@ -1,12 +1,22 @@
 {
   "_comment": "config/test_data.json 부트스트랩 템플릿. 새로 클론하면 이 파일을 test_data.json으로 복사하세요: cp config/test_data.example.json config/test_data.json (test_data.json은 .gitignore 대상). 새 테스트케이스에서 data_key를 추가하면 python scripts/sync_test_data.py 로 빈 템플릿이 자동 추가됩니다.",
   "saucedemo": {
+    "base_url": "https://www.saucedemo.com",
     "valid_user": "standard_user",
     "valid_password": "secret_sauce",
+    "locked_user": "locked_out_user",
+    "invalid_password": "wrong_password",
     "checkout": {
       "first_name": "John",
       "last_name": "Doe",
       "postal_code": "12345"
+    }
+  },
+  "serveone": {
+    "login": {
+      "invalid_customer_id": "invalid_test_user_99",
+      "invalid_partner_id": "invalid_partner_99",
+      "invalid_password": "WrongPass!123"
     }
   }
 }

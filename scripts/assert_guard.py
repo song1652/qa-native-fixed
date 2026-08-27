@@ -19,7 +19,7 @@ state/pipeline.json의 assertion_integrity 필드에 저장.
 import sys
 from pathlib import Path
 
-from _paths import PIPELINE_STATE, read_state, write_state
+from _paths import PIPELINE_STATE, read_state, update_state
 from _constants import DEFAULT_GENERATED_DIR
 from heal_utils import snapshot_assertions, compare_assertions
 
@@ -57,8 +57,8 @@ def main():
     result["baseline"] = baseline_label
     result["heal_round"] = state.get("heal_count", 1)
 
-    state["assertion_integrity"] = result
-    write_state(state_path, state)
+    # P69: update_state 원자적 RMW — read→파싱→write 사이 다른 프로세스 갱신 유실 방지
+    update_state(state_path, lambda fresh: {**fresh, "assertion_integrity": result})
 
     if result["has_warnings"]:
         print(f"[assert_guard] ⚠️  assertion 약화 패턴 감지 ({baseline_label}, {result['heal_round']}회차):")
