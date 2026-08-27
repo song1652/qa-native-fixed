@@ -1446,12 +1446,17 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self._serve_bytes(msg, "application/json; charset=utf-8")
             return
 
-        # P42: 새 빠른 실행 전 heal_count를 0으로 리셋한다.
-        # quick.json이 이전 실패 사이클의 heal_count(예: 3 = MAX_HEAL)를 보유한 채로
-        # 새 실행이 시작되면, 99_merge.py가 즉시 heal_failed를 판정해 힐링을 영구 스킵한다.
-        # status는 변경하지 않아 UI가 직전 결과를 유지하다가 새 실행 결과로 자연스럽게 전환된다.
+        # M-1(P107): heal_count 리셋은 TERMINAL 상태에서만 (_post_run_merge와 동일 정책).
+        # quick.json status=heal_needed(힐링 재실행) 시 리셋하면 MAX_HEAL 가드 무력화 → 무한루프.
+        # UI heal_count 표시는 다음 실행 결과가 오기 전까지 이전 값을 유지 (1사이클 지연은 허용).
+        _QUICK_TERMINAL_STATUSES = {
+            ParallelStatus.DONE, ParallelStatus.HEAL_FAILED,
+            ParallelStatus.ERROR, ParallelStatus.INIT, ParallelStatus.EMPTY,
+        }
         if QUICK_STATE_PATH.exists():
-            _safe_update_json(QUICK_STATE_PATH, lambda s: {**s, "heal_count": 0})
+            _quick_status = (load_json(QUICK_STATE_PATH) or {}).get("status", "")
+            if _quick_status in _QUICK_TERMINAL_STATUSES:
+                _safe_update_json(QUICK_STATE_PATH, lambda s: {**s, "heal_count": 0})
 
         log_path = LOGS_DIR / "quick_run.txt"
         merge_script = PROJECT_ROOT / "parallel" / "99_merge.py"

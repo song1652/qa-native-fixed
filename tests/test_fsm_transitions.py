@@ -272,3 +272,152 @@ class TestCriticalPathsArePreserved:
     def test_heal_failed_to_timeout(self):
         """H-1(P104): step=heal_failed 상태 재실행이 타임아웃 → heal_failed→timeout."""
         assert_valid_transition("heal_failed", "timeout")
+
+    # ── L-4(P114): 누락 경로 5건 ──────────────────────────────────
+
+    def test_reviewed_to_generated(self):
+        """P60/P87 반려 후 재작성 경로: reviewed→generated 허용 필요."""
+        assert_valid_transition("reviewed", "generated")
+
+    def test_done_to_heal_needed(self):
+        """전체 통과 후 일부 TC 추가 힐링 요청 경로: done→heal_needed."""
+        assert_valid_transition("done", "heal_needed")
+
+    def test_timeout_to_done(self):
+        """타임아웃 후 재실행 성공 경로: timeout→done."""
+        assert_valid_transition("timeout", "done")
+
+    def test_parallel_heal_needed_to_testing(self):
+        """병렬 힐링 재실행 주경로: heal_needed→testing."""
+        assert_valid_parallel_transition("heal_needed", "testing")
+
+    def test_parallel_done_to_testing(self):
+        """병렬 전체 통과 후 재실행 경로: done→testing."""
+        assert_valid_parallel_transition("done", "testing")
+
+
+# ── L-4(P114): FSM ↔ 코드 양방향 계약 ──────────────────────────────────────
+
+
+class TestFsmBidirectionalContract:
+    """FSM 전이표와 실제 코드 writer 간 양방향 계약 검증.
+
+    근본 원인 1 차단: "표에만 있고 writer 없는 전이" / "코드가 쓰는데 표에 없는 전이"를
+    모두 잡는다. writer 목록은 각 스크립트를 분석해 수동으로 관리한다.
+
+    유지보수 규칙:
+        - 새 Step 전이를 쓰는 코드를 추가하면 KNOWN_STEP_WRITERS에도 추가.
+        - 새 ParallelStatus 전이를 쓰는 코드를 추가하면 KNOWN_PARALLEL_WRITERS에도 추가.
+        - 표에서 전이를 제거하면 여기서도 제거.
+    """
+
+    # (from_step, to_step) → writer 스크립트 목록
+    KNOWN_STEP_WRITERS: dict[tuple[str, str], list[str]] = {
+        ("init",        "analyzed"):    ["01_analyze.py"],
+        ("analyzed",    "planned"):     ["02a_dialog.py(Agent)"],
+        ("analyzed",    "generated"):   ["02_generate.py"],
+        ("planned",     "generated"):   ["02_generate.py"],
+        ("generated",   "reviewed"):    ["03_lint.py"],
+        ("reviewed",    "done"):        ["05_execute.py"],
+        ("reviewed",    "heal_needed"): ["05_execute.py"],
+        ("reviewed",    "timeout"):     ["05_execute.py"],
+        ("reviewed",    "generated"):   ["04_approve.py"],  # P60: 반려→재작성
+        ("reviewed",    "heal_failed"): ["06_heal.py"],     # 사이트 불가
+        ("done",        "heal_needed"): ["05_execute.py"],
+        ("done",        "analyzed"):    ["run_qa.py(reset)"],
+        ("done",        "init"):        ["run_qa.py(reset)"],
+        ("done",        "heal_failed"): ["06_heal.py(guard)"],
+        ("done",        "timeout"):     ["05_execute.py"],  # H-1(P104)
+        ("heal_needed", "done"):        ["05_execute.py"],
+        ("heal_needed", "heal_failed"): ["06_heal.py"],
+        ("heal_needed", "timeout"):     ["05_execute.py"],
+        ("heal_failed", "analyzed"):    ["run_qa.py(reset)"],
+        ("heal_failed", "init"):        ["run_qa.py(reset)"],
+        ("heal_failed", "done"):        ["run_qa.py(manual)"],
+        ("heal_failed", "heal_needed"): ["06_heal.py(manual)"],
+        ("heal_failed", "timeout"):     ["05_execute.py"],  # H-1(P104)
+        ("timeout",     "done"):        ["05_execute.py"],
+        ("timeout",     "heal_needed"): ["05_execute.py"],
+        ("timeout",     "init"):        ["run_qa.py(reset)"],
+        ("timeout",     "heal_failed"): ["06_heal.py"],     # M-2(P108)
+    }
+
+    # (from_status, to_status) → writer 스크립트 목록
+    KNOWN_PARALLEL_WRITERS: dict[tuple[str, str], list[str]] = {
+        ("",            "init"):        ["run_qa_parallel.py"],
+        ("",            "testing"):     ["99_merge.py"],
+        ("init",        "analyzing"):   ["run_qa_parallel.py"],
+        ("init",        "testing"):     ["99_merge.py"],
+        ("analyzing",   "ready"):       ["run_qa_parallel.py"],
+        ("analyzing",   "testing"):     ["99_merge.py"],
+        ("analyzing",   "error"):       ["run_qa_parallel.py"],
+        ("ready",       "testing"):     ["99_merge.py"],
+        ("error",       "init"):        ["run_qa_parallel.py(reset)"],
+        ("error",       "testing"):     ["99_merge.py"],
+        ("testing",     "done"):        ["99_merge.py"],
+        ("testing",     "heal_needed"): ["99_merge.py"],
+        ("testing",     "heal_failed"): ["99_merge.py"],
+        ("testing",     "error"):       ["99_merge.py"],    # C-2(P103)
+        ("done",        "testing"):     ["99_merge.py"],
+        ("done",        "init"):        ["run_qa_parallel.py(reset)"],
+        ("heal_needed", "done"):        ["99_merge.py"],
+        ("heal_needed", "heal_failed"): ["99_merge.py"],
+        ("heal_needed", "testing"):     ["99_merge.py"],    # L-4(P114)
+        ("heal_failed", "testing"):     ["99_merge.py"],
+        ("heal_failed", "init"):        ["run_qa_parallel.py(reset)"],
+    }
+
+    def test_all_step_transitions_have_writers(self):
+        """FSM 전이표의 모든 (from, to) 쌍에 writer가 등록되어 있어야 한다.
+
+        표에만 있고 writer가 없으면 "FSM은 허용하지만 실제로 발생하지 않는 전이"로
+        C-1(P102) · H-1(P104) · M-2(P108) 같은 조용한 버그가 숨을 수 있다.
+        """
+        missing = []
+        for from_step, allowed in VALID_TRANSITIONS.items():
+            for to_step in allowed:
+                if (from_step, to_step) not in self.KNOWN_STEP_WRITERS:
+                    missing.append((from_step, to_step))
+        assert not missing, (
+            "다음 전이에 writer가 등록되지 않았습니다 — KNOWN_STEP_WRITERS에 추가하세요:\n"
+            + "\n".join(f"  {f!r} → {t!r}" for f, t in sorted(missing))
+        )
+
+    def test_all_step_writers_are_in_table(self):
+        """등록된 모든 writer 전이가 FSM 전이표에 있어야 한다.
+
+        표에 없는 전이를 writer가 실행하면 FSM ValueError 크래시 발생.
+        """
+        invalid = []
+        for (from_step, to_step) in self.KNOWN_STEP_WRITERS:
+            allowed = VALID_TRANSITIONS.get(from_step, [])
+            if to_step not in allowed:
+                invalid.append((from_step, to_step))
+        assert not invalid, (
+            "다음 writer 전이가 FSM 표에 없습니다 — VALID_TRANSITIONS에 추가하세요:\n"
+            + "\n".join(f"  {f!r} → {t!r}" for f, t in sorted(invalid))
+        )
+
+    def test_all_parallel_transitions_have_writers(self):
+        """병렬 FSM 전이표의 모든 (from, to) 쌍에 writer가 등록되어 있어야 한다."""
+        missing = []
+        for from_st, allowed in VALID_PARALLEL_TRANSITIONS.items():
+            for to_st in allowed:
+                if (from_st, to_st) not in self.KNOWN_PARALLEL_WRITERS:
+                    missing.append((from_st, to_st))
+        assert not missing, (
+            "다음 병렬 전이에 writer가 등록되지 않았습니다 — KNOWN_PARALLEL_WRITERS에 추가하세요:\n"
+            + "\n".join(f"  {f!r} → {t!r}" for f, t in sorted(missing))
+        )
+
+    def test_all_parallel_writers_are_in_table(self):
+        """등록된 모든 병렬 writer 전이가 병렬 FSM 표에 있어야 한다."""
+        invalid = []
+        for (from_st, to_st) in self.KNOWN_PARALLEL_WRITERS:
+            allowed = VALID_PARALLEL_TRANSITIONS.get(from_st, [])
+            if to_st not in allowed:
+                invalid.append((from_st, to_st))
+        assert not invalid, (
+            "다음 병렬 writer 전이가 FSM 표에 없습니다 — VALID_PARALLEL_TRANSITIONS에 추가하세요:\n"
+            + "\n".join(f"  {f!r} → {t!r}" for f, t in sorted(invalid))
+        )

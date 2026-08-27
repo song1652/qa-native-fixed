@@ -106,21 +106,26 @@ def main() -> None:
 
     slog("step_start", step="99_merge", scope=scope_label,
          file_count=len(sorted_files), quick=quick_mode)
-    print(f"\n[99] 실행 범위: {scope_label}  ({len(sorted_files)}개 케이스, 순차 실행)")
+    # L-3(P113): SPA 판정 먼저 수행 후 실행 모드 메시지 출력
+    _single_session = is_spa_group(args.group)
+    _exec_mode = "순차" if _single_session else "병렬"
+    print(f"\n[99] 실행 범위: {scope_label}  ({len(sorted_files)}개 케이스, {_exec_mode} 실행)")
 
     # 스크린샷 정리 (최종 실패 시만 남기기)
     if SCREENSHOTS_DIR.exists():
         shutil.rmtree(SCREENSHOTS_DIR, ignore_errors=True)
 
-    # M-4: TERMINAL 상태에서 새 실행 시작 시 heal_count 리셋.
+    # M-4(P110): RESETTABLE 상태에서 새 실행 시작 시 heal_count 리셋.
     # HEAL_NEEDED(힐링 재실행) 상태이면 리셋하지 않아 누적 카운트를 유지.
+    # TESTING 추가: pytest 실행 중 강제 종료되면 status=testing이 잔류 → 재실행 시 리셋 필요.
     _pre_run_state = read_state(state_path)
     _prev_run_status = (_pre_run_state or {}).get("status", "")
-    _TERMINAL_STATUSES = {
+    _RESETTABLE_STATUSES = {
         ParallelStatus.DONE, ParallelStatus.HEAL_FAILED,
         ParallelStatus.ERROR, ParallelStatus.INIT, ParallelStatus.EMPTY,
+        ParallelStatus.TESTING,  # M-4(P110): 크래시 후 TESTING 잔류 시 heal_count 리셋
     }
-    if _prev_run_status in _TERMINAL_STATUSES:
+    if _prev_run_status in _RESETTABLE_STATUSES:
         update_state(state_path, lambda fresh: {**fresh, "heal_count": 0})
 
     # FSM: TESTING으로 전이 (P41 — done→testing→결과 경로 확보)
@@ -138,7 +143,7 @@ def main() -> None:
 
     # ── (B) pytest 실행 ────────────────────────────────────────────
     # spa: true 그룹은 세션 충돌 방지를 위해 단일세션(순차) 실행
-    _single_session = is_spa_group(args.group)
+    # _single_session은 L-3(P113) 수정으로 위쪽(slog 직전)에서 이미 계산됨
     if _single_session:
         print(f"[99] SPA 사이트 감지 → 단일세션 순차 실행")
     pytest_exit_code, report = run_pytest(sorted_files, single_session=_single_session)

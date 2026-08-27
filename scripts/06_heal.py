@@ -196,9 +196,16 @@ def main():
 
     state = read_state(state_path)
 
-    # C2: step 가드 — 힐링이 불가능한 상태(TIMEOUT 등)에서 HEAL_FAILED 전이 시 FSM 크래시 방지
+    # C2: step 가드 — 힐링이 불가능한 상태에서 안전하게 종료
+    # M-2(P108): TIMEOUT은 _UNHEALABLE_STEPS에서 제거 → heal_failed 전이 코드가 실행되도록 허용.
+    # TIMEOUT 상태는 MAX_HEAL 초과로 간주해 HEAL_FAILED + exit 2로 처리한다.
     _current_step = state.get("step", "")
-    _UNHEALABLE_STEPS = {Step.TIMEOUT, Step.HEAL_FAILED, Step.ANALYZED, Step.INIT}
+    if _current_step == Step.TIMEOUT:
+        print(f"[06] step=timeout — 타임아웃 상태: HEAL_FAILED로 전환하고 종료합니다.")
+        slog("heal_timeout_to_failed", step="06_heal", current_step=_current_step)
+        update_state(state_path, lambda fresh: {**fresh, "step": Step.HEAL_FAILED})
+        sys.exit(EXIT_HEAL_EXCEEDED)
+    _UNHEALABLE_STEPS = {Step.HEAL_FAILED, Step.ANALYZED, Step.INIT}
     if _current_step in _UNHEALABLE_STEPS:
         print(f"[06] step={_current_step!r} — 힐링 대상 상태가 아닙니다. 건너뜁니다.")
         slog("heal_skip_invalid_step", step="06_heal", current_step=_current_step)
@@ -374,7 +381,8 @@ def main():
 
     # 배치 분할 + 병렬 힐링 지시 출력
     batches = build_heal_batches(healable)
-    print_heal_batches(batches, url=state.get("url", ""), pipeline="single")
+    print_heal_batches(batches, url=state.get("url", ""), pipeline="single",
+                       state_path=state_path)  # L-2(P112): _healer.py:360과 대칭
     slog("step_end", step="06_heal", healable=len(healable),
          skipped=len(skipped), heal_round=heal_count + 1)
     sys.exit(EXIT_HEAL_NEEDED)

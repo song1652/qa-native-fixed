@@ -318,17 +318,16 @@ def main():
 
     n_funcs, has_dependent = count_test_functions(file_path)
     parallel_opts = []
-    # spa: true 사이트는 병렬 실행 시 세션 충돌 발생 → n_workers=1 고정
-    _url = state.get("url", "")
+    # M-3(P109)+L-5(P115): is_spa_group([_group_name])과 동일 로직으로 SPA 판정 통일.
+    # 이전 코드는 single_session_hosts(고아 설정, pages.json에 존재하지 않음)를 함께 확인했으나 제거.
+    # parallel/_exec.py의 is_spa_group과 동일 조건: pages.json의 spa:true 키만 사용.
     _group_name = _extract_group_name(state)
     _pages_json = PROJECT_ROOT / "config" / "pages.json"
     _pages = json.loads(_pages_json.read_text(encoding="utf-8")) if _pages_json.exists() else {}
     _page_cfg = _pages.get(_group_name, {})
     if isinstance(_page_cfg, str):
         _page_cfg = {}
-    _single_session = _page_cfg.get("spa", False) or any(
-        h in _url for h in _page_cfg.get("single_session_hosts", [])
-    )
+    _single_session = isinstance(_page_cfg, dict) and _page_cfg.get("spa", False)
 
     # 표시용 케이스 수: state의 test_cases(테스트 데이터) 우선, 없으면 파일/함수 수 사용
     n_cases = len(state.get("test_cases", [])) or n_funcs
