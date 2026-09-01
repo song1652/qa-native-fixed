@@ -5,7 +5,9 @@ QA Agent Dashboard 서버
 """
 from __future__ import annotations
 
+import argparse
 import json
+import os
 import queue
 import re
 import sys
@@ -63,9 +65,25 @@ TEAM_NOTES_PATH = PROJECT_ROOT / "agents" / "team_notes.md"
 PENDING_IMPL_PATH = PROJECT_ROOT / "pending_impl.json"
 LOGS_DIR.mkdir(exist_ok=True)
 
-ALLOWED_ORIGIN = "http://localhost:8766"
+ALLOWED_ORIGIN = os.environ.get("ALLOWED_ORIGIN", "http://localhost:8766")
 # DNS rebinding 방어: 허용할 Host 헤더 값 목록 (P49)
-ALLOWED_HOSTS = {"localhost:8766", "127.0.0.1:8766"}
+_allowed_hosts_env = os.environ.get("ALLOWED_HOSTS", "")
+ALLOWED_HOSTS = (
+    {host for host in re.split(r"[\s,]+", _allowed_hosts_env) if host}
+    if _allowed_hosts_env
+    else {"localhost:8766", "127.0.0.1:8766"}
+)
+
+# Remote mode protects process-spawning and reset endpoints by default. Allowlist
+# entries are exact paths unless they end in one ``*``, which means literal prefix.
+REMOTE_MODE = os.environ.get("REMOTE_MODE", "").lower() in {
+    "1", "true", "yes", "on",
+}
+REMOTE_API_ALLOWLIST = [
+    pattern.strip()
+    for pattern in os.environ.get("REMOTE_API_ALLOWLIST", "").split(",")
+    if pattern.strip()
+]
 
 # ── 서버가 띄운 자식 프로세스 추적 (P61) ────────────────────────
 # set[int] → dict[int, Popen] 으로 변경해 liveness 확인(poll()) 가능.
@@ -691,11 +709,50 @@ class DashboardHandler(BaseHTTPRequestHandler):
             origin = f"{parsed.scheme}://{parsed.netloc}" if parsed.scheme else referer
         return origin == ALLOWED_ORIGIN
 
+    def _check_remote_allowlist(self, path: str) -> bool:
+        """Apply the remote-mode exact/literal-prefix mutation allowlist."""
+        if not REMOTE_MODE:
+            return True
+
+        is_run = path.startswith("/api/run_")
+        is_reset = (
+            path == "/api/reset"
+            or path.startswith("/api/reset/")
+            or path.endswith("/reset")
+        )
+        if not (is_run or is_reset):
+            return True
+
+        for pattern in REMOTE_API_ALLOWLIST:
+            if pattern.endswith("*"):
+                if path.startswith(pattern[:-1]):
+                    return True
+            elif path == pattern:
+                return True
+        return False
+
     def do_POST(self):
         path = self.path.split("?")[0]
         if not self._check_csrf_origin():
             self.send_response(403)
             self.end_headers()
+            return
+        if not self._check_remote_allowlist(path):
+            content = json.dumps(
+                {
+                    "ok": False,
+                    "error": (
+                        "remote mode blocks this endpoint unless allowlisted: "
+                        f"{path}"
+                    ),
+                },
+                ensure_ascii=False,
+            ).encode("utf-8")
+            self.send_response(403)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Content-Length", str(len(content)))
+            self.end_headers()
+            self.wfile.write(content)
             return
         try:
             if path in self.POST_ROUTES:
@@ -1594,21 +1651,46 @@ class ReusableHTTPServer(ThreadingHTTPServer):
     allow_reuse_port = True
 
 
-def _is_port_in_use(port: int) -> bool:
+def _is_port_in_use(port: int, host: str = "127.0.0.1") -> bool:
     import socket
+    check_host = "127.0.0.1" if host in ("", "0.0.0.0") else host
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.settimeout(0.5)
-        return s.connect_ex(("127.0.0.1", port)) == 0
+        return s.connect_ex((check_host, port)) == 0
 
 
 def main():
-    if _is_port_in_use(PORT):
-        url = f"http://localhost:{PORT}"
+    parser = argparse.ArgumentParser(description="QA Agent Dashboard Server")
+    parser.add_argument(
+        "--host", default="127.0.0.1", help="bind host (default: 127.0.0.1)"
+    )
+    parser.add_argument(
+        "--port", type=int, default=PORT, help=f"port (default: {PORT})"
+    )
+    args = parser.parse_args()
+    host = args.host
+    port = args.port
+
+    display_host = (
+        "localhost" if host in ("", "0.0.0.0", "127.0.0.1") else host
+    )
+    global ALLOWED_HOSTS, ALLOWED_ORIGIN
+    if not os.environ.get("ALLOWED_HOSTS") and (host != "127.0.0.1" or port != PORT):
+        ALLOWED_HOSTS = {
+            f"localhost:{port}",
+            f"127.0.0.1:{port}",
+            f"{host}:{port}",
+        }
+    if not os.environ.get("ALLOWED_ORIGIN") and (host != "127.0.0.1" or port != PORT):
+        ALLOWED_ORIGIN = f"http://{display_host}:{port}"
+
+    if _is_port_in_use(port, host):
+        url = f"http://{display_host}:{port}"
         print(f"[Dashboard] 이미 실행 중: {url}")
         webbrowser.open(url)
         return
-    server = ReusableHTTPServer(("127.0.0.1", PORT), DashboardHandler)
-    url = f"http://localhost:{PORT}"
+    server = ReusableHTTPServer((host, port), DashboardHandler)
+    url = f"http://{display_host}:{port}"
     print(f"[Dashboard] 서버 시작: {url}")
     print("[Dashboard] 종료: Ctrl+C")
     webbrowser.open(url)
