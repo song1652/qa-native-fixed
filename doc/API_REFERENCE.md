@@ -24,6 +24,7 @@
 | `--group`, `-g` | 실행할 그룹 폴더명 (생략 시 전체) |
 | `--quick` | 빠른 실행 모드 (`state/quick.json` 저장, parallel_state 미변경) |
 | `--no-heal` | 힐링 생략, 실패해도 done 처리 |
+| `--no-report` | HTML 리포트·Jira 이슈 생성 건너뜀 (힐링 중 중간 실행용) |
 
 ### `run_qa.py`
 | 옵션 | 설명 |
@@ -46,7 +47,7 @@
 |---|---|---|
 | `/api/run_qa` | `{ url, cases_dir }` | 단일 파이프라인 실행 |
 | `/api/run_qa_parallel` | `{}` | 병렬 파이프라인 실행 |
-| `/api/run_merge` | `{ group?, quick?, no_heal? }` | 99_merge.py 실행 |
+| `/api/run_merge` | `{ group?, quick?, no_heal?, no_report? }` | 99_merge.py 실행 |
 | `/api/run_quick` | `{ groups: [], no_heal? }` | 빠른 실행 |
 | `/api/run_log` | `{ log: "파일명" }` | 실행 로그 조회 |
 

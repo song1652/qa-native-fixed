@@ -16,11 +16,12 @@
 하나라도 빠지면 힐링 미완료:
 
 1. 코드 패치 적용
-2. `agents/lessons_learned.md`에 교훈을 수동 기록 (자동 로그는 `heal_utils.py`가 `lessons_learned_auto.md`에 기록):
+2. `python scripts/assert_guard.py` 실행 — assertion 약화 감지 (경고 시 원본 강도로 복원)
+3. `agents/lessons_learned.md`에 교훈을 수동 기록 (자동 로그는 `heal_utils.py`가 `lessons_learned_auto.md`에 기록):
    ```
    - **{핵심 키워드}**: {상황 설명}. {해결법/교훈}
    ```
-3. 재실행으로 통과 확인
+4. 재실행으로 통과 확인
 
 ## 힐링 제한 및 재실행 옵션
 

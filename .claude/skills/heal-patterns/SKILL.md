@@ -125,6 +125,31 @@ Error: UnicodeEncodeError 'cp949'
 from _paths import PROJECT_ROOT
 ```
 
+### 13. Assertion 약화 (힐링 중 단순화)
+
+힐링 패치 후 `99_merge.py` 또는 `assert_guard.py`가 assertion 수 감소 경고를 출력할 때:
+
+```
+⚠️ [assertion 무결성 경고] assertion 수 감소: 9 → 7 (2개 제거됨)
+```
+
+```python
+# ❌ 힐링 중 단순화된 assertion (약화)
+assert msg_text, "메시지가 비어있음"
+
+# ✅ 원본 수준 키워드 조건 복원
+error_keywords = ["아이디", "비밀번호", "패스워드", "오류", "실패", "error", "invalid"]
+assert any(keyword in msg_text.lower() for keyword in error_keywords), (
+    f"예상치 못한 메시지: {msg_text}"
+)
+```
+
+**적용 조건**: `assert_guard.py` 또는 `99_merge.py` 실행 후 assertion 수 감소 경고 발생 시  
+**확인 방법**: `state/parallel.json`의 `assertion_integrity.warnings` 또는 출력 메시지 확인  
+**원칙**: `assert <변수>` 단순 비어있지않음 체크는 키워드·상태 조건 체크를 대체할 수 없음
+
+---
+
 ## 반복 오류 스킵 규칙
 
 동일 오류가 2회 연속 반복되면:
