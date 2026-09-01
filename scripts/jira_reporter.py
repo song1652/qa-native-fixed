@@ -41,7 +41,7 @@ DEFAULT_CONFIG = {
     "email":       "skj94268@gmail.com",
     "token":       "",                  # 환경변수 JIRA_TOKEN 또는 여기에 직접 입력
     "project_key": "SCRUM",
-    "issue_type_id": "10003",           # Feature(10003) — Bug 타입 생기면 교체
+    "issue_type_id": "10006",           # 버그(10006)
     "epic_key":    "SCRUM-5",           # QA 자동화 실패 이슈 트래킹 에픽
     "version":     "v1.0.0",
     "auto_attach": True,                # 스크린샷/영상 자동 첨부 여부
