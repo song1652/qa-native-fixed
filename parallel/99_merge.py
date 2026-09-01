@@ -91,6 +91,10 @@ def main() -> None:
         "--no-heal", action="store_true",
         help="힐링 단계 생략: 실패해도 heal_context를 생성하지 않음",
     )
+    parser.add_argument(
+        "--no-report", action="store_true",
+        help="리포트 생성 생략 (힐링 중 중간 실행 시 사용)",
+    )
     args = parser.parse_args()
 
     _start_time = _time.monotonic()
@@ -235,6 +239,32 @@ def main() -> None:
             ),
             encoding="utf-8",
         )
+
+    # ── (D-2) Jira 자동 이슈 생성 (is_final_run + 실패 있을 때) ──────
+    if is_final_run and not args.no_report:
+        _jira_failed = pytest_summary.get("failed", 0) + pytest_summary.get("error", 0)
+        if _jira_failed:
+            try:
+                _jira_reporter = PROJECT_ROOT / "scripts" / "jira_reporter.py"
+                if _jira_reporter.exists():
+                    import importlib.util as _ilu
+                    _spec = _ilu.spec_from_file_location("jira_reporter", _jira_reporter)
+                    _mod  = _ilu.module_from_spec(_spec)  # type: ignore[arg-type]
+                    _spec.loader.exec_module(_mod)  # type: ignore[union-attr]
+                    _cfg     = _mod._load_config()
+                    _client  = _mod.JiraClient(_cfg)
+                    _fails   = _mod._load_failures_from_state(args.group or None)
+                    _created = []
+                    for _f in _fails:
+                        _key = _mod.create_jira_issue(_client, _cfg, _f)
+                        if _key:
+                            _created.append(_key)
+                    if _created:
+                        print(f"\n[99] 🐛 Jira 이슈 {len(_created)}건 자동 생성")
+                        for _k in _created:
+                            print(f"     → {_cfg['base_url']}/browse/{_k}")
+            except Exception as _je:
+                print(f"[99] ⚠️ Jira 연동 실패 (스킵): {_je}")
 
     # ── (E) 상태 저장 ──────────────────────────────────────────────
     passed  = pytest_summary.get("passed", 0)

@@ -143,11 +143,12 @@
   <aside class="sidebar">
     <div class="sidebar-logo">
       <div class="logo-text">QA Native</div>
-      <div class="logo-sub">Test Report</div>
+      <div class="logo-sub">Parallel Test Report</div>
     </div>
     <nav class="nav-section">
       <div class="nav-label">Groups</div>
-      <ul style="list-style:none;"><li class="nav-item active" id="nav_all" data-nav="all">All (2)</li>
+      <ul style="list-style:none;"><li class="nav-item active" id="nav_all" data-nav="all">All (4)</li>
+<li class="nav-item" id="nav_customer_login" data-nav="customer_login"><span class="nav-dot pass"></span>CUSTOMER LOGIN<span class="nav-count">2/2</span></li>
 <li class="nav-item" id="nav_partner_login" data-nav="partner_login"><span class="nav-dot pass"></span>PARTNER LOGIN<span class="nav-count">2/2</span></li>
 </ul>
     </nav>
@@ -156,18 +157,41 @@
     <div class="topbar">
       <div>
         <h1>Test Results</h1>
-        <div class="meta">2026-08-27 20:38:48 &middot; 1 group &middot; 2 cases</div>
+        <div class="meta">2026-09-01 17:10:48 &middot; 2 groups &middot; 4 cases</div>
       </div>
       <div class="overall-badge pass">ALL PASS</div>
     </div>
     <div class="stats">
-      <div class="stat-card"><div class="stat-num" style="color:var(--text);">2</div><div class="stat-lbl">Total</div></div>
-      <div class="stat-card"><div class="stat-num" style="color:var(--pass);">2</div><div class="stat-lbl">Passed</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:var(--text);">4</div><div class="stat-lbl">Total</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:var(--pass);">4</div><div class="stat-lbl">Passed</div></div>
       <div class="stat-card"><div class="stat-num" style="color:var(--fail);">0</div><div class="stat-lbl">Failed</div></div>
       <div class="stat-card"><div class="stat-num" style="color:var(--skip);">0</div><div class="stat-lbl">Skipped</div></div>
       <div class="stat-card"><div class="stat-num" style="color:var(--pass);">100.0%</div><div class="stat-lbl">Pass Rate</div></div>
     </div>
     
+<section class="group-card" id="group_customer_login">
+  <div class="group-header pass" data-toggle-group="customer_login" style="cursor:pointer">
+    <div class="group-title-wrap">
+      <span class="group-chevron" id="gchv_customer_login">&#9654;</span>
+      <span class="group-dot pass"></span>
+      <span class="group-title">CUSTOMER LOGIN</span>
+      <span class="group-sub">2 / 2 passed</span>
+    </div>
+    <div class="group-right">
+      <span class="badge pass">PASS</span>
+    </div>
+  </div>
+  <div class="group-body" id="gbody_customer_login" style="display:none">
+    <div class="filter-bar" id="fbar_customer_login">
+      <button class="fbtn active" data-filter="customer_login" data-filter-val="all">All (2)</button>
+      <button class="fbtn pass" data-filter="customer_login" data-filter-val="pass">Pass (2)</button>
+      <button class="fbtn fail" data-filter="customer_login" data-filter-val="fail">Fail (0)</button>
+      
+      <span class="pager" id="pager_customer_login"></span>
+    </div>
+    <div class="case-list" id="clist_customer_login"><div class="case-item pass" data-status="pass" data-toggle="customer_login_0">  <div class="case-header">    <span class="case-dot pass"></span>    <span class="case-title">고객 로그인 빈 필드 유효성 검증</span>    <div class="case-right">            <span class="case-status-txt pass">PASS</span>      <span class="chevron" id="chv_customer_login_0">&#8250;</span>    </div>  </div>  <div class="case-detail" id="detail_customer_login_0">        <div class="detail-row"><span class="detail-label">Precondition</span><span class="detail-val">브라우저로 https://mall.serveone.co.kr/M3/cmm/login.dev 접속<br>고객 로그인 섹션이 보이는 상태</span></div>    <div class="detail-row">      <span class="detail-label">Steps</span>      <span class="detail-val"><ol class="steps-list"><li>고객 로그인 아이디 입력 필드를 비워둔다</li><li>고객 로그인 비밀번호 입력 필드를 비워둔다</li><li>고객 로그인 영역의 &quot;로그인&quot; 버튼을 클릭한다</li></ol></span>    </div>    <div class="detail-row">      <span class="detail-label">Expected</span>      <span class="detail-val">로그인이 차단되거나 에러 메시지(아이디를 입력하세요 / 비밀번호를 입력하세요 등)가 표시된다<br>페이지 이동이 없고 로그인 페이지에 머문다</span>    </div>      </div></div><div class="case-item pass" data-status="pass" data-toggle="customer_login_1">  <div class="case-header">    <span class="case-dot pass"></span>    <span class="case-title">고객 로그인 잘못된 자격증명 에러</span>    <div class="case-right">            <span class="case-status-txt pass">PASS</span>      <span class="chevron" id="chv_customer_login_1">&#8250;</span>    </div>  </div>  <div class="case-detail" id="detail_customer_login_1">        <div class="detail-row"><span class="detail-label">Precondition</span><span class="detail-val">브라우저로 https://mall.serveone.co.kr/M3/cmm/login.dev 접속<br>고객 로그인 섹션이 보이는 상태</span></div>    <div class="detail-row">      <span class="detail-label">Steps</span>      <span class="detail-val"><ol class="steps-list"><li>고객 로그인 아이디 입력 필드에 존재하지 않는 아이디(예: invalid_test_user_99)를 입력한다</li><li>고객 로그인 비밀번호 입력 필드에 잘못된 비밀번호(예: WrongPass!123)를 입력한다</li><li>고객 로그인 영역의 &quot;로그인&quot; 버튼을 클릭한다</li></ol></span>    </div>    <div class="detail-row">      <span class="detail-label">Expected</span>      <span class="detail-val">로그인 실패 에러 메시지가 표시된다 (예: 아이디 또는 비밀번호를 확인해 주세요)<br>페이지 이동이 없고 로그인 페이지에 머문다<br>비밀번호 필드는 마스킹 상태를 유지한다</span>    </div>      </div></div></div>
+  </div>
+</section>
 <section class="group-card" id="group_partner_login">
   <div class="group-header pass" data-toggle-group="partner_login" style="cursor:pointer">
     <div class="group-title-wrap">

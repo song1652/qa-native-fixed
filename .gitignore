@@ -22,7 +22,7 @@ parallel/*.txt
 
 # Credentials / sensitive test data
 config/test_data.json
-config/weverse.json
+config/jira_config.json
 
 # macOS
 .DS_Store
