@@ -16,8 +16,9 @@ DOM 분석 → 테스트 코드 자동 생성 → 심의 → 실행 → 자가 �
 | `run_team.py` | 팀 토론 주제 등록 | state/discuss.json 생성 (대시보드 버튼으로 대체 가능) |
 | `agents/dashboard/serve.py` | 모니터링 대시보드 실행 | http://localhost:8766 에서 파이프라인 실행·모니터링·토론 관리 |
 | `scripts/06_auto_heal.py` | 자동 패치 (힐링 선 실행) | 06_heal.py 이후 Agent 호출 전 deterministic 패턴 자동 수정 |
-| `parallel/99_merge.py` | 병렬 실행 완료 후 | pytest 일괄 실행 + HTML 리포트 생성 + workers 정리 |
+| `parallel/99_merge.py` | 병렬 실행 완료 후 | pytest 일괄 실행 + HTML 리포트 생성 + workers 정리. `--no-report`로 리포트 생략 가능 (힐링 중 중간 실행 시) |
 | `parallel/99_merge.py --quick --group` | 빠른 실행 (대시보드) | 특정 그룹만 pytest 실행 (state/quick.json에 결과 저장) |
+| `scripts/jira_reporter.py` | Jira 이슈 자동 생성 (선택) | 실패 TC → Jira 이슈 생성 + 스크린샷/영상 첨부. 99_merge.py가 최종 실패 시 자동 호출. `config/jira_config.json` 설정 필요 |
 
 > **scripts/ 폴더 안의 파일들은 직접 실행하지 않습니다.** Claude가 파이프라인 순서에 따라 자동으로 호출합니다.
 
@@ -68,6 +69,25 @@ cp config/test_data.example.json config/test_data.json
 ```
 
 `tests/generated/`의 생성 테스트가 이 파일의 `data_key`(예: `data["saucedemo"]["valid_user"]`)를 읽으므로, 없으면 생성 테스트가 전부 실패합니다. 새 테스트케이스에 새 `data_key`를 추가했다면 `python scripts/sync_test_data.py`로 빈 템플릿을 자동으로 채울 수 있습니다.
+
+### 4. Jira 연동 (선택)
+
+실패한 테스트케이스를 Jira 이슈로 자동 생성하려면 `config/jira_config.json`을 설정하세요:
+
+```json
+{
+  "base_url": "https://your-domain.atlassian.net",
+  "email": "your@email.com",
+  "token": "",
+  "project_key": "SCRUM",
+  "issue_type_id": "10003",
+  "epic_key": "SCRUM-5",
+  "auto_attach": true
+}
+```
+
+> `token`은 [Atlassian API 토큰](https://id.atlassian.com/manage-profile/security/api-tokens) 또는 환경변수 `JIRA_TOKEN`으로 지정 가능.  
+> 설정하지 않으면 Jira 연동 없이 정상 동작합니다.
 
 ---
 
@@ -148,9 +168,10 @@ python run_qa_parallel.py --no-auto
 
 | 파일 | 내용 |
 |---|---|
-| `tests/generated/{group}/{label}.py` | Claude Code가 작성한 테스트 코드 |
-| `tests/reports/parallel_index_{ts}.html` | 통합 HTML 리포트 |
-| `tests/screenshots/*.png` | 최종 실패 케이스 스크린샷 (힐링 완료 후 실패 시만 저장) |
+| `tests/generated/{group}/tc_{N}_{name}.py` | Claude Code가 작성한 테스트 코드 (파일명: `tc_{번호}_{english_snake_case}.py`) |
+| `tests/reports/parallel_index_{ts}.html` | 통합 HTML 리포트 (전체 통과 확인 후 마지막 1회 생성) |
+| `tests/screenshots/*.png` | 실패 케이스 스크린샷 + `*.meta.json` (conftest.py 자동 캡처) |
+| `tests/traces/{group}__{test}.zip` | 실패 케이스 Playwright Trace. 뷰어: `npx playwright show-trace <파일>.zip` |
 
 ---
 
@@ -164,7 +185,7 @@ python run_qa_parallel.py --no-auto
 | `agents/` | 사수-부사수 역할, 팀 토론 로그, lessons_learned |
 | `prompts/` | 심의 Agent 프롬프트 템플릿 |
 | `state/` | 런타임 상태 파일 (pipeline.json, run_history.json 등) |
-| `config/` | 설정 (pages.json, test_data.json) |
+| `config/` | 설정 (`pages.json`, `test_data.json`, `jira_config.json`(선택)) |
 | `testcases/` | 테스트 케이스 `.md` 파일 (그룹별 서브폴더) |
 | `tests/` | 생성된 테스트 코드, 리포트, 스크린샷 |
 | `.claude/skills/` | 스킬 프레임워크 (SKILL.md 표준) |
@@ -183,6 +204,8 @@ python run_qa_parallel.py --no-auto
 | 힐링 3회 반복 실패 | selector/assertion 불일치 | MCP로 실제 페이지 DOM 확인 (`browser_navigate` → `browser_snapshot`) |
 | `browser_snapshot` 도구 없음 | Playwright MCP 미설치 | `claude mcp add playwright -- npx -y @playwright/mcp@latest` 실행 후 재시작 |
 | 병렬 힐링 후 lessons_learned 누락 경고 | 힐링 패치만 적용, 교훈 미기록 | `agents/lessons_learned.md`에 교훈 수동 기록 후 `99_merge.py` 재실행 (자동 로그는 `lessons_learned_auto.md`에 별도) |
+| assertion 무결성 경고 (`9 → 7` 등) | 힐링 중 assertion이 단순화(약화)됨 | 경고 메시지의 파일·줄 번호 확인 후 원래 키워드 조건 체크(`assert any(keyword in text ...)`)로 복원 |
+| `AttributeError: 'Namespace' object has no attribute 'no_report'` | `99_merge.py`에 `--no-report` 인자 누락 (구버전) | 최신 버전으로 업데이트 (`git pull`) |
 | DOM 분석 실패 | 네트워크 / URL 오류 | URL 접근 가능 여부 확인 |
 
 ---
