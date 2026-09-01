@@ -43,6 +43,7 @@ from _report import build_parallel_html
 
 GENERATED_DIR  = PROJECT_ROOT / "tests" / "generated"
 SCREENSHOTS_DIR = PROJECT_ROOT / "tests" / "screenshots"
+TRACES_DIR     = PROJECT_ROOT / "tests" / "traces"  # L-7(P147)
 
 
 # ── 상태 업데이트 헬퍼 ───────────────────────────────────────────────────────
@@ -111,9 +112,11 @@ def main() -> None:
     _exec_mode = "순차" if _single_session else "병렬"
     print(f"\n[99] 실행 범위: {scope_label}  ({len(sorted_files)}개 케이스, {_exec_mode} 실행)")
 
-    # 스크린샷 정리 (최종 실패 시만 남기기)
+    # 스크린샷·트레이스 정리 — 최종 실패 시에만 남김 (L-7/P147: traces 추가)
     if SCREENSHOTS_DIR.exists():
         shutil.rmtree(SCREENSHOTS_DIR, ignore_errors=True)
+    if TRACES_DIR.exists():
+        shutil.rmtree(TRACES_DIR, ignore_errors=True)
 
     # M-4(P110/P121): RESETTABLE 상태에서 새 실행 시작 시 heal_count 리셋.
     # HEAL_NEEDED(힐링 재실행) 상태이면 리셋하지 않아 누적 카운트를 유지.
@@ -140,11 +143,22 @@ def main() -> None:
     # spa: true 그룹은 세션 충돌 방지를 위해 단일세션(순차) 실행
     # _single_session은 L-3(P113) 수정으로 위쪽(slog 직전)에서 이미 계산됨
     if _single_session:
-        print(f"[99] SPA 사이트 감지 → 단일세션 순차 실행")
+        print("[99] SPA 사이트 감지 → 단일세션 순차 실행")
     pytest_exit_code, report = run_pytest(sorted_files, single_session=_single_session)
     test_results    = parse_results(report)
     pytest_summary  = report.get("summary", {})
     failed_count    = pytest_summary.get("failed", 0) + pytest_summary.get("error", 0)
+
+    # C-1(P130): JSON 파싱 실패 시 거짓 DONE 방지.
+    # pytest가 비정상 종료(exit≠0)했는데 report={}이면 failed_count=0이 되어 DONE으로 처리됨.
+    # exit code로 비정상 여부를 직접 판단해 ERROR로 조기 종료.
+    if pytest_exit_code != 0 and not report:
+        print(f"[99] ⚠️ JSON 리포트 파싱 실패 (exit={pytest_exit_code}) — ERROR 처리")
+        _update_parallel_status(
+            ParallelStatus.ERROR, path=state_path,
+            extra={"error": f"pytest exit {pytest_exit_code}이지만 JSON 리포트 파싱 실패"},
+        )
+        sys.exit(0)
 
     # P73: pytest exit 5 = 수집된 테스트 없음
     if pytest_exit_code == 5 and failed_count == 0:
@@ -184,7 +198,7 @@ def main() -> None:
             **fresh, "heal_count": fresh.get("heal_count", 0) + 1,
         })
         heal_count += 1
-        _heal_applied, _heal_impossible = run_heal_cycle(
+        _heal_applied, _heal_impossible, _auto_all_fixed = run_heal_cycle(
             report, heal_count, state_path, quick_mode
         )
         if _heal_impossible:
@@ -193,6 +207,18 @@ def main() -> None:
             # L-2(P124): "HEAL_FAILED 전이" 직접 출력 제거 — exit code 가드(C-2) 우선 시
             # ERROR가 될 수 있으므로, 최종 상태는 아래 _new_status 결정 후 출력함.
             print("[99] 힐링 불가 (사이트 접근 불가 또는 전체 반복)")
+        elif _auto_all_fixed:
+            # H-2(P132): auto_heal 전건 성공 → HEAL_NEEDED 교착 방지.
+            # 모든 실패가 자동 수정됐으므로 subagent 힐링 대신 재실행으로 검증한다.
+            print("[99] ✅ auto_heal 전건 성공 — 재실행으로 최종 검증 중...")
+            pytest_exit_code, report = run_pytest(sorted_files, single_session=_single_session)
+            test_results   = parse_results(report)
+            pytest_summary = report.get("summary", {})
+            failed_count   = pytest_summary.get("failed", 0) + pytest_summary.get("error", 0)
+            if not failed_count:
+                HEAL_CONTEXT_STATE.unlink(missing_ok=True)
+            else:
+                print(f"[99] 재실행 후 {failed_count}건 실패 — 다음 99_merge.py 실행 시 heal context 재생성")
 
     # ── (D) HTML 리포트 ────────────────────────────────────────────
     is_final_run = decision in ("ok", "skip", "over_limit") or _heal_impossible

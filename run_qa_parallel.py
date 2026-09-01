@@ -26,7 +26,7 @@ from datetime import datetime
 
 import _bootstrap  # noqa: F401 — scripts/ 경로 설정
 from parse_cases import load_cases
-from _paths import PROJECT_ROOT, PARALLEL_STATE, STATE_DIR, read_state, write_state, reset_state, update_state
+from _paths import PROJECT_ROOT, PARALLEL_STATE, STATE_DIR, HEAL_CONTEXT_STATE, read_state, write_state, reset_state, update_state
 from _pipeline_registry import ParallelStatus  # P68: ParallelStatus 상수 사용
 
 # 01_analyze.py의 analyze() 직접 import
@@ -302,6 +302,9 @@ def main():
     STATE_DIR.mkdir(exist_ok=True)
     # FSM 전이 검증 없이 초기 상태로 리셋 (재실행 시 ValueError 방지, P50)
     reset_state(PARALLEL_STATE_PATH, {"status": ParallelStatus.INIT, "created_at": datetime.now().isoformat()})  # P68: 리터럴 → 상수
+    # H-1(P131): 이전 라운드 heal_context 삭제 — 잔존 시 "동일 오류 2회" 로직이
+    # 오작동해 첫 힐링부터 즉시 HEAL_FAILED로 전이되는 교착 현상 방지.
+    HEAL_CONTEXT_STATE.unlink(missing_ok=True)
 
     # 등록된 페이지 표시
     active = {k: v for k, v in pages.items() if v}

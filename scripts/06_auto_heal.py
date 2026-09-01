@@ -15,7 +15,7 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
-from _paths import PIPELINE_STATE, PROJECT_ROOT, read_state, update_state, HEAL_STATS_PATH
+from _paths import PIPELINE_STATE, read_state, update_state, HEAL_STATS_PATH
 from _pipeline_registry import ParallelStatus, Step  # m1(P93) + L-1(P111): Step 추가
 from _python import PYTHON_EXE
 

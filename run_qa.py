@@ -41,7 +41,7 @@ from pathlib import Path
 
 import _bootstrap  # noqa: F401 — scripts/ 경로 설정
 from parse_cases import load_cases
-from _paths import PIPELINE_STATE, STATE_DIR, PROJECT_ROOT, write_state, reset_state
+from _paths import PIPELINE_STATE, STATE_DIR, PROJECT_ROOT, reset_state
 from _pipeline_registry import make_initial_pipeline_state
 
 

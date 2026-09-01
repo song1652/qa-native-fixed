@@ -26,7 +26,6 @@ from _paths import (
 )
 from _python import PYTHON_EXE
 from _constants import MAX_HEAL
-from _pipeline_registry import ParallelStatus
 from heal_utils import (
     classify_error, find_screenshot_for_test,
     append_lessons, update_heal_stats,
@@ -321,7 +320,7 @@ def run_heal_cycle(
     heal_count: int,
     state_path: Path,
     quick_mode: bool,
-) -> tuple[bool, bool]:
+) -> tuple[bool, bool, bool]:
     """heal_context 생성 + auto_heal 시도.
 
     Args:
@@ -331,14 +330,16 @@ def run_heal_cycle(
         quick_mode: True이면 quick 파이프라인
 
     Returns:
-        (heal_applied, heal_impossible)
-        heal_applied:    True이면 auto_heal이 패치 성공 (재실행 필요)
+        (heal_applied, heal_impossible, auto_all_fixed)
+        heal_applied:    True이면 auto_heal이 패치 성공
         heal_impossible: True이면 사이트 불가·전체 반복으로 힐링 불가
+        auto_all_fixed:  True이면 auto_heal이 모든 실패를 수정 → 재실행으로 검증 필요
+                         (H-2/P132: HEAL_NEEDED 교착 방지)
     """
     heal_ctx = _build_heal_context(report, heal_count, state_path)
     if not heal_ctx:
         # build_heal_context가 None = 사이트 불가 또는 전체 반복 (P67)
-        return False, True
+        return False, True, False
 
     # auto_heal 시도 (deterministic 패치)
     auto_heal_applied = _try_auto_heal(state_path=state_path)
@@ -360,9 +361,10 @@ def run_heal_cycle(
             update_state(state_path, lambda fresh: {
                 k: v for k, v in fresh.items() if k != "heal_subagent_contexts"
             })
-            return auto_heal_applied, False
+            # H-2(P132): auto_all_fixed=True 신호 — 99_merge가 HEAL_NEEDED 대신 재실행으로 검증
+            return auto_heal_applied, False, True
     print_heal_instructions(heal_ctx, pipeline=pipeline_label, state_path=state_path)
-    return auto_heal_applied, False
+    return auto_heal_applied, False, False
 
 
 def print_heal_instructions(heal_context: dict, pipeline: str = "parallel",

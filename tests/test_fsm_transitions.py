@@ -319,8 +319,9 @@ class TestFsmBidirectionalContract:
         ("done",        "init"),        # 동일
         ("heal_failed", "analyzed"),    # 동일
         ("heal_failed", "init"),        # 동일
-        ("heal_failed", "done"),        # 대시보드 수동 완료 처리 (자동화 경로 없음)
-        ("heal_failed", "heal_needed"), # 대시보드 수동 재시도 (자동화 경로 없음)
+        # M-3(P135): heal_failed→done / heal_failed→heal_needed는 05_execute.py가 자동 실행.
+        # step=heal_failed ∈ RESETTABLE_STEPS → 05_execute가 heal_count 리셋 후 pytest 실행 →
+        # 통과 시 done, 실패 시 heal_needed 로 전이. KNOWN_STEP_WRITERS로 이동.
         ("timeout",     "init"),        # reset_state() via serve.py
     })
 
@@ -339,6 +340,8 @@ class TestFsmBidirectionalContract:
         ("done",        "heal_needed"): ["05_execute.py"],
         ("done",        "heal_failed"): ["06_heal.py"],     # over-limit guard
         ("done",        "timeout"):     ["05_execute.py"],  # H-1(P104)
+        ("heal_failed", "done"):        ["05_execute.py"],  # M-3(P135): RESETTABLE_STEPS 경로
+        ("heal_failed", "heal_needed"): ["05_execute.py"],  # M-3(P135): 동일 — 재실패 시
         ("heal_needed", "done"):        ["05_execute.py"],
         ("heal_needed", "heal_failed"): ["06_heal.py"],
         ("heal_needed", "timeout"):     ["05_execute.py"],

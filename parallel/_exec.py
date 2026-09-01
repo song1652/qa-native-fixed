@@ -19,7 +19,7 @@ if _SCRIPTS_DIR not in sys.path:
 
 from _python import PYTHON_EXE
 from _constants import MAX_PYTEST_WORKERS  # m3(P95): 병렬 실행 워커 수
-from _paths import PROJECT_ROOT, is_spa_group  # L-5(P127): is_spa_group 단일 소스 (_paths.py)
+from _paths import PROJECT_ROOT, is_spa_group  # noqa: F401  # L-5(P127): is_spa_group 단일 소스 (_paths.py) — 99_merge.py re-export용
 
 GENERATED_DIR = PROJECT_ROOT / "tests" / "generated"
 TESTCASES_DIR = PROJECT_ROOT / "testcases"

@@ -507,7 +507,10 @@ def print_heal_batches(batches: list[list[dict]], url: str = "",
         contexts.append(ctx)
 
     # 훅이 로그 파일 없이도 컨텍스트를 읽을 수 있도록 상태 파일에 저장 (P89)
-    if state_path is not None:
+    # M-7(P139): 단일 파이프라인(PIPELINE_STATE)에서는 heal_subagent_contexts 소비자 훅이 없으므로
+    # 죽은 쓰기를 생략한다. 병렬/quick 파이프라인만 HEAL_SUBAGENT_CONTEXTS를 훅이 읽어간다.
+    from _paths import PIPELINE_STATE as _SINGLE_STATE  # 지연 임포트 — 순환 의존 방지
+    if state_path is not None and Path(state_path) != Path(_SINGLE_STATE):
         update_state(state_path, lambda s: {**s, "heal_subagent_contexts": contexts})
 
     print()

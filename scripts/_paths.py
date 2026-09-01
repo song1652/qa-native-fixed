@@ -74,6 +74,9 @@ def _file_lock(lock_path: Path, target: Path, timeout_secs: float = LOCK_TIMEOUT
 _under_pytest = "pytest" in sys.modules or "PYTEST_CURRENT_TEST" in os.environ
 if not _under_pytest and sys.stdout and hasattr(sys.stdout, "buffer"):
     try:
+        # M-1(P133): 재래핑 전 버퍼 플러시 — 미플러시 데이터가 new TextIOWrapper에 유실되는 것을 방지
+        sys.stdout.flush()
+        sys.stderr.flush()
         sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
         sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
     except Exception:
@@ -126,7 +129,11 @@ def is_spa_group(group: "list[str] | None") -> bool:
     """
     if not PAGES_JSON.exists():
         return False
-    pages_cfg: dict = json.loads(PAGES_JSON.read_text(encoding="utf-8"))
+    try:
+        pages_cfg: dict = json.loads(PAGES_JSON.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as _e:  # M-6(P138): 파싱 실패 시 non-SPA로 처리
+        print(f"[_paths] is_spa_group: pages.json 파싱 실패 ({_e}) → non-SPA 처리")
+        return False
     check_keys = group if group else [k for k in pages_cfg if not k.startswith("_")]
     for g in check_keys:
         cfg = pages_cfg.get(g, {})

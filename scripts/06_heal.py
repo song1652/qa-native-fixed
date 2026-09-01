@@ -201,7 +201,7 @@ def main():
     # TIMEOUT 상태는 MAX_HEAL 초과로 간주해 HEAL_FAILED + exit 2로 처리한다.
     _current_step = state.get("step", "")
     if _current_step == Step.TIMEOUT:
-        print(f"[06] step=timeout — 타임아웃 상태: HEAL_FAILED로 전환하고 종료합니다.")
+        print("[06] step=timeout — 타임아웃 상태: HEAL_FAILED로 전환하고 종료합니다.")
         slog("heal_timeout_to_failed", step="06_heal", current_step=_current_step)
         update_state(state_path, lambda fresh: {
             **fresh, "step": Step.HEAL_FAILED,
@@ -354,7 +354,6 @@ def main():
         else:
             failing_files = [str(gen_path)]
     pre_heal_assertions = snapshot_assertions(failing_files)
-    _new_heal_count = heal_count + 1  # 표시·slog 용 로컬 값
 
     def _mutator(fresh: dict) -> dict:
         # P70: heal_count는 fresh 기준으로 증가 (RMW 경쟁 방지).

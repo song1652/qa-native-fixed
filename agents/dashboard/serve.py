@@ -33,6 +33,7 @@ from _pipeline_registry import (
     Step, ParallelStatus, make_initial_pipeline_state, PIPELINE_STEP_DEFS,
     STEP_COMPAT, PARALLEL_STEP_LABELS,  # P58: 단일 소스에서 임포트
     RESETTABLE_PARALLEL_STATUSES,       # M-4(P121): heal_count 리셋 정책 단일 소스
+    STEP_DEF_BY_NAME,                   # M-2(P134): step_labels first-wins 일관성
 )
 # 상태 파일 경로 + 안전한 쓰기 함수는 _paths.py가 단일 소스다 (#25).
 # 예전엔 이 파일이 자체 STATE_PATH 등을 재선언하고 _safe_write_json/
@@ -284,7 +285,8 @@ def build_pipeline_registry() -> dict:
     pipeline_steps = [s.step for s in PIPELINE_STEP_DEFS if s.step not in _terminal_excl]
 
     # 모든 step 라벨 (heal 포함 — STEP_LABELS 전체 대체용)
-    step_labels: dict[str, str] = {s.step: s.label for s in PIPELINE_STEP_DEFS}
+    # M-2(P134): last-wins dict comprehension → STEP_DEF_BY_NAME 사용 (first-wins, STEP_DEF_BY_NAME과 동일 동작)
+    step_labels: dict[str, str] = {k: v.label for k, v in STEP_DEF_BY_NAME.items()}
     # 구 step 값 호환 맵 — P58: _pipeline_registry.STEP_COMPAT이 단일 소스
     step_compat = STEP_COMPAT
     # compat step에도 라벨 추가 (STEP_LABELS[compat_step] 조회 지원)
@@ -1608,7 +1610,7 @@ def main():
     server = ReusableHTTPServer(("127.0.0.1", PORT), DashboardHandler)
     url = f"http://localhost:{PORT}"
     print(f"[Dashboard] 서버 시작: {url}")
-    print(f"[Dashboard] 종료: Ctrl+C")
+    print("[Dashboard] 종료: Ctrl+C")
     webbrowser.open(url)
     try:
         server.serve_forever()

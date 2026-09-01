@@ -16,7 +16,7 @@ MAX_HEAL = 3              # 최대 힐링 횟수 (단일/병렬 파이프라인 
 
 # 승인 (04_approve.py)
 EXIT_REJECTED = 4         # 반려 → 코드 재작성 (P59: EXIT_HEAL_EXCEEDED=2와 충돌 해소)
-EXIT_AWAITING_APPROVAL = 3  # 대시보드 승인 대기
+EXIT_HEAL_SKIPPED = 3  # 06_auto_heal: 실행 조건 불충족 (heal_needed 아님) — no-op
 
 # ── 생성 테스트 경로 기본값 ──────────────────────────────────────
 # state의 generated_file_path가 비었을 때 쓰는 fallback.

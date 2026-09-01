@@ -118,7 +118,7 @@ PIPELINE_STEP_DEFS: list[PipelineStepDef] = [
         is_terminal=False,
     ),
     # P57: 03a_dialog, 04_approve는 REVIEWED 상태에서 실행되는 서브 단계.
-    # STEP_DEF_BY_NAME은 마지막 선언이 우선(step 중복 시)이므로 조회보다 순서가 중요.
+    # STEP_DEF_BY_NAME은 첫 선언이 우선(step 중복 시)이므로 canonical 항목이 먼저 와야 한다.
     PipelineStepDef(
         step=Step.REVIEWED,
         label="리뷰 심의",
