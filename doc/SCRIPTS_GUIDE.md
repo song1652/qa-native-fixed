@@ -30,11 +30,15 @@ Claude가 자동으로 호출하는 파일 (직접 실행 불필요)
     ├── check_pending_*.py         훅 5개 (hook_utils.check_state() 공통 사용)
     ├── coverage_matrix.py         커버리지 매트릭스 생성 (tc_*.md → state/coverage.json)
     ├── flaky_detector.py          Flaky Test 감지 (run_history.json → state/flaky_tests.json)
-    ├── _python.py                 라이브러리: .venv Python 경로 (PROJECT_ROOT는 _paths.py에서 import)
-    ├── _paths.py                  라이브러리: 중앙 경로 상수 + read_state/write_state
+    ├── _python.py                 라이브러리: .venv Python 경로
+    ├── _paths.py                  라이브러리: 중앙 경로 상수 + read_state/write_state/update_state
     ├── _constants.py              라이브러리: 종료 코드 + VALID_TRANSITIONS 전이 맵
+    ├── _pipeline_registry.py      라이브러리: FSM 단일 소스 (Step·ParallelStatus 상수 + 전이 규칙)
+    ├── _validators.py             라이브러리: 대시보드 입력 검증 헬퍼 (serve.py에서 분리)
+    ├── assert_guard.py            힐링 후 assertion 약화 감지
+    ├── jira_reporter.py           Jira 이슈 자동 생성 (실패 시 99_merge.py가 자동 호출)
     ├── result_parser.py           라이브러리: pytest JSON 리포트 파싱 (05_execute, 99_merge 공유)
-    ├── hook_utils.py              라이브러리: 훅 스크립트 공통 유틸 (check_state)
+    ├── hook_utils.py              라이브러리: 훅 스크립트 공통 유틸 (check_state + remaining_steps_hint)
     ├── __init__.py                패키지 초기화
     ├── sync_test_data.py          test_data.json 동기화
     ├── dom_helpers.js             JS 공통 유틸 (isVisible·esc·getSelectorsSimple) — 01_analyze.py의 _js()가 자동 주입
@@ -148,6 +152,7 @@ python parallel/99_merge.py --quick --group mysite --no-heal
 | `--group`, `-g` | 실행할 폴더명 (예: `mysite`). 생략 시 전체 실행 |
 | `--quick` | 빠른 실행 모드. 결과를 `state/quick.json`에 저장 (`state/parallel.json` 미변경) |
 | `--no-heal` | 힐링 생략. 실패해도 `heal_context.json`을 생성하지 않고 바로 리포트 생성. 상태는 `done`으로 설정 |
+| `--no-report` | 리포트 생성 생략. 힐링 중 중간 실행 시 사용. Jira 이슈 생성도 건너뜀 |
 
 **동작:**
 1. `tests/generated/` 폴더 pytest 일괄 실행 (병렬 최대 4 workers, timeout=900s)
@@ -351,6 +356,10 @@ python scripts/05_execute.py
 | `scripts/hook_utils.py` | 훅 스크립트 공통 유틸. `check_state(path, key, value, extra_check)` + `remaining_steps_hint(from_step)` (레지스트리 기반 잔여 단계 지시문 자동 생성, P44) — 5개 `check_pending_*.py`가 공유 | ❌ (다른 스크립트가 import) |
 | `scripts/structured_log.py` | 구조화된 로그 (JSON Lines). `slog(event, **kwargs)` → `logs/structured.jsonl`에 기록. 05_execute, 06_heal, 99_merge에서 사용. 파이프라인 병목 분석·이벤트 추적용 | ❌ (다른 스크립트가 import) |
 | `scripts/heal_utils.py` (힐링 배치 병렬화: `build_heal_batches()` + `print_heal_batches()` — 단일/병렬/빠른 공통, HEAL_BATCH_SIZE=6) | 힐링 공용 유틸리티. `classify_error` (7분류: Locator/Assertion/Timeout/URL/JS평가/Python런타임/Playwright일반/기타), `MCP_SNAPSHOT_ERROR_TYPES`, `extract_key_lines`, `find_screenshot_for_test`, `append_lessons` (→ `lessons_learned_auto.md`에 자동 기록), `update_heal_stats` — `06_heal.py`와 `99_merge.py`에서 공유 | ❌ (다른 스크립트가 import) |
+| `scripts/_pipeline_registry.py` | FSM 단일 소스. `Step.*` / `ParallelStatus.*` 상수, `PIPELINE_STEP_DEFS`(메타), `VALID_TRANSITIONS` / `VALID_PARALLEL_TRANSITIONS`, `make_initial_pipeline_state()` 팩토리 | ❌ (다른 스크립트가 import) |
+| `scripts/_validators.py` | 대시보드 `serve.py` 입력 검증 헬퍼. `serve.py`의 백그라운드 스레드 부작용 없이 재사용 가능하도록 분리 | ❌ (serve.py + 테스트가 import) |
+| `scripts/assert_guard.py` | 힐링 패치 후 assertion 약화 감지. `original_assertions`(최초) vs 현재 파일 비교 → 감소 시 경고 출력 | ✅ (`python scripts/assert_guard.py`) |
+| `scripts/jira_reporter.py` | 테스트 실패 시 Jira 이슈 자동 생성. 스크린샷·영상 첨부 포함. `config/jira_config.json` 또는 환경변수 `JIRA_TOKEN` 설정 필요. `99_merge.py`가 최종 실패 시 자동 호출 | ✅ (`python scripts/jira_reporter.py [--group G] [--dry-run]`) |
 | `scripts/parse_cases.py` | `.md`/`.json` 테스트케이스 파일 파서 (YAML frontmatter 지원) | ❌ (run_qa.py가 import해서 사용) |
 | `tests/test_core_parsers.py` | 핵심 파서 유닛 테스트 (parse_cases 등) | ❌ (pytest가 자동 실행) |
 | `scripts/sync_test_data.py` | `test_data.json` 동기화 유틸 | ❌ (필요 시 import) |
