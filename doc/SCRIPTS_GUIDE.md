@@ -171,7 +171,28 @@ python parallel/99_merge.py --quick --group mysite --no-heal
 ```bash
 python agents/dashboard/serve.py
 # 브라우저에서 http://localhost:8766 자동 열림
+
+# 다른 인터페이스/포트로 실행
+python agents/dashboard/serve.py --host 0.0.0.0 --port 8800
 ```
+
+| 옵션/환경 변수 | 기본값 | 설명 |
+|---|---|---|
+| `--host` | `127.0.0.1` | 서버 바인딩 주소 |
+| `--port` | `8766` | 서버 바인딩 포트 |
+| `ALLOWED_HOSTS` | `localhost:8766 127.0.0.1:8766` | 허용 `Host` 값. 쉼표 또는 공백 구분 |
+| `ALLOWED_ORIGIN` | `http://localhost:8766` | 허용 브라우저 origin |
+| `REMOTE_MODE` | 비활성 | 활성화 시 실행/reset API를 기본 403 차단 |
+| `REMOTE_API_ALLOWLIST` | 빈 값 | 예외 허용 경로. exact match 또는 끝 `*` prefix match, 쉼표 구분 |
+
+원격 모드는 인증 기능이 아닙니다. 외부 네트워크에 바인딩할 때는 허용 host/origin을
+명시하고 인증 프록시를 별도로 구성하세요. 토론 결론의 승인/반려 API는 게이트 진행을
+막지 않도록 원격 모드에서도 허용됩니다. 상세 위험 엔드포인트와 allowlist 규칙은
+[`API_REFERENCE.md`](API_REFERENCE.md)를 참고하세요.
+
+> **동적 포트(P0-3):** 현재 저장소에는 dashboard job 동시 실행 상한과 workspace
+> 수명주기 계약이 없습니다. `--port`로 명시적 포트를 선택할 수 있지만, job별 자동
+> 할당/해제는 해당 결정이 생길 때까지 보류합니다.
 
 **대시보드에서 할 수 있는 것:**
 | 기능 | 방법 |
