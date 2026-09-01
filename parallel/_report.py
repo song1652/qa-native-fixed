@@ -6,6 +6,7 @@ parallel/_report.py — 병렬 파이프라인 HTML 리포트 생성 (P84)
 """
 from __future__ import annotations
 
+import json
 import re
 import sys
 from collections import defaultdict
@@ -16,6 +17,7 @@ if _SCRIPTS_DIR not in sys.path:
     sys.path.insert(0, _SCRIPTS_DIR)
 
 from report_html import case_row as _case_row, build_report
+from _paths import SCREENSHOTS_DIR
 
 try:
     from parse_cases import load_cases as _load_cases
@@ -24,6 +26,39 @@ except ImportError:
 
 GENERATED_DIR = Path(__file__).parent.parent / "tests" / "generated"
 TESTCASES_DIR = Path(__file__).parent.parent / "testcases"
+
+
+def _scan_meta_files() -> dict:
+    """tests/screenshots/*.meta.json 스캔 → {test_name: meta_dict}.
+
+    P84 리팩토링 후 _report.py에 누락됐던 로직 복원 (05_execute.py와 동일 패턴).
+    """
+    meta_by_name: dict = {}
+    if SCREENSHOTS_DIR.exists():
+        for meta_file in SCREENSHOTS_DIR.glob("*.meta.json"):
+            try:
+                m = json.loads(meta_file.read_text(encoding="utf-8"))
+                name = m.get("test_name", "")
+                if name:
+                    meta_by_name[name] = m
+            except Exception:
+                pass
+    return meta_by_name
+
+
+def _get_artifacts(nodeid: str, outcome: str, meta_by_name: dict) -> dict | None:
+    """실패 TC의 artifacts dict 반환. 통과/스킵이거나 meta 없으면 None."""
+    if outcome != "failed":
+        return None
+    test_func = nodeid.split("::")[-1] if "::" in nodeid else nodeid
+    meta = meta_by_name.get(test_func, {})
+    if not meta:
+        return None
+    return {
+        "screenshot_path": meta.get("screenshot_path", ""),
+        "trace_path":      meta.get("trace_path", ""),
+        "video_path":      meta.get("video_path", ""),
+    }
 
 
 def _natural_sort_key(p: Path) -> list:
@@ -82,6 +117,9 @@ def build_parallel_html(
     if target_groups:
         groups = {k: v for k, v in groups.items() if k in target_groups}
 
+    # 실패 TC의 스크린샷/영상/트레이스 정보 로드 (P84 리팩 후 누락된 부분 복원)
+    meta_by_name = _scan_meta_files()
+
     groups_data = []
     for label, files in groups.items():
         group_tests = {
@@ -113,7 +151,8 @@ def build_parallel_html(
                 case_outcome = group_tests.get(matched_nodeid, "failed") if matched_nodeid else "failed"
                 if case_outcome == "skipped" and matched_nodeid and matched_nodeid in skip_messages:
                     case = dict(case, skip_reason=skip_messages[matched_nodeid])
-                rows_html += _case_row(case, uid, case_outcome)
+                arts = _get_artifacts(matched_nodeid or "", case_outcome, meta_by_name)
+                rows_html += _case_row(case, uid, case_outcome, artifacts=arts)
         else:
             for file_idx, f in enumerate(sorted(files, key=_natural_sort_key)):
                 uid = f"{label}_{file_idx}"
@@ -127,7 +166,8 @@ def build_parallel_html(
                 }
                 if outcome == "skipped" and nodeid_match and nodeid_match in skip_messages:
                     simple_case["skip_reason"] = skip_messages[nodeid_match]
-                rows_html += _case_row(simple_case, uid, outcome)
+                arts = _get_artifacts(nodeid_match or "", outcome, meta_by_name)
+                rows_html += _case_row(simple_case, uid, outcome, artifacts=arts)
 
         if not rows_html:
             rows_html = '<p class="empty-msg">케이스 정보 없음</p>'
