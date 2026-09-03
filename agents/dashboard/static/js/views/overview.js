@@ -89,10 +89,10 @@ async function renderDashboardOverview(main) {
       <div class="oax-hero-left">
         <div class="oax-donut-wrap">
           <svg viewBox="-5 -5 110 110" class="oax-donut">
-            <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(140,120,220,0.08)" stroke-width="5"/>
+            <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(42,40,32,0.8)" stroke-width="5"/>
             ${_passedArc  > 0 ? `<circle cx="50" cy="50" r="42" fill="none" stroke="var(--approved-color)" stroke-width="5" stroke-dasharray="${_passedArc} ${_C-_passedArc}" stroke-dashoffset="66" stroke-linecap="butt" style="filter:drop-shadow(0 0 4px var(--approved-color))"/>` : ''}
             ${_failedArc  > 0 ? `<circle cx="50" cy="50" r="42" fill="none" stroke="var(--revision-color)" stroke-width="5" stroke-dasharray="${_failedArc} ${_C-_failedArc}" stroke-dashoffset="${66-_passedArc}" stroke-linecap="butt" style="filter:drop-shadow(0 0 4px var(--revision-color))"/>` : ''}
-            ${_skippedArc > 0 ? `<circle cx="50" cy="50" r="42" fill="none" stroke="#a855f7" stroke-width="5" stroke-dasharray="${_skippedArc} ${_C-_skippedArc}" stroke-dashoffset="${66-_passedArc-_failedArc}" stroke-linecap="butt" style="filter:drop-shadow(0 0 4px #a855f7)"/>` : ''}
+            ${_skippedArc > 0 ? `<circle cx="50" cy="50" r="42" fill="none" stroke="#9880e0" stroke-width="5" stroke-dasharray="${_skippedArc} ${_C-_skippedArc}" stroke-dashoffset="${66-_passedArc-_failedArc}" stroke-linecap="butt" style="filter:drop-shadow(0 0 4px #9880e0)"/>` : ''}
           </svg>
           <div class="oax-donut-center">
             <div class="oax-donut-pct">${passRate}<span class="oax-donut-unit">%</span></div>
@@ -115,7 +115,7 @@ async function renderDashboardOverview(main) {
               <div class="oax-hero-stat-label">Failed</div>
             </div>
             ${totalSkipped > 0 ? `<div class="oax-hero-stat">
-              <div class="oax-hero-stat-val" style="color:#a855f7">${totalSkipped}</div>
+              <div class="oax-hero-stat-val" style="color:var(--skip)">${totalSkipped}</div>
               <div class="oax-hero-stat-label">Skipped</div>
             </div>` : ''}
           </div>
@@ -134,30 +134,30 @@ async function renderDashboardOverview(main) {
   // ── 2. KPI 카드 행 ──
   const kpiHtml = `
     <div class="oax-kpi-row">
-      <div class="oax-kpi" onclick="selectView('single_pipeline')">
+      <button type="button" class="oax-kpi" onclick="selectView('single_pipeline')" aria-label="Single Pipeline 뷰로 이동">
         <div class="oax-kpi-icon" style="color:var(--accent)">◆</div>
         <div class="oax-kpi-body">
           <div class="oax-kpi-label">Single Pipeline</div>
           <div class="oax-kpi-val" style="color:${psStatus === 'done' ? 'var(--approved-color)' : psStatus === 'idle' ? 'var(--text-dim)' : 'var(--pending-color)'}">${sLabel(psStatus)}</div>
         </div>
         <div class="oax-kpi-meta">${psStatus === 'done' && psTotal > 0 ? psPassed + '/' + psTotal : ''}</div>
-      </div>
-      <div class="oax-kpi" onclick="selectView('parallel_pipeline')">
+      </button>
+      <button type="button" class="oax-kpi" onclick="selectView('parallel_pipeline')" aria-label="Parallel Pipeline 뷰로 이동">
         <div class="oax-kpi-icon" style="color:var(--delib-accent)">◆</div>
         <div class="oax-kpi-body">
           <div class="oax-kpi-label">Parallel Pipeline</div>
           <div class="oax-kpi-val" style="color:${bsStatus === 'done' ? 'var(--approved-color)' : bsStatus === 'idle' ? 'var(--text-dim)' : 'var(--pending-color)'}">${sLabel(bsStatus)}</div>
         </div>
         <div class="oax-kpi-meta">${bsStatus === 'done' && bsTotal > 0 ? bsPassed + '/' + bsTotal : ''}</div>
-      </div>
-      <div class="oax-kpi" onclick="selectView('reports')">
+      </button>
+      <button type="button" class="oax-kpi" onclick="selectView('reports')" aria-label="Reports 뷰로 이동">
         <div class="oax-kpi-icon" style="color:var(--senior-accent)">◆</div>
         <div class="oax-kpi-body">
           <div class="oax-kpi-label">Reports</div>
           <div class="oax-kpi-val">${rptCount}<span style="font-size:12px;opacity:0.4;margin-left:3px;">건</span></div>
         </div>
         <div class="oax-kpi-meta">${rptCount > 0 ? esc(reportsList[0].name).substring(0, 20) : ''}</div>
-      </div>
+      </button>
     </div>`;
 
   // ── 3. 하단 그리드 ──
@@ -241,7 +241,7 @@ async function renderDashboardOverview(main) {
           <button class="ov-log-tab active" data-log="run_qa.txt">단일</button>
           <button class="ov-log-tab" data-log="run_parallel.txt">병렬</button>
           <button class="ov-log-tab" data-log="quick_run.txt">빠른</button>
-          <button class="ov-log-refresh" id="ov-log-refresh" title="새로고침">&#8635;</button>
+          <button class="ov-log-refresh" id="ov-log-refresh" aria-label="로그 새로고침">&#8635;</button>
         </div>
       </div>
       <div class="ov-log-box" id="ov-log-content">로그 로딩 중...</div>
@@ -371,12 +371,12 @@ function _buildTrendChart(history) {
     if (Math.abs(labelY - prevLabelY) < minLabelGap) {
       labelY = prevLabelY < y ? y + 14 : y - 8 - minLabelGap + Math.abs(labelY - prevLabelY);
     }
-    pctLabels += `<text x="${x}" y="${labelY}" text-anchor="middle" fill="${color}" font-size="8" font-weight="600" font-family="Inter">${rDisplay}%</text>`;
+    pctLabels += `<text x="${x}" y="${labelY}" text-anchor="middle" fill="${color}" font-size="8" font-weight="600" font-family="JetBrains Mono">${rDisplay}%</text>`;
     prevLabelY = labelY;
 
     // 시간 라벨 — 첫/마지막은 항상, 나머지는 간격에 따라
     if (i === 0 || i === recent.length - 1 || i % showEveryN === 0) {
-      labels += `<text x="${x}" y="${h - 2}" text-anchor="middle" fill="var(--text-dim)" font-size="7" font-family="Inter">${shortTs}</text>`;
+      labels += `<text x="${x}" y="${h - 2}" text-anchor="middle" fill="var(--text-dim)" font-size="7" font-family="JetBrains Mono">${shortTs}</text>`;
     }
   });
   areaPoints += `${padX + stepX * (recent.length - 1)},${padY + chartH}`;
@@ -384,7 +384,7 @@ function _buildTrendChart(history) {
   // Y축 가이드라인
   const gridLines = [100, 80, 60].map(v => {
     const y = padY + chartH - (v / 100) * chartH;
-    return `<line x1="${padX}" y1="${y}" x2="${w - padX}" y2="${y}" stroke="rgba(140,120,220,0.06)" stroke-width="0.5"/>`;
+    return `<line x1="${padX}" y1="${y}" x2="${w - padX}" y2="${y}" stroke="rgba(42,40,32,0.6)" stroke-width="0.5"/>`;
   }).join('');
 
   const lastDur = recent.length > 0 && recent[recent.length - 1].duration_sec ? Math.round(recent[recent.length - 1].duration_sec) + 's' : '-';

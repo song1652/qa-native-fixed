@@ -5,15 +5,11 @@
 }
 
 .hist-heading {
-  font-family: 'Inter', sans-serif;
-  font-size: 28px;
-  font-weight: 800;
+  font-size: 22px;
+  font-weight: 700;
   letter-spacing: -0.5px;
   margin-bottom: 20px;
-  background: linear-gradient(135deg, #fff 0%, #d8ccf8 60%, #a78bfa 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--text);
 }
 
 /* ── 요약 통계 행 ── */
@@ -27,22 +23,10 @@
 .hist-stat {
   flex: 1;
   min-width: 120px;
-  background: var(--surface-glass);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   padding: 14px 16px;
-  position: relative;
-  overflow: hidden;
-}
-
-.hist-stat::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.15), transparent);
 }
 
 .hist-stat-label {
@@ -57,8 +41,8 @@
 .hist-stat-val {
   font-size: 22px;
   font-weight: 800;
-  font-family: 'Inter', sans-serif;
   letter-spacing: -0.5px;
+  font-family: 'JetBrains Mono', monospace;
 }
 
 /* ── 필터 바 ── */
@@ -77,35 +61,33 @@
 }
 
 .hist-filter-btn {
-  background: rgba(139, 92, 246, 0.04);
+  background: var(--surface2);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   padding: 4px 12px;
   font-size: 11px;
   font-weight: 600;
   color: var(--text-dim);
   cursor: pointer;
-  transition: all 0.15s;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
   font-family: inherit;
 }
 
 .hist-filter-btn:hover {
-  background: rgba(139, 92, 246, 0.1);
-  border-color: rgba(139, 92, 246, 0.25);
+  background: var(--surface-raised);
+  border-color: var(--border-sub);
   color: var(--text);
 }
 
 .hist-filter-btn.active {
-  background: rgba(139, 92, 246, 0.15);
-  border-color: rgba(139, 92, 246, 0.35);
+  background: var(--accent-dim);
+  border-color: var(--accent);
   color: var(--text);
 }
 
 /* ── 실행 이력 카드 (6-컬럼 그리드) ── */
 .hist-card {
-  background: var(--surface-glass);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   padding: 12px 18px;
@@ -114,25 +96,15 @@
   grid-template-columns: 100px 90px 100px 80px 1fr 90px;
   gap: 0;
   align-items: center;
-  position: relative;
-  overflow: hidden;
   transition: border-color 0.15s;
 }
 
-.hist-card::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.1), transparent);
-}
-
-.hist-card:hover { border-color: rgba(139, 92, 246, 0.2); }
+.hist-card:hover { border-color: var(--accent); }
 
 /* 각 컬럼 공통 */
 .hist-col {
   padding: 0 10px;
-  border-right: 1px solid rgba(140, 120, 220, 0.07);
+  border-right: 1px solid var(--border-sub);
 }
 .hist-col:first-child { padding-left: 0; }
 .hist-col:last-child { border-right: none; padding-right: 0; }
@@ -180,7 +152,7 @@
 .hist-card-rate {
   font-size: 18px;
   font-weight: 800;
-  font-family: 'Inter', sans-serif;
+  font-family: 'JetBrains Mono', monospace;
   letter-spacing: -0.5px;
   line-height: 1;
 }
@@ -191,30 +163,30 @@
   font-size: 10px;
   font-weight: 600;
   padding: 2px 8px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   white-space: nowrap;
 }
 
 .hist-badge--first {
-  background: rgba(52, 211, 153, 0.1);
-  color: var(--approved-color);
-  border: 1px solid rgba(52, 211, 153, 0.2);
+  background: var(--pass-bg);
+  color: var(--pass);
+  border: 1px solid var(--pass-border);
 }
 
 .hist-badge--heal {
-  background: rgba(139, 92, 246, 0.1);
+  background: var(--accent-dim);
   color: var(--accent);
-  border: 1px solid rgba(139, 92, 246, 0.2);
+  border: 1px solid rgba(228, 149, 15, 0.22);
 }
 
 .hist-badge--fail {
-  background: rgba(251, 113, 133, 0.1);
-  color: var(--revision-color);
-  border: 1px solid rgba(251, 113, 133, 0.2);
+  background: var(--fail-bg);
+  color: var(--fail);
+  border: 1px solid var(--fail-border);
 }
 
 .hist-badge--type {
-  background: rgba(140, 120, 220, 0.06);
+  background: var(--surface2);
   color: var(--text-dim);
   border: 1px solid var(--border);
 }
@@ -222,8 +194,8 @@
 /* ── mini pass bar ── */
 .hist-mini-bar {
   width: 80px;
-  height: 4px;
-  background: rgba(140, 120, 220, 0.08);
+  height: 3px;
+  background: var(--border);
   border-radius: 10px;
   overflow: hidden;
 }
@@ -240,8 +212,8 @@
   font-size: 9px;
   font-weight: 600;
   padding: 1px 6px;
-  border-radius: 4px;
-  background: rgba(139, 92, 246, 0.08);
+  border-radius: var(--radius-sm);
+  background: var(--accent-dim);
   color: var(--accent);
   font-family: 'JetBrains Mono', monospace;
 }

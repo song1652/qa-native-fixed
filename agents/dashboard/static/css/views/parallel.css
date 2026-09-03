@@ -5,27 +5,12 @@
     }
 
     .batch-stat {
-      background: var(--surface-glass);
-      backdrop-filter: blur(24px);
-      -webkit-backdrop-filter: blur(24px);
+      background: var(--surface);
       border: 1px solid var(--border);
       border-radius: var(--radius-lg);
       padding: 18px 20px;
       flex: 1;
       text-align: center;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-      position: relative;
-      overflow: hidden;
-    }
-
-    .batch-stat::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.2), transparent);
     }
 
     .batch-stat-num {
@@ -43,25 +28,11 @@
 
     /* ── Parallel Execution Results ── */
     .exec-result-card {
-      background: var(--surface-glass);
-      backdrop-filter: blur(24px);
-      -webkit-backdrop-filter: blur(24px);
+      background: var(--surface);
       border: 1px solid var(--border);
       border-radius: var(--radius-lg);
       padding: 24px;
       margin-bottom: 20px;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-      position: relative;
-    }
-
-    .exec-result-card::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.2), transparent);
     }
 
     .exec-result-header {
@@ -77,24 +48,25 @@
     }
 
     .exec-result-badge {
-      font-size: 11px;
+      font-size: 10px;
       font-weight: 700;
-      padding: 4px 16px;
-      border-radius: 20px;
+      padding: 3px 12px;
+      border-radius: var(--radius-sm);
       letter-spacing: 0.8px;
       text-transform: uppercase;
+      font-family: 'JetBrains Mono', monospace;
     }
 
     .exec-result-badge.pass {
-      background: rgba(16, 185, 129, .1);
-      color: #10b981;
-      border: 1px solid rgba(16, 185, 129, .25);
+      background: var(--pass-bg);
+      color: var(--pass);
+      border: 1px solid var(--pass-border);
     }
 
     .exec-result-badge.fail {
-      background: rgba(244, 63, 94, .1);
-      color: #f43f5e;
-      border: 1px solid rgba(244, 63, 94, .25);
+      background: var(--fail-bg);
+      color: var(--fail);
+      border: 1px solid var(--fail-border);
     }
 
     .exec-result-stats {
@@ -105,8 +77,8 @@
     }
 
     .exec-stat {
-      background: rgba(22, 20, 50, 0.35);
-      border: 1px solid var(--border-glass);
+      background: var(--surface2);
+      border: 1px solid var(--border);
       border-radius: var(--radius-md);
       padding: 14px;
       text-align: center;
@@ -136,8 +108,8 @@
       display: flex;
       flex-direction: column;
       align-items: stretch;
-      background: rgba(22, 20, 50, 0.3);
-      border: 1px solid var(--border-glass);
+      background: var(--surface2);
+      border: 1px solid var(--border);
       border-radius: var(--radius-md);
       overflow: hidden;
     }
@@ -148,11 +120,17 @@
       gap: 12px;
       padding: 10px 14px;
       cursor: pointer;
-      transition: background .15s;
+      transition: background 0.15s;
+      width: 100%;
+      border: none;
+      background: transparent;
+      font-family: inherit;
+      color: inherit;
+      text-align: left;
     }
 
     .group-result-header:hover {
-      background: rgba(140, 120, 220, 0.04);
+      background: var(--accent-dim);
     }
 
     .group-result-chevron {
@@ -174,13 +152,11 @@
     }
 
     .group-result-dot.pass {
-      background: #10b981;
-      box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
+      background: var(--pass);
     }
 
     .group-result-dot.fail {
-      background: #f43f5e;
-      box-shadow: 0 0 8px rgba(244, 63, 94, 0.5);
+      background: var(--fail);
     }
 
     .group-result-name {
@@ -198,17 +174,20 @@
       font-size: 10px;
       font-weight: 700;
       padding: 2px 8px;
-      border-radius: 12px;
+      border-radius: var(--radius-sm);
+      font-family: 'JetBrains Mono', monospace;
     }
 
     .group-result-badge.pass {
-      background: rgba(16, 185, 129, .1);
-      color: #10b981;
+      background: var(--pass-bg);
+      color: var(--pass);
+      border: 1px solid var(--pass-border);
     }
 
     .group-result-badge.fail {
-      background: rgba(244, 63, 94, .1);
-      color: #f43f5e;
+      background: var(--fail-bg);
+      color: var(--fail);
+      border: 1px solid var(--fail-border);
     }
 
     .group-result-body {
@@ -229,37 +208,37 @@
       font-size: 11px;
       font-weight: 600;
       padding: 4px 12px;
-      border-radius: 14px;
+      border-radius: var(--radius-sm);
       cursor: pointer;
-      border: 1px solid var(--border-glass);
-      background: rgba(22, 20, 50, 0.35);
+      border: 1px solid var(--border);
+      background: var(--surface2);
       color: var(--text-dim);
-      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      transition: background 0.18s, color 0.18s, border-color 0.18s;
       font-family: inherit;
     }
 
     .test-filter-btn.active-all {
-      background: rgba(255, 255, 255, 0.08);
+      background: var(--surface-raised);
       color: var(--text);
-      border-color: rgba(255, 255, 255, 0.2);
+      border-color: var(--border-sub);
     }
 
     .test-filter-btn.active-pass {
-      background: rgba(16, 185, 129, .15);
-      color: #10b981;
-      border-color: rgba(16, 185, 129, .4);
+      background: var(--pass-bg);
+      color: var(--pass);
+      border-color: var(--pass-border);
     }
 
     .test-filter-btn.active-fail {
-      background: rgba(244, 63, 94, .15);
-      color: #f43f5e;
-      border-color: rgba(244, 63, 94, .4);
+      background: var(--fail-bg);
+      color: var(--fail);
+      border-color: var(--fail-border);
     }
 
     .test-filter-btn.active-skip {
-      background: rgba(168, 85, 247, .15);
-      color: #a855f7;
-      border-color: rgba(168, 85, 247, .4);
+      background: var(--skip-bg);
+      color: var(--skip);
+      border-color: var(--skip-border);
     }
 
     .test-list-pager {
@@ -273,29 +252,27 @@
     }
 
     .test-list-pager button {
-      font-size: 14px;
+      font-size: 12px;
       font-weight: 600;
-      padding: 6px 14px;
-      border-radius: 8px;
-      border: 1px solid rgba(139, 92, 246, 0.2);
-      background: rgba(139, 92, 246, 0.08);
-      color: var(--text);
+      padding: 5px 12px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--text-dim);
       cursor: pointer;
       font-family: inherit;
-      transition: all 0.15s;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
     }
 
     .test-list-pager button:disabled {
       opacity: .3;
       cursor: default;
-      border-color: var(--border-glass);
-      background: rgba(22, 20, 50, 0.35);
     }
 
     .test-list-pager button:not(:disabled):hover {
-      background: rgba(139, 92, 246, 0.15);
+      background: var(--accent-dim);
       border-color: var(--accent);
-      transform: translateY(-1px);
+      color: var(--text);
     }
 
     .test-list-table {
@@ -321,7 +298,7 @@
     }
 
     .test-list-table tr:hover td {
-      background: rgba(139, 92, 246, 0.03);
+      background: var(--accent-dim);
     }
 
     .test-status-dot {
@@ -333,15 +310,15 @@
     }
 
     .test-status-dot.pass {
-      background: #10b981;
+      background: var(--pass);
     }
 
     .test-status-dot.fail {
-      background: #f43f5e;
+      background: var(--fail);
     }
 
     .test-status-dot.skip {
-      background: #a855f7;
+      background: var(--skip);
     }
 
     .parallel-report-wrap,
