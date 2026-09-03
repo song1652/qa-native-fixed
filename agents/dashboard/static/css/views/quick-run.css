@@ -10,18 +10,18 @@
       align-items: center;
       gap: 10px;
       padding: 8px 12px;
-      border-radius: var(--radius);
+      border-radius: 8px;
       cursor: pointer;
       transition: background .15s;
       font-size: 13px;
     }
 
     .quick-group-item:hover {
-      background: var(--accent-dim);
+      background: rgba(139, 92, 246, 0.04);
     }
 
     .quick-group-item input[type="checkbox"] {
-      accent-color: var(--accent);
+      accent-color: var(--senior-accent);
       width: 16px;
       height: 16px;
       cursor: pointer;

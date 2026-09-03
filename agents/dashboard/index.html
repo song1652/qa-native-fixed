@@ -4,30 +4,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#0e0d0b">
   <title>QA 컨트롤 센터</title>
-  <style>
-    .skip-link {
-      position: absolute;
-      top: -100%;
-      left: 0;
-      padding: 8px 16px;
-      background: #e4950f;
-      color: #0e0d0b;
-      font-size: 13px;
-      font-weight: 600;
-      z-index: 99999;
-      text-decoration: none;
-      border-radius: 0 0 5px 0;
-    }
-    .skip-link:focus { top: 0; }
-    @media (prefers-reduced-motion: reduce) {
-      .bg-blob { animation: none !important; }
-    }
-  </style>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;600;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/css/variables.css">
   <link rel="stylesheet" href="/static/css/layout.css">
   <link rel="stylesheet" href="/static/css/components.css">
@@ -41,20 +21,21 @@
   <link rel="stylesheet" href="/static/css/views/import.css">
   <link rel="stylesheet" href="/static/css/views/pages.css">
   <link rel="stylesheet" href="/static/css/animations.css">
-  <link rel="stylesheet" href="/static/css/import-studio.css">
 </head>
 
 <body>
 
-  <a href="#main" class="skip-link">콘텐츠로 건너뛰기</a>
+  <div style="position:fixed;width:500px;height:500px;background:rgba(139,92,246,0.12);border-radius:50%;filter:blur(120px);top:-5%;left:-5%;z-index:-1;pointer-events:none;animation:float 12s infinite ease-in-out;"></div>
+  <div style="position:fixed;width:600px;height:600px;background:rgba(88,40,180,0.08);border-radius:50%;filter:blur(120px);bottom:-10%;right:-5%;z-index:-1;pointer-events:none;animation:float 14s infinite ease-in-out;animation-delay:-3s;"></div>
+  <div style="position:fixed;width:350px;height:350px;background:rgba(109,40,217,0.06);border-radius:50%;filter:blur(100px);top:40%;left:40%;z-index:-1;pointer-events:none;animation:float 16s infinite ease-in-out;animation-delay:-6s;"></div>
 
-  <div class="toast-container" id="toast-container" aria-live="polite" aria-atomic="true"></div>
+  <div class="toast-container" id="toast-container"></div>
   <div class="header">
-    <button class="header-title" type="button" onclick="selectView('')" aria-label="Dashboard 홈으로 이동"><span class="slash">//</span>&nbsp;qa-control</button>
     <div class="live-indicator">
       <div class="live-dot"></div>
-      live
+      LIVE
     </div>
+    <div class="header-title" onclick="selectView('')" style="cursor:pointer;">QA CONTROL CENTER</div>
     <div style="flex:1"></div>
     <div class="header-meta" id="header-meta"></div>
   </div>
@@ -66,49 +47,49 @@
         <!-- 대시보드 섹션 -->
         <div class="sidebar-section">
           <div class="sidebar-label">개요</div>
-          <button type="button" class="sidebar-item" id="tab-" onclick="selectView('')">
+          <div class="sidebar-item" id="tab-" onclick="selectView('')">
             <div class="sidebar-dot-spacer"></div>
             <span class="sidebar-name">Dashboard</span>
-          </button>
+          </div>
         </div>
 
         <!-- 파이프라인 섹션 -->
         <div class="sidebar-section">
           <div class="sidebar-label">파이프라인</div>
-          <button type="button" class="sidebar-item" id="tab-single_pipeline" onclick="selectView('single_pipeline')">
+          <div class="sidebar-item" id="tab-single_pipeline" onclick="selectView('single_pipeline')">
             <div class="sidebar-dot" id="dot-single"></div>
             <span class="sidebar-name">단일 파이프라인</span>
-          </button>
-          <button type="button" class="sidebar-item" id="tab-parallel_pipeline" onclick="selectView('parallel_pipeline')">
+          </div>
+          <div class="sidebar-item" id="tab-parallel_pipeline" onclick="selectView('parallel_pipeline')">
             <div class="sidebar-dot" id="dot-parallel"></div>
             <span class="sidebar-name">병렬 파이프라인</span>
-          </button>
-          <button type="button" class="sidebar-item" id="tab-quick_run" onclick="selectView('quick_run')">
+          </div>
+          <div class="sidebar-item" id="tab-quick_run" onclick="selectView('quick_run')">
             <div class="sidebar-dot" id="dot-quick"></div>
             <span class="sidebar-name">빠른 실행</span>
-          </button>
+          </div>
         </div>
 
         <!-- 페이지 관리 섹션 -->
         <div class="sidebar-section">
           <div class="sidebar-label">설정</div>
-          <button type="button" class="sidebar-item" id="tab-pages" onclick="selectView('pages')">
+          <div class="sidebar-item" id="tab-pages" onclick="selectView('pages')">
             <div class="sidebar-dot-spacer"></div>
             <span class="sidebar-name">페이지 URL 관리</span>
-          </button>
+          </div>
         </div>
 
         <!-- 테스트 리포트 섹션 -->
         <div class="sidebar-section">
           <div class="sidebar-label">테스트 리포트</div>
-          <button type="button" class="sidebar-item" id="tab-reports" onclick="selectView('reports')">
+          <div class="sidebar-item" id="tab-reports" onclick="selectView('reports')">
             <div class="sidebar-dot-spacer"></div>
             <span class="sidebar-name">리포트 목록</span>
-          </button>
-          <button type="button" class="sidebar-item" id="tab-history" onclick="selectView('history')">
+          </div>
+          <div class="sidebar-item" id="tab-history" onclick="selectView('history')">
             <div class="sidebar-dot-spacer"></div>
             <span class="sidebar-name">실행 히스토리</span>
-          </button>
+          </div>
         </div>
 
         <!-- 팀 토론 섹션 -->
@@ -121,7 +102,7 @@
             <div
               style="font-size:10px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">
               새 토론 주제</div>
-            <textarea class="new-topic-input" id="new-topic-input" placeholder="주제를 입력하세요…" rows="3" aria-label="새 토론 주제"></textarea>
+            <textarea class="new-topic-input" id="new-topic-input" placeholder="주제를 입력하세요..." rows="3"></textarea>
             <button class="new-topic-btn" id="new-topic-btn" onclick="submitTopic()">토론 시작</button>
             <div class="topic-status" id="topic-status"></div>
             <div style="font-size:10px;color:var(--text-dim);margin-top:6px;line-height:1.5;"></div>
@@ -129,26 +110,16 @@
           <div id="team-tabs"></div>
         </div>
 
-        <!-- Import Studio -->
-        <div class="sidebar-section">
-          <div class="sidebar-label">Import</div>
-          <button type="button" class="sidebar-item" id="tab-import_studio" onclick="selectView('import_studio')">
-            <div class="sidebar-dot-spacer"></div>
-            <span class="sidebar-name">📥 Import Studio</span>
-          </button>
-        </div>
-
-        <!-- Import 섹션 (구형 inline) -->
-        <div class="sidebar-section" id="import-section" style="display:none;">
+        <!-- Import 섹션 -->
+        <div class="sidebar-section" id="import-section">
           <div class="sidebar-label">Import</div>
           <div style="padding: 6px 12px 10px;">
             <div
               style="font-size:10px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">
               Excel → 테스트케이스</div>
             <select class="run-form-select" id="import-file-select" onchange="onImportFileSelect()"
-              aria-label="Excel 파일 선택"
               style="width:100%;margin-bottom:6px;">
-              <option value="">파일 선택…</option>
+              <option value="">파일 선택...</option>
             </select>
             <div id="import-sheet-list" class="import-sheet-list"></div>
             <button class="import-convert-btn" id="import-convert-btn" onclick="runImportConvert()" disabled>변환</button>
@@ -161,13 +132,13 @@
 
     <!-- 오른쪽 콘텐츠 -->
     <div class="content-wrap">
-      <main class="content-scroll" id="main">
+      <div class="content-scroll" id="main">
         <div class="empty">
           <div class="empty-icon">&#x1F3AF;</div>
           <h2>QA 컨트롤 센터</h2>
           <p>왼쪽 패널에서 항목을 선택하세요</p>
         </div>
-      </main>
+      </div>
     </div>
   </div>
 
@@ -188,7 +159,6 @@
   <script src="/static/js/views/reports.js"></script>
   <script src="/static/js/views/team.js"></script>
   <script src="/static/js/views/import.js"></script>
-  <script src="/static/js/import-studio.js"></script>
   <script src="/static/js/router.js"></script>
   <script src="/static/js/app.js"></script>
 </body>

@@ -15,19 +15,19 @@
       flex: 1;
       min-width: 180px;
       padding: 8px 14px;
-      border-radius: var(--radius);
+      border-radius: 10px;
       border: 1px solid var(--border);
-      background: var(--surface2);
+      background: rgba(12, 10, 30, 0.5);
       color: var(--text);
       font-size: 12px;
       font-family: inherit;
       outline: none;
-      transition: border-color 0.2s, box-shadow 0.2s;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     .report-search:focus {
-      border-color: var(--accent);
-      box-shadow: 0 0 0 3px var(--accent-dim);
+      border-color: rgba(96, 165, 250, 0.4);
+      box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.08);
     }
 
     .report-search::placeholder {
@@ -44,14 +44,14 @@
 
     .report-pager button {
       padding: 4px 10px;
-      border-radius: var(--radius-sm);
-      border: 1px solid var(--border);
-      background: var(--surface2);
+      border-radius: 6px;
+      border: 1px solid var(--border-glass);
+      background: rgba(22, 20, 50, 0.3);
       color: var(--text-dim);
       cursor: pointer;
       font-family: inherit;
       font-size: 12px;
-      transition: background 0.15s, color 0.15s, border-color 0.15s;
+      transition: all 0.15s;
     }
 
     .report-pager button:disabled {
@@ -60,9 +60,8 @@
     }
 
     .report-pager button:not(:disabled):hover {
-      border-color: var(--accent);
+      border-color: rgba(96, 165, 250, 0.35);
       color: var(--text);
-      background: var(--accent-dim);
     }
 
     .report-count {
@@ -75,22 +74,21 @@
       align-items: center;
       gap: 12px;
       padding: 14px 18px;
-      background: var(--surface);
+      background: var(--surface-glass);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
       border: 1px solid var(--border);
       border-radius: var(--radius-md);
       margin-bottom: 8px;
       cursor: pointer;
-      width: 100%;
-      font-family: inherit;
-      color: inherit;
-      text-align: left;
-      transition: background 0.15s, border-color 0.15s, transform 0.2s;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     .report-item:hover {
-      border-color: var(--accent);
-      transform: translateX(3px);
-      background: var(--surface2);
+      border-color: rgba(96, 165, 250, 0.25);
+      transform: translateX(4px);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+      background: rgba(22, 20, 50, 0.4);
     }
 
     .report-icon {
@@ -116,17 +114,17 @@
     .report-open-btn {
       font-size: 11px;
       padding: 4px 12px;
-      border-radius: var(--radius-sm);
-      background: var(--accent-dim);
-      color: var(--accent);
-      border: 1px solid rgba(228, 149, 15, 0.22);
+      border-radius: 6px;
+      background: rgba(96, 165, 250, 0.1);
+      color: var(--senior-accent);
+      border: 1px solid rgba(96, 165, 250, 0.25);
       cursor: pointer;
       font-family: inherit;
-      transition: background 0.15s;
+      transition: all 0.15s;
     }
 
     .report-open-btn:hover {
-      background: var(--accent-dim2);
+      background: rgba(96, 165, 250, 0.2);
     }
 
     .report-iframe-wrap {

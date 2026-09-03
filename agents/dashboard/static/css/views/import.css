@@ -13,14 +13,14 @@
       align-items: center;
       gap: 8px;
       padding: 6px 10px;
-      border-radius: var(--radius);
+      border-radius: 6px;
       cursor: pointer;
       transition: background .15s;
       font-size: 12px;
     }
 
     .import-sheet-item:hover {
-      background: var(--accent-dim);
+      background: rgba(139, 92, 246, 0.04);
     }
 
     .import-sheet-item input[type="checkbox"] {
@@ -44,25 +44,29 @@
     .import-convert-btn {
       width: 100%;
       padding: 9px;
-      background: var(--accent-dim);
-      color: var(--accent);
-      border: 1px solid rgba(228, 149, 15, 0.22);
-      border-radius: var(--radius);
+      background: linear-gradient(135deg, rgba(96, 165, 250, 0.1) 0%, rgba(99, 102, 241, 0.1) 100%);
+      color: var(--senior-accent);
+      border: 1px solid rgba(96, 165, 250, 0.2);
+      border-radius: 10px;
       font-size: 12px;
       font-weight: 600;
       font-family: inherit;
       cursor: pointer;
-      transition: background 0.2s, border-color 0.2s;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
       letter-spacing: 0.3px;
     }
 
     .import-convert-btn:hover {
-      background: var(--accent-dim2);
+      background: linear-gradient(135deg, rgba(96, 165, 250, 0.18) 0%, rgba(99, 102, 241, 0.18) 100%);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(96, 165, 250, 0.15);
     }
 
     .import-convert-btn:disabled {
       opacity: .5;
       cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
     }
 
     .import-status {

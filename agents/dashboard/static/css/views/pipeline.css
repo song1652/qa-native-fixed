@@ -4,6 +4,7 @@
     }
 
     .pipeline-title {
+      font-family: 'Outfit', sans-serif;
       font-size: 20px;
       font-weight: 700;
       margin-bottom: 20px;
@@ -15,10 +16,23 @@
       gap: 0;
       margin-bottom: 24px;
       padding: 24px 28px;
-      background: var(--surface);
+      background: rgba(22, 20, 50, 0.35);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
       border: 1px solid var(--border);
       border-radius: var(--radius-lg);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
       position: relative;
+    }
+
+    .step-progress::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(245, 158, 11, 0.3), rgba(16, 185, 129, 0.3), transparent);
     }
 
     .step-node {
@@ -40,27 +54,28 @@
       font-size: 12px;
       font-weight: 700;
       border: 2.5px solid var(--border);
-      background: var(--surface2);
+      background: rgba(12, 10, 30, 0.7);
       color: var(--text-dim);
-      transition: background 0.4s, color 0.4s, border-color 0.4s;
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     .step-circle.active {
       border-color: var(--pending-color);
-      background: var(--pending-bg);
+      background: rgba(245, 158, 11, 0.08);
       color: var(--pending-color);
-      box-shadow: 0 0 14px rgba(240, 147, 58, 0.25);
+      box-shadow: 0 0 20px rgba(245, 158, 11, 0.35), 0 0 40px rgba(245, 158, 11, 0.1);
     }
 
     .step-circle.done {
-      border-color: var(--pass);
-      background: var(--pass-bg);
-      color: var(--pass);
+      border-color: var(--approved-color);
+      background: rgba(16, 185, 129, 0.08);
+      color: var(--approved-color);
+      box-shadow: 0 0 15px rgba(16, 185, 129, 0.3), 0 0 30px rgba(16, 185, 129, 0.08);
     }
 
     @keyframes node-pulse {
-      0%, 100% { box-shadow: 0 0 14px rgba(240, 147, 58, 0.25); }
-      50% { box-shadow: 0 0 22px rgba(240, 147, 58, 0.45); }
+      0%, 100% { box-shadow: 0 0 20px rgba(245, 158, 11, 0.35), 0 0 40px rgba(245, 158, 11, 0.1); }
+      50% { box-shadow: 0 0 25px rgba(245, 158, 11, 0.5), 0 0 50px rgba(245, 158, 11, 0.15); }
     }
 
     .step-label {
@@ -76,7 +91,7 @@
     }
 
     .step-label.done {
-      color: var(--pass);
+      color: var(--approved-color);
     }
 
     .step-line {
@@ -88,15 +103,30 @@
     }
 
     .step-line.done {
-      background: var(--pass);
+      background: linear-gradient(90deg, var(--approved-color), rgba(16, 185, 129, 0.6));
+      box-shadow: 0 0 8px rgba(16, 185, 129, 0.2);
     }
 
     .pipeline-info {
-      background: var(--surface);
+      background: var(--surface-glass);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
       border: 1px solid var(--border);
       border-radius: var(--radius-lg);
       padding: 22px;
       margin-bottom: 16px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+      position: relative;
+    }
+
+    .pipeline-info::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 20px;
+      right: 20px;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(96, 165, 250, 0.3), transparent);
     }
 
     .pipeline-info-row {
@@ -129,14 +159,29 @@
 
     /* ── Run Pipeline Form ── */
     .run-pipeline-form {
-      background: var(--surface);
+      background: var(--surface-glass);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
       border: 1px solid var(--border);
       border-radius: var(--radius-lg);
       padding: 24px;
       margin-bottom: 16px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+      position: relative;
+    }
+
+    .run-pipeline-form::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.2), transparent);
     }
 
     .run-pipeline-form h3 {
+      font-family: 'Outfit', sans-serif;
       font-size: 15px;
       font-weight: 700;
       margin-bottom: 14px;
@@ -165,14 +210,14 @@
       flex: 1;
       padding: 10px 14px;
       font-size: 13px;
-      background: var(--surface2);
+      background: rgba(12, 10, 30, 0.5);
       color: var(--text);
       border: 1px solid var(--border);
-      border-radius: var(--radius);
+      border-radius: 10px;
       outline: none;
       cursor: pointer;
       font-family: inherit;
-      transition: border-color 0.2s, box-shadow 0.2s;
+      transition: all 0.25s;
       appearance: none;
       -webkit-appearance: none;
       background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
@@ -182,12 +227,12 @@
     }
 
     .run-form-select:focus {
-      border-color: var(--accent);
-      box-shadow: 0 0 0 3px var(--accent-dim);
+      border-color: rgba(139, 92, 246, 0.3);
+      box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.06);
     }
 
     .run-form-select option {
-      background: var(--surface);
+      background: rgba(18, 16, 42, 0.9);
       color: var(--text);
     }
 
@@ -196,9 +241,9 @@
       font-size: 13px;
       color: var(--text-dim);
       padding: 8px 12px;
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
+      background: rgba(12, 10, 30, 0.4);
+      border: 1px solid var(--border-glass);
+      border-radius: 8px;
       min-height: 34px;
     }
 
