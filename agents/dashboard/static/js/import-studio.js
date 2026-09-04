@@ -27,11 +27,12 @@ const IS = (() => {
     activeFilter: 'all',     // Step3 필터
   };
 
-  // 단계별 유효성 검사 규칙 (COMPONENT_TREE.md 네비게이션 규칙)
+  // 단계별 유효성 검사 규칙
+  // Step3: 충돌 미처리도 통과 — 충돌은 Step4 정책(skip-conflict/overwrite)으로 일괄 처리
   const validators = {
     1: (s) => s.selectedSources.length > 0 && s.selectedSources.every((source) => source.sheets.length > 0),
     2: (s) => ['tc_id', 'title', 'steps', 'expected'].every((f) => s.mappings[f]),
-    3: (s) => s.previewResult !== null && unresolvedConflictCount(s) === 0,
+    3: (s) => s.previewResult !== null,
     4: (s) => s.commitResult !== null && s.commitResult.status === 'committed',
   };
 
@@ -491,8 +492,9 @@ const IS = (() => {
     ).join('');
 
     return `<div class="content">
-      ${unresolved ? `<div style="background:var(--conflict-bg);border:1px solid var(--conflict);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:var(--conflict)" role="alert">
-        충돌 ${unresolved}건의 처리 방법이 정해지지 않았습니다.
+      ${totalCounts.conflict > 0 ? `<div style="background:var(--conflict-bg);border:1px solid rgba(251,191,36,.3);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:var(--conflict);display:flex;align-items:center;gap:8px">
+        <span>⚠</span>
+        충돌 ${totalCounts.conflict}건이 있습니다. 다음 단계에서 반영 정책을 선택하면 자동으로 처리됩니다.
       </div>` : ''}
       <div class="preview-filters">${filterBtns}</div>
       <div class="full-table-wrap" data-testid="preview-table">
@@ -503,7 +505,7 @@ const IS = (() => {
       ${SAFE_NOTE_HTML}
       <div class="spacer"></div>
       <button class="btn btn-ghost" onclick="IS.prev()">← 이전</button>
-      <button class="btn btn-primary" onclick="IS.next()" ${canGo ? '' : 'disabled'}>안전한 반영 →</button>
+      <button class="btn btn-primary" onclick="IS.next()">안전한 반영 →</button>
     </div>`;
   }
 
@@ -535,19 +537,13 @@ const IS = (() => {
         <td style="max-width:200px;white-space:pre-wrap">${escHtml(row.expected ?? '')}</td>
         <td>${escHtml(row.group ?? '')}</td>
         <td><span class="status-pill ${STATUS_CLS[row.status] || ''}">${STATUS_LABEL[row.status] ?? escHtml(row.status)}</span></td>
-        ${row.status === 'conflict'
-          ? `<td><button class="btn btn-ghost" style="font-size:11px;padding:4px 8px"
-                     data-row-key="${escHtml(key)}" onclick="IS.toggleConflictDecision(this.dataset.rowKey)">
-               ${decision ? '↩ 취소' : '이 행 제외'}
-             </button></td>`
-          : '<td></td>'}
       </tr>`;
     }).join('');
 
     return `<table class="full-table">
       <thead>
         <tr>
-          <th>TC ID</th><th>제목</th><th>전제조건</th><th>테스트 단계</th><th>기대결과</th><th>그룹</th><th>상태</th><th>처리</th>
+          <th>TC ID</th><th>제목</th><th>전제조건</th><th>테스트 단계</th><th>기대결과</th><th>그룹</th><th>상태</th>
         </tr>
       </thead>
       <tbody>${tbody}</tbody>
@@ -563,9 +559,9 @@ const IS = (() => {
     const groups = [...new Set(rows.map((r) => r.group).filter(Boolean))];
 
     const policies = [
-      { key: 'skip-conflict',         badge: 'rec',    badgeLabel: '권장', name: 'skip-conflict',         desc: '추가·업데이트만 반영. 충돌 항목은 건너뛰고 수동 검토 목록에 기록합니다.' },
-      { key: 'overwrite',             badge: 'warn',   badgeLabel: '주의', name: 'overwrite',             desc: '충돌 포함 모든 항목을 덮어씁니다. 스냅샷이 필수 생성됩니다.' },
-      { key: 'replace-with-snapshot', badge: 'danger', badgeLabel: '위험', name: 'replace-with-snapshot', desc: '대상 그룹 전체를 교체합니다. 기존 파일이 모두 삭제되므로 복구 경로를 확인하세요.' },
+      { key: 'skip-conflict',         badge: 'rec',    badgeLabel: '권장', name: 'skip-conflict',         desc: '추가·업데이트만 반영. 충돌 항목은 자동으로 건너뛰고 CSV 다운로드로 수동 검토할 수 있습니다.' },
+      { key: 'overwrite',             badge: 'warn',   badgeLabel: '주의', name: 'overwrite',             desc: '충돌 항목도 Excel 데이터로 덮어씁니다. 기존 내용이 사라지므로 스냅샷을 꼭 확인하세요.' },
+      { key: 'replace-with-snapshot', badge: 'danger', badgeLabel: '위험', name: 'replace-with-snapshot', desc: '대상 그룹 전체를 교체합니다. 기존 파일이 모두 삭제되며 스냅샷으로만 복구 가능합니다.' },
     ];
 
     const policyCards = policies.map(({ key, badge, badgeLabel, name, desc }) =>
