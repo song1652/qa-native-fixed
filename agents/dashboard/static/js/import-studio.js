@@ -940,7 +940,7 @@ const IS = (() => {
     await render();
     try {
       if (!state.runId) throw new Error('run_id가 없습니다.');
-      if (unresolvedConflictCount()) throw new Error('처리되지 않은 충돌이 있습니다.');
+      // 충돌은 Step4 정책(skip-conflict/overwrite/replace-with-snapshot)으로 일괄 처리 — 여기서 차단하지 않음
       if (!state.idempotencyKey) state.idempotencyKey = makeIdempotencyKey(state.runId);
       const decisions = (state.previewResult?.rows || [])
         .filter((row) => state.decisions[rowKey(row)] === 'exclude')
