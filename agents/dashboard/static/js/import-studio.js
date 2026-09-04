@@ -227,16 +227,17 @@ const IS = (() => {
     const meta = metaParts.join(' · ');
 
     const sheetsHtml = isSelected && source && Array.isArray(file.sheets) && file.sheets.length
-      ? `<div class="file-sheets">
+      ? `<div class="file-sheets" onclick="event.stopPropagation()">
           ${file.sheets.map((sheet) => {
             const checked = source.sheets.includes(sheet);
             const rowCount = (typeof sheet === 'object' ? sheet.rows : null)
               || (file.sheet_rows && file.sheet_rows[typeof sheet === 'object' ? sheet.name : sheet])
               || '';
             const sheetName = typeof sheet === 'object' ? sheet.name : sheet;
-            return `<div class="sheet-row">
+            return `<div class="sheet-row" onclick="event.stopPropagation()">
               <input type="checkbox" data-testid="sheet-checkbox" ${checked ? 'checked' : ''}
                      data-file-id="${escHtml(file.id)}" data-sheet="${escHtml(sheetName)}"
+                     onclick="event.stopPropagation()"
                      onchange="IS.toggleSheet(this.dataset.fileId, this.dataset.sheet)" />
               <span class="sheet-name">${escHtml(sheetName)}</span>
               ${rowCount ? `<span class="sheet-rows">${rowCount}행</span>` : ''}
