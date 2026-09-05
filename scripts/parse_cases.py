@@ -39,10 +39,16 @@ def _parse_frontmatter(text: str) -> tuple[dict, str]:
         val = val.strip()
         # 배열 파싱: [a, b, c]
         if val.startswith("[") and val.endswith("]"):
-            meta[key] = [v.strip() for v in val[1:-1].split(",")]
+            inner = val[1:-1]
+            items = [v.strip().strip('"').strip("'") for v in inner.split(",")]
+            meta[key] = items
         elif val.lower() == "null":
             meta[key] = None
         else:
+            # 따옴표로 감싸진 문자열 값 처리: "CL_01" → CL_01
+            if (val.startswith('"') and val.endswith('"')) or \
+               (val.startswith("'") and val.endswith("'")):
+                val = val[1:-1]
             meta[key] = val
     return meta, body
 
@@ -84,11 +90,11 @@ def parse_md(text: str) -> list:
         steps_raw = _extract_section(block, "Steps", "테스트 절차", "절차", "단계")
         expected = _extract_section(block, "Expected", "기대 결과", "예상 결과")
 
-        # Steps: 번호 있는 줄들을 리스트로
+        # Steps: 번호 있는 줄(1. 2. …) 또는 평문 줄 모두 허용
         steps = [
             line.strip()
             for line in steps_raw.splitlines()
-            if re.match(r"^\d+\.", line.strip())
+            if line.strip() and not line.strip().startswith("#")
         ] if steps_raw else []
 
         case = {

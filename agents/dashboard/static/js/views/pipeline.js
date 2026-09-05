@@ -17,7 +17,7 @@ function buildRunPanel(mode) {
       <div class="run-pipeline-form">
         <h3>run_qa.py 실행</h3>
         <div class="run-form-row">
-          <span class="run-form-label">페이지</span>
+          <label class="run-form-label" for="run-page-select">페이지</label>
           <select class="run-form-select" id="run-page-select" onchange="onPageSelect()">${pageOpts}</select>
         </div>
         <div class="run-form-row">
@@ -25,7 +25,7 @@ function buildRunPanel(mode) {
           <div class="run-form-url-display" id="run-url-display">페이지를 선택하세요</div>
         </div>
         <div class="run-form-row">
-          <span class="run-form-label">케이스</span>
+          <label class="run-form-label" for="run-case-select">케이스</label>
           <select class="run-form-select" id="run-case-select">${caseOpts}</select>
         </div>
         <div class="run-form-actions">
@@ -85,7 +85,7 @@ async function runSingleQA() {
   const url = opt ? opt.getAttribute('data-url') : '';
   const casesDir = caseSel.value;
   if (!url || !casesDir) { showToast('페이지와 케이스 폴더를 선택하세요', 'info'); return; }
-  if (btn) { btn.textContent = '실행 중...'; btn.disabled = true; }
+  if (btn) { btn.textContent = '실행 중…'; btn.disabled = true; }
   try {
     const res = await fetch('/api/run_qa', {
       method: 'POST',

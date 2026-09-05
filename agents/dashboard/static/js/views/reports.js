@@ -37,7 +37,7 @@ function renderReports(main) {
   const pageItems = filtered.slice(start, start + REPORTS_PER_PAGE);
 
   let controlsHtml = `<div class="report-controls">`;
-  controlsHtml += `<input class="report-search" id="report-search-input" type="text" placeholder="리포트 검색..." value="${esc(q)}" oninput="reportSetSearch(this.value)">`;
+  controlsHtml += `<input class="report-search" id="report-search-input" type="text" placeholder="리포트 검색…" aria-label="리포트 검색" value="${esc(q)}" oninput="reportSetSearch(this.value)">`;
   controlsHtml += `<span class="report-count">${filtered.length}개`;
   if (q) controlsHtml += ` / 전체 ${reportsList.length}개`;
   controlsHtml += `</span>`;
@@ -54,14 +54,14 @@ function renderReports(main) {
   pageItems.forEach(r => {
     const sizeKb = Math.round(r.size / 1024);
     listHtml += `
-      <div class="report-item" onclick="openReport('${esc(r.name)}')">
-        <span class="report-icon">&#x1F4C4;</span>
+      <button type="button" class="report-item" onclick="openReport('${esc(r.name)}')" aria-label="${esc(r.name)} 리포트 열기">
+        <span class="report-icon" aria-hidden="true">&#x1F4C4;</span>
         <div class="report-info">
           <div class="report-name">${esc(r.name)}</div>
           <div class="report-meta">${fmtDate(r.modified_at)} &middot; ${sizeKb}KB</div>
         </div>
-        <button class="report-open-btn" onclick="event.stopPropagation();window.open('/reports/${esc(r.name)}','_blank')">새 탭</button>
-      </div>`;
+        <button type="button" class="report-open-btn" onclick="event.stopPropagation();window.open('/reports/${esc(r.name)}','_blank')">새 탭</button>
+      </button>`;
   });
 
   const reportOpen = _uiState.openReportName;

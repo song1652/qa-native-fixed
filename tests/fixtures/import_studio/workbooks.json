@@ -1,0 +1,24 @@
+{
+  "multi_a.xlsx": {
+    "Login": [
+      ["tc_id", "title", "steps", "expected", "priority", "tags", "group"],
+      ["LOGIN_001", "valid login", "enter valid credentials", "dashboard opens", "high", "smoke,login", "login"],
+      ["LOGIN_002", "invalid password", "enter a wrong password", "error appears", "medium", "negative", "login"]
+    ],
+    "Admin": [
+      ["tc_id", "title", "steps", "expected", "priority", "tags", "group"],
+      ["ADMIN_001", "invite member", "submit an invitation", "member is invited", "high", "admin", "admin"]
+    ]
+  },
+  "multi_b.xlsx": {
+    "Payment": [
+      ["case_id", "scenario", "procedure", "outcome", "severity", "labels", "suite"],
+      ["PAY_001", "approved card", "pay with an approved card", "payment succeeds", "high", "smoke,payment", "payment"],
+      ["PAY_002", "declined card", "pay with a declined card", "decline is explained", "medium", "negative", "payment"]
+    ],
+    "Refund": [
+      ["case_id", "scenario", "procedure", "outcome", "severity", "labels", "suite"],
+      ["REFUND_001", "full refund", "refund the full payment", "refund succeeds", "high", "refund", "refund"]
+    ]
+  }
+}

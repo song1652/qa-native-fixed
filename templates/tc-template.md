@@ -1,5 +1,5 @@
 ---
-id: tc_{번호}
+id: "{그룹코드}_{번호}"
 data_key: {test_data.json 키} | null
 priority: high | medium | low
 tags: [{유형}, {분류}]
@@ -21,11 +21,13 @@ type: structured | natural
 
 <!--
 작성 규칙 요약:
-- 파일명: tc_{번호}_{설명}.md
+- 파일명: tc_{그룹코드}_{번호}_{설명}.md (예: tc_CL_01_로그인_성공.md) 또는 tc_{번호}_{설명}.md
+- id: "{그룹코드}_{번호}" 형식으로 따옴표 포함 작성 (예: "CL_01", "PL_02") — 따옴표 없으면 파서가 정상 매핑 못할 수 있음
 - 1파일 = 1케이스
 - frontmatter 필수: id, data_key, priority, tags, type
 - data_key: test_data.json의 키와 1:1 매핑 (입력값 불필요 시 null)
 - Steps의 입력값은 test_data[data_key] 참조 (하드코딩 금지)
+- Steps: 번호(1. 2. 3.) 형식 권장; 번호 없는 평문 줄도 파서 지원
 - UI 텍스트는 영어 원문 그대로 (번역 금지)
 - 유형 태그: positive, negative, smoke, auth, validation, security, edge_case, session, navigation, content
 - 우선순위: high(핵심기능) medium(보조기능) low(엣지케이스)

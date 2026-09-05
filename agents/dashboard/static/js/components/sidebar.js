@@ -8,7 +8,7 @@ function updateSidebar(data) {
       const dotCls = s.completed_at ? 'pending' : s.status === 'discussed' ? 'waiting-vote' : s.status === 'in_progress' ? 'active-run' : 'pending';
       const isActive = currentView === tid;
       const label = s.topic || s.stage_label || '토론';
-      return `<div class="sidebar-item${isActive ? ' active' : ''}" id="tab-${tid}" onclick="selectView('${tid}')"><div class="sidebar-dot ${dotCls}"></div><span class="sidebar-name" title="${esc(label)}">${esc(label)}</span></div>`;
+      return `<button type="button" class="sidebar-item${isActive ? ' active' : ''}" id="tab-${tid}" onclick="selectView('${tid}')"><div class="sidebar-dot ${dotCls}"></div><span class="sidebar-name" title="${esc(label)}">${esc(label)}</span></button>`;
     }).join('');
   } else {
     teamTabs.innerHTML = '<div style="padding:6px 14px;font-size:12px;color:var(--text-dim);">토론 없음</div>';

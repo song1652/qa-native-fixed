@@ -10,7 +10,8 @@ QA-Native 파이프라인용 테스트 케이스 작성 가이드입니다.
 ## 파일 규칙
 
 - **형식**: Markdown (`.md`)
-- **위치**: `testcases/{그룹명}/tc_{번호}_{설명}.md`
+- **위치**: `testcases/{그룹명}/tc_{번호}_{설명}.md` 또는 `tc_{그룹코드}_{번호}_{설명}.md`
+  - 그룹코드: 그룹을 나타내는 알파벳 약자 (예: `CL`=customer_login, `PL`=partner_login)
 - **1파일 = 1케이스**: 파일 하나에 테스트 케이스 하나
 - **그룹명**: 기능 단위 폴더 (예: `login`, `mypage`, `signup`)
 - **템플릿**: [`templates/tc-template.md`](../templates/tc-template.md) 참조
@@ -18,19 +19,17 @@ QA-Native 파이프라인용 테스트 케이스 작성 가이드입니다.
 ```
 testcases/
   login/
-    tc_01_login_success.md
+    tc_01_login_success.md           ← 순번만 사용하는 기본 형식
     tc_02_wrong_password.md
-    tc_03_empty_username.md
-  mypage/
-    tc_01_profile_view.md
-  demoqa/
-    tc_01_textbox_fill_all_fields.md
-    tc_02_textbox_empty_submit.md
-    ... (120개)
+  customer_login/
+    tc_CL_01_빈_필드_유효성_검증.md   ← 그룹코드 포함 형식
+    tc_CL_02_잘못된_자격증명_에러.md
+  partner_login/
+    tc_PL_01_협력사_로그인_빈_필드.md
+    tc_PL_02_협력사_잘못된_자격증명.md
 ```
 
-**실제 프로젝트 사례**: `testcases/demoqa/`에는 120개의 테스트케이스 존재.
-각 파일이 독립적인 Python 테스트 파일(tc_01.py, tc_02.py, ...)로 변환되어 `tests/generated/demoqa/`에 저장됨.
+**실제 프로젝트 사례**: 각 파일이 독립적인 Python 테스트 파일(`tc_CL_01_...py`, `tc_PL_02_...py`)로 변환되어 `tests/generated/{그룹}/`에 저장됨.
 
 ---
 
@@ -40,7 +39,7 @@ YAML frontmatter + Markdown 본문으로 구성한다.
 
 ```markdown
 ---
-id: tc_01
+id: "CL_01"
 data_key: valid_user
 priority: high
 tags: [positive, smoke]
@@ -60,6 +59,9 @@ type: structured
 - 기대 결과
 ```
 
+> **`id` 형식**: `tc_{번호}` (기본) 또는 `"{그룹코드}_{번호}"` (그룹코드 포함).
+> 그룹코드 포함 시 반드시 따옴표로 감싸야 파서가 올바르게 읽어들임 (예: `id: "CL_01"`, `id: "PL_02"`).
+
 ---
 
 ## Frontmatter 필드
@@ -68,7 +70,7 @@ type: structured
 
 | 필드 | 필수 | 값 | 설명 |
 |------|------|-----|------|
-| `id` | **필수** | `tc_{번호}` | 케이스 고유 식별자 (그룹 내 순번) |
+| `id` | **필수** | `tc_{번호}` 또는 `"{그룹코드}_{번호}"` | 케이스 고유 식별자. 그룹코드 포함 시 따옴표로 감싸기 (예: `"CL_01"`, `"PL_02"`) |
 | `data_key` | **필수** | [`test_data.json`](../config/test_data.json) 키 \| `null` | 입력값 참조 키. 입력 불필요 시 `null` |
 | `priority` | **필수** | `high` \| `medium` \| `low` | 우선순위 |
 | `tags` | **필수** | 배열 `[유형, 분류]` | 테스트 유형 태그 |
@@ -162,7 +164,8 @@ type: structured
 
 ### Steps
 
-- `1.`, `2.`, `3.` 번호로 순서 명시
+- `1.`, `2.`, `3.` 번호로 순서 명시 **(권장)**
+- 번호 없는 평문 줄도 파서가 지원하나, 가독성과 일관성을 위해 번호 형식 사용을 권장
 - 각 step = **단일 액션** (입력 or 클릭 or 이동 하나씩)
 - 입력값은 `test_data[{data_key}].{속성}` 형식으로 참조 (하드코딩 금지)
 
@@ -200,7 +203,7 @@ type: structured
 
 ```markdown
 ---
-id: tc_01
+id: "CL_01"
 data_key: valid_user
 priority: high
 tags: [positive, smoke]
@@ -222,7 +225,7 @@ type: structured
 
 ```markdown
 ---
-id: tc_08
+id: "CL_08"
 data_key: sql_injection
 priority: medium
 tags: [security, negative]
@@ -248,7 +251,7 @@ type: structured
 
 케이스 작성 완료 전 확인사항:
 
-- [ ] 파일명이 `tc_{번호}_{설명}.md` 형식으로 작성됨
+- [ ] 파일명이 `tc_{번호}_{설명}.md` 또는 `tc_{그룹코드}_{번호}_{설명}.md` 형식으로 작성됨
 - [ ] **YAML frontmatter**가 파일 최상단에 있음 (`---` 블록)
 - [ ] frontmatter 필수 필드 5개: `id`, `data_key`, `priority`, `tags`, `type`
 - [ ] **priority**가 `high` / `medium` / `low` 중 하나
@@ -256,7 +259,7 @@ type: structured
 - [ ] Steps 입력값이 `test_data[{data_key}].{속성}` 형식 (하드코딩 금지)
 - [ ] 제목이 테스트 목적을 명확하게 표현함 (15자 이내)
 - [ ] `Precondition`이 `0.` 으로 시작함
-- [ ] `Steps`가 `1.`, `2.` 번호 순서대로, 단일 액션씩 작성됨
+- [ ] `Steps`가 단일 액션씩 작성됨 (번호 형식 `1.`, `2.` 권장; 평문도 파서 지원)
 - [ ] `Expected`가 `-` 항목으로 구체적 텍스트/상태를 명시함 ("정상 동작" 금지)
 - [ ] 화면 UI 텍스트가 영어 원문 그대로 사용됨
 - [ ] 하나의 파일에 하나의 케이스만 있음

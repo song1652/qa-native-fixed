@@ -46,13 +46,33 @@
   padding: 20px 28px 16px;
   border-bottom: 1px solid var(--border2);
   flex-shrink: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
 }
 .import-studio .page-title {
-  font-size: 20px; font-weight: 700; color: var(--text); margin-bottom: 16px;
+  font-size: 20px; font-weight: 700; color: var(--text);
+  flex: 1 1 100%;
+  margin-bottom: 4px;
+}
+.import-studio .reset-btn {
+  margin-left: auto;
+  font-size: 13px;
+  padding: 6px 14px;
+  opacity: 0.75;
+  border-color: var(--border2);
+  color: var(--text2);
+  flex-shrink: 0;
+}
+.import-studio .reset-btn:hover {
+  opacity: 1;
+  color: var(--text);
+  border-color: var(--text3);
 }
 
 /* ── Step wizard ── */
-.import-studio .wizard { display: flex; align-items: center; gap: 0; }
+.import-studio .wizard { display: flex; align-items: center; gap: 0; flex: 1 1 auto; }
 .import-studio .step-item { display: flex; align-items: center; }
 .import-studio .step-circle {
   width: 28px; height: 28px; border-radius: 50%;
@@ -312,9 +332,10 @@
 .import-studio .filter-btn.f-upd.active  { background: var(--update);   border-color: var(--update);   color: #fff; }
 .import-studio .filter-btn.f-con.active  { background: var(--conflict); border-color: var(--conflict); color: #1A1000; }
 .import-studio .filter-btn.f-err.active  { background: var(--error);    border-color: var(--error);    color: #fff; }
+.import-studio .filter-btn.f-sam.active  { background: var(--text3);    border-color: var(--text3);    color: #fff; }
 
 .import-studio .full-table-wrap { overflow-x: auto; flex: 1; }
-.import-studio .full-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.import-studio .full-table { width: 100%; border-collapse: collapse; font-size: 12px; table-layout: fixed; }
 .import-studio .full-table th {
   text-align: left; padding: 8px 12px;
   background: var(--card); color: var(--text3); font-weight: 600;
@@ -323,6 +344,7 @@
 }
 .import-studio .full-table td {
   padding: 8px 12px; color: var(--text2); border-bottom: 1px solid rgba(255,255,255,.04); vertical-align: top;
+  overflow: hidden;
 }
 .import-studio .full-table tr:hover td { background: rgba(139,92,246,.04); }
 .import-studio .full-table td:first-child { font-family: monospace; font-size: 11px; color: var(--text); }

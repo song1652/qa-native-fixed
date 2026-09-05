@@ -23,13 +23,13 @@ function buildGroupResultsHtml(gr, prefix) {
     const testListHtml = buildTestListHtml(gd.tests || [], prefix, g);
     html += `
       <div class="group-result-item">
-        <div class="group-result-header" onclick="toggleGroupResult('${esc(prefix)}','${esc(g)}')">
-          <span class="group-result-chevron ${isOpen ? 'open' : ''}" id="grchv_${esc(prefix)}_${esc(g)}">&#9654;</span>
+        <button type="button" class="group-result-header" onclick="toggleGroupResult('${esc(prefix)}','${esc(g)}')" aria-expanded="${isOpen}">
+          <span class="group-result-chevron ${isOpen ? 'open' : ''}" id="grchv_${esc(prefix)}_${esc(g)}" aria-hidden="true">&#9654;</span>
           <span class="group-result-dot ${gCls}"></span>
           <span class="group-result-name">${esc(g.replace(/_/g, ' ').toUpperCase())}</span>
           <span class="group-result-count">${gd.passed}/${gd.passed + gd.failed} passed${gSkipped > 0 ? ` <span style="color:#a855f7;font-size:10px;">· ${gSkipped} skip</span>` : ''}</span>
           <span class="group-result-badge ${gCls}">${gBadge}</span>
-        </div>
+        </button>
         <div class="group-result-body" id="grb_${esc(prefix)}_${esc(g)}" style="display:${isOpen ? 'block' : 'none'}">
           ${testListHtml}
         </div>

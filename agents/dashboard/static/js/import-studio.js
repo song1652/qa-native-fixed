@@ -31,20 +31,21 @@ const IS = (() => {
   // Step3: 충돌 미처리도 통과 — 충돌은 Step4 정책(skip-conflict/overwrite)으로 일괄 처리
   const validators = {
     1: (s) => s.selectedSources.length > 0 && s.selectedSources.every((source) => source.sheets.length > 0),
-    2: (s) => ['tc_id', 'title', 'steps', 'expected'].every((f) => s.mappings[f]),
+    2: (s) => ['tc_id', 'title', 'precondition', 'steps', 'expected'].every((f) => s.mappings[f]),
     3: (s) => s.previewResult !== null,
     4: (s) => s.commitResult !== null && s.commitResult.status === 'committed',
   };
 
   // TC 필드 정의 (Step2 매핑)
   const TC_FIELDS = [
-    { key: 'tc_id',    label: 'TC ID',      required: true },
-    { key: 'title',    label: '제목',        required: true },
-    { key: 'steps',    label: '테스트 단계',  required: true },
-    { key: 'expected', label: '예상 결과',   required: true },
-    { key: 'priority', label: '우선순위',    required: false },
-    { key: 'tags',     label: '태그',        required: false },
-    { key: 'group',    label: '그룹',        required: false },
+    { key: 'tc_id',         label: 'TC ID',      required: true },
+    { key: 'title',         label: '제목',        required: true },
+    { key: 'precondition',  label: '사전 조건',   required: true },
+    { key: 'steps',         label: '테스트 단계', required: true },
+    { key: 'expected',      label: '예상 결과',   required: true },
+    { key: 'priority',      label: '우선순위',    required: false },
+    { key: 'tags',          label: '태그',        required: false },
+    { key: 'group',         label: '그룹',        required: false },
   ];
 
   // ─────────────────────────────────────────
@@ -200,7 +201,7 @@ const IS = (() => {
       ${SAFE_NOTE_HTML}
       <div class="spacer"></div>
       <span style="font-size:12px;color:var(--text3);margin-right:4px">${selCount}개 파일 선택됨</span>
-      <button class="btn btn-primary" onclick="IS.next()" ${canGo ? '' : 'disabled'}>다음: 열 매핑 →</button>
+      <button class="btn btn-primary" data-testid="next-button" onclick="IS.next()" ${canGo ? '' : 'disabled'}>다음: 열 매핑 →</button>
     </div>`;
   }
 
@@ -389,7 +390,7 @@ const IS = (() => {
       ${SAFE_NOTE_HTML}
       <div class="spacer"></div>
       <button class="btn btn-ghost" onclick="IS.prev()">← 이전</button>
-      <button class="btn btn-primary" onclick="IS.next()" ${canGo ? '' : 'disabled'}>미리보기 생성 →</button>
+      <button class="btn btn-primary" data-testid="next-button" onclick="IS.next()" ${canGo ? '' : 'disabled'}>미리보기 생성 →</button>
     </div>`;
   }
 
@@ -479,6 +480,7 @@ const IS = (() => {
       updated: rows.filter((r) => r.status === 'updated').length,
       conflict: rows.filter((r) => r.status === 'conflict').length,
       error: rows.filter((r) => r.status === 'error').length,
+      same: rows.filter((r) => r.status === 'same').length,
     };
 
     const filterBtns = [
@@ -487,6 +489,7 @@ const IS = (() => {
       { key: 'updated',  cls: 'f-upd', label: `업데이트 ${totalCounts.updated}` },
       { key: 'conflict', cls: 'f-con', label: `충돌 ${totalCounts.conflict}` },
       { key: 'error',    cls: 'f-err', label: `오류 ${totalCounts.error}` },
+      { key: 'same',     cls: 'f-sam', label: `동일 ${totalCounts.same}` },
     ].map(({ key, cls, label }) =>
       `<button class="filter-btn ${cls}${state.activeFilter === key ? ' active' : ''}" onclick="IS.setFilter('${key}')">${label}</button>`
     ).join('');
@@ -505,7 +508,7 @@ const IS = (() => {
       ${SAFE_NOTE_HTML}
       <div class="spacer"></div>
       <button class="btn btn-ghost" onclick="IS.prev()">← 이전</button>
-      <button class="btn btn-primary" onclick="IS.next()">안전한 반영 →</button>
+      <button class="btn btn-primary" data-testid="next-button" onclick="IS.next()">안전한 반영 →</button>
     </div>`;
   }
 
@@ -529,18 +532,32 @@ const IS = (() => {
     const tbody = filtered.map((row) => {
       const key = rowKey(row);
       const decision = state.decisions[key];
+      // precondition/steps/expected 는 after(또는 before) 안에 있을 수 있음
+      const detail = row.after || row.before || {};
+      const precondition = row.precondition ?? detail.precondition ?? '';
+      const steps       = row.steps       ?? detail.steps       ?? '';
+      const expected    = row.expected    ?? detail.expected    ?? '';
       return `<tr data-status="${escHtml(row.status)}" data-row-key="${escHtml(key)}" ${decision ? 'data-decision="exclude"' : ''}>
         <td>${escHtml(row.tc_id ?? '')}</td>
         <td>${escHtml(row.title ?? '')}</td>
-        <td style="max-width:160px;white-space:pre-wrap">${escHtml(row.precondition ?? '')}</td>
-        <td style="max-width:200px;white-space:pre-wrap">${escHtml(row.steps ?? '')}</td>
-        <td style="max-width:200px;white-space:pre-wrap">${escHtml(row.expected ?? '')}</td>
+        <td style="max-width:200px;white-space:pre-wrap;overflow-wrap:break-word;word-break:break-word">${escHtml(precondition)}</td>
+        <td style="max-width:200px;white-space:pre-wrap;overflow-wrap:break-word;word-break:break-word">${escHtml(steps)}</td>
+        <td style="max-width:200px;white-space:pre-wrap;overflow-wrap:break-word;word-break:break-word">${escHtml(expected)}</td>
         <td>${escHtml(row.group ?? '')}</td>
         <td><span class="status-pill ${STATUS_CLS[row.status] || ''}">${STATUS_LABEL[row.status] ?? escHtml(row.status)}</span></td>
       </tr>`;
     }).join('');
 
     return `<table class="full-table">
+      <colgroup>
+        <col style="width:80px">
+        <col style="width:160px">
+        <col style="width:200px">
+        <col style="width:200px">
+        <col style="width:220px">
+        <col style="width:110px">
+        <col style="width:60px">
+      </colgroup>
       <thead>
         <tr>
           <th>TC ID</th><th>제목</th><th>전제조건</th><th>테스트 단계</th><th>기대결과</th><th>그룹</th><th>상태</th>
@@ -958,6 +975,7 @@ const IS = (() => {
         commitResponse = await callApi('POST', '/api/import/commit', {
           run_id: state.runId,
           idempotency_key: state.idempotencyKey,
+          policy: state.policy || 'skip-conflict',
           decisions,
         });
       } catch (err) {
@@ -1036,6 +1054,9 @@ const IS = (() => {
   function startNewImport() {
     state.step = 1;
     state.selectedSources = [];
+    state.mappings = {};
+    state.sourceMappings = {};
+    state.activeMappingSource = '';
     state.previewResult = null;
     state.runId = null;
     state.idempotencyKey = null;
@@ -1043,6 +1064,8 @@ const IS = (() => {
     state.rollbackResult = null;
     state.decisions = {};
     state.error = null;
+    state.activeFilter = 'all';
+    state.policy = 'skip-conflict';
     render();
   }
 
@@ -1205,6 +1228,7 @@ const IS = (() => {
       <div class="page-header">
         <div class="page-title">Excel Import Studio</div>
         <div class="wizard">${renderWizardHeader()}</div>
+        ${state.step > 1 ? `<button class="btn btn-ghost reset-btn" onclick="IS.startNewImport()" title="처음부터 다시 시작">↺ 리셋</button>` : ''}
       </div>
       ${errorBanner}
       <div class="step-content active" aria-busy="${state.loading}">

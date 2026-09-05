@@ -372,3 +372,189 @@
       font-family: inherit;
       margin-left: 6px;
     }
+
+
+/* ── Test List: Filter Buttons & Pager (전역) ── */
+.test-list-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0 8px;
+  flex-wrap: wrap;
+}
+
+.test-filter-btn {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 14px;
+  cursor: pointer;
+  border: 1px solid var(--border-glass);
+  background: rgba(139, 92, 246, 0.06);
+  color: var(--text-dim);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  font-family: inherit;
+}
+
+.test-filter-btn:hover {
+  background: rgba(139, 92, 246, 0.12);
+  color: var(--text);
+}
+
+.test-filter-btn.active-all {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.test-filter-btn.active-pass {
+  background: rgba(16, 185, 129, .15);
+  color: #10b981;
+  border-color: rgba(16, 185, 129, .4);
+}
+
+.test-filter-btn.active-fail {
+  background: rgba(244, 63, 94, .15);
+  color: #f43f5e;
+  border-color: rgba(244, 63, 94, .4);
+}
+
+.test-filter-btn.active-skip {
+  background: rgba(168, 85, 247, .15);
+  color: #a855f7;
+  border-color: rgba(168, 85, 247, .4);
+}
+
+.test-list-pager {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.test-list-pager button {
+  font-size: 13px;
+  font-weight: 600;
+  padding: 5px 13px;
+  border-radius: 8px;
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  background: rgba(139, 92, 246, 0.1);
+  color: var(--accent);
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s;
+}
+
+.test-list-pager button:disabled {
+  opacity: .3;
+  cursor: default;
+  border-color: var(--border-glass);
+  background: transparent;
+  color: var(--text-dim);
+}
+
+.test-list-pager button:not(:disabled):hover {
+  background: rgba(139, 92, 246, 0.2);
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+
+/* ── Group Result: 접기/펼치기 (전역) ── */
+.group-result-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.group-result-item {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  background: rgba(22, 20, 50, 0.3);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.group-result-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  cursor: pointer;
+  transition: background .15s;
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font-family: inherit;
+  text-align: left;
+}
+
+.group-result-header:hover {
+  background: rgba(139, 92, 246, 0.06);
+}
+
+.group-result-chevron {
+  font-size: 10px;
+  color: var(--text-dim);
+  transition: transform .2s;
+  display: inline-block;
+}
+
+.group-result-chevron.open {
+  transform: rotate(90deg);
+}
+
+.group-result-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.group-result-dot.pass {
+  background: #10b981;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
+}
+
+.group-result-dot.fail {
+  background: #f43f5e;
+  box-shadow: 0 0 8px rgba(244, 63, 94, 0.5);
+}
+
+.group-result-name {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: .5px;
+}
+
+.group-result-count {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.group-result-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 12px;
+}
+
+.group-result-badge.pass {
+  background: rgba(16, 185, 129, .12);
+  color: #10b981;
+}
+
+.group-result-badge.fail {
+  background: rgba(244, 63, 94, .12);
+  color: #f43f5e;
+}
+
+.group-result-body {
+  padding: 0 14px 10px;
+}

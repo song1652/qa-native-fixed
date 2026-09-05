@@ -24,7 +24,7 @@ API 호출 없이 Claude Code 자체가 LLM 역할을 수행하는 QA 자동화 
 - **테스트 함수명**: 반드시 영문 snake_case `test_{english_snake_case}` (한글 제목도 영어로 번역)
 - **테스트 파일은 자체 완결**: 공유 헬퍼 파일 생성 금지. BASE_URL·import·상수를 각 파일에 직접 포함
 - **tc_*.md 1개 = 테스트 파일 1개 = 테스트 함수 1개**
-- **파일명 규칙 (단일/병렬 공통)**: `tc_{번호}_{english_snake_case}.py` (예: `tc_01_login_success.py`)
+- **파일명 규칙 (단일/병렬 공통)**: `tc_{번호}_{english_snake_case}.py` 또는 `tc_{그룹코드}_{번호}_{english_snake_case}.py` (예: `tc_01_login_success.py`, `tc_CL_01_customer_login_empty.py`)
 
 ## 설정 파일
 

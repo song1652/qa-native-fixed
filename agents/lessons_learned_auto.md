@@ -7,10 +7,14 @@
 ---
 ## Timeout 오류
 
+- **Timeout**: `await self._channel.send("click", self._timeout, locals_to_params(locals()))` -- expect(..., timeout=10000) 또는 wait_for_selector 추가
+
 - **Timeout**: `TimeoutError: site unreachable` -- expect(..., timeout=10000) 또는 wait_for_selector 추가
 
 - **Timeout**: `tests/generated/login/tc_99_heal_test.py:15: in test_heal_timeout_example` -- expect(..., timeout=10000) 또는 wait_for_selector 추가
 
 ## Assertion 오류
+
+- **Assertion**: `assert len(dialog_message) > 0, "잘못된 자격증명 로그인 시 다이얼로그가 표시되어야 합니다"` -- 실제 페이지 텍스트/상태로 기댓값 수정
 
 - **Assertion**: `assert any(keyword in msg_text for keyword in error_keywords), (` -- 실제 페이지 텍스트/상태로 기댓값 수정

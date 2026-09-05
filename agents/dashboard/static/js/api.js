@@ -57,6 +57,8 @@ function _shouldSkipRender() {
   if (singleReportWrap && singleReportWrap.style.display !== 'none') return true;
   // 빠른 실행 중 로그 폴링 시 DOM 재생성 방지
   if (currentView === 'quick_run' && _quickRunState.running) return true;
+  // Import Studio는 자체 상태 관리 — 5초 폴링 시 전체 재렌더 방지
+  if (currentView === 'import_studio') return true;
   return false;
 }
 
@@ -112,7 +114,9 @@ function safeConfirm(msg) {
       </div>`;
     overlay.appendChild(box);
     document.body.appendChild(overlay);
-    const close = (val) => { _confirmOpen = false; overlay.remove(); resolve(val); };
+    const close = (val) => { _confirmOpen = false; overlay.remove(); document.removeEventListener('keydown', handleKey); resolve(val); };
+    const handleKey = (e) => { if (e.key === 'Escape') close(false); };
+    document.addEventListener('keydown', handleKey);
     document.getElementById('confirm-yes').onclick = () => close(true);
     document.getElementById('confirm-no').onclick = () => close(false);
     overlay.addEventListener('click', e => { if (e.target === overlay) close(false); });
@@ -141,7 +145,7 @@ function applyDialogData(text) {
   lastJson = text;
   lastData = JSON.parse(text);
   refreshCount++;
-  const now = new Date().toLocaleTimeString('ko-KR', { hour12: false });
+  const now = new Intl.DateTimeFormat(navigator.language || 'ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).format(new Date());
   document.getElementById('header-meta').textContent = `${now} · ${refreshCount}회`;
   updateSidebar(lastData);
   if (currentView.startsWith('team_') || currentView === '') renderCurrentView();

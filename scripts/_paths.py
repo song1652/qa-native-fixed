@@ -116,6 +116,11 @@ IMPORT_DIR = PROJECT_ROOT / "import"
 HEAL_STATS_PATH = STATE_DIR / "heal_stats.json"
 FLAKY_TESTS_PATH = STATE_DIR / "flaky_tests.json"
 
+# Import Studio 상태 파일 (S2 BE)
+IMPORT_SESSIONS_DIR  = STATE_DIR / "import_sessions"
+IMPORT_SNAPSHOTS_DIR = STATE_DIR / "import_snapshots"
+IMPORT_PROFILES_PATH = STATE_DIR / "import_profiles.json"
+
 PAGES_JSON = PROJECT_ROOT / "config" / "pages.json"
 
 

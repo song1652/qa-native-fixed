@@ -139,14 +139,23 @@ def build_parallel_html(
                 case_id = case.get("id", "")
                 matched_nodeid = next(
                     (k for k in group_tests
-                     if case_id and (f"/{case_id}." in k or f"/{case_id}_" in k)),
+                     if case_id and (
+                         f"/{case_id}." in k or f"/{case_id}_" in k
+                         # tc_CL_01_… 형식: id="CL_01" → /tc_CL_01_ 매칭
+                         or f"/tc_{case_id}_" in k
+                         # id에 하이픈 포함(예: "CL-01") → 언더스코어 변환 후 재시도
+                         or f"/tc_{case_id.replace('-', '_')}_" in k
+                     )),
                     None,
                 )
-                # id(예: "CL-01")가 nodeid 패턴(tc_01_...)과 다를 때 위치 기반 폴백.
+                # id 매칭 실패 시 위치 기반 폴백:
+                # tc_01_… 형식과 tc_CL_01_… 형식(영문 접두어 + 숫자) 모두 처리.
                 if not matched_nodeid:
-                    tc_prefix = f"/tc_{case_idx + 1:02d}_"
+                    num_str = f"{case_idx + 1:02d}"
                     matched_nodeid = next(
-                        (k for k in group_tests if tc_prefix in k), None
+                        (k for k in group_tests
+                         if re.search(rf"/tc_[A-Za-z]*_?{num_str}_", k)),
+                        None,
                     )
                 case_outcome = group_tests.get(matched_nodeid, "failed") if matched_nodeid else "failed"
                 if case_outcome == "skipped" and matched_nodeid and matched_nodeid in skip_messages:

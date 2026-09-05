@@ -24,7 +24,7 @@ function _hasTcFile(nodeid) {
   if (!nodeid) return false;
   const parts = nodeid.split('/');
   const pyFile = parts[parts.length - 1].split('::')[0];
-  return /^tc_\d+_/.test(pyFile);
+  return /^tc_(?:[A-Za-z]+_)?\d+_/.test(pyFile);
 }
 
 async function toggleTestDetail(rowId, nodeid) {
@@ -122,8 +122,9 @@ function buildTestListHtml(tests, prefix, groupName) {
     const hasTc = _hasTcFile(rawNodeid);
     const isOpen = hasTc && !!_testDetailOpen[rawNodeid];
     const cachedContent = hasTc && _testDetailContent[rawNodeid] ? esc(_testDetailContent[rawNodeid]) : '';
-    const clickable = hasTc ? `style="cursor:pointer;" onclick="toggleTestDetail('${rowId}','${nodeid}')" title="클릭하여 테스트케이스 보기"` : '';
-    html += `<tr ${clickable}><td style="color:var(--text-dim)">${num}</td><td>${esc(t.name)}${hasTc ? ' <span style="font-size:10px;opacity:0.4;">▼</span>' : ''}</td><td style="white-space:nowrap"><span class="test-status-dot ${cls}"></span>${label}</td></tr>`;
+    const displayName = t.title || t.name;
+    const clickable = hasTc ? `style="cursor:pointer;" tabindex="0" role="button" aria-label="${esc(displayName)} 테스트케이스 보기" onclick="toggleTestDetail('${rowId}','${nodeid}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleTestDetail('${rowId}','${nodeid}')}"` : '';
+    html += `<tr ${clickable}><td style="color:var(--text-dim)">${num}</td><td>${esc(displayName)}${hasTc ? ' <span style="font-size:10px;opacity:0.4;" aria-hidden="true">▼</span>' : ''}</td><td style="white-space:nowrap"><span class="test-status-dot ${cls}"></span>${label}</td></tr>`;
     if (hasTc) {
       html += `<tr id="td_${rowId}" style="display:${isOpen ? '' : 'none'};"><td colspan="3" style="padding:0;"><pre class="tc-detail-content" style="margin:0;padding:10px 16px;font-size:11px;background:var(--surface);border-top:1px solid var(--border);color:var(--text-dim);white-space:pre-wrap;word-break:break-all;max-height:320px;overflow-y:auto;">${cachedContent}</pre></td></tr>`;
     }

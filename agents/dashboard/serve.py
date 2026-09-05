@@ -59,6 +59,8 @@ from _paths import (
     FLAKY_TESTS_PATH,
     LOGS_DIR,
     IMPORT_DIR,
+    IMPORT_SESSIONS_DIR,
+    IMPORT_SNAPSHOTS_DIR,
 )
 DIALOG_PATH = PROJECT_ROOT / "agents" / "dialog.json"
 TEAM_NOTES_PATH = PROJECT_ROOT / "agents" / "team_notes.md"
@@ -263,9 +265,52 @@ def finalize_team_notes(discuss: dict):
         )
 
 
+def _lookup_tc_title(nodeid: str, group: str) -> str:
+    """nodeid → testcases/{group}/tc_*.md 에서 한글 제목 반환. 없으면 빈 문자열."""
+    import re as _re
+    parts = nodeid.split("/")
+    py_file = parts[-1].split("::")[0]
+    m = _re.match(r"(tc_(?:[A-Za-z]+_)?\d+)_", py_file)
+    if not m:
+        return ""
+    tc_prefix = m.group(1)
+    tc_dir = TESTCASES_DIR / group
+    if not tc_dir.exists():
+        return ""
+    matches = sorted(tc_dir.glob(f"{tc_prefix}_*.md"))
+    if not matches:
+        return ""
+    try:
+        text = matches[0].read_text(encoding="utf-8")
+    except OSError:
+        return ""
+    title_m = _re.search(r"^#\s+(.+)$", text, _re.MULTILINE)
+    return title_m.group(1).strip() if title_m else ""
+
+
+def _enrich_group_results(data: dict) -> dict:
+    """execution_result.group_results 각 테스트에 한글 title 필드 추가."""
+    exec_result = data.get("execution_result")
+    if not exec_result or not isinstance(exec_result, dict):
+        return data
+    group_results = exec_result.get("group_results", {})
+    if not group_results:
+        return data
+    for group, gdata in group_results.items():
+        if not isinstance(gdata, dict):
+            continue
+        for test in gdata.get("tests", []):
+            if not isinstance(test, dict) or test.get("title"):
+                continue
+            nodeid = test.get("nodeid", "")
+            test["title"] = _lookup_tc_title(nodeid, group)
+    return data
+
+
 def build_pipeline_state() -> dict:
-    """단일 파이프라인 state/pipeline.json 반환."""
-    return load_json(STATE_PATH) or {}
+    """단일 파이프라인 state/pipeline.json 반환 (group_results에 한글 title 추가)."""
+    data = load_json(STATE_PATH) or {}
+    return _enrich_group_results(data)
 
 
 def build_batch_state() -> dict:
@@ -288,6 +333,7 @@ def build_batch_state() -> dict:
     if parallel.get("status") in (ParallelStatus.READY, "generating",  # P82: 상수 교체 ("generating"은 UI 파생 상태)
                                     ParallelStatus.TESTING, ParallelStatus.DONE):
         parallel = {**parallel, "completed_count": len(generated_files)}
+    _enrich_group_results(parallel)
     return {"parallel_state": parallel, "generated_files": generated_files}
 
 
@@ -342,8 +388,9 @@ TESTCASES_DIR = PROJECT_ROOT / "testcases"
 
 
 def list_pages() -> dict:
-    """config/pages.json 반환."""
-    return load_json(PAGES_JSON) or {}
+    """config/pages.json 반환 (_comment 등 메타 키 제외)."""
+    raw = load_json(PAGES_JSON) or {}
+    return {k: v for k, v in raw.items() if not k.startswith("_")}
 
 
 def list_testcase_groups() -> list:
@@ -381,11 +428,12 @@ def list_generated_groups() -> list:
         tc_dir = TESTCASES_DIR / d.name
         if tc_dir.exists():
             import re as _re
-            def _tc_num(name):
-                m = _re.match(r'tc_(\d+)_', name)
+            def _tc_key(name):
+                # tc_01_… 또는 tc_CL_01_… 형식 모두 지원 (영문 접두어 선택적)
+                m = _re.match(r'^(tc_(?:[A-Za-z]+_)?\d+)_', name)
                 return m.group(1) if m else None
-            valid_nums = {_tc_num(f.name) for f in tc_dir.glob("tc_*.md")} - {None}
-            files = [f for f in all_py if _tc_num(f) in valid_nums]
+            valid_keys = {_tc_key(f.name) for f in tc_dir.glob("tc_*.md")} - {None}
+            files = [f for f in all_py if _tc_key(f) in valid_keys]
             stale_count = len(all_py) - len(files)
         else:
             files = all_py
@@ -596,6 +644,49 @@ def _read_body(handler) -> dict:
     return json.loads(handler.rfile.read(length).decode("utf-8")) if length else {}
 
 
+def _read_profiles_locked(path: Path) -> dict:
+    from _paths import _file_lock
+    from _import_commit import ImportRunError
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with _file_lock(path.with_suffix(".lock"), path):
+        if not path.exists():
+            return {"profiles": []}
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise ImportRunError("프로필 저장소를 읽을 수 없습니다", "PROFILE_STORE_ERROR") from exc
+        if not isinstance(data, dict) or not isinstance(data.get("profiles", []), list):
+            raise ImportRunError("프로필 저장소 형식이 잘못되었습니다", "PROFILE_STORE_ERROR")
+        return data
+
+
+def _update_profiles_locked(path: Path, mutate) -> dict:
+    import tempfile
+    from _paths import _file_lock
+    from _import_commit import ImportRunError
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with _file_lock(path.with_suffix(".lock"), path):
+        if path.exists():
+            try:
+                data = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError) as exc:
+                raise ImportRunError("프로필 저장소를 읽을 수 없습니다", "PROFILE_STORE_ERROR") from exc
+            if not isinstance(data, dict) or not isinstance(data.get("profiles", []), list):
+                raise ImportRunError("프로필 저장소 형식이 잘못되었습니다", "PROFILE_STORE_ERROR")
+        else:
+            data = {"profiles": []}
+        result = mutate(data)
+        fd, tmp = tempfile.mkstemp(dir=path.parent, suffix=".tmp")
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as stream:
+                json.dump(data, stream, ensure_ascii=False, indent=2)
+            Path(tmp).replace(path)
+        except Exception:
+            Path(tmp).unlink(missing_ok=True)
+            raise
+        return result
+
+
 class DashboardHandler(BaseHTTPRequestHandler):
 
     # ── Route 딕셔너리 ────────────────────────────────────────────
@@ -617,6 +708,8 @@ class DashboardHandler(BaseHTTPRequestHandler):
         "/api/testcase":         "_get_testcase",
         "/api/import/files":     "_get_import_files",
         "/api/import/sheets":    "_get_import_sheets",
+        "/api/import/profiles":     "_get_import_profiles_v2",
+        "/api/import/preview/csv":  "_get_import_preview_csv",
     }
 
     POST_ROUTES = {
@@ -637,8 +730,14 @@ class DashboardHandler(BaseHTTPRequestHandler):
         "/api/run_merge":          "_post_run_merge",
         "/api/merge_log":          "_post_merge_log",
         "/api/run_quick":          "_post_run_quick",
-        "/api/import/convert":     "_post_import_convert",
-        "/api/heal_stats/reset":   "_post_heal_stats_reset",
+        "/api/import/convert":          "_post_import_convert",
+        "/api/import/preview":          "_post_import_preview_v2",
+        "/api/import/profiles":         "_post_import_profiles_v2",
+        "/api/import/profiles/update":  "_post_import_profiles_update",
+        "/api/import/profiles/delete":  "_post_import_profiles_delete",
+        "/api/import/commit":           "_post_import_commit_v2",
+        "/api/import/rollback":         "_post_import_rollback_v2",
+        "/api/heal_stats/reset":        "_post_heal_stats_reset",
         "/api/run_history/reset":  "_post_run_history_reset",
         "/api/discuss/reset":      "_post_discuss_reset",
     }
@@ -648,13 +747,17 @@ class DashboardHandler(BaseHTTPRequestHandler):
         path = self.path.split("?")[0]
 
         # index
-        if path in ("/", "/index.html"):
+        if path in ("/", "/index.html", "/import-studio"):
             self._serve_file(HERE / "index.html", "text/html; charset=utf-8")
             return
 
         # exact-match routes
         if path in self.GET_ROUTES:
             getattr(self, self.GET_ROUTES[path])()
+            return
+
+        if path.startswith("/api/import/runs/"):
+            self._get_import_run_v2(path)
             return
 
         # prefix routes
@@ -755,6 +858,9 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self.wfile.write(content)
             return
         try:
+            if path.startswith("/api/import/runs/") and path.endswith("/rollback"):
+                self._post_import_run_rollback_v2(path)
+                return
             if path in self.POST_ROUTES:
                 getattr(self, self.POST_ROUTES[path])()
             else:
@@ -765,9 +871,39 @@ class DashboardHandler(BaseHTTPRequestHandler):
             traceback.print_exc()
             msg = json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8")
             try:
-                self._serve_bytes(msg, "application/json; charset=utf-8")
+                msg = json.dumps({"ok": False, "error": "internal server error",
+                                  "code": "INTERNAL_ERROR"}, ensure_ascii=False).encode("utf-8")
+                self._serve_bytes(msg, "application/json; charset=utf-8", status=500)
             except Exception:
                 pass
+
+    def do_DELETE(self):
+        """REST-compatible mapping profile deletion."""
+        path = self.path.split("?")[0]
+        if not self._check_csrf_origin():
+            self.send_response(403)
+            self.end_headers()
+            return
+        prefix = "/api/import/profiles/"
+        if path.startswith(prefix):
+            self._delete_import_profile_v2(path[len(prefix):])
+            return
+        self.send_response(404)
+        self.end_headers()
+
+    def do_PUT(self):
+        """REST-compatible mapping profile update."""
+        path = self.path.split("?")[0]
+        if not self._check_csrf_origin():
+            self.send_response(403)
+            self.end_headers()
+            return
+        prefix = "/api/import/profiles/"
+        if path.startswith(prefix):
+            self._put_import_profile_v2(path[len(prefix):])
+            return
+        self.send_response(404)
+        self.end_headers()
 
     # ── GET handlers ─────────────────────────────────────────────
     def _get_dialogs(self):
@@ -818,6 +954,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
 
     def _get_quick_state(self):
         payload = load_json(QUICK_STATE_PATH) or {}
+        payload = _enrich_group_results(payload)
         self._serve_bytes(
             json.dumps(payload, ensure_ascii=False).encode("utf-8"),
             "application/json; charset=utf-8"
@@ -889,8 +1026,8 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 b'{"ok":false,"error":"invalid nodeid"}',
                 "application/json; charset=utf-8")
             return
-        # tc 번호 추출: tc_01_ → testcases/{group}/tc_01_*.md 검색
-        m = _re.match(r"(tc_\d+)_", py_file)
+        # tc 번호 추출: tc_01_ / tc_CL_01_ → testcases/{group}/tc_*_.md 검색
+        m = _re.match(r"(tc_(?:[A-Za-z]+_)?\d+)_", py_file)
         tc_prefix = m.group(1) if m else None
         tc_dir = TESTCASES_DIR / group
         fpath = None
@@ -910,10 +1047,38 @@ class DashboardHandler(BaseHTTPRequestHandler):
         )
 
     def _get_import_files(self):
-        payload = {"ok": True, "files": _list_import_files()}
+        """GET /api/import/files — 메타데이터 포함 파일 목록 (S2 확장)."""
+        if not IMPORT_DIR.exists():
+            # import/ 폴더가 없으면 빈 배열 반환 (FE 오류 방지)
+            self._serve_bytes(
+                json.dumps({"ok": True, "files": []}, ensure_ascii=False).encode("utf-8"),
+                "application/json; charset=utf-8",
+            )
+            return
+
+        import hashlib as _hashlib
+        from _excel_import import get_file_metadata  # type: ignore[import]
+
+        files = []
+        for f in sorted(IMPORT_DIR.glob("*.xlsx")):
+            file_id = _hashlib.sha256(f.name.encode("utf-8")).hexdigest()[:8]
+            try:
+                meta = get_file_metadata(f)
+            except Exception as exc:
+                # 파싱 불가 파일도 목록에는 포함 (sheets 없이)
+                meta = {"sheets": [], "size": f.stat().st_size,
+                        "modified": "", "error": str(exc)}
+            files.append({
+                "id":       file_id,
+                "name":     f.name,
+                "size":     meta.get("size", 0),
+                "modified": meta.get("modified", ""),
+                "sheets":   meta.get("sheets", []),
+                "error":    meta.get("error"),
+            })
         self._serve_bytes(
-            json.dumps(payload, ensure_ascii=False).encode("utf-8"),
-            "application/json; charset=utf-8"
+            json.dumps({"ok": True, "files": files}, ensure_ascii=False).encode("utf-8"),
+            "application/json; charset=utf-8",
         )
 
     def _get_import_sheets(self):
@@ -1579,6 +1744,901 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 json.dumps({"ok": False, "error": str(e)},
                            ensure_ascii=False).encode("utf-8"),
                 "application/json; charset=utf-8")
+
+    def _post_import_preview(self):
+        """POST /api/import/preview — dry-run: 실제 파일 수정 없이 변환 결과 미리보기."""
+        import hashlib as _hashlib
+        import tempfile
+
+        body = _read_body(self)
+        file_id   = body.get("file_id", "").strip()
+        sheet_name = body.get("sheet_name", "").strip()
+        mappings  = body.get("mappings", {})
+
+        # 필수 매핑 검사
+        REQUIRED_MAPPINGS = ["tc_id", "title", "steps", "expected"]
+        for f in REQUIRED_MAPPINGS:
+            if f not in mappings:
+                self._serve_bytes(
+                    json.dumps({"ok": False, "error": f"필수 매핑 누락: {f}"},
+                               ensure_ascii=False).encode("utf-8"),
+                    "application/json; charset=utf-8",
+                    status=400,
+                )
+                return
+
+        if not file_id or not sheet_name:
+            self._serve_bytes(
+                b'{"ok":false,"error":"file_id and sheet_name required"}',
+                "application/json; charset=utf-8",
+                status=400,
+            )
+            return
+
+        # file_id로 파일 탐색 (SHA256(filename)[:8])
+        file_path: Path | None = None
+        if IMPORT_DIR.exists():
+            for f in IMPORT_DIR.glob("*.xlsx"):
+                if _hashlib.sha256(f.name.encode("utf-8")).hexdigest()[:8] == file_id:
+                    file_path = f
+                    break
+
+        if file_path is None:
+            self._serve_bytes(
+                json.dumps({"ok": False, "error": f"file_id '{file_id}' 에 해당하는 파일 없음"},
+                           ensure_ascii=False).encode("utf-8"),
+                "application/json; charset=utf-8",
+                status=404,
+            )
+            return
+
+        # Excel 파싱
+        try:
+            from _excel_import import parse_sheet  # type: ignore[import]
+            rows = parse_sheet(file_path, sheet_name, mappings)
+        except Exception as exc:
+            self._serve_bytes(
+                json.dumps({"ok": False, "error": f"Excel 파싱 실패: {exc}"},
+                           ensure_ascii=False).encode("utf-8"),
+                "application/json; charset=utf-8",
+                status=422,
+            )
+            return
+
+        # 기존 testcases 로드 및 분류
+        from _import_validator import load_existing_testcases, classify_row  # type: ignore[import]
+        existing = load_existing_testcases(TESTCASES_DIR)
+
+        result_rows = []
+        for row in rows:
+            classification = classify_row(row, existing)
+            result_rows.append({**row, **classification})
+
+        # summary 집계
+        statuses = ["added", "updated", "conflict", "error", "same"]
+        summary = {s: sum(1 for r in result_rows if r.get("status") == s) for s in statuses}
+
+        # 세션 ID 생성: sess_{YYYYMMDD}_{SHA256[:6]}
+        session_content = json.dumps(result_rows, ensure_ascii=False, sort_keys=True)
+        content_hash = _hashlib.sha256(session_content.encode("utf-8")).hexdigest()[:6]
+        session_id = f"sess_{datetime.now().strftime('%Y%m%d')}_{content_hash}"
+
+        # 세션 저장 — state/import_sessions/{session_id}.json
+        IMPORT_SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
+        session_data = {
+            "session_id":  session_id,
+            "file_id":     file_id,
+            "file_name":   file_path.name,
+            "sheet_name":  sheet_name,
+            "mappings":    mappings,
+            "summary":     summary,
+            "rows":        result_rows,
+            "created_at":  datetime.now().isoformat(),
+            "status":      "preview",
+        }
+        session_path = IMPORT_SESSIONS_DIR / f"{session_id}.json"
+        _tmp_fd, _tmp_path = tempfile.mkstemp(dir=IMPORT_SESSIONS_DIR, suffix=".tmp")
+        try:
+            import os as _os
+            with _os.fdopen(_tmp_fd, "w", encoding="utf-8") as _f:
+                json.dump(session_data, _f, ensure_ascii=False, indent=2)
+            Path(_tmp_path).replace(session_path)
+        except Exception:
+            Path(_tmp_path).unlink(missing_ok=True)
+            raise
+
+        # 응답: _row 같은 내부 필드는 row로 노출
+        response_rows = []
+        for r in result_rows:
+            response_rows.append({
+                "row":    r.get("_row", 0),
+                "tc_id":  r.get("tc_id", ""),
+                "title":  r.get("title", ""),
+                "group":  r.get("group", ""),
+                "status": r.get("status", ""),
+                "reason": r.get("reason", ""),
+            })
+
+        self._serve_bytes(
+            json.dumps({
+                "ok":         True,
+                "session_id": session_id,
+                "summary":    summary,
+                "rows":       response_rows,
+            }, ensure_ascii=False).encode("utf-8"),
+            "application/json; charset=utf-8",
+        )
+
+    # ── Import Studio run-based API (S5-S8) ──────────────────────
+    def _import_error_v2(self, exc, default_status: int = 400):
+        code = getattr(exc, "code", "IMPORT_ERROR")
+        status = {
+            "FILE_NOT_FOUND": 404,
+            "RUN_NOT_FOUND": 404,
+            "SNAPSHOT_NOT_FOUND": 404,
+            "ALREADY_COMMITTED": 409,
+            "IDEMPOTENCY_CONFLICT": 409,
+            "COMMIT_LOCKED": 409,
+            "SOURCE_CHANGED": 409,
+            "TARGET_CHANGED": 409,
+            "UNRESOLVED_CONFLICT": 409,
+            "ROLLBACK_CONFLICT": 409,
+            "RECOVERY_CONFLICT": 409,
+            "PROFILE_NOT_FOUND": 404,
+            "PROFILE_EXISTS": 409,
+            "PROFILE_STORE_ERROR": 500,
+            "RUN_CORRUPT": 500,
+            "SNAPSHOT_CORRUPT": 500,
+            "COMMIT_RECOVERED": 500,
+            "ROLLBACK_VERIFICATION_FAILED": 500,
+        }.get(code, default_status)
+        self._serve_bytes(
+            json.dumps({"ok": False, "error": str(exc), "code": code},
+                       ensure_ascii=False).encode("utf-8"),
+            "application/json; charset=utf-8", status=status,
+        )
+
+    def _post_import_preview_v2(self):
+        from _import_commit import ImportRunError, create_preview  # type: ignore[import]
+
+        try:
+            run = create_preview(
+                _read_body(self), IMPORT_DIR, TESTCASES_DIR, IMPORT_SESSIONS_DIR,
+            )
+        except ImportRunError as exc:
+            self._import_error_v2(exc)
+            return
+        except Exception as exc:
+            self._import_error_v2(
+                ImportRunError(f"Excel 파싱 실패: {exc}", "PARSE_FAILED"), 422
+            )
+            return
+
+        rows = [{
+            "source_file_id": row.get("_source_file_id", ""),
+            "file_name": row.get("_source_file", ""),
+            "sheet_name": row.get("_source_sheet", ""),
+            "source_row": row.get("_row", 0),
+            "row": row.get("_row", 0),
+            "tc_id": row.get("tc_id", ""),
+            "title": row.get("title", ""),
+            "group": row.get("group", ""),
+            "status": row.get("status", ""),
+            "reason_code": row.get("reason_code", ""),
+            "reason": row.get("reason", ""),
+            "excluded": row.get("excluded", False),
+            "decision": row.get("decision", "automatic"),
+            "before": row.get("before"),
+            "after": row.get("after"),
+        } for row in run["rows"]]
+        self._serve_bytes(
+            json.dumps({
+                "ok": True,
+                "run_id": run["run_id"],
+                "session_id": run["run_id"],
+                "status": run["status"],
+                "sources": run["sources"],
+                "summary": run["summary"],
+                "rows": rows,
+            }, ensure_ascii=False).encode("utf-8"),
+            "application/json; charset=utf-8",
+        )
+
+    def _post_import_commit_v2(self):
+        from _import_commit import ImportRunError, commit_run  # type: ignore[import]
+
+        body = _read_body(self)
+        run_id = str(body.get("run_id") or body.get("session_id") or "").strip()
+        idempotency_key = str(body.get("idempotency_key") or "").strip()
+        decisions = body.get("decisions", [])
+        policy = str(body.get("policy") or "skip-conflict").strip()
+        if policy not in {"skip-conflict", "overwrite", "replace-with-snapshot"}:
+            policy = "skip-conflict"
+        if not isinstance(decisions, list):
+            self._import_error_v2(ImportRunError("decisions must be an array", "INVALID_DECISIONS"))
+            return
+        if len(idempotency_key) > 128:
+            self._import_error_v2(ImportRunError("idempotency_key too long", "INVALID_REQUEST"))
+            return
+        if not run_id:
+            self._import_error_v2(ImportRunError("run_id required", "INVALID_REQUEST"))
+            return
+        try:
+            result = commit_run(
+                run_id, IMPORT_DIR, TESTCASES_DIR, IMPORT_SESSIONS_DIR,
+                IMPORT_SNAPSHOTS_DIR, PROJECT_ROOT, idempotency_key, decisions, policy,
+            )
+        except ImportRunError as exc:
+            self._import_error_v2(exc)
+            return
+        self._serve_bytes(
+            json.dumps({"ok": True, **result}, ensure_ascii=False).encode("utf-8"),
+            "application/json; charset=utf-8",
+        )
+
+    def _post_import_rollback_v2(self):
+        from _import_commit import ImportRunError, rollback_run  # type: ignore[import]
+
+        body = _read_body(self)
+        run_id = str(body.get("run_id") or "").strip()
+        # Legacy clients know only snapshot_id; resolve it to its owning run.
+        if not run_id and body.get("snapshot_id"):
+            snap_id = str(body["snapshot_id"])
+            if not is_safe_filename(snap_id):
+                self._import_error_v2(ImportRunError("invalid snapshot_id", "INVALID_REQUEST"))
+                return
+            snaps_root = IMPORT_SNAPSHOTS_DIR.resolve()
+            manifest = (snaps_root / snap_id / "manifest.json").resolve()
+            if not manifest.is_relative_to(snaps_root):
+                self._import_error_v2(ImportRunError("invalid snapshot_id", "INVALID_REQUEST"))
+                return
+            if manifest.exists():
+                run_id = str((load_json(manifest) or {}).get("run_id", ""))
+        if not run_id:
+            self._import_error_v2(ImportRunError("run_id required", "INVALID_REQUEST"))
+            return
+        try:
+            result = rollback_run(
+                run_id, IMPORT_SESSIONS_DIR, IMPORT_SNAPSHOTS_DIR, PROJECT_ROOT,
+                TESTCASES_DIR,
+            )
+        except ImportRunError as exc:
+            self._import_error_v2(exc)
+            return
+        self._serve_bytes(
+            json.dumps({"ok": True, **result}, ensure_ascii=False).encode("utf-8"),
+            "application/json; charset=utf-8",
+        )
+
+    def _post_import_run_rollback_v2(self, path: str):
+        from _import_commit import ImportRunError, rollback_run  # type: ignore[import]
+
+        run_id = path.removeprefix("/api/import/runs/").removesuffix("/rollback").strip("/")
+        try:
+            result = rollback_run(
+                run_id, IMPORT_SESSIONS_DIR, IMPORT_SNAPSHOTS_DIR, PROJECT_ROOT,
+                TESTCASES_DIR,
+            )
+        except ImportRunError as exc:
+            self._import_error_v2(exc)
+            return
+        self._serve_bytes(
+            json.dumps({"ok": True, **result}, ensure_ascii=False).encode("utf-8"),
+            "application/json; charset=utf-8",
+        )
+
+    def _get_import_run_v2(self, path: str):
+        from _import_commit import ImportRunError, load_run, rows_csv  # type: ignore[import]
+
+        relative = path.removeprefix("/api/import/runs/").strip("/")
+        skipped_csv = relative.endswith("/skipped.csv")
+        run_id = relative.removesuffix("/skipped.csv") if skipped_csv else relative
+        try:
+            run = load_run(IMPORT_SESSIONS_DIR, run_id)
+        except ImportRunError as exc:
+            self._import_error_v2(exc)
+            return
+        if skipped_csv:
+            payload = rows_csv(run, skipped_only=True)
+            self.send_response(200)
+            self.send_header("Content-Type", "text/csv; charset=utf-8")
+            self.send_header("Content-Disposition", f'attachment; filename="import_skipped_{run_id}.csv"')
+            self.send_header("Content-Length", str(len(payload)))
+            self.end_headers()
+            self.wfile.write(payload)
+            return
+        # The durable representation is also the result contract. Internal
+        # underscore keys retain provenance without leaking filesystem paths.
+        public = {**run, "rows": [{
+            **{k: v for k, v in row.items() if not k.startswith("_")},
+            "file_name": row.get("_source_file", ""),
+            "source_file_id": row.get("_source_file_id", ""),
+            "sheet_name": row.get("_source_sheet", ""),
+            "source_row": row.get("_row", 0),
+        } for row in run.get("rows", [])]}
+        self._serve_bytes(
+            json.dumps({"ok": True, **public}, ensure_ascii=False).encode("utf-8"),
+            "application/json; charset=utf-8",
+        )
+
+    def _delete_import_profile_v2(self, profile_id: str):
+        from _paths import IMPORT_PROFILES_PATH
+        from _import_commit import ImportRunError
+
+        if not is_safe_filename(profile_id):
+            self._serve_bytes(b'{"ok":false,"error":"invalid profile id","code":"INVALID_PROFILE_ID"}',
+                              "application/json; charset=utf-8", status=400)
+            return
+        try:
+            def mutate(data):
+                profiles = data.get("profiles", [])
+                remaining = [p for p in profiles if str(p.get("id")) != profile_id]
+                if len(remaining) == len(profiles):
+                    raise ImportRunError("profile not found", "PROFILE_NOT_FOUND")
+                data["profiles"] = remaining
+                return profile_id
+            _update_profiles_locked(IMPORT_PROFILES_PATH, mutate)
+        except ImportRunError as exc:
+            self._import_error_v2(exc, 404)
+            return
+        self._serve_bytes(
+            json.dumps({"ok": True, "deleted": profile_id}).encode("utf-8"),
+            "application/json; charset=utf-8",
+        )
+
+    def _put_import_profile_v2(self, profile_id: str):
+        from _paths import IMPORT_PROFILES_PATH
+        from _import_commit import ImportRunError
+
+        if not is_safe_filename(profile_id):
+            self._serve_bytes(b'{"ok":false,"error":"invalid profile id","code":"INVALID_PROFILE_ID"}',
+                              "application/json; charset=utf-8", status=400)
+            return
+        body = _read_body(self)
+        if not set(body).intersection({"name", "mappings"}):
+            self._serve_bytes(b'{"ok":false,"error":"name or mappings required","code":"INVALID_PROFILE"}',
+                              "application/json; charset=utf-8", status=400)
+            return
+        if "name" in body:
+            name = str(body["name"]).strip()
+            if not name or len(name) > 50:
+                self._serve_bytes(b'{"ok":false,"error":"invalid name","code":"INVALID_PROFILE"}',
+                                  "application/json; charset=utf-8", status=400)
+                return
+        if "mappings" in body:
+            if (not isinstance(body["mappings"], dict) or not body["mappings"]
+                    or any(not isinstance(key, str) or not isinstance(value, str)
+                           for key, value in body["mappings"].items())):
+                self._serve_bytes(b'{"ok":false,"error":"invalid mappings","code":"INVALID_PROFILE"}',
+                                  "application/json; charset=utf-8", status=400)
+                return
+        try:
+            def mutate(data):
+                profile = next((p for p in data.get("profiles", []) if str(p.get("id")) == profile_id), None)
+                if profile is None:
+                    raise ImportRunError("profile not found", "PROFILE_NOT_FOUND")
+                if "name" in body:
+                    name = str(body["name"]).strip()
+                    if any(p is not profile and p.get("name") == name for p in data["profiles"]):
+                        raise ImportRunError("profile name already exists", "PROFILE_EXISTS")
+                    profile["name"] = name
+                if "mappings" in body:
+                    profile["mappings"] = body["mappings"]
+                profile["updated_at"] = datetime.now().isoformat()
+                return profile
+            profile = _update_profiles_locked(IMPORT_PROFILES_PATH, mutate)
+        except ImportRunError as exc:
+            self._import_error_v2(exc, 404 if exc.code == "PROFILE_NOT_FOUND" else 409)
+            return
+        self._serve_bytes(
+            json.dumps({"ok": True, "profile": profile}, ensure_ascii=False).encode("utf-8"),
+            "application/json; charset=utf-8",
+        )
+
+    def _get_import_profiles_v2(self):
+        from _import_commit import ImportRunError
+        from _paths import IMPORT_PROFILES_PATH
+        try:
+            data = _read_profiles_locked(IMPORT_PROFILES_PATH)
+        except ImportRunError as exc:
+            self._import_error_v2(exc, 500)
+            return
+        self._serve_bytes(
+            json.dumps({"ok": True, "profiles": data.get("profiles", [])},
+                       ensure_ascii=False).encode("utf-8"),
+            "application/json; charset=utf-8",
+        )
+
+    def _post_import_profiles_v2(self):
+        import secrets
+        from _paths import IMPORT_PROFILES_PATH
+        from _import_commit import ImportRunError
+
+        body = _read_body(self)
+        name = str(body.get("name", "")).strip()
+        mappings = body.get("mappings")
+        if (not name or len(name) > 50 or not isinstance(mappings, dict) or not mappings
+                or any(not isinstance(key, str) or not isinstance(value, str)
+                       for key, value in mappings.items())):
+            self._serve_bytes(b'{"ok":false,"error":"invalid name or mappings","code":"INVALID_PROFILE"}',
+                              "application/json; charset=utf-8", status=400)
+            return
+        try:
+            def mutate(data):
+                profiles = data.setdefault("profiles", [])
+                if any(profile.get("name") == name for profile in profiles):
+                    raise ImportRunError("profile name already exists", "PROFILE_EXISTS")
+                profile = {"id": f"prof_{secrets.token_hex(4)}", "name": name,
+                           "mappings": mappings, "created_at": datetime.now().isoformat()}
+                profiles.append(profile)
+                return profile
+            profile = _update_profiles_locked(IMPORT_PROFILES_PATH, mutate)
+        except ImportRunError as exc:
+            self._import_error_v2(exc, 409)
+            return
+        self._serve_bytes(
+            json.dumps({"ok": True, "id": profile["id"], "profile": profile},
+                       ensure_ascii=False).encode("utf-8"),
+            "application/json; charset=utf-8", status=201,
+        )
+
+    def _get_import_profiles(self):
+        """GET /api/import/profiles — 매핑 프로필 목록."""
+        from _paths import IMPORT_PROFILES_PATH
+        data = load_json(IMPORT_PROFILES_PATH) or {"profiles": []}
+        self._serve_bytes(
+            json.dumps({"ok": True, "profiles": data.get("profiles", [])},
+                       ensure_ascii=False).encode("utf-8"),
+            "application/json; charset=utf-8",
+        )
+
+    def _post_import_profiles(self):
+        """POST /api/import/profiles — 매핑 프로필 저장."""
+        import secrets
+        import tempfile
+        from _paths import IMPORT_PROFILES_PATH
+
+        body = _read_body(self)
+        name     = body.get("name", "").strip()
+        mappings = body.get("mappings", {})
+        if not name or not mappings:
+            self._serve_bytes(
+                b'{"ok":false,"error":"name and mappings required"}',
+                "application/json; charset=utf-8",
+                status=400,
+            )
+            return
+        if len(name) > 50:
+            self._serve_bytes(
+                b'{"ok":false,"error":"name must be 50 characters or fewer"}',
+                "application/json; charset=utf-8",
+                status=400,
+            )
+            return
+        if not isinstance(mappings, dict) or any(not isinstance(v, str) for v in mappings.values()):
+            self._serve_bytes(
+                b'{"ok":false,"error":"mappings values must be strings"}',
+                "application/json; charset=utf-8",
+                status=400,
+            )
+            return
+
+        IMPORT_PROFILES_PATH.parent.mkdir(parents=True, exist_ok=True)
+        data = load_json(IMPORT_PROFILES_PATH) or {"profiles": []}
+        profiles: list = data.get("profiles", [])
+
+        # 동일 이름 중복 검사
+        if any(p.get("name") == name for p in profiles):
+            self._serve_bytes(
+                json.dumps({"ok": False, "error": f"프로필 '{name}' 이미 존재"},
+                           ensure_ascii=False).encode("utf-8"),
+                "application/json; charset=utf-8",
+                status=409,
+            )
+            return
+
+        profile_id = f"prof_{secrets.token_hex(4)}"
+        new_profile = {
+            "id":         profile_id,
+            "name":       name,
+            "mappings":   mappings,
+            "created_at": datetime.now().isoformat(),
+        }
+        profiles.append(new_profile)
+        data["profiles"] = profiles
+
+        _tmp_fd, _tmp_path = tempfile.mkstemp(dir=IMPORT_PROFILES_PATH.parent, suffix=".tmp")
+        try:
+            import os as _os
+            with _os.fdopen(_tmp_fd, "w", encoding="utf-8") as _f:
+                json.dump(data, _f, ensure_ascii=False, indent=2)
+            Path(_tmp_path).replace(IMPORT_PROFILES_PATH)
+        except Exception:
+            Path(_tmp_path).unlink(missing_ok=True)
+            raise
+
+        self._serve_bytes(
+            json.dumps({"ok": True, "id": profile_id}, ensure_ascii=False).encode("utf-8"),
+            "application/json; charset=utf-8",
+            status=201,
+        )
+
+    def _post_import_profiles_update(self):
+        """POST /api/import/profiles/update — 프로필 이름 또는 매핑 수정."""
+        from _paths import IMPORT_PROFILES_PATH
+        from _import_commit import ImportRunError
+
+        body = _read_body(self)
+        profile_id = body.get("id", "").strip()
+        new_name   = body.get("name", "").strip()
+        new_mappings = body.get("mappings")
+
+        if not profile_id:
+            self._serve_bytes(
+                b'{"ok":false,"error":"id required"}',
+                "application/json; charset=utf-8",
+                status=400,
+            )
+            return
+
+        # name 검증
+        if new_name and len(new_name) > 50:
+            self._serve_bytes(
+                b'{"ok":false,"error":"name must be 50 characters or fewer"}',
+                "application/json; charset=utf-8",
+                status=400,
+            )
+            return
+
+        # mappings 타입 검증
+        if new_mappings is not None:
+            if not isinstance(new_mappings, dict) or any(
+                not isinstance(v, str) for v in new_mappings.values()
+            ):
+                self._serve_bytes(
+                    b'{"ok":false,"error":"mappings values must be strings"}',
+                    "application/json; charset=utf-8",
+                    status=400,
+                )
+                return
+
+        try:
+            def mutate(data):
+                profiles = data.setdefault("profiles", [])
+                target = next((p for p in profiles if p.get("id") == profile_id), None)
+                if target is None:
+                    raise ImportRunError(f"프로필 '{profile_id}' 없음", "PROFILE_NOT_FOUND")
+                if new_name and any(
+                    p.get("name") == new_name and p.get("id") != profile_id
+                    for p in profiles
+                ):
+                    raise ImportRunError(f"프로필 이름 '{new_name}' 이미 존재", "PROFILE_EXISTS")
+                if new_name:
+                    target["name"] = new_name
+                if new_mappings is not None:
+                    target["mappings"] = new_mappings
+                target["updated_at"] = datetime.now().isoformat()
+                return dict(target)
+
+            updated = _update_profiles_locked(IMPORT_PROFILES_PATH, mutate)
+        except ImportRunError as exc:
+            self._import_error_v2(exc, 404 if exc.code == "PROFILE_NOT_FOUND" else 409)
+            return
+
+        self._serve_bytes(
+            json.dumps({"ok": True, "id": profile_id, "profile": updated},
+                       ensure_ascii=False).encode("utf-8"),
+            "application/json; charset=utf-8",
+        )
+
+    def _post_import_profiles_delete(self):
+        """POST /api/import/profiles/delete — 프로필 삭제 (DELETE 대안)."""
+        from _paths import IMPORT_PROFILES_PATH
+        from _import_commit import ImportRunError
+
+        body = _read_body(self)
+        profile_id = body.get("id", "").strip()
+        if not profile_id:
+            self._serve_bytes(
+                b'{"ok":false,"error":"id required"}',
+                "application/json; charset=utf-8",
+                status=400,
+            )
+            return
+
+        try:
+            def mutate(data):
+                profiles = data.setdefault("profiles", [])
+                remaining = [p for p in profiles if p.get("id") != profile_id]
+                if len(remaining) == len(profiles):
+                    raise ImportRunError(f"프로필 '{profile_id}' 없음", "PROFILE_NOT_FOUND")
+                data["profiles"] = remaining
+                return profile_id
+
+            _update_profiles_locked(IMPORT_PROFILES_PATH, mutate)
+        except ImportRunError as exc:
+            self._import_error_v2(exc, 404)
+            return
+
+        self._serve_bytes(
+            json.dumps({"ok": True, "deleted": profile_id}, ensure_ascii=False).encode("utf-8"),
+            "application/json; charset=utf-8",
+        )
+
+    def _post_import_commit(self):
+        """POST /api/import/commit — preview 세션 결과를 실제 tc_*.md 파일에 반영."""
+        import shutil
+        import tempfile
+        import os as _os
+        from _import_validator import load_existing_testcases  # type: ignore[import]
+
+        body = _read_body(self)
+        session_id = body.get("session_id", "").strip()
+
+        if not session_id:
+            self._serve_bytes(
+                b'{"ok":false,"error":"session_id required"}',
+                "application/json; charset=utf-8", status=400)
+            return
+
+        if not is_safe_filename(session_id):
+            self._serve_bytes(
+                json.dumps({"ok": False, "error": "invalid session_id"},
+                           ensure_ascii=False).encode("utf-8"),
+                "application/json; charset=utf-8", status=400)
+            return
+
+        # 경로 봉쇄 (P66 패턴)
+        _sessions_root = IMPORT_SESSIONS_DIR.resolve()
+        session_path = (_sessions_root / f"{session_id}.json").resolve()
+        if not session_path.is_relative_to(_sessions_root):
+            self._serve_bytes(
+                b'{"ok":false,"error":"invalid session_id"}',
+                "application/json; charset=utf-8", status=400)
+            return
+
+        if not session_path.exists():
+            self._serve_bytes(
+                json.dumps({"ok": False, "error": f"세션 '{session_id}' 없음 또는 만료"},
+                           ensure_ascii=False).encode("utf-8"),
+                "application/json; charset=utf-8", status=400)
+            return
+
+        session_data = load_json(session_path) or {}
+
+        # 이미 커밋된 세션 → 409
+        if session_data.get("status") == "committed":
+            self._serve_bytes(
+                json.dumps({"ok": False, "error": "이미 커밋된 세션",
+                            "code": "ALREADY_COMMITTED"},
+                           ensure_ascii=False).encode("utf-8"),
+                "application/json; charset=utf-8", status=409)
+            return
+
+        rows = session_data.get("rows", [])
+        commit_rows = [r for r in rows if r.get("status") in ("added", "updated")]
+        skipped = len(rows) - len(commit_rows)
+
+        # 스냅샷 ID: snap_{YYYYMMDD}_{HHMMSS}
+        snap_id = f"snap_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        IMPORT_SNAPSHOTS_DIR.mkdir(parents=True, exist_ok=True)
+        _snaps_root = IMPORT_SNAPSHOTS_DIR.resolve()
+        snap_dir = (_snaps_root / snap_id).resolve()
+        if not snap_dir.is_relative_to(_snaps_root):
+            self._serve_bytes(b'{"ok":false,"error":"snapshot path error"}',
+                             "application/json; charset=utf-8", status=500)
+            return
+        snap_dir.mkdir(parents=True, exist_ok=True)
+
+        # 기존 tc_*.md 백업 (updated 케이스)
+        _tc_root = TESTCASES_DIR.resolve()
+        _proj_root = PROJECT_ROOT.resolve()
+        existing = load_existing_testcases(TESTCASES_DIR)
+        for r in commit_rows:
+            tc_id = r.get("tc_id", "").strip()
+            if r.get("status") == "updated" and tc_id in existing:
+                orig_path = existing[tc_id]["path"]  # type: ignore[index]
+                try:
+                    rel = orig_path.resolve().relative_to(_proj_root)
+                    backup_path = (snap_dir / rel).resolve()
+                    if backup_path.is_relative_to(snap_dir):
+                        backup_path.parent.mkdir(parents=True, exist_ok=True)
+                        shutil.copy2(orig_path, backup_path)
+                except Exception:
+                    pass
+
+        # tc_*.md 파일 생성/갱신
+        committed = 0
+        for r in commit_rows:
+            tc_id   = r.get("tc_id", "").strip()
+            group   = r.get("group", "").strip()
+            title   = r.get("title", "").strip()
+            steps   = r.get("steps", "").strip()
+            expected = r.get("expected", "").strip()
+            priority = (r.get("priority", "") or "medium").strip()
+            tags    = r.get("tags", [])
+
+            if not tc_id or not group:
+                continue
+            if not is_valid_group_name(group):
+                continue
+
+            group_dir = (_tc_root / group).resolve()
+            if not group_dir.is_relative_to(_tc_root):
+                continue
+            group_dir.mkdir(parents=True, exist_ok=True)
+
+            # 파일명: tc_{tc_id}_{slug}.md — tc_*.md glob 패턴 준수
+            slug = re.sub(r'\W+', '_', title.lower())[:40].strip('_') or "case"
+            tc_filename = f"tc_{tc_id}_{slug}.md"
+            md_path = (group_dir / tc_filename).resolve()
+            if not md_path.is_relative_to(group_dir):
+                continue
+
+            tags_str = ", ".join(str(t) for t in tags) if tags else "general"
+            content = (
+                f"---\nid: {tc_id}\ndata_key: null\npriority: {priority}\n"
+                f"tags: [{tags_str}]\ntype: structured\n---\n"
+                f"# {title}\n\n"
+                f"## Steps\n{steps}\n\n"
+                f"## Expected\n{expected}\n"
+            )
+
+            _tmp_fd, _tmp_path = tempfile.mkstemp(dir=group_dir, suffix=".tmp")
+            try:
+                with _os.fdopen(_tmp_fd, "w", encoding="utf-8") as _f:
+                    _f.write(content)
+                Path(_tmp_path).replace(md_path)
+                committed += 1
+            except Exception:
+                Path(_tmp_path).unlink(missing_ok=True)
+
+        # 세션 상태를 "committed"로 마킹
+        session_data["status"] = "committed"
+        session_data["snapshot_id"] = snap_id
+        session_data["committed_at"] = datetime.now().isoformat()
+        _s_tmp_fd, _s_tmp_path = tempfile.mkstemp(dir=IMPORT_SESSIONS_DIR, suffix=".tmp")
+        try:
+            with _os.fdopen(_s_tmp_fd, "w", encoding="utf-8") as _f:
+                json.dump(session_data, _f, ensure_ascii=False, indent=2)
+            Path(_s_tmp_path).replace(session_path)
+        except Exception:
+            Path(_s_tmp_path).unlink(missing_ok=True)
+
+        self._serve_bytes(
+            json.dumps({
+                "ok":          True,
+                "snapshot_id": snap_id,
+                "committed":   committed,
+                "skipped":     skipped,
+            }, ensure_ascii=False).encode("utf-8"),
+            "application/json; charset=utf-8",
+        )
+
+    def _post_import_rollback(self):
+        """POST /api/import/rollback — 스냅샷으로 파일 복원."""
+        import shutil
+
+        body = _read_body(self)
+        snap_id = body.get("snapshot_id", "").strip()
+
+        if not snap_id:
+            self._serve_bytes(
+                b'{"ok":false,"error":"snapshot_id required"}',
+                "application/json; charset=utf-8", status=400)
+            return
+
+        # is_safe_filename() 검증 필수
+        if not is_safe_filename(snap_id):
+            self._serve_bytes(
+                json.dumps({"ok": False, "error": "invalid snapshot_id"},
+                           ensure_ascii=False).encode("utf-8"),
+                "application/json; charset=utf-8", status=400)
+            return
+
+        # 경로 봉쇄 (P66 패턴)
+        _snaps_root = IMPORT_SNAPSHOTS_DIR.resolve()
+        snap_dir = (_snaps_root / snap_id).resolve()
+        if not snap_dir.is_relative_to(_snaps_root):
+            self._serve_bytes(
+                b'{"ok":false,"error":"invalid snapshot_id"}',
+                "application/json; charset=utf-8", status=400)
+            return
+
+        if not snap_dir.exists() or not snap_dir.is_dir():
+            self._serve_bytes(
+                json.dumps({"ok": False, "error": f"스냅샷 '{snap_id}' 없음"},
+                           ensure_ascii=False).encode("utf-8"),
+                "application/json; charset=utf-8", status=404)
+            return
+
+        # 스냅샷 내 파일을 원래 경로로 복원
+        _proj_root = PROJECT_ROOT.resolve()
+        restored = 0
+        for f in snap_dir.rglob("*.md"):
+            f_resolved = f.resolve()
+            snap_dir_resolved = snap_dir.resolve()
+            if not f_resolved.is_relative_to(snap_dir_resolved):
+                continue
+            rel = f_resolved.relative_to(snap_dir_resolved)
+            orig_path = (_proj_root / rel).resolve()
+            # 경로 탈출 방지
+            if not orig_path.is_relative_to(_proj_root):
+                continue
+            orig_path.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(f, orig_path)
+            restored += 1
+
+        self._serve_bytes(
+            json.dumps({"ok": True, "restored": restored}, ensure_ascii=False).encode("utf-8"),
+            "application/json; charset=utf-8",
+        )
+
+    def _get_import_preview_csv(self):
+        """GET /api/import/preview/csv?session_id=... — CSV 다운로드."""
+        import csv
+        import io
+        from _import_commit import sanitize_csv_cell
+        from urllib.parse import urlparse, parse_qs
+
+        qs = parse_qs(urlparse(self.path).query)
+        session_id = qs.get("session_id", [""])[0]
+
+        if not session_id:
+            self._serve_bytes(
+                b'{"ok":false,"error":"session_id parameter required"}',
+                "application/json; charset=utf-8", status=400)
+            return
+
+        if not is_safe_filename(session_id):
+            self._serve_bytes(
+                json.dumps({"ok": False, "error": "invalid session_id"},
+                           ensure_ascii=False).encode("utf-8"),
+                "application/json; charset=utf-8", status=400)
+            return
+
+        # 경로 봉쇄 (P66 패턴)
+        _sessions_root = IMPORT_SESSIONS_DIR.resolve()
+        session_path = (_sessions_root / f"{session_id}.json").resolve()
+        if not session_path.is_relative_to(_sessions_root):
+            self._serve_bytes(
+                b'{"ok":false,"error":"invalid session_id"}',
+                "application/json; charset=utf-8", status=400)
+            return
+
+        if not session_path.exists():
+            self._serve_bytes(
+                json.dumps({"ok": False, "error": f"세션 '{session_id}' 없음 또는 만료"},
+                           ensure_ascii=False).encode("utf-8"),
+                "application/json; charset=utf-8", status=404)
+            return
+
+        session_data = load_json(session_path) or {}
+        rows = session_data.get("rows", [])
+
+        buf = io.StringIO()
+        writer = csv.writer(buf)
+        writer.writerow(["row", "tc_id", "title", "group", "status", "reason"])
+        for r in rows:
+            writer.writerow([sanitize_csv_cell(value) for value in [
+                r.get("_row", r.get("row", "")),
+                r.get("tc_id", ""),
+                r.get("title", ""),
+                r.get("group", ""),
+                r.get("status", ""),
+                r.get("reason", ""),
+            ]])
+
+        csv_bytes = buf.getvalue().encode("utf-8")
+        fname = f"import_preview_{session_id}.csv"
+        self.send_response(200)
+        self.send_header("Content-Type", "text/csv; charset=utf-8")
+        self.send_header("Content-Disposition", f'attachment; filename="{fname}"')
+        self.send_header("Access-Control-Allow-Origin", ALLOWED_ORIGIN)
+        self.send_header("Cache-Control", "no-cache")
+        self.send_header("Content-Length", str(len(csv_bytes)))
+        self.end_headers()
+        self.wfile.write(csv_bytes)
 
     # ── Infrastructure helpers ────────────────────────────────────
     def _serve_sse(self):

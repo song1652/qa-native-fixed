@@ -381,7 +381,7 @@ python scripts/05_execute.py
 | `scripts/_validators.py` | 대시보드 `serve.py` 입력 검증 헬퍼. `serve.py`의 백그라운드 스레드 부작용 없이 재사용 가능하도록 분리 | ❌ (serve.py + 테스트가 import) |
 | `scripts/assert_guard.py` | 힐링 패치 후 assertion 약화 감지. `original_assertions`(최초) vs 현재 파일 비교 → 감소 시 경고 출력 | ✅ (`python scripts/assert_guard.py`) |
 | `scripts/jira_reporter.py` | 테스트 실패 시 Jira 이슈 자동 생성. 스크린샷·영상 첨부 포함. `config/jira_config.json` 또는 환경변수 `JIRA_TOKEN` 설정 필요. `99_merge.py`가 최종 실패 시 자동 호출 | ✅ (`python scripts/jira_reporter.py [--group G] [--dry-run]`) |
-| `scripts/parse_cases.py` | `.md`/`.json` 테스트케이스 파일 파서 (YAML frontmatter 지원) | ❌ (run_qa.py가 import해서 사용) |
+| `scripts/parse_cases.py` | `.md`/`.json` 테스트케이스 파일 파서 (YAML frontmatter 지원). frontmatter 문자열값의 따옴표 자동 제거 (`id: "CL_01"` → `CL_01`). Steps는 번호(`1.`) 형식 권장이나 번호 없는 평문 줄도 파싱 지원 | ❌ (run_qa.py가 import해서 사용) |
 | `tests/test_core_parsers.py` | 핵심 파서 유닛 테스트 (parse_cases 등) | ❌ (pytest가 자동 실행) |
 | `scripts/sync_test_data.py` | `test_data.json` 동기화 유틸 | ❌ (필요 시 import) |
 | `tests/conftest.py` | pytest browser/page fixture + 실패 시 스크린샷 자동 캡처 | ❌ (pytest가 자동 로드) |

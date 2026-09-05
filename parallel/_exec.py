@@ -36,7 +36,9 @@ def _valid_py_files(group_dir: Path) -> list[Path]:
     번호 prefix(tc_01_)로 매칭 — 슬러그 명명 차이 무관하게 동작.
     """
     def _tc_num(name: str) -> str | None:
-        m = re.match(r"tc_(\d+)_", name)
+        # 숫자만: tc_01_ → "01"
+        # 알파벳+숫자: tc_CL_01_ → "CL_01", tc_PL_02_ → "PL_02"
+        m = re.match(r"tc_([A-Za-z]*_?\d+)_", name)
         return m.group(1) if m else None
 
     tc_dir = TESTCASES_DIR / group_dir.name

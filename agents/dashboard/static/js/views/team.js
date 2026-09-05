@@ -39,7 +39,7 @@ function renderSession(session, tabId, idx) {
     approveBar = items ? renderVoteSection(key, items) : '';
   }
 
-  return `<div class="session" id="sess-${key}"><div class="session-header" onclick="toggleSession('${tabId}',${idx})"><span class="session-stage">${stageLabel}</span><span class="status-badge ${statusClass}">${statusLabel}</span><span class="session-toggle" id="stgl-${key}">${collapsed ? '&#9654;' : '&#9660;'}</span></div><div class="messages${collapsed ? ' collapsed' : ''}" id="msgs-${key}">${msgsHtml}</div>${approveBar}</div>`;
+  return `<div class="session" id="sess-${key}"><button type="button" class="session-header" onclick="toggleSession('${tabId}',${idx})" aria-expanded="${!collapsed}"><span class="session-stage">${stageLabel}</span><span class="status-badge ${statusClass}">${statusLabel}</span><span class="session-toggle" id="stgl-${key}" aria-hidden="true">${collapsed ? '&#9654;' : '&#9660;'}</span></button><div class="messages${collapsed ? ' collapsed' : ''}" id="msgs-${key}">${msgsHtml}</div>${approveBar}</div>`;
 }
 
 function renderTeamView(main) {
@@ -64,8 +64,8 @@ function renderVoteSection(key, items) {
     let actionHtml;
     if (item.status === 'approved') actionHtml = '<span class="vote-tag vote-tag-approve">&#10003; 승인</span>';
     else if (item.status === 'rejected') actionHtml = '<span class="vote-tag vote-tag-reject">&#10007; 반려</span>';
-    else actionHtml = `<button class="vote-btn-n" onclick="event.stopPropagation();voteItem('${key}',${item.id},'reject')">&#10007;</button><button class="vote-btn-y" onclick="event.stopPropagation();voteItem('${key}',${item.id},'approve')">&#10003; 승인</button>`;
-    return `<div class="vote-item" id="vi-${key}-${item.id}" data-status="${esc(item.status)}" onclick="toggleVoteItem('${key}',${item.id})"><div class="vote-item-top"><span class="vote-item-title">${esc(item.title)}</span><div id="va-${key}-${item.id}">${actionHtml}</div></div><div class="vote-item-body">${esc(item.text)}</div></div>`;
+    else actionHtml = `<button type="button" class="vote-btn-n" aria-label="반려" onclick="event.stopPropagation();voteItem('${key}',${item.id},'reject')">&#10007;</button><button type="button" class="vote-btn-y" onclick="event.stopPropagation();voteItem('${key}',${item.id},'approve')">&#10003; 승인</button>`;
+    return `<div class="vote-item" id="vi-${key}-${item.id}" data-status="${esc(item.status)}" tabindex="0" role="button" aria-label="${esc(item.title)} 항목 펼치기" onclick="toggleVoteItem('${key}',${item.id})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleVoteItem('${key}',${item.id})}"><div class="vote-item-top"><span class="vote-item-title">${esc(item.title)}</span><div id="va-${key}-${item.id}">${actionHtml}</div></div><div class="vote-item-body">${esc(item.text)}</div></div>`;
   }).join('');
   return `<div class="vote-section"><div class="vote-section-header"><span class="vote-section-label">항목별 검토</span><span class="vote-progress" id="vp-${key}">${done} / ${total} 완료</span></div><div id="vitems-${key}">${itemsHtml}</div></div>`;
 }

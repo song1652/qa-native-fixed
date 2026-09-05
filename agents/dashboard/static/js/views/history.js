@@ -102,6 +102,7 @@ async function renderHistory(main) {
     <div class="hist-wrap">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
         <h2 class="hist-heading" style="margin-bottom:0;">실행 히스토리</h2>
+        <button onclick="_histReset()" style="margin-left:auto;font-size:11px;padding:4px 10px;background:transparent;border:1px solid rgba(220,100,100,0.4);border-radius:5px;color:rgba(220,100,100,0.8);cursor:pointer;line-height:1.4;" title="실행 이력 전체 삭제">🗑 이력 초기화</button>
       </div>
       ${statsHtml}
       ${filterHtml}
@@ -171,5 +172,16 @@ function _histSetFilter(key, val) {
   _uiState._histFilter[key] = val;
   const main = document.getElementById('main');
   if (main) renderHistory(main);
+}
+
+async function _histReset() {
+  if (!await safeConfirm('실행 이력을 전체 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.')) return;
+  try {
+    await fetch('/api/run_history/reset', { method: 'POST' });
+    const main = document.getElementById('main');
+    if (main) renderHistory(main);
+  } catch(e) {
+    alert('이력 초기화 실패: ' + e.message);
+  }
 }
 

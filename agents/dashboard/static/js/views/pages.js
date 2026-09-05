@@ -74,8 +74,8 @@ function enterEditRow(tr, grp, c) {
         <span class="pages-group-badge pages-edit-group">${esc(grp)}</span>
         <div class="pages-edit-fields">
           <div class="pages-edit-field">
-            <label class="pages-form-label">URL</label>
-            <input class="pages-form-input pages-edit-url" type="url" value="${esc(c.url || '')}">
+            <label class="pages-form-label" for="pages-edit-url-input">URL</label>
+            <input class="pages-form-input pages-edit-url" id="pages-edit-url-input" type="url" value="${esc(c.url || '')}" autocomplete="url">
           </div>
           <div class="pages-edit-field">
             <label class="pages-form-label">프로젝트</label>
@@ -225,23 +225,23 @@ function renderPages(main) {
         <div class="pages-form-title">새 페이지 등록</div>
         <div class="pages-form-grid">
           <div class="pages-form-field">
-            <label class="pages-form-label">그룹명</label>
-            <input id="pg-group" class="pages-form-input" type="text" placeholder="예: login" oninput="pgValidate()">
+            <label class="pages-form-label" for="pg-group">그룹명</label>
+            <input id="pg-group" class="pages-form-input" type="text" placeholder="예: login" autocomplete="off" oninput="pgValidate()">
           </div>
           <div class="pages-form-field">
-            <label class="pages-form-label">URL</label>
-            <input id="pg-url" class="pages-form-input" type="url" placeholder="https://example.com/page" oninput="pgValidate()">
+            <label class="pages-form-label" for="pg-url">URL</label>
+            <input id="pg-url" class="pages-form-input" type="url" placeholder="https://example.com/page" autocomplete="url" oninput="pgValidate()">
           </div>
           <div class="pages-form-field">
-            <label class="pages-form-label">프로젝트 (선택)</label>
+            <label class="pages-form-label" for="pg-project">프로젝트 (선택)</label>
             <input id="pg-project" class="pages-form-input" type="text"
-              list="pg-project-list" placeholder="예: saucedemo" oninput="pgValidate()">
+              list="pg-project-list" placeholder="예: saucedemo" autocomplete="off" oninput="pgValidate()">
             <datalist id="pg-project-list">${datalistHtml}</datalist>
             <span id="pg-project-err" class="pages-field-err" style="display:none"></span>
           </div>
           <div class="pages-form-field">
-            <label class="pages-form-label">메모 (선택)</label>
-            <input id="pg-notes" class="pages-form-input" type="text" placeholder="페이지 설명">
+            <label class="pages-form-label" for="pg-notes">메모 (선택)</label>
+            <input id="pg-notes" class="pages-form-input" type="text" placeholder="페이지 설명" autocomplete="off">
           </div>
         </div>
         <div class="pages-form-row2">
