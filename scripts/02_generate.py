@@ -138,12 +138,27 @@ def main():
         if not func_name.startswith("test_"):
             func_name = f"test_{func_name}"
         case_id = case.get("case_id", f"tc_{idx + 1:02d}")
-        case_num = case_id.replace("tc_", "") if case_id.startswith("tc_") else f"{idx + 1:02d}"
+        # case_num 결정 — TC 파일명 프리픽스(tc_XX_ 또는 tc_GRP_XX_)와 일치해야
+        # 대시보드 _get_testcase()가 tc_*.md를 찾을 수 있다.
+        #
+        # 지원 형식:
+        #   "tc_CL_01" → "CL_01"  (명시적 tc_ 접두사)
+        #   "CL_01"    → "CL_01"  (그룹코드_번호 형태)
+        #   "01"       → "01"     (숫자 전용)
+        #   없음       → "01","02"... (순번 fallback)
+        if case_id.startswith("tc_"):
+            case_num = case_id[3:]          # "tc_CL_01" → "CL_01"
+        elif re.match(r'^[A-Za-z]+_\d+$', case_id):
+            case_num = case_id              # "CL_01" → "CL_01"
+        elif re.match(r'^\d+$', case_id):
+            case_num = case_id.zfill(2)    # "1" → "01"
+        else:
+            case_num = f"{idx + 1:02d}"    # fallback
 
         # 파일명: test_ 접두사 + tc_XX_ 접두사 중복 방지
         file_slug = func_name[5:] if func_name.startswith("test_") else func_name
-        # case_name이 "tc_01_xxx" 형태면 "tc_01_" 부분 제거
-        file_slug = re.sub(r'^tc_\d+_', '', file_slug)
+        # case_name이 "tc_01_xxx" 또는 "tc_CL_01_xxx" 형태면 tc_*_ 부분 제거
+        file_slug = re.sub(r'^tc_(?:[A-Za-z]+_)?\d+_', '', file_slug)
         filename = f"tc_{case_num}_{file_slug}.py"
         out_path = out_dir / filename
 
