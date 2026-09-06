@@ -323,8 +323,22 @@ class GetRoutesMixin:
             self.end_headers()
             self.wfile.write(content)
         else:
+            body = (
+                "<!DOCTYPE html><html><head><meta charset='utf-8'>"
+                "<style>body{display:flex;align-items:center;justify-content:center;"
+                "height:100vh;margin:0;font-family:sans-serif;background:#0f0f15;color:#888;}"
+                ".box{text-align:center;}.icon{font-size:48px;margin-bottom:16px;}"
+                ".title{font-size:18px;font-weight:600;color:#ccc;margin-bottom:8px;}"
+                ".sub{font-size:13px;color:#555;}</style></head><body>"
+                f"<div class='box'><div class='icon'>🗑️</div>"
+                f"<div class='title'>리포트가 삭제되었습니다</div>"
+                f"<div class='sub'>{fname}</div></div></body></html>"
+            ).encode("utf-8")
             self.send_response(404)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
             self.end_headers()
+            self.wfile.write(body)
 
     def _get_artifact_file(self, path: str, prefix: str, base_dir: Path, content_type: str):
         """screenshots / videos 등 아티팩트 파일 서빙."""
