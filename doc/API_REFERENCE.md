@@ -103,7 +103,24 @@
 | `/api/discuss/start` | 팀 토론 시작 (`{ topic }`) |
 | `/api/discuss/vote_item` | 결론 항목 투표 (`{ item_id, status }`) |
 | `/api/discuss/reject` | 토론 반려 |
+| `/api/reports/delete` | HTML 리포트 삭제 (`{ names: ["report.html"] }`) |
 | `/api/import/convert` | Excel → 테스트케이스 변환 (`{ file, sheets }`) |
+
+#### 리포트 삭제
+
+`POST /api/reports/delete`는 `names`에 지정한 `tests/reports/`의 HTML 파일을
+삭제합니다. 유효한 요청은 HTTP 200과 함께
+`{ "ok": true|false, "deleted": [...], "missing": [...], "failed": [{ "name":
+"...", "error": "..." }] }`를 반환합니다. 이미 없는 파일은 `missing`에 넣고,
+개별 파일 삭제가 실패하면 `failed`에 기록한 뒤 나머지 파일을 계속 처리합니다.
+`failed`가 하나라도 있으면 `ok`는 `false`입니다. 같은 이름을 여러 번 보내면 최초
+순서를 유지하며 한 번만 처리합니다.
+
+`names`가 비어 있거나 배열이 아니거나, 항목이 문자열이 아니거나, 안전한 단일
+파일명이 아니거나, 소문자 `.html` 확장자가 아니거나, 심볼릭 링크이면 HTTP 400과
+`{ "ok": false, "error": "...", "code": "INVALID_REPORT_NAMES" }`를
+반환합니다. 모든 항목을 검증한 뒤 삭제를 시작하므로 잘못된 이름이 하나라도 있으면
+정상 파일도 삭제하지 않습니다. 심볼릭 링크는 링크 자체와 대상 파일을 모두 보존합니다.
 
 ### 원격 모드 위험도 분류
 

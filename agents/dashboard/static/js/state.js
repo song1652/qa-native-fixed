@@ -51,4 +51,5 @@ var _logTimers = {};
 var _quickRunState = { running: false, logVisible: false, logContent: '' };
 
 // Reports 상태
-var _reportListState = { search: '', page: 1 };
+var _reportListState = { search: '', sort: 'newest', page: 1, selected: new Set(), busy: false };
+var _reportFetchVersion = 0;

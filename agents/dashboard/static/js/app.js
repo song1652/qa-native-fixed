@@ -27,6 +27,3 @@ async function submitTopic() {
 connectSSE();
 refreshAll();
 setInterval(refreshAll, 5000);
-
-// 페이지 로드 시 import 파일 목록 로드
-setTimeout(loadImportFiles, 500);

@@ -121,7 +121,13 @@ IMPORT_SESSIONS_DIR  = STATE_DIR / "import_sessions"
 IMPORT_SNAPSHOTS_DIR = STATE_DIR / "import_snapshots"
 IMPORT_PROFILES_PATH = STATE_DIR / "import_profiles.json"
 
-PAGES_JSON = PROJECT_ROOT / "config" / "pages.json"
+PAGES_JSON    = PROJECT_ROOT / "config" / "pages.json"
+TESTCASES_DIR = PROJECT_ROOT / "testcases"
+
+# 팀 토론·구현 대기 파일 (Phase-2: serve.py → _paths 단일 소스)
+DIALOG_PATH      = PROJECT_ROOT / "agents" / "dialog.json"
+TEAM_NOTES_PATH  = PROJECT_ROOT / "agents" / "team_notes.md"
+PENDING_IMPL_PATH = PROJECT_ROOT / "pending_impl.json"
 
 
 def is_spa_group(group: "list[str] | None") -> bool:

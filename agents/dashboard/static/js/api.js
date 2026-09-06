@@ -14,10 +14,15 @@ async function fetchBatchState() {
 }
 
 async function fetchReports() {
+  const version = ++_reportFetchVersion;
   try {
     const res = await fetch('/api/reports?' + Date.now());
-    if (res.ok) reportsList = await res.json();
-  } catch (e) { }
+    if (!res.ok) return false;
+    const data = await res.json();
+    if (version !== _reportFetchVersion) return false;
+    reportsList = data;
+    return true;
+  } catch (e) { return false; }
 }
 
 async function fetchPages() {
@@ -42,6 +47,7 @@ async function fetchQuickState() {
 }
 
 function _shouldSkipRender() {
+  if (_confirmOpen || _reportListState.busy) return true;
   // 사용자가 select/input 조작 중이면 스킵
   const mainEl = document.getElementById('main');
   if (mainEl && mainEl.contains(document.activeElement)
@@ -78,7 +84,7 @@ var _confirmOpen = false;
 
 async function refreshAll() {
   // confirm/prompt 팝업이 열려있으면 리렌더 스킵 (팝업 강제 닫힘 방지)
-  if (_confirmOpen) return;
+  if (_confirmOpen || _reportListState.busy) return;
 
   await Promise.all([
     fetch('/api/dialogs?' + Date.now()).then(r => r.ok ? r.text() : null).then(t => { if (t) applyDialogData(t); }),
