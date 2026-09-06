@@ -1,0 +1,13 @@
+{
+  "_comment": "Saucedemo 테스트 데이터 템플릿. 실제 파일은 saucedemo.json으로 복사: cp saucedemo.example.json saucedemo.json",
+  "base_url": "https://www.saucedemo.com",
+  "valid_user": "standard_user",
+  "valid_password": "secret_sauce",
+  "locked_user": "locked_out_user",
+  "invalid_password": "wrong_password",
+  "checkout": {
+    "first_name": "John",
+    "last_name": "Doe",
+    "postal_code": "12345"
+  }
+}

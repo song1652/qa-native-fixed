@@ -31,7 +31,8 @@ API 호출 없이 Claude Code 자체가 LLM 역할을 수행하는 QA 자동화 
 | 파일 | 용도 |
 |------|------|
 | [pages.json](config/pages.json) | URL 매핑 (string/object 혼용). 키 = testcases/ 폴더명 |
-| [test_data.json](config/test_data.json) | 테스트 입력값. 하드코딩 금지 |
+| [test_data/{product}.json](test_data/) | 프로덕트별 테스트 입력값 (gitignored). `_paths.load_test_data()`로 머지 로드 |
+| [test_data/{product}.example.json](test_data/) | 빈 템플릿 (git 추적, 팀 공유) |
 | [run_history.json](state/run_history.json) | 실행 이력 (자동 append) |
 
 테스트케이스: YAML frontmatter + Markdown 본문. 상세 스키마 → [SCRIPTS_GUIDE](doc/SCRIPTS_GUIDE.md)

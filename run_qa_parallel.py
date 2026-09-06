@@ -33,7 +33,6 @@ from _pipeline_registry import ParallelStatus  # P68: ParallelStatus 상수 사�
 from importlib import import_module as _im
 
 PAGES_JSON = PROJECT_ROOT / "config" / "pages.json"
-TEST_DATA_JSON = PROJECT_ROOT / "config" / "test_data.json"
 PARALLEL_STATE_PATH = PARALLEL_STATE
 
 
@@ -54,9 +53,9 @@ def load_pages() -> dict:
 
 
 def load_test_data() -> dict:
-    if TEST_DATA_JSON.exists():
-        return json.loads(TEST_DATA_JSON.read_text(encoding="utf-8"))
-    return {}
+    """test_data/ 프로덕트별 JSON을 머지해 반환 (_paths.load_test_data 위임)."""
+    from _paths import load_test_data as _load
+    return _load()
 
 
 def resolve_url(folder_name: str, pages: dict) -> str | None:

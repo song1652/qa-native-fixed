@@ -1,0 +1,8 @@
+{
+  "_comment": "ServeOne 테스트 데이터 템플릿. 실제 파일은 serveone.json으로 복사: cp serveone.example.json serveone.json",
+  "login": {
+    "invalid_customer_id": "invalid_test_user_99",
+    "invalid_partner_id": "invalid_partner_99",
+    "invalid_password": "WrongPass!123"
+  }
+}

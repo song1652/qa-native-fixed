@@ -1,7 +1,7 @@
 # 디렉토리 구조
 
-> **자동 생성** — `python scripts/update_directory.py` | 마지막 갱신: 2026-09-01 17:20
-> 최근 실행: 2026-09-01 17:10 | parallel | customer_login/partner_login | 4/4 | heal:0
+> **자동 생성** — `python scripts/update_directory.py` | 마지막 갱신: 2026-09-06 09:53
+> 최근 실행: 2026-09-05 21:22 | quick | customer_login/partner_login | 4/4 | heal:0
 
 > 역할 설명 수정: `scripts/update_directory.py` 내 `SCRIPT_DESCRIPTIONS` / `FOLDER_DESCRIPTIONS` 편집.
 
@@ -31,6 +31,9 @@
 | `06_heal.py` | 실패 분석 (최대 3회 자동 패치) |
 | `06a_dialog.py` | 힐링 심의 컨텍스트 초기화 |
 | `_constants.py` | 파이프라인 종료코드 + VALID_TRANSITIONS + assert_valid_transition |
+| `_excel_import.py` |  |
+| `_import_commit.py` |  |
+| `_import_validator.py` |  |
 | `_paths.py` | 중앙 경로 상수 + read_state/write_state/update_state 원자적 I/O (FSM 전이 검증 내장) |
 | `_pipeline_registry.py` | FSM 단일 소스: Step·ParallelStatus 상수, PIPELINE_STEP_DEFS, VALID_TRANSITIONS, make_initial_pipeline_state() 팩토리 |
 | `_python.py` | .venv 경로 자동 감지 |
@@ -52,7 +55,7 @@
 | `report_html.py` | HTML 리포트 생성 (단일/병렬 공통) |
 | `result_parser.py` | pytest JSON 리포트 파싱 (단일/병렬 공유) |
 | `structured_log.py` | 구조화 로그 (JSON Lines → logs/structured.jsonl) |
-| `sync_test_data.py` | test_data.json 동기화 |
+| `sync_test_data.py` | test_data/ 프로덕트 파일 동기화 (누락된 data_key 자동 추가) |
 | `team_approve.py` | 팀 토론 승인 (터미널용) |
 | `team_discuss.py` | 팀 토론 초기화 |
 | `update_directory.py` | doc/DIRECTORY.md 자동 생성 (이 파일) |
@@ -99,7 +102,14 @@
 | `dialog.json` | 팀 토론 대화 로그 |
 | `roles/senior.md` | 사수 행동 지침 (상세) |
 | `roles/junior.md` | 부사수 행동 지침 (상세) |
-| `dashboard/serve.py` | 대시보드 로컬 서버 (포트 8766) |
+| `dashboard/serve.py` | 대시보드 서버 엔트리포인트 (포트 8766, 491줄 — Mixin 분리 후) |
+| `dashboard/dash_excel.py` | Excel 유틸 (Import Studio 파싱·변환) |
+| `dashboard/dash_state.py` | 상태 빌더 (pipeline/batch/registry/reports 등 15개 함수) |
+| `dashboard/dash_procs.py` | 자식 프로세스·SSE·파일감시 스레드 관리 |
+| `dashboard/dash_http.py` | HTTP 요청 파싱·파일락 유틸 |
+| `dashboard/routes_import.py` | ImportRoutesMixin — Import Studio 16개 엔드포인트 |
+| `dashboard/routes_get.py` | GetRoutesMixin — GET API + 파일 서빙 19개 엔드포인트 |
+| `dashboard/routes_ops.py` | OpsRoutesMixin — POST/운영 20개 엔드포인트 |
 | `dashboard/index.html` | 파이프라인 모니터링 대시보드 UI |
 
 ## state/ — 런타임 상태 파일 (파이프라인 실행 중 자동 생성·갱신)
@@ -108,6 +118,7 @@
 |------|------|
 | `discuss.json` | 팀 토론 상태 |
 | `heal_stats.json` | 힐링 오류 패턴별 빈도 카운터 (06_heal.py 자동 갱신) |
+| `import_profiles.json` | 런타임 생성 |
 | `parallel.json` | 병렬 파이프라인 상태 |
 | `parallel_contexts.json` | 런타임 생성 |
 | `parallel_plan.json` | 런타임 생성 |
@@ -116,12 +127,32 @@
 | `run_history.json` | 실행 이력 (매 실행 시 자동 append) |
 | `dom_cache/` | 서브페이지 DOM 스냅샷 캐시 (URL MD5 해시 키) |
 
-## config/ — 설정 파일 (URL 매핑·테스트 입력값)
+## test_data/ — 프로덕트별 테스트 데이터 (gitignored)
+
+프로덕트별로 파일을 분리해 관리. **`*.json`은 gitignored, `*.example.json`만 git 추적.**
+
+| 파일 | 역할 |
+|------|------|
+| `{product}.json` | 실제 자격증명·입력값 (gitignored, 로컬 전용) |
+| `{product}.example.json` | 빈 템플릿 (git 추적, 팀 공유) |
+| `README.md` | 구조 설명 및 셋업 가이드 |
+
+**현재 프로덕트:**
+
+| 파일 | 설명 |
+|------|------|
+| `serveone.json` | ServeOne B2B 쇼핑몰 (고객/협력사 로그인 등) |
+| `saucedemo.json` | Saucedemo (데모 e-commerce 사이트) |
+
+> 새 프로덕트 추가: `cp test_data/serveone.example.json test_data/{product}.json` 후 값 입력.
+> `python scripts/sync_test_data.py`로 누락된 data_key 자동 추가.
+
+## config/ — 설정 파일 (URL 매핑·파이프라인 옵션)
 
 | 파일 | 역할 |
 |------|------|
 | `pages.json` | 페이지명 → URL 매핑 (키 = testcases/ 하위 폴더명) |
-| `test_data.json` | 테스트 입력값 (하드코딩 금지, 키 = 그룹명) |
+| `pipeline.json` | 파이프라인 옵션 (auto_approve 등) |
 
 ## prompts/ — 심의 Agent 프롬프트 템플릿
 
@@ -140,10 +171,13 @@
 |------|------|
 | `browser-qa/` | 배포 후 시각 검증, 4단계 QA 플로우 (ECC) |
 | `heal-patterns/` | 힐링 오류 유형별 패치 전략 가이드라인 (qa-native) |
+| `image-to-code/` |  |
 | `playwright-best-practices/` | Python Playwright 정적 베스트프랙티스 (qa-native) |
 | `python-testing/` | pytest 픽스처·파라미터화·mocking 전략 (ECC) |
 | `skillify/` | 반복 패턴 → heal-patterns/lessons_learned 공식 등록 (qa-native) |
+| `taste-skill/` |  |
 | `verify/` | 패치 후 05_execute 기반 3단계 증거 검증 (qa-native) |
+| `web-design-guidelines/` |  |
 
 ## doc/ — 문서 (사람용·에이전트 on-demand 참조)
 

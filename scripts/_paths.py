@@ -129,6 +129,36 @@ DIALOG_PATH      = PROJECT_ROOT / "agents" / "dialog.json"
 TEAM_NOTES_PATH  = PROJECT_ROOT / "agents" / "team_notes.md"
 PENDING_IMPL_PATH = PROJECT_ROOT / "pending_impl.json"
 
+# 프로덕트별 테스트 데이터 (test_data/{product}.json)
+TEST_DATA_DIR  = PROJECT_ROOT / "test_data"
+
+
+def load_test_data() -> dict:
+    """test_data/ 폴더의 프로덕트별 JSON을 머지해 반환.
+
+    파일명(stem)이 곧 data_key(product key)가 된다.
+      test_data/serveone.json  → result["serveone"]
+      test_data/saucedemo.json → result["saucedemo"]
+
+    *.example.json, _로 시작하는 파일, _comment 키는 제외한다.
+    파일이 없으면 빈 dict 반환 (시스템 정지 없음).
+    """
+    result: dict = {}
+    if not TEST_DATA_DIR.exists():
+        return result
+    for fpath in sorted(TEST_DATA_DIR.glob("*.json")):
+        if fpath.name.endswith(".example.json") or fpath.stem.startswith("_"):
+            continue
+        try:
+            data = json.loads(fpath.read_text(encoding="utf-8"))
+            if not isinstance(data, dict):
+                continue
+            data.pop("_comment", None)
+            result[fpath.stem] = data
+        except (json.JSONDecodeError, OSError):
+            pass
+    return result
+
 
 def is_spa_group(group: "list[str] | None") -> bool:
     """그룹 목록 중 하나라도 pages.json에서 spa:true 설정을 가지면 True.

@@ -152,22 +152,31 @@ def parse_json(text: str) -> list:
 
 def validate_data_keys(cases: list, group: str, test_data_path: str | Path = None) -> list:
     """
-    케이스들의 data_key가 test_data.json에 존재하는지 검증.
+    케이스들의 data_key가 test_data/에 존재하는지 검증.
     Returns: 누락된 data_key 리스트
+
+    test_data_path 인자는 하위 호환을 위해 유지되지만,
+    None이면 _paths.load_test_data()로 test_data/ 폴더를 자동 검색한다.
     """
-    if test_data_path is None:
-        test_data_path = Path(__file__).resolve().parent.parent / "config" / "test_data.json"
+    import sys as _sys
+    _scripts = str(Path(__file__).resolve().parent)
+    if _scripts not in _sys.path:
+        _sys.path.insert(0, _scripts)
 
-    test_data_path = Path(test_data_path)
-    if not test_data_path.exists():
-        return []
+    if test_data_path is not None:
+        # 레거시 경로 지정 — 단일 JSON 파일 방식 유지
+        test_data_path = Path(test_data_path)
+        if not test_data_path.exists():
+            return []
+        with open(test_data_path, encoding="utf-8") as f:
+            all_data = json.load(f)
+        group_data = all_data.get(group, {})
+    else:
+        from _paths import load_test_data
+        all_data = load_test_data()
+        group_data = all_data.get(group, {})
 
-    with open(test_data_path, encoding="utf-8") as f:
-        all_data = json.load(f)
-
-    group_data = all_data.get(group, {})
     missing = []
-
     for case in cases:
         dk = case.get("data_key")
         if dk is None:
@@ -176,7 +185,7 @@ def validate_data_keys(cases: list, group: str, test_data_path: str | Path = Non
             missing.append(dk)
 
     if missing:
-        print(f"[경고] test_data.json에 누락된 data_key ({group}): {', '.join(missing)}")
+        print(f"[경고] test_data/에 누락된 data_key ({group}): {', '.join(missing)}")
 
     return missing
 

@@ -66,7 +66,7 @@ from pathlib import Path
 BASE_URL = "{url}"
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
-TEST_DATA_PATH = PROJECT_ROOT / "config" / "test_data.json"
+TEST_DATA_DIR = PROJECT_ROOT / "test_data"
 
 
 def {func_name}(page):

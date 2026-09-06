@@ -21,6 +21,11 @@ parallel/*.txt
 .env
 
 # Credentials / sensitive test data
+# test_data/: 프로덕트별 실제 데이터는 gitignored, *.example.json만 추적
+test_data/*.json
+!test_data/*.example.json
+!test_data/README.md
+# 레거시 위치 (이전 버전 호환)
 config/test_data.json
 config/jira_config.json
 
