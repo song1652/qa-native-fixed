@@ -18,3 +18,7 @@
 - **Assertion**: `assert len(dialog_message) > 0, "잘못된 자격증명 로그인 시 다이얼로그가 표시되어야 합니다"` -- 실제 페이지 텍스트/상태로 기댓값 수정
 
 - **Assertion**: `assert any(keyword in msg_text for keyword in error_keywords), (` -- 실제 페이지 텍스트/상태로 기댓값 수정
+
+## Playwright일반 오류
+
+- **Playwright일반**: `raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None` -- 브라우저 상태 확인, 페이지 닫힘/크래시 대응
