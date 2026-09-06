@@ -16,6 +16,7 @@ var _uiState = {
   openReportName: null,         // 리포트 뷰: 열린 리포트 이름
   parallelReportName: null,     // 병렬 뷰: 열린 리포트 이름
   singleReportName: null,       // 단일 뷰: 열린 리포트 이름
+  quickReportName: null,        // 빠른 실행 뷰: 열린 리포트 이름
   mergeLogVisible: false,       // 병렬 뷰: merge 로그 표시 여부
   mergeLogContent: '',          // 병렬 뷰: merge 로그 내용
   scrollTop: {},                // 뷰별 스크롤 위치

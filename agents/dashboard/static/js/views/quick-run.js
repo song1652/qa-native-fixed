@@ -60,7 +60,7 @@ function renderQuickRun(main) {
         ${healBannerHtml}
         <div style="margin-top:12px;font-size:11px;color:var(--text-dim);">
           실행: ${esc(execResult.executed_at || '')} | 힐링: ${execResult.heal_count || 0}회
-          ${execResult.report_name ? ` | <a href="/reports/${esc(execResult.report_name)}" target="_blank" style="color:var(--senior-accent);text-decoration:none;">리포트 보기</a>` : ''}
+          ${execResult.report_name ? ` | <a href="#" onclick="event.preventDefault();showQuickReport('${esc(execResult.report_name)}')" style="color:var(--senior-accent);text-decoration:none;">리포트 보기</a>` : ''}
         </div>
       </div>`;
   }
@@ -96,6 +96,13 @@ function renderQuickRun(main) {
       </div>
       <button class="log-toggle-btn" id="log-toggle-quick" onclick="toggleLogExpand('run-quick-log')" style="display:${logVis ? 'inline-block' : 'none'};margin-bottom:16px;">확대</button>
       ${resultHtml}
+      <div class="quick-report-wrap" id="quick-report-wrap" style="display:${_uiState.quickReportName ? 'block' : 'none'};margin-top:16px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <span style="font-size:12px;color:var(--text-dim);">📄 리포트 미리보기</span>
+          <button style="font-size:11px;background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--text-dim);padding:2px 10px;cursor:pointer;" onclick="_uiState.quickReportName=null;this.closest('.quick-report-wrap').style.display='none';document.getElementById('quick-report-iframe').src='';">닫기</button>
+        </div>
+        <iframe id="quick-report-iframe"${_uiState.quickReportName ? ` src="/reports/${esc(_uiState.quickReportName)}"` : ''} style="width:100%;height:600px;border:1px solid var(--border);border-radius:var(--radius);background:#fff;"></iframe>
+      </div>
       <div style="display:flex;justify-content:flex-end;margin-top:16px;">
         <button class="action-btn action-btn-danger" onclick="quickReset()">빠른 실행 초기화</button>
       </div>
@@ -207,6 +214,23 @@ async function runQuickTest() {
     showToast('서버 연결 오류');
     _quickRunState.running = false;
     if (btn) { btn.textContent = '테스트 실행'; btn.disabled = false; }
+  }
+}
+
+function showQuickReport(name) {
+  const wrap = document.getElementById('quick-report-wrap');
+  const iframe = document.getElementById('quick-report-iframe');
+  if (wrap && iframe) {
+    if (name) {
+      _uiState.quickReportName = name;
+      wrap.style.display = 'block';
+      iframe.src = '/reports/' + name;
+      wrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+      _uiState.quickReportName = null;
+      wrap.style.display = 'none';
+      iframe.src = '';
+    }
   }
 }
 
