@@ -25,7 +25,7 @@
   --radius-sm:6px;
 
   /* ── Layout (= .main in artifact) ── */
-  flex: 1;
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -33,6 +33,10 @@
   color: var(--text);
   font-family: 'Inter', sans-serif;
   font-size: 13px;
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
 }
 
 .import-studio *,
@@ -43,21 +47,24 @@
 
 /* ── Page header ── */
 .import-studio .page-header {
-  padding: 20px 28px 16px;
-  border-bottom: 1px solid var(--border2);
+  min-height: 95px;
+  padding: 16px 23px;
+  border-bottom: 1px solid rgba(255,255,255,.06);
   flex-shrink: 0;
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: 24px 29px;
   align-items: center;
-  gap: 12px;
+  gap: 10px 12px;
+  background: #0b0b14;
 }
 .import-studio .page-title {
-  font-size: 20px; font-weight: 700; color: var(--text);
-  flex: 1 1 100%;
-  margin-bottom: 4px;
+  font-size: 20px; line-height: 24px; font-weight: 700; color: var(--text);
+  letter-spacing: -.02em;
 }
 .import-studio .reset-btn {
-  margin-left: auto;
+  grid-column: 2;
+  grid-row: 1;
   font-size: 13px;
   padding: 6px 14px;
   opacity: 0.75;
@@ -72,35 +79,43 @@
 }
 
 /* ── Step wizard ── */
-.import-studio .wizard { display: flex; align-items: center; gap: 0; flex: 1 1 auto; }
+.import-studio .wizard {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  display: flex;
+  align-items: center;
+  gap: 0;
+  width: 100%;
+  min-width: 0;
+}
 .import-studio .step-item { display: flex; align-items: center; }
 .import-studio .step-circle {
-  width: 28px; height: 28px; border-radius: 50%;
-  border: 2px solid var(--border2);
+  width: 29px; height: 29px; border-radius: 50%;
+  border: 2px solid rgba(139,92,246,.12);
   display: grid; place-items: center;
   font-size: 12px; font-weight: 600; color: var(--text3);
-  background: var(--card); flex-shrink: 0;
+  background: #17172a; flex-shrink: 0;
   transition: all .2s;
 }
 .import-studio .step-circle.done { background: var(--accent); border-color: var(--accent); color: #fff; }
 .import-studio .step-circle.active {
   background: var(--accent); border-color: var(--accent); color: #fff;
-  box-shadow: 0 0 0 4px rgba(139,92,246,.2);
+  box-shadow: 0 0 0 4px rgba(139,92,246,.16);
 }
 .import-studio .step-label {
-  margin-left: 8px; font-size: 12px; font-weight: 500; color: var(--text3); white-space: nowrap;
+  margin-left: 7px; font-size: 12px; font-weight: 500; color: #77738d; white-space: nowrap;
 }
 .import-studio .step-label.active { color: var(--text); font-weight: 600; }
 .import-studio .step-line {
-  height: 2px; flex: 1; min-width: 32px; max-width: 80px;
-  background: var(--border2); margin: 0 8px;
+  height: 2px; flex: 1 1 auto; min-width: 34px;
+  background: rgba(255,255,255,.1); margin: 0 10px;
 }
 .import-studio .step-line.done { background: var(--accent); }
 
 /* ── Content + Bottom bar ── */
 .import-studio .step-content { display: none; }
 .import-studio .step-content.active {
-  display: flex; flex-direction: column; flex: 1; overflow: hidden;
+  display: flex; flex-direction: column; overflow: hidden;
 }
 .import-studio .content { flex: 1; overflow-y: auto; padding: 20px 28px 0; }
 .import-studio .bottom-bar {
@@ -183,7 +198,7 @@
 
 /* ── STEP 2: 열 매핑 ── */
 .import-studio .step2-layout {
-  display: grid; grid-template-columns: 220px 1fr 310px;
+  display: grid; grid-template-columns: 220px minmax(0, 1fr) 310px;
   gap: 14px; height: 100%; padding-bottom: 20px;
 }
 .import-studio .panel {
@@ -286,6 +301,11 @@
 .import-studio .kpi-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 .import-studio .kpi-label { font-size: 10px; font-weight: 600; color: var(--text2); letter-spacing: .3px; }
 .import-studio .kpi-num { font-size: 22px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+.import-studio .kpi-card-wide { margin-bottom: 12px; }
+.import-studio .validation-note {
+  padding: 12px 14px; border: 1px solid rgba(52,211,153,.35); border-radius: var(--radius);
+  background: rgba(52,211,153,.06); color: var(--text2); font-size: 11px; line-height: 1.7;
+}
 
 .import-studio .preview-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
 .import-studio .preview-label { font-size: 12px; font-weight: 600; color: var(--text); flex: 1; }

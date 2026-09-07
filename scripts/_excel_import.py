@@ -130,6 +130,15 @@ def parse_sheet(
             steps = mapped_values.get("steps", "")
             expected = mapped_values.get("expected", "")
 
+            # Some workbooks repeat their column header before each scenario
+            # group.  That row is not a testcase and must not become a false
+            # duplicate/conflict (for example, "Scenario ID" appearing twice).
+            normalized_tc_id = re.sub(r"\s+", " ", tc_id).strip().lower()
+            if normalized_tc_id in {
+                "scenario id", "test scenario id", "tc id", "tc_id", "테스트케이스 id",
+            }:
+                continue
+
             # Only a completely empty mapped row is formatting noise. Partial
             # rows must reach validation so no user data disappears silently.
             if not any(mapped_values.values()):

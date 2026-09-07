@@ -134,6 +134,14 @@ def create_preview(body: dict, import_dir: Path, testcases_dir: Path, runs_dir: 
             "header_row": source.get("header_row"),
         })
         for row in parsed:
+            # Group is optional in the spreadsheet.  Native-app imports use
+            # the sheet/group context as the fallback, and for an existing TC
+            # preserve its current folder so an unchanged re-import remains
+            # `same` instead of becoming a false group conflict.
+            if not str(row.get("group") or "").strip():
+                tc_id = str(row.get("tc_id") or "").strip()
+                current_group = existing.get(tc_id, {}).get("group")
+                row["group"] = current_group or str(source["sheet_name"])
             result = {**row, **classify_row(row, existing)}
             result["_source_file_id"] = source["file_id"]
             tc_id = str(row.get("tc_id", "")).strip()

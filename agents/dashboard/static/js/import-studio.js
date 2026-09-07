@@ -48,6 +48,16 @@ const IS = (() => {
     { key: 'group',         label: '그룹',        required: false },
   ];
 
+  // 기본 QA-Native Excel 템플릿의 열 순서. 2단계 진입 시 한 번만
+  // 적용하고, 사용자가 수정한 매핑은 이후 렌더링에서도 보존한다.
+  const DEFAULT_MAPPINGS = {
+    tc_id: 'B열',
+    title: 'F열',
+    precondition: 'G열',
+    steps: 'H열',
+    expected: 'I열',
+  };
+
   // ─────────────────────────────────────────
   // 유틸
   // ─────────────────────────────────────────
@@ -236,7 +246,9 @@ const IS = (() => {
               || (file.sheet_rows && file.sheet_rows[typeof sheet === 'object' ? sheet.name : sheet])
               || '';
             const sheetName = typeof sheet === 'object' ? sheet.name : sheet;
-            return `<div class="sheet-row" onclick="event.stopPropagation()">
+            return `<div class="sheet-row"
+                        onclick="event.stopPropagation();IS.toggleSheet('${escHtml(file.id)}','${escHtml(sheetName)}')"
+                        role="checkbox" aria-checked="${checked}">
               <input type="checkbox" data-testid="sheet-checkbox" ${checked ? 'checked' : ''}
                      data-file-id="${escHtml(file.id)}" data-sheet="${escHtml(sheetName)}"
                      onclick="event.stopPropagation()"
@@ -330,51 +342,31 @@ const IS = (() => {
       ${renderSourceOverrides(excelColumns)}
     </div>`;
 
-    // 오른쪽 패널: KPI + 미니 미리보기
+    // 오른쪽 패널: 이미지 기준 검증 결과 요약. 상세 행 미리보기는 다음 단계에서 제공한다.
     const summary = state.previewResult?.summary ?? {};
-    const miniRows = (state.previewResult?.rows || []).slice(0, 5);
-    const totalRows = (state.previewResult?.rows || []).length;
-
-    const STATUS_LABEL = { added: '추가', updated: '업데이트', conflict: '충돌', error: '오류', same: '동일' };
-    const STATUS_CLS   = { added: 'status-added', updated: 'status-updated', conflict: 'status-conflict', error: 'status-error', same: 'status-same' };
-
-    const kpiHtml = [
-      { label: '추가',     color: 'var(--add)',      val: summary.added    ?? 0 },
-      { label: '업데이트', color: 'var(--update)',   val: summary.updated  ?? 0 },
-      { label: '충돌',     color: 'var(--conflict)', val: summary.conflict ?? 0 },
-      { label: '오류',     color: 'var(--error)',    val: summary.error    ?? 0 },
-    ].map(({ label, color, val }) => `<div class="kpi-card">
-      <div class="kpi-head"><div class="kpi-dot" style="background:${color}"></div><div class="kpi-label">${label}</div></div>
-      <div class="kpi-num" style="color:${color}">${val}</div>
-    </div>`).join('');
-
-    const miniTableBody = miniRows.length
-      ? miniRows.map((row) => `<tr>
-            <td>${escHtml(row.tc_id ?? '')}</td>
-            <td>${escHtml(row.title ?? '')}</td>
-            <td>${escHtml(String(row.source_row ?? row.row ?? ''))}</td>
-            <td><span class="status-pill ${STATUS_CLS[row.status] || ''}">${STATUS_LABEL[row.status] ?? escHtml(row.status)}</span></td>
-          </tr>`).join('')
-      : `<tr><td colspan="4" style="color:var(--text3);padding:10px 6px;text-align:center">미리보기 생성 후 확인 가능합니다</td></tr>`;
-
-    const rightPanel = `<div class="panel">
-      <div class="panel-header"><div class="panel-title">검증 결과</div></div>
+    const unchanged = summary.same ?? summary.unchanged ?? 0;
+    const mappedFields = TC_FIELDS.filter(({ key }) => state.mappings[key]).length;
+    const hasValidation = state.previewResult !== null;
+    const panelBadge = hasValidation
+      ? (summary.total ?? (summary.added ?? 0) + (summary.updated ?? 0) + (summary.conflict ?? 0) + (summary.error ?? 0) + unchanged)
+      : `${mappedFields}/${TC_FIELDS.length}`;
+    const rightPanel = `<div class="panel validation-panel">
+      <div class="panel-header"><div class="panel-title">검증 결과</div><div class="panel-badge">${panelBadge}</div></div>
       <div class="panel-body">
-        <div class="kpi-grid">${kpiHtml}</div>
-        <div class="preview-header">
-          <div class="preview-label">미리보기 (상위 5개)</div>
-          ${totalRows ? `<div class="preview-count">총 ${totalRows}개 행</div>` : ''}
-          <button class="preview-btn" onclick="IS.next()">전체 미리보기</button>
+        <div class="kpi-grid">
+          <div class="kpi-card"><div class="kpi-head"><div class="kpi-dot" style="background:var(--add)"></div><div class="kpi-label">추가</div></div><div class="kpi-num" style="color:var(--add)">${summary.added ?? 0}</div></div>
+          <div class="kpi-card"><div class="kpi-head"><div class="kpi-dot" style="background:var(--update)"></div><div class="kpi-label">업데이트</div></div><div class="kpi-num" style="color:var(--update)">${summary.updated ?? 0}</div></div>
+          <div class="kpi-card"><div class="kpi-head"><div class="kpi-dot" style="background:var(--conflict)"></div><div class="kpi-label">충돌</div></div><div class="kpi-num" style="color:var(--conflict)">${summary.conflict ?? 0}</div></div>
+          <div class="kpi-card"><div class="kpi-head"><div class="kpi-dot" style="background:var(--error)"></div><div class="kpi-label">오류</div></div><div class="kpi-num" style="color:var(--error)">${summary.error ?? 0}</div></div>
         </div>
-        <table class="mini-table">
-          <thead><tr><th>test_id</th><th>title</th><th>행</th><th>상태</th></tr></thead>
-          <tbody>${miniTableBody}</tbody>
-        </table>
+        <div class="kpi-card kpi-card-wide"><div class="kpi-head"><div class="kpi-dot" style="background:var(--text3)"></div><div class="kpi-label">동일 · 변경 필요 없음</div></div><div class="kpi-num" style="color:var(--text2)">${unchanged}</div></div>
+        <div class="validation-note">${hasValidation ? '상세 테스트 케이스는 다음 미리보기 단계에서 확인할 수 있습니다.' : `소스 필드 매핑 ${mappedFields}/${TC_FIELDS.length} 완료 · 모든 필수 필드를 선택하면 미리보기를 생성할 수 있습니다.`}</div>
         <div class="legend">
-          <div class="legend-item"><div class="legend-dot" style="background:var(--add)"></div>추가: 새로운 데이터</div>
-          <div class="legend-item"><div class="legend-dot" style="background:var(--update)"></div>업데이트: 기존 변경</div>
-          <div class="legend-item"><div class="legend-dot" style="background:var(--conflict)"></div>충돌: 중복/충돌</div>
-          <div class="legend-item"><div class="legend-dot" style="background:var(--error)"></div>오류: 유효성 오류</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--add)"></div>추가</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--update)"></div>업데이트</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--conflict)"></div>충돌</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--error)"></div>오류</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--text3)"></div>동일</div>
         </div>
       </div>
     </div>`;
@@ -737,13 +729,9 @@ const IS = (() => {
     } else {
       delete state.mappings[field];
     }
-    // 해당 매핑 아이템 connected 클래스만 토글
-    const sel = document.querySelector(`select[data-field="${field}"]`);
-    if (sel) {
-      const item = sel.closest('.is-mapping-item');
-      if (item) item.classList.toggle('is-mapping-item--connected', !!col);
-    }
-    _updateNavButtons();
+    state.previewResult = null;
+    // 매핑 진행률과 검증 패널을 즉시 갱신한다.
+    render();
   }
 
   function selectMappingSource(sourceKey) {
@@ -758,6 +746,8 @@ const IS = (() => {
     else delete mappings[field];
     if (Object.keys(mappings).length) state.sourceMappings[state.activeMappingSource] = mappings;
     else delete state.sourceMappings[state.activeMappingSource];
+    state.previewResult = null;
+    render();
   }
 
   function toggleConflictDecision(key) {
@@ -1085,6 +1075,18 @@ const IS = (() => {
 
   async function next() {
     if (!canNext()) return;
+    if (state.step === 1 && !Object.keys(state.mappings).length) {
+      state.mappings = { ...DEFAULT_MAPPINGS };
+    }
+    // 기본 매핑이 적용된 채로 열 매핑 단계에 진입하면 검증 결과도
+    // 즉시 채운다. 사용자가 매핑을 변경한 경우에는 3단계 이동 시
+    // 다시 미리보기를 생성한다.
+    if (state.step === 1) {
+      state.step = 2;
+      await _loadPreview();
+      await render();
+      return;
+    }
     // Step2 → Step3: 미리보기 API 호출
     if (state.step === 2) {
       await _loadPreview();
@@ -1228,7 +1230,7 @@ const IS = (() => {
       <div class="page-header">
         <div class="page-title">Excel Import Studio</div>
         <div class="wizard">${renderWizardHeader()}</div>
-        ${state.step > 1 ? `<button class="btn btn-ghost reset-btn" onclick="IS.startNewImport()" title="처음부터 다시 시작">↺ 리셋</button>` : ''}
+        <button class="btn btn-ghost reset-btn" onclick="IS.startNewImport()" title="처음부터 다시 시작">↺ 리셋</button>
       </div>
       ${errorBanner}
       <div class="step-content active" aria-busy="${state.loading}">
