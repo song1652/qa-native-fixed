@@ -12,19 +12,7 @@ import stat
 from datetime import datetime
 from pathlib import Path
 
-from _paths import (
-    PROJECT_ROOT,
-    PIPELINE_STATE as STATE_PATH,
-    PARALLEL_STATE as PARALLEL_STATE_PATH,
-    DISCUSS_STATE as DISCUSS_PATH,
-    GENERATED_DIR,
-    REPORTS_DIR,
-    PAGES_JSON,
-    TESTCASES_DIR,
-    DIALOG_PATH,
-    TEAM_NOTES_PATH,
-    PENDING_IMPL_PATH,
-)
+import _paths
 from _pipeline_registry import (
     Step, ParallelStatus, PIPELINE_STEP_DEFS,
     STEP_COMPAT, PARALLEL_STEP_LABELS,
@@ -104,7 +92,7 @@ def finalize_team_notes(discuss: dict):
             content += f"### {item['title']}\n{item['text']}\n\n"
         content += "---\n"
 
-    TEAM_NOTES_PATH.write_text(content, encoding="utf-8")
+    _paths.TEAM_NOTES_PATH.write_text(content, encoding="utf-8")
 
     # 구현 대기 파일 생성 → UserPromptSubmit 훅이 감지해 Claude에 주입
     if approved:
@@ -114,7 +102,7 @@ def finalize_team_notes(discuss: dict):
             "approved_at": _dt.datetime.now().isoformat(),
             "items": approved,
         }
-        PENDING_IMPL_PATH.write_text(
+        _paths.PENDING_IMPL_PATH.write_text(
             json.dumps(pending, ensure_ascii=False, indent=2), encoding="utf-8"
         )
 
@@ -128,7 +116,7 @@ def _lookup_tc_title(nodeid: str, group: str) -> str:
     if not m:
         return ""
     tc_prefix = m.group(1)
-    tc_dir = TESTCASES_DIR / group
+    tc_dir = _paths.TESTCASES_DIR / group
     if not tc_dir.exists():
         return ""
     matches = sorted(tc_dir.glob(f"{tc_prefix}_*.md"))
@@ -163,23 +151,23 @@ def _enrich_group_results(data: dict) -> dict:
 
 def build_pipeline_state() -> dict:
     """단일 파이프라인 state/pipeline.json 반환 (group_results에 한글 title 추가)."""
-    data = load_json(STATE_PATH) or {}
+    data = load_json(_paths.PIPELINE_STATE) or {}
     return _enrich_group_results(data)
 
 
 def build_batch_state() -> dict:
     """병렬 파이프라인 상태 + tests/generated/ 파일 목록 반환."""
-    parallel = load_json(PARALLEL_STATE_PATH) or {}
+    parallel = load_json(_paths.PARALLEL_STATE) or {}
     generated_files = []
-    if GENERATED_DIR.exists():
-        for group_dir in sorted(GENERATED_DIR.iterdir()):
+    if _paths.GENERATED_DIR.exists():
+        for group_dir in sorted(_paths.GENERATED_DIR.iterdir()):
             if group_dir.is_dir() and not group_dir.name.startswith("."):
                 for f in sorted(group_dir.glob("*.py")):
                     if f.name not in ("conftest.py", "__init__.py"):
                         generated_files.append({
                             "group": group_dir.name,
                             "file": f.name,
-                            "path": str(f.relative_to(PROJECT_ROOT)),
+                            "path": str(f.relative_to(_paths.PROJECT_ROOT)),
                             "size": f.stat().st_size,
                         })
     # completed_count: parallel.json 값이 아닌 실제 생성 파일 수로 보정.
@@ -239,16 +227,16 @@ def build_pipeline_registry() -> dict:
 
 def list_pages() -> dict:
     """config/pages.json 반환 (_comment 등 메타 키 제외)."""
-    raw = load_json(PAGES_JSON) or {}
+    raw = load_json(_paths.PAGES_JSON) or {}
     return {k: v for k, v in raw.items() if not k.startswith("_")}
 
 
 def list_testcase_groups() -> list:
     """testcases/ 하위 폴더별 케이스 파일 목록."""
-    if not TESTCASES_DIR.exists():
+    if not _paths.TESTCASES_DIR.exists():
         return []
     groups = []
-    for d in sorted(TESTCASES_DIR.iterdir()):
+    for d in sorted(_paths.TESTCASES_DIR.iterdir()):
         if not d.is_dir() or d.name.startswith("."):
             continue
         cases = sorted([f.name for f in d.glob("tc_*.md")])
@@ -265,17 +253,17 @@ def list_generated_groups() -> list:
     """tests/generated/ 하위 그룹별 테스트 파일 목록 반환.
     testcases/ 의 .md 파일 기준으로 유효한 파일만 집계 (잔여 파일 제외).
     """
-    if not GENERATED_DIR.exists():
+    if not _paths.GENERATED_DIR.exists():
         return []
     groups = []
-    for d in sorted(GENERATED_DIR.iterdir(), key=lambda p: _natural_sort_key(p.name)):
+    for d in sorted(_paths.GENERATED_DIR.iterdir(), key=lambda p: _natural_sort_key(p.name)):
         if not d.is_dir() or d.name.startswith((".", "_")):
             continue
         all_py = sorted([
             f.name for f in d.glob("tc_*.py")
         ], key=_natural_sort_key)
         # testcases/{group}/tc_*.md 기준으로 유효 파일 집합 산출 (번호 prefix로 매칭)
-        tc_dir = TESTCASES_DIR / d.name
+        tc_dir = _paths.TESTCASES_DIR / d.name
         if tc_dir.exists():
             import re as _re
             def _tc_key(name):
@@ -312,10 +300,10 @@ def _is_safe_report_name(name: object) -> bool:
 
 def list_reports() -> list:
     """tests/reports/ 의 모든 일반 HTML 파일 목록 (최신순)."""
-    if not REPORTS_DIR.exists():
+    if not _paths.REPORTS_DIR.exists():
         return []
     candidates = []
-    for path in REPORTS_DIR.glob("*.html"):
+    for path in _paths.REPORTS_DIR.glob("*.html"):
         try:
             metadata = path.stat(follow_symlinks=False)
         except OSError:
@@ -337,8 +325,8 @@ def list_reports() -> list:
 
 def build_dialogs() -> dict:
     """팀 토론 대화 payload 반환 (dialog.json은 팀 토론 전용)."""
-    full_dialog = load_json(DIALOG_PATH) or {"sessions": []}
-    discuss_state = load_json(DISCUSS_PATH) or {}
+    full_dialog = load_json(_paths.DIALOG_PATH) or {"sessions": []}
+    discuss_state = load_json(_paths.DISCUSS_STATE) or {}
 
     # step=discussed 이고 conclusion_items 없으면 메모리에서만 파싱 (P56: GET에서 write 금지)
     # 파싱 결과는 이 호출의 반환값에만 포함되고 파일에는 기록하지 않는다.

@@ -8,16 +8,16 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from _paths import IMPORT_DIR
+import _paths
 
 
 # ── Excel Import 유틸 ─────────────────────────────────────────
 
 def _list_import_files() -> list:
     """import/ 폴더의 .xlsx 파일 목록."""
-    if not IMPORT_DIR.exists():
+    if not _paths.IMPORT_DIR.exists():
         return []
-    return sorted([f.name for f in IMPORT_DIR.glob("*.xlsx")])
+    return sorted([f.name for f in _paths.IMPORT_DIR.glob("*.xlsx")])
 
 
 def _detect_header_row(ws) -> int | None:

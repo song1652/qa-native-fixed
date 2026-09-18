@@ -10,13 +10,7 @@ import queue
 import threading
 import time
 
-from _paths import (
-    DIALOG_PATH,
-    PIPELINE_STATE as STATE_PATH,
-    PARALLEL_STATE as PARALLEL_STATE_PATH,
-    QUICK_STATE as QUICK_STATE_PATH,
-    DISCUSS_STATE as DISCUSS_PATH,
-)
+import _paths
 
 # ── 서버가 띄운 자식 프로세스 추적 (P61) ────────────────────────
 # set[int] → dict[int, Popen] 으로 변경해 liveness 확인(poll()) 가능.
@@ -84,8 +78,8 @@ def _sse_notify():
 
 def _watch_files():
     """dialog.json / state/*.json mtime을 0.3초마다 감시."""
-    watched = [DIALOG_PATH, DISCUSS_PATH, STATE_PATH, PARALLEL_STATE_PATH,
-               QUICK_STATE_PATH]
+    watched = [_paths.DIALOG_PATH, _paths.DISCUSS_STATE, _paths.PIPELINE_STATE, _paths.PARALLEL_STATE,
+               _paths.QUICK_STATE]
     last_mtimes = {p: 0.0 for p in watched}
     while True:
         for p in watched:

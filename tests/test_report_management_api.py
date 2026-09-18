@@ -209,13 +209,15 @@ def test_report_list_ignores_file_removed_during_stat(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ):
     serve = load_dashboard_module()
-    dash_state = __import__("dash_state")
+    _paths = __import__("_paths")
     reports_dir = tmp_path / "reports"
     reports_dir.mkdir()
     vanished = reports_dir / "vanished.html"
     vanished.write_text("vanished", encoding="utf-8")
     monkeypatch.setattr(serve, "REPORTS_DIR", reports_dir)
-    monkeypatch.setattr(dash_state, "REPORTS_DIR", reports_dir)
+    # dash_state.py는 이제 REPORTS_DIR을 자체 바인딩하지 않고 _paths.REPORTS_DIR을
+    # 동적으로 참조하므로(테스트 격리를 위한 단일 소스), 여기만 패치하면 된다.
+    monkeypatch.setattr(_paths, "REPORTS_DIR", reports_dir)
     original_stat = Path.stat
 
     def stat_with_race(path: Path, *args, **kwargs):

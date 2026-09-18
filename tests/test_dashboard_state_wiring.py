@@ -96,11 +96,13 @@ class TestResetHandlersBypassFsmValidation:
     @pytest.mark.parametrize("handler", [
         "_post_reset_all", "_post_pipeline_reset", "_post_parallel_reset",
     ])
-    def test_handler_uses_reset_state_for_pipeline_or_parallel(self, serve_src, handler):
-        import re
-        m = re.search(rf"def {handler}\(self\):(.*?)(?=\n    def |\Z)", serve_src, re.S)
-        assert m, f"{handler} 정의를 못 찾음"
-        body = m.group(1)
+    def test_handler_uses_reset_state_for_pipeline_or_parallel(self, serve_mod, handler):
+        import inspect
+        method = getattr(serve_mod.DashboardHandler, handler, None)
+        assert method, f"{handler} 정의를 못 찾음"
+        # Mixin(routes_ops.py 등)으로 옮겨졌을 수 있으므로 MRO를 통해 실제
+        # 구현 소스를 가져온다 (serve.py 텍스트만 보면 놓친다).
+        body = inspect.getsource(method)
         # STATE_PATH/PARALLEL_STATE_PATH에 쓰는 줄은 reset_state(...)여야 한다
         for line in body.splitlines():
             if "STATE_PATH" in line and ("_safe_write_json(" in line or "write_state(" in line):

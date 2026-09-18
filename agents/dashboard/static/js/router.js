@@ -55,6 +55,8 @@ function renderCurrentView() {
     } else {
       main.innerHTML = '<div style="padding:40px;color:var(--text-dim);">Import Studio 로딩 실패 — 페이지를 새로고침하세요.</div>';
     }
+  } else if (currentView === 'team_new') {
+    renderTeamNew(main);
   } else if (currentView.startsWith('team_')) {
     renderTeamView(main);
   } else {

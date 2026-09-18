@@ -12,19 +12,8 @@ from __future__ import annotations
 import json
 import sys
 
+import _paths
 from _paths import (
-    PROJECT_ROOT,
-    PIPELINE_STATE as STATE_PATH,
-    PARALLEL_STATE as PARALLEL_STATE_PATH,
-    QUICK_STATE as QUICK_STATE_PATH,
-    RUN_HISTORY as RUN_HISTORY_PATH,
-    DISCUSS_STATE as DISCUSS_PATH,
-    HEAL_STATS_PATH,
-    PAGES_JSON,
-    TESTCASES_DIR,
-    GENERATED_DIR,
-    LOGS_DIR,
-    DIALOG_PATH,
     write_state as _safe_write_json,
     update_state as _safe_update_json,
     reset_state,
@@ -74,8 +63,8 @@ class OpsRoutesMixin:
             self._serve_bytes(b'{"ok":false,"error":"project name: alphanumeric/underscore/hyphen only"}', "application/json; charset=utf-8"); return
 
         # pages.json 파싱 실패 시 설정 소실 방지
-        if PAGES_JSON.exists():
-            raw = load_json(PAGES_JSON)
+        if _paths.PAGES_JSON.exists():
+            raw = load_json(_paths.PAGES_JSON)
             if raw is None:
                 self._serve_bytes(
                     b'{"ok":false,"error":"pages.json \xed\x8c\x8c\xec\x8b\xb1 \xec\x8b\xa4\xed\x8c\xa8 \xe2\x80\x94 \xec\x88\x98\xeb\x8f\x99 \xed\x99\x95\xec\x9d\xb8 \xed\x95\x84\xec\x9a\x94"}',
@@ -94,13 +83,13 @@ class OpsRoutesMixin:
             cur[group] = entry
             return cur
 
-        _safe_update_json(PAGES_JSON, _add_mutator)
+        _safe_update_json(_paths.PAGES_JSON, _add_mutator)
         if error_msg:
             self._serve_bytes(
                 json.dumps({"ok": False, "error": error_msg}, ensure_ascii=False).encode("utf-8"),
                 "application/json; charset=utf-8"); return
 
-        (TESTCASES_DIR / group).mkdir(parents=True, exist_ok=True)
+        (_paths.TESTCASES_DIR / group).mkdir(parents=True, exist_ok=True)
         print(f"[Dashboard] 페이지 추가: {group} → {url}")
         self._serve_bytes(
             json.dumps({"ok": True, "group": group}, ensure_ascii=False).encode("utf-8"),
@@ -124,8 +113,8 @@ class OpsRoutesMixin:
             self._serve_bytes(b'{"ok":false,"error":"project name: alphanumeric/underscore/hyphen only"}', "application/json; charset=utf-8"); return
 
         # pages.json 파싱 실패 시 설정 소실 방지 (P54)
-        if PAGES_JSON.exists():
-            raw = load_json(PAGES_JSON)
+        if _paths.PAGES_JSON.exists():
+            raw = load_json(_paths.PAGES_JSON)
             if raw is None:
                 self._serve_bytes(
                     b'{"ok":false,"error":"pages.json \xed\x8c\x8c\xec\x8b\xb1 \xec\x8b\xa4\xed\x8c\xa8 \xe2\x80\x94 \xec\x88\x98\xeb\x8f\x99 \xed\x99\x95\xec\x9d\xb8 \xed\x95\x84\xec\x9a\x94"}',
@@ -149,7 +138,7 @@ class OpsRoutesMixin:
             cur[group] = entry
             return cur
 
-        _safe_update_json(PAGES_JSON, _update_mutator)
+        _safe_update_json(_paths.PAGES_JSON, _update_mutator)
         if error_msg:
             self._serve_bytes(
                 json.dumps({"ok": False, "error": error_msg}, ensure_ascii=False).encode("utf-8"),
@@ -167,8 +156,8 @@ class OpsRoutesMixin:
             self._serve_bytes(b'{"ok":false,"error":"valid group required"}', "application/json; charset=utf-8"); return
 
         # pages.json 파싱 실패 시 설정 소실 방지 (P54)
-        if PAGES_JSON.exists():
-            raw = load_json(PAGES_JSON)
+        if _paths.PAGES_JSON.exists():
+            raw = load_json(_paths.PAGES_JSON)
             if raw is None:
                 self._serve_bytes(
                     b'{"ok":false,"error":"pages.json \xed\x8c\x8c\xec\x8b\xb1 \xec\x8b\xa4\xed\x8c\xa8 \xe2\x80\x94 \xec\x88\x98\xeb\x8f\x99 \xed\x99\x95\xec\x9d\xb8 \xed\x95\x84\xec\x9a\x94"}',
@@ -184,7 +173,7 @@ class OpsRoutesMixin:
             del cur[group]
             return cur
 
-        _safe_update_json(PAGES_JSON, _del_mutator)
+        _safe_update_json(_paths.PAGES_JSON, _del_mutator)
         if error_msg:
             self._serve_bytes(
                 json.dumps({"ok": False, "error": error_msg}, ensure_ascii=False).encode("utf-8"),
@@ -197,7 +186,7 @@ class OpsRoutesMixin:
 
     def _post_reset(self):
         empty = {"pipeline_url": "", "started_at": "", "sessions": []}
-        _safe_write_json(DIALOG_PATH, empty)
+        _safe_write_json(_paths.DIALOG_PATH, empty)
         self._serve_bytes(b'{"ok":true}', "application/json; charset=utf-8")
 
     def _post_discuss_start(self):
@@ -210,9 +199,9 @@ class OpsRoutesMixin:
             return
 
         history = []
-        if DISCUSS_PATH.exists():
+        if _paths.DISCUSS_STATE.exists():
             try:
-                prev = json.loads(DISCUSS_PATH.read_text(encoding="utf-8"))
+                prev = json.loads(_paths.DISCUSS_STATE.read_text(encoding="utf-8"))
                 history = prev.get("history", [])
                 if prev.get("step") in ("approved", "rejected", "discussed"):
                     history.append({k: v for k, v in prev.items() if k != "history"})
@@ -225,7 +214,7 @@ class OpsRoutesMixin:
             "created_at": datetime.datetime.now().isoformat(),
             "history": history,
         }
-        _safe_write_json(DISCUSS_PATH, discuss)
+        _safe_write_json(_paths.DISCUSS_STATE, discuss)
 
         # Claude Code UserPromptSubmit 훅(check_pending_discuss.py)이
         # 다음 프롬프트 제출 시 자동으로 토론 시작을 Claude에게 주입한다.
@@ -237,7 +226,7 @@ class OpsRoutesMixin:
         item_id = int(body.get("item_id", -1))
         vote    = body.get("vote", "")  # "approve" | "reject"
 
-        if not DISCUSS_PATH.exists():
+        if not _paths.DISCUSS_STATE.exists():
             self._serve_bytes(
                 json.dumps({"ok": False, "error": "state/discuss.json 없음"}, ensure_ascii=False).encode("utf-8"),
                 "application/json; charset=utf-8")
@@ -260,7 +249,7 @@ class OpsRoutesMixin:
             _result["all_voted"] = all_voted
             return s
 
-        _safe_update_json(DISCUSS_PATH, _mutate_vote)
+        _safe_update_json(_paths.DISCUSS_STATE, _mutate_vote)
         self._serve_bytes(
             json.dumps({"ok": True, "all_voted": _result.get("all_voted", False)},
                        ensure_ascii=False).encode("utf-8"),
@@ -270,13 +259,13 @@ class OpsRoutesMixin:
     def _post_discuss_reject(self):
         body = _read_body(self)
         reason = body.get("reason", "").strip()
-        if not DISCUSS_PATH.exists():
+        if not _paths.DISCUSS_STATE.exists():
             self._serve_bytes(
                 json.dumps({"ok": False, "error": "state/discuss.json 없음"}, ensure_ascii=False).encode("utf-8"),
                 "application/json; charset=utf-8")
             return
         # P55: 비원자 read_text+write → _safe_update_json 원자적 RMW
-        _safe_update_json(DISCUSS_PATH, lambda s: {
+        _safe_update_json(_paths.DISCUSS_STATE, lambda s: {
             **s,
             "step": "rejected",
             "rejection_reason": reason,
@@ -312,19 +301,19 @@ class OpsRoutesMixin:
                 b'{"ok":false,"error":"url and cases_dir required"}',
                 "application/json; charset=utf-8")
             return
-        cases_path = TESTCASES_DIR / cases_dir
+        cases_path = _paths.TESTCASES_DIR / cases_dir
         if not cases_path.exists():
             self._serve_bytes(
                 json.dumps({"ok": False, "error": f"testcases/{cases_dir} not found"}, ensure_ascii=False).encode("utf-8"),
                 "application/json; charset=utf-8")
             return
-        log_path = LOGS_DIR / "run_qa.txt"
-        script = PROJECT_ROOT / "run_qa.py"
+        log_path = _paths.LOGS_DIR / "run_qa.txt"
+        script = _paths.PROJECT_ROOT / "run_qa.py"
         log_file = open(log_path, "w", encoding="utf-8")
         proc = sp.Popen(
             [PYTHON_EXE, "-u", str(script),
              "--url", url, "--cases", str(cases_path)],
-            cwd=str(PROJECT_ROOT),
+            cwd=str(_paths.PROJECT_ROOT),
             stdout=log_file, stderr=sp.STDOUT,
         )
         _register_spawned_proc(proc, tag="run_qa")  # P77: tag 등록
@@ -343,12 +332,12 @@ class OpsRoutesMixin:
                 b'{"ok":false,"error":"run_qa_parallel already running"}',
                 "application/json; charset=utf-8")
             return
-        log_path = LOGS_DIR / "run_parallel.txt"
-        script = PROJECT_ROOT / "run_qa_parallel.py"
+        log_path = _paths.LOGS_DIR / "run_parallel.txt"
+        script = _paths.PROJECT_ROOT / "run_qa_parallel.py"
         log_file = open(log_path, "w", encoding="utf-8")
         proc = sp.Popen(
             [PYTHON_EXE, "-u", str(script)],
-            cwd=str(PROJECT_ROOT),
+            cwd=str(_paths.PROJECT_ROOT),
             stdout=log_file, stderr=sp.STDOUT,
         )
         _register_spawned_proc(proc, tag="run_qa_parallel")  # P77: tag 등록
@@ -365,7 +354,7 @@ class OpsRoutesMixin:
         if not is_safe_filename(log_name):
             self._serve_bytes(b'{"ok":false,"log":""}', "application/json; charset=utf-8")
             return
-        log_path = LOGS_DIR / log_name
+        log_path = _paths.LOGS_DIR / log_name
         if log_path.exists():
             content = log_path.read_text(encoding="utf-8", errors="replace")
             self._serve_bytes(
@@ -379,30 +368,30 @@ class OpsRoutesMixin:
 
     def _post_reset_all(self):
         empty = {"pipeline_url": "", "started_at": "", "sessions": []}
-        _safe_write_json(DIALOG_PATH, empty)
+        _safe_write_json(_paths.DIALOG_PATH, empty)
         # FSM 전이 검증을 건너뛰는 reset_state() 사용 이유: write_state()는
         # "generated"→"init" 같은 전이가 VALID_TRANSITIONS에 없어 ValueError 발생.
-        reset_state(STATE_PATH, make_initial_pipeline_state())
-        reset_state(PARALLEL_STATE_PATH,
+        reset_state(_paths.PIPELINE_STATE, make_initial_pipeline_state())
+        reset_state(_paths.PARALLEL_STATE,
                     {"status": ParallelStatus.EMPTY, "total_count": 0, "targets": []})
-        heal_ctx = PROJECT_ROOT / "state" / "heal_context.json"
+        heal_ctx = _paths.PROJECT_ROOT / "state" / "heal_context.json"
         if heal_ctx.exists():
             heal_ctx.unlink()
-        if QUICK_STATE_PATH.exists():
-            QUICK_STATE_PATH.unlink()
-        _safe_write_json(HEAL_STATS_PATH, {"version": 1, "patterns": {}})
-        _safe_write_json(RUN_HISTORY_PATH, [])
+        if _paths.QUICK_STATE.exists():
+            _paths.QUICK_STATE.unlink()
+        _safe_write_json(_paths.HEAL_STATS_PATH, {"version": 1, "patterns": {}})
+        _safe_write_json(_paths.RUN_HISTORY, [])
         self._serve_bytes(b'{"ok":true}', "application/json; charset=utf-8")
 
     def _post_pipeline_reset(self):
         # 팩토리 함수로 단일화 (P39). FSM 검증 우회 이유는 _post_reset_all 참조.
-        reset_state(STATE_PATH, make_initial_pipeline_state())
+        reset_state(_paths.PIPELINE_STATE, make_initial_pipeline_state())
         self._serve_bytes(b'{"ok":true}', "application/json; charset=utf-8")
 
     def _post_parallel_reset(self):
         init_state = {"status": ParallelStatus.EMPTY, "total_count": 0, "targets": []}
-        reset_state(PARALLEL_STATE_PATH, init_state)
-        heal_ctx = PROJECT_ROOT / "state" / "heal_context.json"
+        reset_state(_paths.PARALLEL_STATE, init_state)
+        heal_ctx = _paths.PROJECT_ROOT / "state" / "heal_context.json"
         if heal_ctx.exists():
             heal_ctx.unlink()
         self._serve_bytes(b'{"ok":true}', "application/json; charset=utf-8")
@@ -438,28 +427,28 @@ class OpsRoutesMixin:
                         tracked.terminate()
             except Exception:
                 pass
-        if QUICK_STATE_PATH.exists():
-            QUICK_STATE_PATH.unlink()
+        if _paths.QUICK_STATE.exists():
+            _paths.QUICK_STATE.unlink()
         self._serve_bytes(b'{"ok":true}', "application/json; charset=utf-8")
 
     def _post_heal_stats_reset(self):
-        _safe_write_json(HEAL_STATS_PATH, {"version": 1, "patterns": {}})
+        _safe_write_json(_paths.HEAL_STATS_PATH, {"version": 1, "patterns": {}})
         self._serve_bytes(b'{"ok":true}', "application/json; charset=utf-8")
 
     def _post_run_history_reset(self):
-        _safe_write_json(RUN_HISTORY_PATH, [])
+        _safe_write_json(_paths.RUN_HISTORY, [])
         self._serve_bytes(b'{"ok":true}', "application/json; charset=utf-8")
 
     def _post_discuss_reset(self):
         # discuss.json 초기화 (topic/step/conclusion 등 모든 상태 제거)
-        _safe_write_json(DISCUSS_PATH, {})
+        _safe_write_json(_paths.DISCUSS_STATE, {})
         # dialog.json의 team_discussion 세션도 제거
-        dialog = load_json(DIALOG_PATH) or {"sessions": []}
+        dialog = load_json(_paths.DIALOG_PATH) or {"sessions": []}
         dialog["sessions"] = [
             s for s in dialog.get("sessions", [])
             if s.get("stage") != "team_discussion"
         ]
-        _safe_write_json(DIALOG_PATH, dialog)
+        _safe_write_json(_paths.DIALOG_PATH, dialog)
         self._serve_bytes(b'{"ok":true}', "application/json; charset=utf-8")
 
     # ── 병렬·빠른 실행 ────────────────────────────────────────────
@@ -472,23 +461,23 @@ class OpsRoutesMixin:
                 b'{"ok":false,"error":"99_merge already running"}',
                 "application/json; charset=utf-8")
             return
-        merge_script = PROJECT_ROOT / "parallel" / "99_merge.py"
+        merge_script = _paths.PROJECT_ROOT / "parallel" / "99_merge.py"
         if not merge_script.exists():
             self._serve_bytes(b'{"ok":false,"error":"99_merge.py not found"}',
                               "application/json; charset=utf-8")
             return
         # C-3(P99): heal_count 리셋은 "새 실행" 시작 시에만.
         # M-4(P121): RESETTABLE_PARALLEL_STATUSES를 단일 소스에서 임포트.
-        if PARALLEL_STATE_PATH.exists():
-            _cur_status = (load_json(PARALLEL_STATE_PATH) or {}).get("status", "")
+        if _paths.PARALLEL_STATE.exists():
+            _cur_status = (load_json(_paths.PARALLEL_STATE) or {}).get("status", "")
             if _cur_status in RESETTABLE_PARALLEL_STATUSES:
-                _safe_update_json(PARALLEL_STATE_PATH, lambda s: {**s, "heal_count": 0})
+                _safe_update_json(_paths.PARALLEL_STATE, lambda s: {**s, "heal_count": 0})
 
-        log_path = LOGS_DIR / "merge.txt"
+        log_path = _paths.LOGS_DIR / "merge.txt"
         log_file = open(log_path, "w", encoding="utf-8")
         proc = sp.Popen(
             [PYTHON_EXE, "-u", str(merge_script)],
-            cwd=str(PROJECT_ROOT),
+            cwd=str(_paths.PROJECT_ROOT),
             stdout=log_file, stderr=sp.STDOUT,
         )
         _register_spawned_proc(proc, tag="run_merge")  # P77: tag 등록
@@ -501,7 +490,7 @@ class OpsRoutesMixin:
         )
 
     def _post_merge_log(self):
-        log_path = LOGS_DIR / "merge.txt"
+        log_path = _paths.LOGS_DIR / "merge.txt"
         if log_path.exists():
             content = log_path.read_text(encoding="utf-8", errors="replace")
             self._serve_bytes(
@@ -536,7 +525,7 @@ class OpsRoutesMixin:
                 "application/json; charset=utf-8")
             return
         # 폴더 존재 검증
-        missing = [g for g in groups if not (GENERATED_DIR / g).is_dir()]
+        missing = [g for g in groups if not (_paths.GENERATED_DIR / g).is_dir()]
         if missing:
             self._serve_bytes(
                 json.dumps({"ok": False, "error": f"존재하지 않는 폴더: {', '.join(missing)}"},
@@ -546,20 +535,20 @@ class OpsRoutesMixin:
 
         # M-1(P107): heal_count 리셋은 RESETTABLE 상태에서만.
         # M-4(P121): RESETTABLE_PARALLEL_STATUSES 단일 소스 사용.
-        if QUICK_STATE_PATH.exists():
-            _quick_status = (load_json(QUICK_STATE_PATH) or {}).get("status", "")
+        if _paths.QUICK_STATE.exists():
+            _quick_status = (load_json(_paths.QUICK_STATE) or {}).get("status", "")
             if _quick_status in RESETTABLE_PARALLEL_STATUSES:
-                _safe_update_json(QUICK_STATE_PATH, lambda s: {**s, "heal_count": 0})
+                _safe_update_json(_paths.QUICK_STATE, lambda s: {**s, "heal_count": 0})
 
-        log_path = LOGS_DIR / "quick_run.txt"
-        merge_script = PROJECT_ROOT / "parallel" / "99_merge.py"
+        log_path = _paths.LOGS_DIR / "quick_run.txt"
+        merge_script = _paths.PROJECT_ROOT / "parallel" / "99_merge.py"
         log_file = open(log_path, "w", encoding="utf-8")
         no_heal = body.get("no_heal", False)
         cmd = [PYTHON_EXE, "-u", str(merge_script), "--quick", "--group"] + groups
         if no_heal:
             cmd.append("--no-heal")
         proc = sp.Popen(
-            cmd, cwd=str(PROJECT_ROOT),
+            cmd, cwd=str(_paths.PROJECT_ROOT),
             stdout=log_file, stderr=sp.STDOUT,
         )
         _register_spawned_proc(proc, tag="run_quick")  # P77: tag 등록

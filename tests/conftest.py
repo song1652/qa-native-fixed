@@ -15,8 +15,9 @@ _video_paths: dict = {}     # test_name -> renamed video file path (실패 TC만
 def browser_instance():
     import os
     headless = os.environ.get("HEADED", "0") != "1"
+    slow_mo = int(os.environ.get("SLOW_MO", "0"))
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=headless)
+        browser = p.chromium.launch(headless=headless, slow_mo=slow_mo)
         yield browser
         browser.close()
 

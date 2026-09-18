@@ -16,13 +16,7 @@ import re
 from datetime import datetime
 from pathlib import Path
 
-from _paths import (
-    PROJECT_ROOT,
-    IMPORT_DIR,
-    TESTCASES_DIR,
-    IMPORT_SESSIONS_DIR,
-    IMPORT_SNAPSHOTS_DIR,
-)
+import _paths
 from _validators import is_safe_filename
 from dash_state import load_json
 from dash_excel import _list_excel_sheets, _parse_excel_sheet, _write_tc_files
@@ -43,7 +37,7 @@ class ImportRoutesMixin:
 
     def _get_import_files(self):
         """GET /api/import/files — 메타데이터 포함 파일 목록 (S2 확장)."""
-        if not IMPORT_DIR.exists():
+        if not _paths.IMPORT_DIR.exists():
             # import/ 폴더가 없으면 빈 배열 반환 (FE 오류 방지)
             self._serve_bytes(
                 json.dumps({"ok": True, "files": []}, ensure_ascii=False).encode("utf-8"),
@@ -55,7 +49,7 @@ class ImportRoutesMixin:
         from _excel_import import get_file_metadata  # type: ignore[import]
 
         files = []
-        for f in sorted(IMPORT_DIR.glob("*.xlsx")):
+        for f in sorted(_paths.IMPORT_DIR.glob("*.xlsx")):
             file_id = _hashlib.sha256(f.name.encode("utf-8")).hexdigest()[:8]
             try:
                 meta = get_file_metadata(f)
@@ -85,7 +79,7 @@ class ImportRoutesMixin:
                 b'{"ok":false,"error":"file parameter required"}',
                 "application/json; charset=utf-8")
             return
-        fpath = IMPORT_DIR / fname
+        fpath = _paths.IMPORT_DIR / fname
         if not fpath.exists():
             self._serve_bytes(
                 json.dumps({"ok": False, "error": f"{fname} not found"},
@@ -121,7 +115,7 @@ class ImportRoutesMixin:
                 b'{"ok":false,"error":"invalid file parameter"}',
                 "application/json; charset=utf-8")
             return
-        fpath = IMPORT_DIR / fname
+        fpath = _paths.IMPORT_DIR / fname
         if not fpath.exists():
             self._serve_bytes(
                 json.dumps({"ok": False, "error": f"{fname} not found"},
@@ -137,7 +131,7 @@ class ImportRoutesMixin:
                     continue
                 cases = _parse_excel_sheet(wb, sn)
                 folder_name = re.sub(r'\s+', '_', sn.strip().lower())
-                out_dir = TESTCASES_DIR / folder_name
+                out_dir = _paths.TESTCASES_DIR / folder_name
                 # 기존 파일 정리
                 if out_dir.exists():
                     for old in out_dir.glob("tc_*.md"):
@@ -191,7 +185,7 @@ class ImportRoutesMixin:
 
         try:
             run = create_preview(
-                _read_body(self), IMPORT_DIR, TESTCASES_DIR, IMPORT_SESSIONS_DIR,
+                _read_body(self), _paths.IMPORT_DIR, _paths.TESTCASES_DIR, _paths.IMPORT_SESSIONS_DIR,
             )
         except ImportRunError as exc:
             self._import_error_v2(exc)
@@ -253,8 +247,8 @@ class ImportRoutesMixin:
             return
         try:
             result = commit_run(
-                run_id, IMPORT_DIR, TESTCASES_DIR, IMPORT_SESSIONS_DIR,
-                IMPORT_SNAPSHOTS_DIR, PROJECT_ROOT, idempotency_key, decisions, policy,
+                run_id, _paths.IMPORT_DIR, _paths.TESTCASES_DIR, _paths.IMPORT_SESSIONS_DIR,
+                _paths.IMPORT_SNAPSHOTS_DIR, _paths.PROJECT_ROOT, idempotency_key, decisions, policy,
             )
         except ImportRunError as exc:
             self._import_error_v2(exc)
@@ -275,7 +269,7 @@ class ImportRoutesMixin:
             if not is_safe_filename(snap_id):
                 self._import_error_v2(ImportRunError("invalid snapshot_id", "INVALID_REQUEST"))
                 return
-            snaps_root = IMPORT_SNAPSHOTS_DIR.resolve()
+            snaps_root = _paths.IMPORT_SNAPSHOTS_DIR.resolve()
             manifest = (snaps_root / snap_id / "manifest.json").resolve()
             if not manifest.is_relative_to(snaps_root):
                 self._import_error_v2(ImportRunError("invalid snapshot_id", "INVALID_REQUEST"))
@@ -287,8 +281,8 @@ class ImportRoutesMixin:
             return
         try:
             result = rollback_run(
-                run_id, IMPORT_SESSIONS_DIR, IMPORT_SNAPSHOTS_DIR, PROJECT_ROOT,
-                TESTCASES_DIR,
+                run_id, _paths.IMPORT_SESSIONS_DIR, _paths.IMPORT_SNAPSHOTS_DIR, _paths.PROJECT_ROOT,
+                _paths.TESTCASES_DIR,
             )
         except ImportRunError as exc:
             self._import_error_v2(exc)
@@ -304,8 +298,8 @@ class ImportRoutesMixin:
         run_id = path.removeprefix("/api/import/runs/").removesuffix("/rollback").strip("/")
         try:
             result = rollback_run(
-                run_id, IMPORT_SESSIONS_DIR, IMPORT_SNAPSHOTS_DIR, PROJECT_ROOT,
-                TESTCASES_DIR,
+                run_id, _paths.IMPORT_SESSIONS_DIR, _paths.IMPORT_SNAPSHOTS_DIR, _paths.PROJECT_ROOT,
+                _paths.TESTCASES_DIR,
             )
         except ImportRunError as exc:
             self._import_error_v2(exc)
@@ -322,7 +316,7 @@ class ImportRoutesMixin:
         skipped_csv = relative.endswith("/skipped.csv")
         run_id = relative.removesuffix("/skipped.csv") if skipped_csv else relative
         try:
-            run = load_run(IMPORT_SESSIONS_DIR, run_id)
+            run = load_run(_paths.IMPORT_SESSIONS_DIR, run_id)
         except ImportRunError as exc:
             self._import_error_v2(exc)
             return
@@ -352,7 +346,6 @@ class ImportRoutesMixin:
     # ── 프로필 CRUD ───────────────────────────────────────────────
 
     def _delete_import_profile_v2(self, profile_id: str):
-        from _paths import IMPORT_PROFILES_PATH
         from _import_commit import ImportRunError
 
         if not is_safe_filename(profile_id):
@@ -367,7 +360,7 @@ class ImportRoutesMixin:
                     raise ImportRunError("profile not found", "PROFILE_NOT_FOUND")
                 data["profiles"] = remaining
                 return profile_id
-            _update_profiles_locked(IMPORT_PROFILES_PATH, mutate)
+            _update_profiles_locked(_paths.IMPORT_PROFILES_PATH, mutate)
         except ImportRunError as exc:
             self._import_error_v2(exc, 404)
             return
@@ -377,7 +370,6 @@ class ImportRoutesMixin:
         )
 
     def _put_import_profile_v2(self, profile_id: str):
-        from _paths import IMPORT_PROFILES_PATH
         from _import_commit import ImportRunError
 
         if not is_safe_filename(profile_id):
@@ -416,7 +408,7 @@ class ImportRoutesMixin:
                     profile["mappings"] = body["mappings"]
                 profile["updated_at"] = datetime.now().isoformat()
                 return profile
-            profile = _update_profiles_locked(IMPORT_PROFILES_PATH, mutate)
+            profile = _update_profiles_locked(_paths.IMPORT_PROFILES_PATH, mutate)
         except ImportRunError as exc:
             self._import_error_v2(exc, 404 if exc.code == "PROFILE_NOT_FOUND" else 409)
             return
@@ -427,9 +419,8 @@ class ImportRoutesMixin:
 
     def _get_import_profiles_v2(self):
         from _import_commit import ImportRunError
-        from _paths import IMPORT_PROFILES_PATH
         try:
-            data = _read_profiles_locked(IMPORT_PROFILES_PATH)
+            data = _read_profiles_locked(_paths.IMPORT_PROFILES_PATH)
         except ImportRunError as exc:
             self._import_error_v2(exc, 500)
             return
@@ -441,7 +432,6 @@ class ImportRoutesMixin:
 
     def _post_import_profiles_v2(self):
         import secrets
-        from _paths import IMPORT_PROFILES_PATH
         from _import_commit import ImportRunError
 
         body = _read_body(self)
@@ -462,7 +452,7 @@ class ImportRoutesMixin:
                            "mappings": mappings, "created_at": datetime.now().isoformat()}
                 profiles.append(profile)
                 return profile
-            profile = _update_profiles_locked(IMPORT_PROFILES_PATH, mutate)
+            profile = _update_profiles_locked(_paths.IMPORT_PROFILES_PATH, mutate)
         except ImportRunError as exc:
             self._import_error_v2(exc, 409)
             return
@@ -474,7 +464,6 @@ class ImportRoutesMixin:
 
     def _post_import_profiles_update(self):
         """POST /api/import/profiles/update — 프로필 이름 또는 매핑 수정."""
-        from _paths import IMPORT_PROFILES_PATH
         from _import_commit import ImportRunError
 
         body = _read_body(self)
@@ -529,7 +518,7 @@ class ImportRoutesMixin:
                 target["updated_at"] = datetime.now().isoformat()
                 return dict(target)
 
-            updated = _update_profiles_locked(IMPORT_PROFILES_PATH, mutate)
+            updated = _update_profiles_locked(_paths.IMPORT_PROFILES_PATH, mutate)
         except ImportRunError as exc:
             self._import_error_v2(exc, 404 if exc.code == "PROFILE_NOT_FOUND" else 409)
             return
@@ -542,7 +531,6 @@ class ImportRoutesMixin:
 
     def _post_import_profiles_delete(self):
         """POST /api/import/profiles/delete — 프로필 삭제 (DELETE 대안)."""
-        from _paths import IMPORT_PROFILES_PATH
         from _import_commit import ImportRunError
 
         body = _read_body(self)
@@ -564,7 +552,7 @@ class ImportRoutesMixin:
                 data["profiles"] = remaining
                 return profile_id
 
-            _update_profiles_locked(IMPORT_PROFILES_PATH, mutate)
+            _update_profiles_locked(_paths.IMPORT_PROFILES_PATH, mutate)
         except ImportRunError as exc:
             self._import_error_v2(exc, 404)
             return
@@ -600,7 +588,7 @@ class ImportRoutesMixin:
             return
 
         # 경로 봉쇄 (P66 패턴)
-        _sessions_root = IMPORT_SESSIONS_DIR.resolve()
+        _sessions_root = _paths.IMPORT_SESSIONS_DIR.resolve()
         session_path = (_sessions_root / f"{session_id}.json").resolve()
         if not session_path.is_relative_to(_sessions_root):
             self._serve_bytes(

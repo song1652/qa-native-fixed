@@ -35,6 +35,13 @@ _spec = importlib.util.spec_from_file_location(
 _serve = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_serve)
 
+# _post_run_quick 등은 routes_ops.py(Mixin)에 정의돼 있고, 그 모듈이
+# `from dash_http import _read_body`로 자체 바인딩을 갖는다. patch.object는
+# 실제로 호출되는 이름이 있는 모듈을 대상으로 해야 하므로 _serve가 아니라
+# routes_ops를 직접 가져와 패치 대상으로 쓴다.
+import routes_ops as _routes_ops
+import _paths
+
 ALLOWED_ORIGIN = _serve.ALLOWED_ORIGIN          # "http://localhost:8766"
 QAHandler = _serve.DashboardHandler
 _register_spawned_proc = _serve._register_spawned_proc  # P61: proc 기반 등록 함수
@@ -294,20 +301,20 @@ class TestQuickHealCountReset:
         body = {"groups": ["login"]}
 
         with (
-            patch.object(_serve, "QUICK_STATE_PATH", quick_json),
-            patch.object(_serve, "_safe_update_json", side_effect=fake_update),
-            patch.object(_serve, "GENERATED_DIR", tmp_path),
+            patch.object(_paths, "QUICK_STATE", quick_json),
+            patch.object(_routes_ops, "_safe_update_json", side_effect=fake_update),
+            patch.object(_paths, "GENERATED_DIR", tmp_path),
             patch.object(_serve, "_register_spawned_pid"),
             patch("subprocess.Popen") as mock_popen,
             patch.object(handler, "_serve_bytes"),
-            patch.object(_serve, "_read_body", return_value=body),
+            patch.object(_routes_ops, "_read_body", return_value=body),
         ):
             # GENERATED_DIR / "login" 폴더 생성 (폴더 존재 검증 통과)
             (tmp_path / "login").mkdir()
             # LOGS_DIR mock
             logs_dir = tmp_path / "logs"
             logs_dir.mkdir()
-            patch.object(_serve, "LOGS_DIR", logs_dir).start()
+            patch.object(_paths, "LOGS_DIR", logs_dir).start()
             mock_proc = MagicMock()
             mock_proc.pid = 12345
             mock_popen.return_value = mock_proc
@@ -334,18 +341,18 @@ class TestQuickHealCountReset:
         body = {"groups": ["login"]}
 
         with (
-            patch.object(_serve, "QUICK_STATE_PATH", quick_json),
-            patch.object(_serve, "_safe_update_json", side_effect=lambda *a, **k: update_called.append(True)),
-            patch.object(_serve, "GENERATED_DIR", tmp_path),
+            patch.object(_paths, "QUICK_STATE", quick_json),
+            patch.object(_routes_ops, "_safe_update_json", side_effect=lambda *a, **k: update_called.append(True)),
+            patch.object(_paths, "GENERATED_DIR", tmp_path),
             patch.object(_serve, "_register_spawned_pid"),
             patch("subprocess.Popen") as mock_popen,
             patch.object(handler, "_serve_bytes"),
-            patch.object(_serve, "_read_body", return_value=body),
+            patch.object(_routes_ops, "_read_body", return_value=body),
         ):
             (tmp_path / "login").mkdir()
             logs_dir = tmp_path / "logs"
             logs_dir.mkdir()
-            patch.object(_serve, "LOGS_DIR", logs_dir).start()
+            patch.object(_paths, "LOGS_DIR", logs_dir).start()
             mock_proc = MagicMock()
             mock_proc.pid = 99
             mock_popen.return_value = mock_proc
@@ -375,18 +382,18 @@ class TestQuickHealCountReset:
         body = {"groups": ["g1"]}
 
         with (
-            patch.object(_serve, "QUICK_STATE_PATH", quick_json),
-            patch.object(_serve, "_safe_update_json", side_effect=fake_update),
-            patch.object(_serve, "GENERATED_DIR", tmp_path),
+            patch.object(_paths, "QUICK_STATE", quick_json),
+            patch.object(_routes_ops, "_safe_update_json", side_effect=fake_update),
+            patch.object(_paths, "GENERATED_DIR", tmp_path),
             patch.object(_serve, "_register_spawned_pid"),
             patch("subprocess.Popen") as mock_popen,
             patch.object(handler, "_serve_bytes"),
-            patch.object(_serve, "_read_body", return_value=body),
+            patch.object(_routes_ops, "_read_body", return_value=body),
         ):
             (tmp_path / "g1").mkdir()
             logs_dir = tmp_path / "logs"
             logs_dir.mkdir()
-            patch.object(_serve, "LOGS_DIR", logs_dir).start()
+            patch.object(_paths, "LOGS_DIR", logs_dir).start()
             mock_popen.return_value = MagicMock(pid=1)
 
             handler._post_run_quick()

@@ -42,6 +42,18 @@ function renderSession(session, tabId, idx) {
   return `<div class="session" id="sess-${key}"><button type="button" class="session-header" onclick="toggleSession('${tabId}',${idx})" aria-expanded="${!collapsed}"><span class="session-stage">${stageLabel}</span><span class="status-badge ${statusClass}">${statusLabel}</span><span class="session-toggle" id="stgl-${key}" aria-hidden="true">${collapsed ? '&#9654;' : '&#9660;'}</span></button><div class="messages${collapsed ? ' collapsed' : ''}" id="msgs-${key}">${msgsHtml}</div>${approveBar}</div>`;
 }
 
+function renderTeamNew(main) {
+  main.innerHTML = `
+    <div style="max-width:520px;margin:48px auto;padding:0 24px;">
+      <h2 style="font-size:18px;font-weight:700;margin-bottom:8px;color:var(--text-main);">새 토론 주제</h2>
+      <p style="font-size:13px;color:var(--text-dim);margin-bottom:20px;line-height:1.6;">주제를 입력하면 사수/부사수 멀티라운드 토론이 시작됩니다.</p>
+      <textarea id="new-topic-input" class="new-topic-input" placeholder="주제를 입력하세요..." rows="4" style="width:100%;"></textarea>
+      <button id="new-topic-btn" class="new-topic-btn" onclick="submitTopic()" style="width:100%;margin-top:12px;">토론 시작</button>
+      <div class="topic-status" id="topic-status"></div>
+    </div>
+  `;
+}
+
 function renderTeamView(main) {
   if (!lastData) return;
   let sessions = [];
@@ -51,7 +63,7 @@ function renderTeamView(main) {
     sessions = ts[idx] ? [ts[idx]] : [];
   }
   if (!sessions.length) {
-    main.innerHTML = '<div class="empty"><div class="empty-icon">&#x1F4AC;</div><h2>토론 대기 중</h2><p>왼쪽 패널에서 주제를 입력하고 토론을 시작하세요</p></div>';
+    main.innerHTML = '<div class="empty"><div class="empty-icon">&#x1F4AC;</div><h2>토론 대기 중</h2><p>사이드바의 <strong>새 토론 시작</strong>을 클릭해 주제를 입력하세요</p></div>';
     return;
   }
   main.innerHTML = sessions.map((s, i) => renderSession(s, currentView, i)).join('');

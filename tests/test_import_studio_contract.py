@@ -20,6 +20,7 @@ from tests.import_studio_test_support import (
 MAPPING = {
     "tc_id": "A열",
     "title": "B열",
+    "precondition": "H열",  # 픽스처 워크북에 없는 열 — _excel_import.parse_sheet가 빈 문자열로 처리
     "steps": "C열",
     "expected": "D열",
     "priority": "E열",

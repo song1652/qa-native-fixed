@@ -12,18 +12,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from _paths import (
-    PIPELINE_STATE as STATE_PATH,
-    QUICK_STATE as QUICK_STATE_PATH,
-    RUN_HISTORY as RUN_HISTORY_PATH,
-    FLAKY_TESTS_PATH,
-    HEAL_STATS_PATH,
-    REPORTS_DIR,
-    TESTCASES_DIR,
-    SCREENSHOTS_DIR,
-    VIDEOS_DIR,
-    DIALOG_PATH,
-)
+import _paths
 from _validators import is_safe_filename
 from dash_state import (
     build_dialogs,
@@ -64,10 +53,10 @@ class GetRoutesMixin:
         self._serve_sse()
 
     def _get_dialog(self):
-        self._serve_json(DIALOG_PATH)
+        self._serve_json(_paths.DIALOG_PATH)
 
     def _get_state(self):
-        self._serve_json(STATE_PATH)
+        self._serve_json(_paths.PIPELINE_STATE)
 
     def _get_pages(self):
         pages = list_pages()
@@ -100,7 +89,7 @@ class GetRoutesMixin:
         )
 
     def _get_quick_state(self):
-        payload = load_json(QUICK_STATE_PATH) or {}
+        payload = load_json(_paths.QUICK_STATE) or {}
         payload = _enrich_group_results(payload)
         self._serve_bytes(
             json.dumps(payload, ensure_ascii=False).encode("utf-8"),
@@ -108,21 +97,21 @@ class GetRoutesMixin:
         )
 
     def _get_run_history(self):
-        payload = load_json(RUN_HISTORY_PATH) or []
+        payload = load_json(_paths.RUN_HISTORY) or []
         self._serve_bytes(
             json.dumps(payload, ensure_ascii=False).encode("utf-8"),
             "application/json; charset=utf-8"
         )
 
     def _get_flaky_tests(self):
-        payload = load_json(FLAKY_TESTS_PATH) or {"flaky": []}
+        payload = load_json(_paths.FLAKY_TESTS_PATH) or {"flaky": []}
         self._serve_bytes(
             json.dumps(payload, ensure_ascii=False).encode("utf-8"),
             "application/json; charset=utf-8"
         )
 
     def _get_heal_stats(self):
-        payload = load_json(HEAL_STATS_PATH) or {}
+        payload = load_json(_paths.HEAL_STATS_PATH) or {}
         self._serve_bytes(
             json.dumps(payload, ensure_ascii=False).encode("utf-8"),
             "application/json; charset=utf-8"
@@ -169,7 +158,7 @@ class GetRoutesMixin:
             )
             return
 
-        reports_root = REPORTS_DIR.resolve()
+        reports_root = _paths.REPORTS_DIR.resolve()
         targets: list[tuple[str, Path]] = []
         seen: set[str] = set()
         for name in names:
@@ -268,7 +257,7 @@ class GetRoutesMixin:
         # tc 번호 추출: tc_01_ / tc_CL_01_ → testcases/{group}/tc_*_.md 검색
         m = _re.match(r"(tc_(?:[A-Za-z]+_)?\d+)_", py_file)
         tc_prefix = m.group(1) if m else None
-        tc_dir = TESTCASES_DIR / group
+        tc_dir = _paths.TESTCASES_DIR / group
         fpath = None
         if tc_prefix and tc_dir.exists():
             matches = sorted(tc_dir.glob(f"{tc_prefix}_*.md"))
@@ -295,7 +284,7 @@ class GetRoutesMixin:
             self.send_response(403)
             self.end_headers()
             return
-        reports_root = REPORTS_DIR.resolve()
+        reports_root = _paths.REPORTS_DIR.resolve()
         fpath = reports_root / fname
         resolved_path = fpath.resolve(strict=False)
         if (

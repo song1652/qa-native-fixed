@@ -54,18 +54,13 @@
           </div>
         </div>
 
-        <!-- Import 섹션 -->
-        <div class="sidebar-section" id="import-section">
-          <div class="sidebar-label">Import</div>
-          <div class="sidebar-item" id="tab-import_studio" onclick="selectView('import_studio')">
-            <div class="sidebar-dot-spacer"></div>
-            <span class="sidebar-name">Import Studio</span>
-          </div>
-        </div>
-
         <!-- 파이프라인 섹션 -->
         <div class="sidebar-section">
           <div class="sidebar-label">파이프라인</div>
+          <div class="sidebar-item" id="tab-quick_run" onclick="selectView('quick_run')">
+            <div class="sidebar-dot" id="dot-quick"></div>
+            <span class="sidebar-name">빠른 실행</span>
+          </div>
           <div class="sidebar-item" id="tab-single_pipeline" onclick="selectView('single_pipeline')">
             <div class="sidebar-dot" id="dot-single"></div>
             <span class="sidebar-name">단일 파이프라인</span>
@@ -73,10 +68,6 @@
           <div class="sidebar-item" id="tab-parallel_pipeline" onclick="selectView('parallel_pipeline')">
             <div class="sidebar-dot" id="dot-parallel"></div>
             <span class="sidebar-name">병렬 파이프라인</span>
-          </div>
-          <div class="sidebar-item" id="tab-quick_run" onclick="selectView('quick_run')">
-            <div class="sidebar-dot" id="dot-quick"></div>
-            <span class="sidebar-name">빠른 실행</span>
           </div>
         </div>
 
@@ -99,14 +90,9 @@
             팀 토론
             <button onclick="resetTeamDiscussion()" style="font-size:10px;padding:2px 7px;background:transparent;border:1px solid rgba(200,80,80,0.4);border-radius:4px;color:rgba(220,100,100,0.8);cursor:pointer;line-height:1.4;" title="팀 토론 초기화">리셋</button>
           </div>
-          <div style="padding: 6px 12px 10px;">
-            <div
-              style="font-size:10px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">
-              새 토론 주제</div>
-            <textarea class="new-topic-input" id="new-topic-input" placeholder="주제를 입력하세요..." rows="3"></textarea>
-            <button class="new-topic-btn" id="new-topic-btn" onclick="submitTopic()">토론 시작</button>
-            <div class="topic-status" id="topic-status"></div>
-            <div style="font-size:10px;color:var(--text-dim);margin-top:6px;line-height:1.5;"></div>
+          <div class="sidebar-item" id="tab-team_new" onclick="selectView('team_new')">
+            <div class="sidebar-dot-spacer"></div>
+            <span class="sidebar-name">새 토론 시작</span>
           </div>
           <div id="team-tabs"></div>
         </div>
@@ -117,6 +103,10 @@
           <div class="sidebar-item" id="tab-pages" onclick="selectView('pages')">
             <div class="sidebar-dot-spacer"></div>
             <span class="sidebar-name">페이지 URL 관리</span>
+          </div>
+          <div class="sidebar-item" id="tab-import_studio" onclick="selectView('import_studio')">
+            <div class="sidebar-dot-spacer"></div>
+            <span class="sidebar-name">Import Studio</span>
           </div>
         </div>
       </div>
@@ -150,7 +140,12 @@
   <script src="/static/js/views/pages.js"></script>
   <script src="/static/js/views/reports.js"></script>
   <script src="/static/js/views/team.js"></script>
-  <script src="/static/js/import-studio.js?v=20260904-2"></script>
+  <script src="/static/js/import-studio/state.js?v=20260918-1"></script>
+  <script src="/static/js/import-studio/utils.js?v=20260918-1"></script>
+  <script src="/static/js/import-studio/api.js?v=20260918-1"></script>
+  <script src="/static/js/import-studio/render.js?v=20260918-1"></script>
+  <script src="/static/js/import-studio/handlers.js?v=20260918-1"></script>
+  <script src="/static/js/import-studio/main.js?v=20260918-1"></script>
   <script src="/static/js/router.js"></script>
   <script src="/static/js/app.js"></script>
 </body>

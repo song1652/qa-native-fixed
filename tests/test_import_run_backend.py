@@ -20,6 +20,7 @@ import _import_commit as backend
 MAPPINGS = {
     "tc_id": "A열", "title": "B열", "steps": "C열", "expected": "D열",
     "group": "E열", "priority": "F열", "tags": "G열",
+    "precondition": "H열",  # 픽스처 워크북에 없는 열 — _excel_import.parse_sheet가 빈 문자열로 처리
 }
 
 
@@ -272,9 +273,13 @@ def test_conflicts_require_exact_explicit_exclude_decisions(roots):
     run = preview(roots, [{"file_id": "a.xlsx", "sheet_name": "main", "mappings": MAPPINGS}])
     args = (run["run_id"], roots["imports"], roots["testcases"], roots["runs"],
             roots["snapshots"], roots["project"])
+    # A decision that doesn't exactly match the conflicting row (file/sheet/
+    # source_row/tc_id) must be rejected rather than silently ignored.
+    bad_decision = [{"file_name": "a.xlsx", "sheet_name": "main", "source_row": 999,
+                      "tc_id": "A_01", "action": "exclude"}]
     with pytest.raises(backend.ImportRunError) as error:
-        backend.commit_run(*args)
-    assert error.value.code == "UNRESOLVED_CONFLICT"
+        backend.commit_run(*args, decisions=bad_decision)
+    assert error.value.code == "INVALID_DECISIONS"
     decision = [{"file_name": "a.xlsx", "sheet_name": "main", "source_row": 2,
                  "tc_id": "A_01", "action": "exclude"}]
     result = backend.commit_run(*args, decisions=decision)
@@ -492,7 +497,7 @@ def test_preview_before_contains_existing_comparison_fields(roots):
     run = preview(roots, [{"file_id": "a.xlsx", "sheet_name": "main", "mappings": MAPPINGS}])
 
     assert run["rows"][0]["before"] == {
-        "title": "Old title", "steps": "old steps", "expected": "old expected",
+        "title": "Old title", "precondition": "", "steps": "old steps", "expected": "old expected",
         "priority": "low", "tags": ["old", "stable"], "group": "g",
         "hash": backend.load_existing_testcases(roots["testcases"])["A_01"]["hash"],
         "file_name": "tc_A_01_old.md",
