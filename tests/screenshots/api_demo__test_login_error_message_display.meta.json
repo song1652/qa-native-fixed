@@ -1,0 +1,27 @@
+{
+  "test_name": "test_login_error_message_display",
+  "group": "api_demo",
+  "url": "about:blank",
+  "timestamp": "2026-09-22T15:44:46.978194",
+  "screenshot_path": "tests/screenshots/api_demo__test_login_error_message_display.png",
+  "trace_path": "tests/traces/api_demo__test_login_error_message_display.zip",
+  "video_path": "tests/videos/api_demo__test_login_error_message_display.webm",
+  "console_errors": [
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+    },
+    {
+      "type": "error",
+      "text": "auth request failed TypeError: Cannot set properties of null (setting 'textContent')\n    at <anonymous>:7:66"
+    }
+  ],
+  "network_failures": [
+    {
+      "url": "https://api.internal.demo/auth/verify",
+      "method": "GET",
+      "status": 500,
+      "failure": "HTTP 500"
+    }
+  ]
+}

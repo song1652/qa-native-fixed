@@ -167,6 +167,7 @@ class DashboardHandler(                                            # Phase-4/5/6
         "/api/generated_groups": "_get_generated_groups",
         "/api/reports":          "_get_reports",
         "/api/testcase":         "_get_testcase",
+        "/api/testcase/failure_detail": "_get_test_failure_detail",
         "/api/import/files":     "_get_import_files",
         "/api/import/sheets":    "_get_import_sheets",
         "/api/import/profiles":     "_get_import_profiles_v2",
@@ -232,7 +233,9 @@ class DashboardHandler(                                            # Phase-4/5/6
             return
 
         if path.startswith("/videos/"):
-            self._get_artifact_file(path, "/videos/", VIDEOS_DIR, "video/mp4")
+            # conftest.py가 저장하는 실제 포맷은 Playwright 기본값인 WebM(VP8) —
+            # mp4로 잘못 표기하던 버그를 고쳤다 (P: 실제 파일 확인해 발견).
+            self._get_artifact_file(path, "/videos/", VIDEOS_DIR, "video/webm")
             return
 
         if path.startswith("/static/"):

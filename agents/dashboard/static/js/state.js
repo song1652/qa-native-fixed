@@ -49,7 +49,7 @@ var _testDetailContent = {};
 var _logTimers = {};
 
 // Quick Run 상태
-var _quickRunState = { running: false, logVisible: false, logContent: '' };
+var _quickRunState = { running: false, logVisible: false, logContent: '', noHeal: true };
 
 // Reports 상태
 var _reportListState = { search: '', sort: 'newest', page: 1, selected: new Set(), busy: false };

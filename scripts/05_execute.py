@@ -23,7 +23,7 @@ from _paths import (
 )
 from _constants import DEFAULT_GENERATED_FILE, MAX_PYTEST_WORKERS
 from _pipeline_registry import Step  # P68: Step 상수 사용 — 문자열 리터럴 대신
-from result_parser import parse_results, parse_skip_messages, parse_durations
+from result_parser import parse_results, parse_skip_messages, parse_durations, parse_failure_messages
 from structured_log import slog
 from report_html import case_row as _case_row, build_report
 
@@ -479,6 +479,7 @@ def main():
 
     group_results = {}
     if test_results:
+        failure_messages = parse_failure_messages(report)
         gr = {"passed": 0, "failed": 0, "skipped": 0, "tests": []}
         for nodeid, outcome in test_results.items():
             if outcome == "passed":
@@ -492,6 +493,7 @@ def main():
                 "name": nodeid.split("::")[-1] if "::" in nodeid else nodeid,
                 "passed": outcome == "passed",
                 "outcome": outcome,
+                "error": failure_messages.get(nodeid, "") if outcome == "failed" else "",
             })
         group_results[group_name] = gr
 

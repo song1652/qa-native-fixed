@@ -76,7 +76,11 @@ def page(browser_instance, request):
         if outcome == "passed":
             Path(video_path_raw).unlink(missing_ok=True)
         else:
-            dest = video_dir / f"{group}__{test_name}.mp4"
+            # Playwright의 record_video_dir는 항상 WebM(VP8)으로만 녹화한다 —
+            # 재인코딩 없이 그냥 rename만 하므로 확장자도 실제 포맷인 .webm을
+            # 써야 한다. .mp4로 잘못 붙이면 Content-Type이 실제 콘텐츠와
+            # 안 맞아 엄격한 플레이어(Safari 등)에서 재생이 깨질 수 있다.
+            dest = video_dir / f"{group}__{test_name}.webm"
             try:
                 Path(video_path_raw).rename(dest)
                 _video_paths[test_name] = str(dest)

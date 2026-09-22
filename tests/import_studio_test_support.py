@@ -86,6 +86,9 @@ def configure_isolated_project(serve: Any, project_root: Path) -> None:
         "IMPORT_SESSIONS_DIR": project_root / "state" / "import_sessions",
         "IMPORT_SNAPSHOTS_DIR": project_root / "state" / "import_snapshots",
         "IMPORT_PROFILES_PATH": project_root / "state" / "import_profiles.json",
+        "PIPELINE_STATE": project_root / "state" / "pipeline.json",
+        "PARALLEL_STATE": project_root / "state" / "parallel.json",
+        "QUICK_STATE": project_root / "state" / "quick.json",
     }
     for name, value in paths.items():
         if hasattr(serve, name):

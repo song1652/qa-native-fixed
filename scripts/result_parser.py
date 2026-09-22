@@ -35,6 +35,41 @@ def parse_durations(report: dict) -> dict:
     return out
 
 
+def parse_failure_messages(report: dict) -> dict:
+    """JSON 리포트 → {nodeid: failure_message} (실패 케이스만).
+
+    longrepr에서 실제 예외 요약 한 줄만 추출한다. pytest의 "E   " 접두
+    줄들 중 *첫 번째* 줄이 항상 요약이다 (예: "E   AssertionError: ...").
+    이후 "E   " 줄들은 Playwright expect() 실패의 "Actual value:"/
+    "Call log:"/"Aria snapshot:" 같은 부가 정보라 마지막 줄을 쓰면
+    엉뚱한 내용(예: "E   - button "로그인"")을 요약으로 골라버린다 —
+    실제 데모 실행에서 확인된 문제.
+    "E   " 줄이 전혀 없으면 마지막 비공백 줄로 폴백한다.
+    """
+    messages = {}
+    for t in report.get("tests", []):
+        outcome = t.get("outcome")
+        if outcome not in ("passed", "skipped"):
+            outcome = "failed"
+        if outcome != "failed":
+            continue
+        nodeid = t.get("nodeid", "")
+        if not nodeid:
+            continue
+        for phase in ("call", "setup"):
+            phase_data = t.get(phase) or {}
+            longrepr = phase_data.get("longrepr", "")
+            if not longrepr:
+                continue
+            lines = [ln.strip() for ln in str(longrepr).splitlines() if ln.strip()]
+            if not lines:
+                continue
+            first_e_line = next((ln for ln in lines if ln.startswith("E ") or ln == "E"), None)
+            messages[nodeid] = first_e_line if first_e_line else lines[-1]
+            break
+    return messages
+
+
 def parse_skip_messages(report: dict) -> dict:
     """JSON 리포트 → {nodeid: skip_reason} (스킵 케이스만).
 

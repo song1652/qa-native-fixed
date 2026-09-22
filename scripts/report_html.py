@@ -134,7 +134,7 @@ def _artifact_http_path(abs_path: str, subdir: str) -> str:
     """절대 파일 경로 → serve.py HTTP 상대 경로 변환.
 
     /…/tests/screenshots/foo.png  →  /screenshots/foo.png
-    /…/tests/videos/foo.mp4       →  /videos/foo.mp4
+    /…/tests/videos/foo.webm      →  /videos/foo.webm
     """
     p = Path(abs_path)
     return f"/{subdir}/{p.name}"
@@ -416,7 +416,7 @@ def report_css() -> str:
   @keyframes fadeIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
   .detail-row{display:flex;gap:16px;margin-top:10px;font-size:12px;line-height:1.6}
   .detail-label{min-width:90px;font-weight:600;color:var(--text3);text-transform:uppercase;font-size:10px;letter-spacing:.5px;padding-top:2px;flex-shrink:0}
-  .detail-val{color:var(--text2);font-family:'JetBrains Mono',monospace}
+  .detail-val{color:var(--text2)}
   .steps-list{padding-left:16px;margin:0}
   .steps-list li{margin:3px 0}
   .empty-msg{padding:16px 20px;font-size:13px;color:var(--text3)}

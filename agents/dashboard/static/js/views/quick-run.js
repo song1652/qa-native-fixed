@@ -86,7 +86,7 @@ function renderQuickRun(main) {
             ${_quickRunState.running ? '실행 중...' : '테스트 실행'}
           </button>
           <label style="font-size:12px;color:var(--text-dim);cursor:pointer;display:flex;align-items:center;gap:4px;">
-            <input type="checkbox" id="quick-no-heal"> 힐링 생략
+            <input type="checkbox" id="quick-no-heal" onchange="_quickRunState.noHeal = this.checked" ${_quickRunState.noHeal ? 'checked' : ''}> 힐링 생략
           </label>
           ${!groups.length ? '<span style="font-size:11px;color:var(--danger);">tests/generated/ 에 생성된 테스트가 없습니다</span>' : ''}
         </div>
@@ -253,7 +253,7 @@ async function quickReset() {
     });
     const data = await res.json();
     if (data.ok) {
-      _quickRunState = { running: false, logVisible: false, logContent: '', pid: null, _checkDoneTimer: null };
+      _quickRunState = { running: false, logVisible: false, logContent: '', pid: null, _checkDoneTimer: null, noHeal: _quickRunState.noHeal };
       showToast('빠른 실행 초기화 완료', 'success');
       await refreshAll();
     } else {

@@ -34,6 +34,7 @@ PARALLEL_STATE  = _PROJECT_ROOT / "state" / "parallel.json"
 SCREENSHOTS_DIR = _PROJECT_ROOT / "tests" / "screenshots"
 VIDEOS_DIR      = _PROJECT_ROOT / "tests" / "videos"
 TESTCASES_DIR   = _PROJECT_ROOT / "testcases"
+GENERATED_DIR   = _PROJECT_ROOT / "tests" / "generated"
 
 # ── 기본 설정 ────────────────────────────────────────────────────────────────
 DEFAULT_CONFIG = {
@@ -51,24 +52,45 @@ DEFAULT_CONFIG = {
 # ── TC 마크다운 파싱 ─────────────────────────────────────────────────────────
 
 def _find_tc_md(group: str, test_name: str) -> Path | None:
-    """테스트 함수명 → testcases/{group}/tc_{N}_*.md 매칭.
+    """테스트 함수명 → testcases/{group}/tc_{코드}_{번호}_*.md 매칭.
 
-    test_name 예: test_tc_01_customer_login_empty_field_validation
-    → testcases/customer_login/tc_01_*.md
+    프로젝트 컨벤션상 테스트 함수명은 `test_{english_snake_case}`라 tc 번호가
+    없다 — tc 번호는 생성된 .py 파일명(`tc_{그룹코드}_{번호}_*.py`)에만 있다.
+    그래서 tests/generated/{group}/ 에서 test_name이 정의된 파일을 먼저 찾고,
+    그 파일명의 `tc_{코드}_{번호}` 접두사로 testcases/{group}/의 .md를 매칭한다
+    (파일명 접두사는 .py/.md가 동일하지만 그 뒤 설명 부분은 다를 수 있다 —
+    예: tc_CL_01_customer_login_empty_fields_validation.py ↔
+    tc_CL_01_고객_로그인_빈_필드_유효성_검증.md).
     """
     import re as _re
     group_dir = TESTCASES_DIR / group
     if not group_dir.is_dir():
         return None
 
-    # test_name에서 tc 번호 추출 (tc_01, tc_02 ...)
-    m = _re.search(r"tc_(\d+)", test_name)
-    if not m:
-        return None
-    tc_num = m.group(1)
+    prefix = None
+    gen_dir = GENERATED_DIR / group
+    if gen_dir.is_dir():
+        for py_file in sorted(gen_dir.glob("tc_*.py")):
+            try:
+                text = py_file.read_text(encoding="utf-8")
+            except OSError:
+                continue
+            if _re.search(rf"^def {_re.escape(test_name)}\s*\(", text, _re.MULTILINE):
+                m = _re.match(r"(tc_(?:[A-Za-z]+_)?\d+)_", py_file.stem)
+                if m:
+                    prefix = m.group(1)
+                break
 
-    for md_file in sorted(group_dir.glob(f"tc_{tc_num}_*.md")):
-        return md_file
+    if prefix:
+        for md_file in sorted(group_dir.glob(f"{prefix}_*.md")):
+            return md_file
+
+    # 폴백: 함수명 자체에 tc 번호가 포함된 레거시 네이밍
+    m = _re.search(r"tc_(\d+)", test_name)
+    if m:
+        tc_num = m.group(1)
+        for md_file in sorted(group_dir.glob(f"tc_{tc_num}_*.md")):
+            return md_file
     return None
 
 
@@ -266,6 +288,34 @@ def _build_description(failure: dict, cfg: dict) -> dict:
     else:
         content.append(_adf_para("스크린샷/영상 첨부파일 참조"))
 
+    # ── 콘솔/네트워크 (실패 상세 화면과 동일한 meta.json 데이터 재사용) ──
+    # 이슈 본문이 너무 길어지지 않도록 전체 나열 대신 개수 + 핵심 요약만
+    # 넣는다 (전체 목록은 실패 상세 화면·trace에서 확인).
+    console_errors = failure.get("console_errors") or []
+    network_failures = failure.get("network_failures") or []
+    if console_errors or network_failures:
+        content.append(_adf_heading("🖥️ 콘솔 / 네트워크", 2))
+        _MAX_ITEMS = 5
+        if console_errors:
+            lines = [
+                (e.get("text") or "")[:150].splitlines()[0]
+                for e in console_errors[:_MAX_ITEMS]
+            ]
+            if len(console_errors) > _MAX_ITEMS:
+                lines.append(f"...외 {len(console_errors) - _MAX_ITEMS}건")
+            content.append(_adf_para(f"콘솔 에러 {len(console_errors)}건:"))
+            content.append(_adf_bullet(lines))
+        if network_failures:
+            lines = []
+            for n in network_failures[:_MAX_ITEMS]:
+                status = n.get("status")
+                tag = str(status) if status else (n.get("failure") or "실패")
+                lines.append(f"{n.get('method', '')} {n.get('url', '')} → {tag}")
+            if len(network_failures) > _MAX_ITEMS:
+                lines.append(f"...외 {len(network_failures) - _MAX_ITEMS}건")
+            content.append(_adf_para(f"네트워크 실패 {len(network_failures)}건:"))
+            content.append(_adf_bullet(lines))
+
     content += [
         _adf_heading("🔗 환경", 2),
         _adf_bullet([
@@ -391,20 +441,22 @@ def _scan_meta_files(group_filter: list[str] | None = None) -> list[dict]:
         video_path = meta.get("video_path", "")
         if not video_path:
             test_name = meta.get("test_name", "")
-            candidate = VIDEOS_DIR / f"{group}__{test_name}.mp4"
+            candidate = VIDEOS_DIR / f"{group}__{test_name}.webm"
             if candidate.exists():
                 video_path = str(candidate)
 
         failures.append({
-            "group":           group,
-            "test_name":       meta.get("test_name", ""),
-            "url":             meta.get("url", ""),
-            "screenshot_path": meta.get("screenshot_path", ""),
-            "trace_path":      meta.get("trace_path", ""),
-            "video_path":      video_path,
-            "error_msg":       "",   # conftest는 traceback을 meta에 저장 안 함 — 후속 개선 가능
-            "executed_at":     meta.get("timestamp", "")[:19].replace("T", " "),
-            "repro_rate":      "Always",
+            "group":            group,
+            "test_name":        meta.get("test_name", ""),
+            "url":              meta.get("url", ""),
+            "screenshot_path":  meta.get("screenshot_path", ""),
+            "trace_path":       meta.get("trace_path", ""),
+            "video_path":       video_path,
+            "error_msg":        "",   # conftest는 traceback을 meta에 저장 안 함 — 후속 개선 가능
+            "executed_at":      meta.get("timestamp", "")[:19].replace("T", " "),
+            "repro_rate":       "Always",
+            "console_errors":   meta.get("console_errors") or [],
+            "network_failures": meta.get("network_failures") or [],
         })
     return failures
 

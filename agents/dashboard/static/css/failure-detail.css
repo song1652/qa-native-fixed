@@ -1,0 +1,129 @@
+/* ── Failure Detail (실패 상세) — 파이프라인 화면 실패 TC 펼침 콘텐츠 ── */
+
+/* auto-fit 그리드는 masonry가 아니라서 카드 개수가 열 수로 안 나눠떨어지면
+   (7개 ÷ 4열 = 4+3) 마지막 줄 남는 칸이 빈 채로 남는다 — 실제로
+   콘솔/네트워크 줄 오른쪽에 빈 공간으로 나타났다. flex 2단으로 되돌리되
+   두 칼럼 다 flex-grow로 폭 100%를 나눠 갖게 해서, 이전처럼 컬럼 폭을
+   px로 고정했을 때처럼 남는 공간이 생기지 않게 한다 (해상도가 바뀌어도
+   두 칼럼의 합은 항상 컨테이너 폭과 같다). 각 칼럼 안에서는 카드를
+   세로로 쌓는다. */
+.fail-detail { padding: 14px 16px; background: var(--surface); border-top: 1px solid var(--border); }
+.fail-detail-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: flex-start;
+}
+.fail-col { flex: 1 1 320px; min-width: 0; }
+.fail-col > .fail-card + .fail-card { margin-top: 12px; }
+
+.fail-card {
+  background: rgba(22, 20, 50, 0.4);
+  border: 1px solid var(--border-glass, var(--border));
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+.fail-card-head {
+  display: flex; align-items: center; gap: 7px;
+  padding: 9px 12px; border-bottom: 1px solid var(--border);
+  font-size: 12px; font-weight: 600; color: var(--text);
+}
+.fail-card-head .fd-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.fail-card-head .fd-count {
+  margin-left: auto; font-size: 10.5px; font-weight: 600; color: var(--text-dim);
+  background: rgba(255,255,255,.06); padding: 1px 7px; border-radius: 999px;
+}
+.fail-card-body { padding: 12px; }
+.fail-card-empty { padding: 14px 12px; font-size: 11.5px; color: var(--text-dim); opacity: .6; }
+
+.fail-shot { display: block; width: 100%; cursor: zoom-in; border-bottom: 1px solid var(--border); }
+
+.fail-diff-label {
+  font-size: 10px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+  margin-bottom: 5px; display: block;
+}
+.fail-diff-label.expect { color: #34d399; }
+.fail-diff-label.actual { color: #f87171; }
+.fail-diff-value {
+  font-size: 12px; line-height: 1.55; padding: 8px 10px;
+  border-radius: 8px; border: 1px solid var(--border);
+  white-space: pre-wrap; word-break: break-word;
+}
+/* 실패 원인(error_summary)만 예외 메시지 같은 코드성 텍스트라 모노스페이스를 쓴다.
+   Expected/스텝은 자연어 문장이라 일반 UI 폰트를 그대로 쓴다. */
+.fail-diff-value.mono { font-family: 'JetBrains Mono','SF Mono',Consolas,monospace; }
+.fail-diff-value.expect { background: rgba(52,211,153,.1); border-color: rgba(52,211,153,.25); color: #bdf3dd; }
+.fail-diff-value.actual { background: rgba(248,113,113,.1); border-color: rgba(248,113,113,.28); color: #ffd2cd; }
+.fail-diff-row + .fail-diff-row { margin-top: 10px; }
+
+/* 테스트 스텝 — 비교 대상이 아닌 순서 있는 절차라 diff 박스 대신 번호 목록으로 */
+.fail-steps {
+  margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 7px;
+}
+.fail-steps li {
+  font-size: 12px; line-height: 1.5; color: var(--text-dim); padding-left: 2px;
+}
+.fail-steps li::marker { color: var(--text-dim); opacity: .55; font-size: 11px; }
+
+.fail-facts { display: flex; flex-direction: column; gap: 7px; font-size: 11.5px; }
+.fail-facts .ff-row { display: flex; justify-content: space-between; gap: 10px; }
+.fail-facts .ff-k { color: var(--text-dim); opacity: .75; flex-shrink: 0; }
+.fail-facts .ff-v {
+  color: var(--text-dim); text-align: right; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; font-family: 'JetBrains Mono','SF Mono',Consolas,monospace; font-size: 10.5px;
+}
+
+.fail-log-row {
+  display: grid; grid-template-columns: 14px 1fr; gap: 8px;
+  padding: 8px 12px; border-bottom: 1px solid var(--border); font-size: 11.5px;
+}
+.fail-log-row:last-child { border-bottom: none; }
+.fail-log-dot { width: 6px; height: 6px; border-radius: 50%; margin-top: 5px; }
+.fail-log-dot.error { background: #f87171; box-shadow: 0 0 6px rgba(248,113,113,.55); }
+.fail-log-dot.warning { background: #fbbf24; box-shadow: 0 0 6px rgba(251,191,36,.45); }
+.fail-log-text { color: var(--text-dim); line-height: 1.5; word-break: break-word; }
+.fail-log-tag {
+  display: inline-block; font-size: 9.5px; font-weight: 700; letter-spacing: .02em;
+  padding: 1px 5px; border-radius: 4px; margin-right: 6px; vertical-align: 1px;
+}
+.fail-log-tag.error { background: rgba(248,113,113,.14); color: #f87171; }
+.fail-log-tag.warning { background: rgba(251,191,36,.14); color: #fbbf24; }
+
+.fail-net-row {
+  display: grid; grid-template-columns: 48px 44px 1fr; gap: 10px; align-items: center;
+  padding: 8px 12px; border-bottom: 1px solid var(--border);
+  font-size: 11.5px; border-left: 3px solid transparent;
+  font-family: 'JetBrains Mono','SF Mono',Consolas,monospace;
+}
+.fail-net-row:last-child { border-bottom: none; }
+.fail-net-row.bad { border-left-color: #f87171; background: linear-gradient(90deg, rgba(248,113,113,.07), transparent 45%); }
+.fail-net-method { color: var(--text-dim); font-weight: 600; font-size: 10.5px; }
+.fail-net-status { font-weight: 700; }
+.fail-net-status.s4 { color: #f87171; }
+.fail-net-status.s0 { color: var(--text-dim); opacity: .6; }
+.fail-net-req { color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fail-net-reason { grid-column: 1 / -1; font-size: 10.5px; color: #f87171; opacity: .85; padding-left: 2px; }
+
+/* 명령어와 버튼을 한 줄에 욱여넣으면 좁은 컬럼에서 명령어가 잘려
+   가로 스크롤이 생긴다 — 명령어를 위에 전체 폭으로 줄바꿈 가능하게 두고
+   버튼은 아래 줄에 배치한다. */
+.fail-actions {
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 10px 12px;
+}
+.fail-actions .fd-cmd {
+  display: block; width: 100%;
+  font-family: 'JetBrains Mono','SF Mono',Consolas,monospace; font-size: 10.5px;
+  color: var(--text-dim); background: var(--bg); padding: 6px 9px; border-radius: 6px;
+  border: 1px solid var(--border); white-space: pre-wrap;
+  /* break-all이 "traces" 같은 단어 중간에서 끊어 보기 안 좋았다 — <wbr>을
+     경로 구분자(/) 뒤에 심어서 자연스러운 지점에서만 줄바꿈되게 한다. */
+  word-break: normal; overflow-wrap: normal;
+}
+.fail-actions .fd-btn-row { display: flex; gap: 8px; justify-content: flex-end; }
+.fail-btn {
+  appearance: none; border: 1px solid var(--border-glass, var(--border)); background: rgba(255,255,255,.04);
+  color: var(--text-dim); font-size: 11.5px; font-weight: 500; padding: 6px 11px;
+  border-radius: 7px; cursor: pointer; white-space: nowrap;
+}
+.fail-btn:hover { color: var(--text); border-color: var(--accent); }

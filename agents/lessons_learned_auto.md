@@ -22,3 +22,7 @@
 ## Playwright일반 오류
 
 - **Playwright일반**: `raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None` -- 브라우저 상태 확인, 페이지 닫힘/크래시 대응
+
+## Locator 오류
+
+- **Locator**: `expect(page.locator("#error-message")).to_be_visible(timeout=3000)` -- dom_info 셀렉터 재확인, #id 우선 사용

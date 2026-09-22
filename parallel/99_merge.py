@@ -29,7 +29,7 @@ from _paths import (
 )
 from _constants import MAX_HEAL, PYTEST_NORMAL_EXIT_CODES  # M-2(P119): 단일 소스
 from _pipeline_registry import ParallelStatus, RESETTABLE_PARALLEL_STATUSES  # M-4(P121)
-from result_parser import parse_results, parse_skip_messages
+from result_parser import parse_results, parse_skip_messages, parse_failure_messages
 from structured_log import slog
 
 # 분리된 모듈
@@ -275,6 +275,7 @@ def main() -> None:
 
     # 그룹별 결과 집계
     group_results: dict = {}
+    failure_messages = parse_failure_messages(report)
     for nodeid, outcome in test_results.items():
         parts = nodeid.split("/")
         group = None
@@ -297,6 +298,7 @@ def main() -> None:
             "name":    nodeid.split("::")[-1] if "::" in nodeid else nodeid,
             "passed":  outcome == "passed",
             "outcome": outcome,
+            "error":   failure_messages.get(nodeid, "") if outcome == "failed" else "",
         })
 
     # 최종 status 결정

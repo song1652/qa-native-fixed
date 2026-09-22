@@ -10,6 +10,7 @@ DashboardHandler가 이 Mixin을 상속받아 사용한다.
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 import _paths
@@ -30,6 +31,48 @@ from dash_state import (
 
 # serve.py와 같은 디렉토리에 위치 — static/ 서빙 루트
 HERE = Path(__file__).parent
+
+
+def _resolve_tc_file(nodeid: str):
+    """nodeid → (group, test_func, tc_md_path|None). 형식이 잘못되면 None.
+
+    _get_testcase / _get_test_failure_detail이 공유하는 nodeid 해석 로직.
+    """
+    parts = nodeid.split("/")
+    py_file = parts[-1].split("::")[0]  # tc_01_*.py
+    test_func = parts[-1].split("::")[-1] if "::" in parts[-1] else ""
+    # group = 마지막 디렉토리 (generated 건너뜀)
+    group = parts[-2] if len(parts) >= 2 else ""
+    if group == "generated" and len(parts) >= 3:
+        group = parts[-2]  # generated/{group}/file 구조에선 이미 parts[-2]가 group
+    if not group or not py_file or ".." in group:
+        return None
+    # tc 번호 추출: tc_01_ / tc_CL_01_ → testcases/{group}/tc_*_.md 검색
+    m = re.match(r"(tc_(?:[A-Za-z]+_)?\d+)_", py_file)
+    tc_prefix = m.group(1) if m else None
+    tc_dir = _paths.TESTCASES_DIR / group
+    tc_path = None
+    if tc_prefix and tc_dir.exists():
+        matches = sorted(tc_dir.glob(f"{tc_prefix}_*.md"))
+        if matches:
+            tc_path = matches[0]
+    return group, test_func, tc_path
+
+
+def _find_failure_error_message(nodeid: str) -> str:
+    """pipeline/parallel/quick 상태 중 이 nodeid의 실패 요약(error)을 찾아 반환.
+
+    05_execute.py / 99_merge.py가 group_results[].tests[]에 저장한
+    짧은 실패 메시지(마지막 트레이스백 줄)를 조회한다. 없으면 빈 문자열.
+    """
+    for state_path in (_paths.PIPELINE_STATE, _paths.PARALLEL_STATE, _paths.QUICK_STATE):
+        data = load_json(state_path) or {}
+        group_results = (data.get("execution_result") or {}).get("group_results") or {}
+        for group_data in group_results.values():
+            for test in group_data.get("tests", []):
+                if test.get("nodeid") == nodeid and test.get("error"):
+                    return test["error"]
+    return ""
 
 
 class GetRoutesMixin:
@@ -232,7 +275,6 @@ class GetRoutesMixin:
     # ── 테스트케이스 조회 ─────────────────────────────────────────
 
     def _get_testcase(self):
-        import re as _re
         from urllib.parse import urlparse, parse_qs
         qs = parse_qs(urlparse(self.path).query)
         nodeid = qs.get("nodeid", [""])[0]
@@ -243,26 +285,14 @@ class GetRoutesMixin:
             return
         # nodeid 예: tests/heroku/tc_01_login.py::test_login
         #           tests/generated/directcloud/tc_01_login_success.py::test_...
-        parts = nodeid.split("/")
-        py_file = parts[-1].split("::")[0]  # tc_01_*.py
-        # group = 마지막 디렉토리 (generated 건너뜀)
-        group = parts[-2] if len(parts) >= 2 else ""
-        if group == "generated" and len(parts) >= 3:
-            group = parts[-2]  # generated/{group}/file 구조에선 이미 parts[-2]가 group
-        if not group or not py_file or ".." in group:
+        resolved = _resolve_tc_file(nodeid)
+        if resolved is None:
             self._serve_bytes(
                 b'{"ok":false,"error":"invalid nodeid"}',
                 "application/json; charset=utf-8")
             return
-        # tc 번호 추출: tc_01_ / tc_CL_01_ → testcases/{group}/tc_*_.md 검색
-        m = _re.match(r"(tc_(?:[A-Za-z]+_)?\d+)_", py_file)
-        tc_prefix = m.group(1) if m else None
-        tc_dir = _paths.TESTCASES_DIR / group
-        fpath = None
-        if tc_prefix and tc_dir.exists():
-            matches = sorted(tc_dir.glob(f"{tc_prefix}_*.md"))
-            if matches:
-                fpath = matches[0]
+        _group, _test_func, fpath = resolved
+        py_file = nodeid.split("/")[-1].split("::")[0]
         if fpath is None or not fpath.exists():
             self._serve_bytes(
                 json.dumps({"ok": False, "error": f"tc file not found for {py_file}"}, ensure_ascii=False).encode("utf-8"),
@@ -272,6 +302,92 @@ class GetRoutesMixin:
         self._serve_bytes(
             json.dumps({"ok": True, "content": content, "file": fpath.name}, ensure_ascii=False).encode("utf-8"),
             "application/json; charset=utf-8"
+        )
+
+    def _get_test_failure_detail(self):
+        """GET /api/testcase/failure_detail?nodeid=... — 실패 TC 상세.
+
+        스크린샷·콘솔로그·네트워크실패·trace는 tests/conftest.py가 실패 시
+        기록한 meta.json에서, 실패 요약(error)은 05_execute.py/99_merge.py가
+        group_results에 저장한 값에서 가져온다. 둘 다 없어도 200으로
+        빈 필드를 반환한다 — 아직 실행되지 않았거나 이전 실행 데이터일 뿐이다.
+        """
+        from urllib.parse import urlparse, parse_qs
+        qs = parse_qs(urlparse(self.path).query)
+        nodeid = qs.get("nodeid", [""])[0]
+        if not nodeid:
+            self._serve_bytes(
+                b'{"ok":false,"error":"nodeid parameter required"}',
+                "application/json; charset=utf-8")
+            return
+
+        resolved = _resolve_tc_file(nodeid)
+        if resolved is None:
+            self._serve_bytes(
+                b'{"ok":false,"error":"invalid nodeid"}',
+                "application/json; charset=utf-8")
+            return
+        group, test_func, tc_path = resolved
+
+        expected = ""
+        steps = ""
+        if tc_path and tc_path.exists():
+            try:
+                content = tc_path.read_text(encoding="utf-8")
+                m = re.search(r"^##\s*Expected\s*$\n([\s\S]*?)(?=\n##\s|\Z)", content, re.MULTILINE)
+                if m:
+                    expected = m.group(1).strip()
+                m = re.search(r"^##\s*Steps\s*$\n([\s\S]*?)(?=\n##\s|\Z)", content, re.MULTILINE)
+                if m:
+                    steps = m.group(1).strip()
+            except OSError:
+                pass
+
+        detail = {
+            "ok": True,
+            "nodeid": nodeid,
+            "group": group,
+            "test_name": test_func,
+            "steps": steps,
+            "expected": expected,
+            "url": None,
+            "timestamp": None,
+            "error_summary": _find_failure_error_message(nodeid),
+            "screenshot_url": None,
+            "video_url": None,
+            "trace_cmd": None,
+            "console_errors": [],
+            "network_failures": [],
+        }
+
+        shot_candidates = []
+        if _paths.SCREENSHOTS_DIR.exists():
+            shot_candidates = sorted(_paths.SCREENSHOTS_DIR.glob(f"*__{test_func}.png")) \
+                or sorted(_paths.SCREENSHOTS_DIR.glob(f"{test_func}.png"))
+        if shot_candidates:
+            shot_path = shot_candidates[0]
+            if is_safe_filename(shot_path.name):
+                detail["screenshot_url"] = f"/screenshots/{shot_path.name}"
+            meta_path = shot_path.with_suffix("").with_suffix(".meta.json")
+            if meta_path.exists():
+                try:
+                    meta = json.loads(meta_path.read_text(encoding="utf-8"))
+                except (OSError, json.JSONDecodeError):
+                    meta = {}
+                detail["url"] = meta.get("url")
+                detail["timestamp"] = meta.get("timestamp")
+                detail["console_errors"] = meta.get("console_errors") or []
+                detail["network_failures"] = meta.get("network_failures") or []
+                trace_path = meta.get("trace_path")
+                if trace_path and Path(trace_path).exists():
+                    detail["trace_cmd"] = f"npx playwright show-trace {trace_path}"
+                video_path = meta.get("video_path")
+                if video_path and Path(video_path).exists() and is_safe_filename(Path(video_path).name):
+                    detail["video_url"] = f"/videos/{Path(video_path).name}"
+
+        self._serve_bytes(
+            json.dumps(detail, ensure_ascii=False).encode("utf-8"),
+            "application/json; charset=utf-8",
         )
 
     # ── 파일 서빙 헬퍼 ────────────────────────────────────────────

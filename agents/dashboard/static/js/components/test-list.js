@@ -27,7 +27,11 @@ function _hasTcFile(nodeid) {
   return /^tc_(?:[A-Za-z]+_)?\d+_/.test(pyFile);
 }
 
-async function toggleTestDetail(rowId, nodeid) {
+function _plainDetailHtml(text) {
+  return `<pre class="tc-detail-content" style="margin:0;padding:10px 16px;font-size:11px;background:var(--surface);border-top:1px solid var(--border);color:var(--text-dim);white-space:pre-wrap;word-break:break-all;max-height:320px;overflow-y:auto;">${esc(text)}</pre>`;
+}
+
+async function toggleTestDetail(rowId, nodeid, outcome) {
   const detailRow = document.getElementById('td_' + rowId);
   if (!detailRow) return;
 
@@ -38,39 +42,54 @@ async function toggleTestDetail(rowId, nodeid) {
     return;
   }
 
-  const contentCell = detailRow.querySelector('.tc-detail-content');
-  if (!contentCell) return;
+  const cell = detailRow.querySelector('td');
+  if (!cell) return;
 
-  // 캐시된 콘텐츠가 있으면 바로 표시
+  // 캐시된 콘텐츠가 있으면 바로 표시 (이미 렌더링된 HTML이므로 그대로 삽입)
   if (_testDetailContent[nodeid]) {
-    contentCell.textContent = _testDetailContent[nodeid];
+    cell.innerHTML = _testDetailContent[nodeid];
     detailRow.style.display = '';
     _testDetailOpen[nodeid] = true;
     return;
   }
 
   // 로딩 표시 후 펼침
-  contentCell.textContent = '불러오는 중...';
+  cell.innerHTML = _plainDetailHtml('불러오는 중...');
   detailRow.style.display = '';
   _testDetailOpen[nodeid] = true;
 
   if (!_hasTcFile(nodeid)) {
-    const msg = '(테스트케이스 파일 경로를 확인할 수 없습니다)';
-    contentCell.textContent = msg;
-    _testDetailContent[nodeid] = msg;
+    const html = _plainDetailHtml('(테스트케이스 파일 경로를 확인할 수 없습니다)');
+    cell.innerHTML = html;
+    _testDetailContent[nodeid] = html;
+    return;
+  }
+
+  if (outcome === 'failed') {
+    try {
+      const res = await fetch(`/api/testcase/failure_detail?nodeid=${encodeURIComponent(nodeid)}`);
+      const data = await res.json();
+      const html = data.ok ? renderFailureDetail(data) : _plainDetailHtml(`(${data.error || '조회 실패'})`);
+      cell.innerHTML = html;
+      _testDetailContent[nodeid] = html;
+    } catch (e) {
+      const html = _plainDetailHtml('(로드 실패)');
+      cell.innerHTML = html;
+      _testDetailContent[nodeid] = html;
+    }
     return;
   }
 
   try {
     const res = await fetch(`/api/testcase?nodeid=${encodeURIComponent(nodeid)}`);
     const data = await res.json();
-    const text = data.ok ? data.content : `(${data.error || '파일 없음'})`;
-    contentCell.textContent = text;
-    _testDetailContent[nodeid] = text;
+    const html = _plainDetailHtml(data.ok ? data.content : `(${data.error || '파일 없음'})`);
+    cell.innerHTML = html;
+    _testDetailContent[nodeid] = html;
   } catch (e) {
-    const msg = '(로드 실패)';
-    contentCell.textContent = msg;
-    _testDetailContent[nodeid] = msg;
+    const html = _plainDetailHtml('(로드 실패)');
+    cell.innerHTML = html;
+    _testDetailContent[nodeid] = html;
   }
 }
 
@@ -121,12 +140,13 @@ function buildTestListHtml(tests, prefix, groupName) {
     const nodeid = esc(rawNodeid);
     const hasTc = _hasTcFile(rawNodeid);
     const isOpen = hasTc && !!_testDetailOpen[rawNodeid];
-    const cachedContent = hasTc && _testDetailContent[rawNodeid] ? esc(_testDetailContent[rawNodeid]) : '';
+    // _testDetailContent는 이미 렌더링된 HTML을 저장하므로 재이스케이프하지 않는다.
+    const cachedContent = hasTc && _testDetailContent[rawNodeid] ? _testDetailContent[rawNodeid] : '';
     const displayName = t.title || t.name;
-    const clickable = hasTc ? `style="cursor:pointer;" tabindex="0" role="button" aria-label="${esc(displayName)} 테스트케이스 보기" onclick="toggleTestDetail('${rowId}','${nodeid}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleTestDetail('${rowId}','${nodeid}')}"` : '';
+    const clickable = hasTc ? `style="cursor:pointer;" tabindex="0" role="button" aria-label="${esc(displayName)} 테스트케이스 보기" onclick="toggleTestDetail('${rowId}','${nodeid}','${oc}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleTestDetail('${rowId}','${nodeid}','${oc}')}"` : '';
     html += `<tr ${clickable}><td style="color:var(--text-dim)">${num}</td><td>${esc(displayName)}${hasTc ? ' <span style="font-size:10px;opacity:0.4;" aria-hidden="true">▼</span>' : ''}</td><td style="white-space:nowrap"><span class="test-status-dot ${cls}"></span>${label}</td></tr>`;
     if (hasTc) {
-      html += `<tr id="td_${rowId}" style="display:${isOpen ? '' : 'none'};"><td colspan="3" style="padding:0;"><pre class="tc-detail-content" style="margin:0;padding:10px 16px;font-size:11px;background:var(--surface);border-top:1px solid var(--border);color:var(--text-dim);white-space:pre-wrap;word-break:break-all;max-height:320px;overflow-y:auto;">${cachedContent}</pre></td></tr>`;
+      html += `<tr id="td_${rowId}" style="display:${isOpen ? '' : 'none'};"><td colspan="3" style="padding:0;">${cachedContent}</td></tr>`;
     }
   });
   html += '</tbody></table>';
