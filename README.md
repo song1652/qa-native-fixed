@@ -236,3 +236,4 @@ python agents/dashboard/serve.py
 | [`doc/TEAM_DISCUSSION.md`](doc/TEAM_DISCUSSION.md) | 팀 토론 파이프라인 상세 |
 | [`doc/PIPELINE_STATE.md`](doc/PIPELINE_STATE.md) | state/pipeline.json 전체 스키마 |
 | [`doc/DIRECTORY.md`](doc/DIRECTORY.md) | 프로젝트 디렉토리 트리 |
+| [`doc/TC_AUTHORING_PRD.md`](doc/TC_AUTHORING_PRD.md) | TC Authoring Studio PRD (문서 기반 TC 작성·웹 편집·xlsx/md 내보내기) — Draft |
