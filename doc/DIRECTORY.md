@@ -87,7 +87,12 @@
 | `tests/reports/` | HTML 리포트 (pytest 실행 결과) |
 | `tests/screenshots/` | 실패 시 스크린샷 (conftest.py 기반 자동 캡처) |
 | `tests/conftest.py` | pytest 전역 픽스처 |
-| `tests/test_core_parsers.py` | 핵심 파서 유닛 테스트 |
+| `tests/unit/` | 저장소 자체 단위 테스트 (`pytest`로 실행). 영역별 하위 폴더 ↓ |
+| `tests/unit/pipeline/` | 파이프라인 단계·FSM 전이·상태 저장·힐링·병합 |
+| `tests/unit/hooks/` | `check_pending_*` 훅 |
+| `tests/unit/core/` | TC/결과 파서, test_data 부트스트랩, 문서↔레지스트리 동기화 |
+| `tests/unit/dashboard/` | 대시보드 API·보안·리포트 관리 |
+| `tests/unit/import_studio/` | Import Studio 백엔드·계약·프로필 (+ `fixtures/`) |
 
 ## agents/ — 사수-부사수 에이전트 시스템 (페르소나·교훈·대시보드)
 

@@ -187,7 +187,7 @@ python run_qa_parallel.py --no-auto
 | `state/` | 런타임 상태 파일 (pipeline.json, run_history.json 등) |
 | `config/` | 설정 (`pages.json`, `test_data.json`, `jira_config.json`(선택)) |
 | `testcases/` | 테스트 케이스 `.md` 파일 (그룹별 서브폴더) |
-| `tests/` | 생성된 테스트 코드, 리포트, 스크린샷 |
+| `tests/` | 생성된 테스트 코드, 리포트, 스크린샷 · `tests/unit/`에 저장소 단위 테스트 |
 | `.claude/skills/` | 스킬 프레임워크 (SKILL.md 표준) |
 
 ---
