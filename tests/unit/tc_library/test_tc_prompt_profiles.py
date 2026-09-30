@@ -67,3 +67,16 @@ def test_default_authoring_uses_document_rules_without_mobile_or_case_quotas(lib
     assert '우선순위 정보가 없으면 P2' in text
     assert '자동화 정보가 없으면 auto는 빈 문자열' in text
     assert len(DEFAULT_PROFILE['rules']) == 4
+
+
+def test_prompt_distinguishes_case_title_sheet_and_classification():
+    text = prompt.build_prompt(
+        chunk=[], target={'sheet': '회원등록', 'path': ['등록 폼', '', '']},
+        profile=DEFAULT_PROFILE, examples=[],
+    )
+    assert 'feature는 케이스별 검증 목적을 구별할 수 있는 짧은 제목' in text
+    assert '시트 이름이나 분류 경로만 반복하지 않는다' in text
+    assert '시트: 회원등록' in text
+    assert '대상 분류: ["등록 폼", "", ""]' in text
+    assert 'path에 시트 이름을 넣지 않는다' in text
+    assert '새 하위 분류가 근거에 없으면 path는 []' in text
