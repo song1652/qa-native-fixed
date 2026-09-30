@@ -51,8 +51,9 @@ ROUTES: list[tuple[str, re.Pattern, str]] = [
 # 생성·검토 라우트(Phase 2)가 앞에 와야 `/api/tc-library/{suite}` 패턴에 먼저 잡히지 않는다
 from routes_tc_authoring import AUTHORING_ROUTES  # noqa: E402
 from routes_tc_connectors import CONNECTOR_ROUTES  # noqa: E402  (Phase 3)
+from routes_tc_md import MD_ROUTES  # noqa: E402  (Phase 4)
 
-ROUTES[:0] = CONNECTOR_ROUTES + AUTHORING_ROUTES
+ROUTES[:0] = MD_ROUTES + CONNECTOR_ROUTES + AUTHORING_ROUTES
 
 
 class TcLibraryRoutesMixin:

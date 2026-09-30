@@ -114,6 +114,7 @@ from routes_get import GetRoutesMixin                             # Phase-5
 from routes_tc_library import TcLibraryRoutesMixin
 from routes_tc_authoring import TcAuthoringRoutesMixin            # TC 스튜디오 생성·검토
 from routes_tc_connectors import TcConnectorRoutesMixin            # TC 스튜디오 원격 소스
+from routes_tc_md import TcMdRoutesMixin                          # TC 스튜디오 md 내보내기
 
 from dash_http import BodyTooLarge
 from routes_ops import OpsRoutesMixin                             # Phase-6
@@ -152,6 +153,7 @@ class DashboardHandler(                                            # Phase-4/5/6
     TcLibraryRoutesMixin,
     TcAuthoringRoutesMixin,
     TcConnectorRoutesMixin,
+    TcMdRoutesMixin,
     ImportRoutesMixin,
     GetRoutesMixin,
     OpsRoutesMixin,
