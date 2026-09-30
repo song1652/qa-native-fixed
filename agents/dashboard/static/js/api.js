@@ -64,7 +64,7 @@ function _shouldSkipRender() {
   // 빠른 실행 중 로그 폴링 시 DOM 재생성 방지
   if (currentView === 'quick_run' && _quickRunState.running) return true;
   // Import Studio는 자체 상태 관리 — 5초 폴링 시 전체 재렌더 방지
-  if (currentView === 'import_studio') return true;
+  if (currentView === 'import_studio' || currentView === 'tc_studio') return true;
   return false;
 }
 

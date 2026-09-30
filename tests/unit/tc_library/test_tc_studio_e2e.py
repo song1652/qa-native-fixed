@@ -127,3 +127,31 @@ def test_detail_save_history_and_revert(studio):
     expect(history.first).to_contain_text("expected")
     page.locator('[data-id="detail-history-revert"]').first.click()
     expect(page.locator("#d-rev")).to_have_text("rev 3")
+
+
+# ── W2: 엑셀 가져오기 모달 ───────────────────────────────────────────────
+def test_import_modal_previews_and_imports_workbook(tmp_path, page):
+    project = tmp_path / "project"
+    (project / "testcases").mkdir(parents=True)
+    with dashboard_server(project) as base_url:
+        page.goto(base_url + "/tc-studio")
+        page.locator('[data-id="empty-import-xlsx"]').click()
+        expect(page.locator('[data-id="import-modal"]')).to_be_visible()
+        assert page.evaluate("""async () => {
+            const modal = document.querySelector('[data-id="import-modal"]');
+            await refreshAll();
+            return modal === document.querySelector('[data-id="import-modal"]') && !modal.hidden;
+        }""")
+        xlsx = build_template_workbook(tmp_path / "야핏무브_Full.xlsx")
+        page.locator('[data-id="import-file-input"]').set_input_files(xlsx)
+        expect(page.locator('[data-id="import-confirm"]')).to_have_text("6건 가져오기")
+        expect(page.locator('[data-id="import-sheets"] input[type=checkbox]')).to_have_count(2)
+        page.locator('[data-prefix="혜택"]').fill("BEN")
+        page.locator('[data-prefix="홈"]').fill("HOME")
+        page.locator('[data-id="import-confirm"]').click()
+        expect(page.locator('[data-id="import-modal"]')).to_be_hidden()
+        expect(rows(page)).to_have_count(6)
+        expect(page.locator('[data-id="suite-select"] option')).to_have_text(["야핏무브 (6)"])
+        expect(page.locator('tr[data-case="BEN_0001"]')).to_be_visible()
+        page.reload()
+        expect(rows(page)).to_have_count(6)
