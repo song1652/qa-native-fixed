@@ -320,6 +320,11 @@
 .tc-studio .radio { display:flex; gap:8px; align-items:center; padding:7px 10px; border:1px solid var(--line); border-radius:var(--radius-sm); cursor:pointer; font-size:12.5px; }
 .tc-studio .radio:has(input:checked) { border-color:var(--accent); background:var(--accent-soft); }
 .tc-studio .radio input { accent-color:var(--accent); }
+.tc-studio .sheet-picks { display:flex; flex-wrap:wrap; gap:6px; padding:2px 0 4px 28px; }
+.tc-studio .sheet-pick { display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border:1px solid var(--line); border-radius:999px; background:var(--card2); font-size:12px; cursor:pointer; }
+.tc-studio .sheet-pick:has(input:checked) { border-color:var(--accent); background:var(--accent-soft); color:var(--text); }
+.tc-studio .sheet-pick input { accent-color:var(--accent); margin:0; }
+.tc-studio .sheet-pick .n { font-family:var(--mono); font-size:10.5px; color:var(--text3); }
 .tc-studio .radio .n { margin-left:auto; font-family:var(--mono); font-size:11px; color:var(--text3); }
 .tc-studio .fname { font-family:var(--mono); font-size:12px; background:var(--bg); border:1px solid var(--line); padding:8px 10px; border-radius:var(--radius-sm); overflow-wrap:anywhere; }
 .tc-studio .funnel { display:grid; gap:6px; }

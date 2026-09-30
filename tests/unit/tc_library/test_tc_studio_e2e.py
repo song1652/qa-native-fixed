@@ -329,3 +329,23 @@ def test_reentering_studio_with_empty_suite_opens_planning_screen(studio):
     expect(page.locator("#suite-select")).to_have_value("빈스위트")
     expect(page.locator('[data-screen="generate"].screen')).to_have_class(re.compile("active"))
     assert "library" not in page.evaluate("window.__screens")      # 라이브러리가 잠깐 보였다 바뀌지 않는다
+
+
+def test_export_selected_sheets_are_checkbox_chips_with_counts(studio):
+    _, page = studio
+    page.locator('[data-id="nav-tab-export"]').click()
+    picks = page.locator('[data-id="xlsx-sheets"]')
+    expect(picks).to_be_hidden()                                  # '선택한 시트'일 때만 펼친다
+    page.locator('input[name="xscope"][value="sheets"]').check()
+    expect(picks.locator("label")).to_have_count(2)
+    expect(picks).to_contain_text("혜택")
+    expect(page.locator("#x-sheets-n")).to_have_text("2/2개")
+    counts = [int(t) for t in picks.locator(".n").all_inner_texts()]
+    assert sum(counts) == 6
+    picks.locator("label", has_text="홈").click()
+    expect(page.locator("#x-sheets-n")).to_have_text("1/2개")
+    picks.locator("label", has_text="혜택").click()
+    expect(page.locator('[data-id="xlsx-run-check"]')).to_be_disabled()   # 하나도 안 고르면 검사 불가
+    picks.locator("label", has_text="혜택").click()
+    page.locator('[data-id="xlsx-run-check"]').click()
+    expect(page.locator('[data-id="xlsx-download"]')).to_be_enabled()

@@ -19,8 +19,8 @@
           <div class="field"><span class="label">범위</span>
             <div class="radio-list" data-id="xlsx-scope">
               <label class="radio"><input type="radio" name="xscope" value="all" checked> 전체 <span class="n" id="x-all-n"></span></label>
-              <label class="radio"><input type="radio" name="xscope" value="sheets"> 선택한 시트
-                <select class="fselect" id="xlsx-sheets" data-id="xlsx-sheets" multiple size="3" style="margin-left:6px"></select></label>
+              <label class="radio"><input type="radio" name="xscope" value="sheets"> 선택한 시트 <span class="n" id="x-sheets-n"></span></label>
+              <div class="sheet-picks" id="xlsx-sheets" data-id="xlsx-sheets" role="group" aria-label="내보낼 시트" hidden></div>
               <label class="radio"><input type="radio" name="xscope" value="case_ids"> 현재 필터 결과 <span class="n" id="x-filter-n"></span></label>
               <label class="radio"><input type="radio" name="xscope" value="approved"> 승인된 케이스만</label>
             </div></div>
@@ -136,7 +136,9 @@
     const suite = state.suites.find((s) => s.suite === state.suite);
     $('#x-all-n', root).textContent = suite ? suite.count : 0;
     $('#x-filter-n', root).textContent = state.items.length;
-    $('#xlsx-sheets', root).innerHTML = (suite ? suite.sheets : []).map((s) => `<option selected>${esc(s)}</option>`).join('');
+    const counts = Object.fromEntries((state.tree || []).map((n) => [n.name, n.count]));
+    $('#xlsx-sheets', root).innerHTML = (suite ? suite.sheets : []).map((s) => `<label class="sheet-pick"><input type="checkbox" value="${esc(s)}" checked>${esc(s)}<span class="n">${counts[s] ?? 0}</span></label>`).join('');
+    syncSheets();
     const d = new Date();
     const yymmdd = `${String(d.getFullYear()).slice(2)}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
     if (!$('#xlsx-history-note', root).value) $('#xlsx-history-note', root).value = `${yymmdd} TC 스튜디오 반영\n- `;
@@ -151,10 +153,20 @@
     $('#xlsx-checks', root).innerHTML = `<li class="faint">${msg || '내보내기 전에 검사를 실행하세요'}</li>`;
   }
 
+  const pickedSheets = () => $$('#xlsx-sheets input:checked', root).map((i) => i.value);
+  // 시트 목록은 '선택한 시트'일 때만 펼치고, 하나도 고르지 않으면 검사를 막는다
+  function syncSheets() {
+    const scope = $('input[name="xscope"]:checked', root).value;
+    const total = $$('#xlsx-sheets input', root).length, picked = pickedSheets().length;
+    $('#xlsx-sheets', root).hidden = scope !== 'sheets';
+    $('#x-sheets-n', root).textContent = `${picked}/${total}개`;
+    $('#xlsx-run-check', root).disabled = scope === 'sheets' && !picked;
+  }
+
   function payload() {
     const scope = $('input[name="xscope"]:checked', root).value;
     const body = { scope, history_note: $('#xlsx-history-note', root).value.trim() };
-    if (scope === 'sheets') body.sheets = $$('#xlsx-sheets option', root).filter((o) => o.selected).map((o) => o.value);
+    if (scope === 'sheets') body.sheets = pickedSheets();
     if (scope === 'case_ids') body.case_ids = state.items.map((c) => c.case_id);
     return body;
   }
@@ -182,8 +194,8 @@
 
   function mount(r) {
     root = r;
-    $$('input[name="xscope"]', root).forEach((i) => i.addEventListener('change', () => resetCheck('범위가 바뀌었습니다. 검사를 다시 실행하세요')));
-    $('#xlsx-sheets', root).addEventListener('change', () => resetCheck('범위가 바뀌었습니다. 검사를 다시 실행하세요'));
+    $$('input[name="xscope"]', root).forEach((i) => i.addEventListener('change', () => { syncSheets(); resetCheck('범위가 바뀌었습니다. 검사를 다시 실행하세요'); }));
+    $('#xlsx-sheets', root).addEventListener('change', () => { syncSheets(); resetCheck('범위가 바뀌었습니다. 검사를 다시 실행하세요'); });
     $('#xlsx-run-check', root).addEventListener('click', runCheck);
     $('#md-preview', root).addEventListener('click', async () => {
       try {
