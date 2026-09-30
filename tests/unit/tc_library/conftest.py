@@ -67,3 +67,40 @@ def fake_claude(tmp_path: Path, monkeypatch):
     monkeypatch.setenv("FAKE_CLAUDE_ARGS", str(args_file))
     monkeypatch.setenv("FAKE_CLAUDE_MODE", "ok")
     return args_file
+
+@pytest.fixture
+def fake_web(monkeypatch, tmp_path):
+    """네트워크 없이 원격 응답을 흉내 낸다. web.add(url, body|json=…, status=, headers=)로 등록.
+    url 끝이 '*'이면 접두 일치. web.private에 넣은 호스트는 사설 IP(10.0.0.5)로 풀린다."""
+    import json as _json
+    from types import SimpleNamespace
+
+    import _paths
+    import _tc_fetch
+
+    web = SimpleNamespace(routes={}, calls=[], private=set())
+
+    def add(url, body=b"", *, json=None, status=200, headers=None):
+        if json is not None:
+            body = _json.dumps(json, ensure_ascii=False).encode("utf-8")
+            headers = {"content-type": "application/json", **(headers or {})}
+        if isinstance(body, str):
+            body = body.encode("utf-8")
+        web.routes[url] = (status, {k.lower(): v for k, v in (headers or {}).items()}, body)
+
+    def transport(url, headers, max_bytes):
+        web.calls.append((url, dict(headers)))
+        route = web.routes.get(url) or next(
+            (v for k, v in web.routes.items() if k.endswith("*") and url.startswith(k[:-1])), None)
+        if route is None:
+            raise OSError(f"no fake route: {url}")
+        status, hdrs, body = route
+        return _tc_fetch.Response(status, hdrs, body[: max_bytes + 1], url)
+
+    web.add = add
+    monkeypatch.setattr(_tc_fetch, "transport", transport)
+    monkeypatch.setattr(_tc_fetch, "resolver", lambda host: ["10.0.0.5"] if host in web.private else ["93.184.216.34"])
+    for name in ("CONFLUENCE_BASE_URL", "CONFLUENCE_EMAIL", "CONFLUENCE_TOKEN", "FIGMA_TOKEN"):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setattr(_paths, "PROJECT_ROOT", tmp_path / "project_root")
+    return web
