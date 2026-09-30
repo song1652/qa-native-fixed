@@ -13,7 +13,7 @@
   let job = null;
   let poll = null;
 
-  NS.generateView = { html, mount, onShow, registerSourceTab, prefill };
+  NS.generateView = { html, mount, onShow, registerSourceTab, prefill, loadSuite };
 
   function registerSourceTab(tab) { tabs.push(tab); }
 
@@ -254,8 +254,10 @@
   }
   function startPolling() {
     clearInterval(poll);
+    const suite = state.suite, jobId = job.job_id;
     poll = setInterval(async () => {
-      const body = await api.job(job.job_id);
+      const body = await api.job(jobId);
+      if (state.suite !== suite || !job || job.job_id !== jobId) return;
       job = body.job;
       renderJob(body);
       if (!isRunning()) {
@@ -312,6 +314,31 @@
       api.bundle(saved).then((b) => { bundle = { bundle_id: b.bundle_id, sources: b.sources }; renderSources(); }).catch(() => {});
     }
     renderSources();
+  }
+
+  async function loadSuite(savedJob) {
+    clearInterval(poll);
+    const suite = state.suite;
+    let saved = '';
+    try { saved = sessionStorage.getItem(BUNDLE_KEY()) || ''; } catch (e) { /* 저장 불가 환경 */ }
+    const id = saved || (savedJob && savedJob.bundle_id);
+    const loaded = id ? await api.bundle(id).catch(() => null) : null;
+    if (state.suite !== suite) return;
+    bundle = loaded ? { bundle_id: loaded.bundle_id, sources: loaded.sources } : { bundle_id: '', sources: [] };
+    job = savedJob;
+    state.reviewJob = job ? job.job_id : null;
+    renderTarget(job ? job.target : { sheet: '', path: ['', '', ''] });
+    renderSources();
+    await loadProfiles(job && job.profile);
+    if (state.suite !== suite) return;
+    if (job) {
+      const body = await api.job(job.job_id);
+      if (state.suite !== suite) return;
+      renderJob(body);
+      if (isRunning()) startPolling();
+    } else {
+      $('#job', root).hidden = true;
+    }
   }
 
   function mount(r) {

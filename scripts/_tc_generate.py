@@ -95,6 +95,16 @@ def active_job() -> dict | None:
     return None
 
 
+def latest_job(suite: str) -> dict | None:
+    """저장된 생성 작업에서 스위트의 소스·대상·검토 묶음을 복구한다."""
+    jobs = []
+    for path in jobs_root().glob('*/status.json'):
+        job = read_state(path)
+        if job.get('suite') == suite and job.get('mode') == 'new':
+            jobs.append((job.get('created_at', ''), path.stat().st_mtime_ns, job))
+    return max(jobs, key=lambda item: item[:2])[2] if jobs else None
+
+
 def create_job(suite: str, *, bundle_id: str, target: dict, profile: str, mode: str = "new",
                case_id: str = "", note: str = "", only_refs: list[str] | None = None) -> dict:
     """mode: new(소스 전체, only_refs면 그 섹션만 — 실패 섹션 재시도) · regenerate(초안 1건, case_id+note 필수)."""

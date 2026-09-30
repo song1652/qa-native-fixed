@@ -65,6 +65,7 @@
 
   // 가져오기 후에도 호출된다 (import.js)
   NS.reloadSuites = async function (prefer) {
+    const previousSuite = state.suite;
     state.suites = (await api.suites()).suites;
     let saved = prefer || '';
     if (!saved) { try { saved = localStorage.getItem(SUITE_KEY) || ''; } catch (e) { saved = ''; } }
@@ -72,8 +73,25 @@
     try { if (state.suite) localStorage.setItem(SUITE_KEY, state.suite); } catch (e) { /* 저장 불가 환경 */ }
     renderSuiteSelect();
     state.selected.clear();
+    const changed = previousSuite !== state.suite;
+    if (changed) {
+      Object.keys(state.filters).forEach((k) => { state.filters[k] = ['invalid', 'needs_review'].includes(k) ? false : ''; });
+      $$('.filterbar select, .filterbar input, #tree-search', root).forEach((el) => { el.value = ''; });
+      $$('.filterbar .fchip', root).forEach((el) => el.setAttribute('aria-pressed', 'false'));
+      NS.detail.close();
+      state.reviewJob = null;
+    }
     await NS.library.refresh();
     await NS.refreshCounts();
+    if (changed && NS.generateView) {
+      const suite = state.suite;
+      const context = await api.authoringContext(suite);
+      if (state.suite !== suite) return;
+      await NS.generateView.loadSuite(context.job);
+      if (state.suite !== suite) return;
+      const current = state.suites.find((s) => s.suite === suite);
+      show(current && current.count ? 'library' : 'generate');
+    }
   };
 
   // 화면 이벤트에서 시작한 요청이 실패하면(서버 재시작·네트워크 끊김) 처리되지 않은 오류로 남기지 않고

@@ -125,3 +125,21 @@ def test_retry_only_failed_sections(seeded, fake_claude):
     drafts = lib.filter_cases(lib.load_cases(SUITE), {"job": job["job_id"]})
     assert final["sections"][0]["refs"] == [ref]
     assert {d["source_refs"][0] for d in drafts} == {ref}
+
+
+def test_latest_new_job_is_saved_suite_context(seeded, fake_claude):
+    assert gen.latest_job(SUITE) is None
+    job = gen.create_job(SUITE, bundle_id=seeded, target=TARGET, profile='기본')
+    gen.run_job(job['job_id'])
+    context = gen.latest_job(SUITE)
+    assert context['job_id'] == job['job_id']
+    assert context['bundle_id'] == seeded
+    assert context['target'] == {'sheet': '혜택', 'path': ['혜택 탭', '상단 배너', '']}
+    # 재생성은 원래 검토 묶음을 대체하지 않는다.
+    case = lib.filter_cases(lib.load_cases(SUITE), {'job': job['job_id']})[0]
+    again = gen.create_job(SUITE, bundle_id=seeded, target=TARGET, profile='기본',
+                           mode='regenerate', case_id=case['case_id'], note='원래 목적 유지')
+    gen.run_job(again['job_id'])
+    assert gen.latest_job(SUITE)['job_id'] == job['job_id']
+    # 다른 스위트에는 이 소스 묶음을 노출하지 않는다.
+    assert gen.latest_job('다른스위트') is None

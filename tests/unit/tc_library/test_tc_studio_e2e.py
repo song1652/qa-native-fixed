@@ -16,7 +16,7 @@ from tests.unit.tc_library.tc_fixtures import build_template_workbook
 S = quote("야핏무브")
 
 
-def _seed(base_url: str, tmp_path: Path) -> None:
+def _seed(base_url: str, tmp_path: Path, *, suite="야핏무브", sheets=None) -> None:
     data = build_template_workbook(tmp_path / "seed.xlsx").read_bytes()
     req = urllib.request.Request(
         base_url + "/api/tc-library/import/preview?filename=" + quote("야핏무브_Full.xlsx"),
@@ -24,7 +24,7 @@ def _seed(base_url: str, tmp_path: Path) -> None:
     with urllib.request.urlopen(req, timeout=10) as resp:
         preview = json.loads(resp.read())
     status, body = request_json(base_url, "POST", "/api/tc-library/import", {
-        "preview_id": preview["preview_id"], "suite": "야핏무브", "sheets": ["혜택", "홈"],
+        "preview_id": preview["preview_id"], "suite": suite, "sheets": sheets or ["혜택", "홈"],
         "prefixes": {"혜택": "BEN", "홈": "HOME"}})
     assert status == 200, body
 
@@ -55,6 +55,22 @@ def test_route_sidebar_and_tabs(studio):
     expect(page.locator('[data-id="nav-tab-library"]')).to_be_visible()
     expect(page.locator('[data-id="nav-tab-generate"]')).to_be_visible()
     expect(page.locator('[data-id="nav-tab-review"]')).to_be_visible()
+
+
+def test_existing_suite_selection_clears_previous_branch_and_loads_cases(studio, tmp_path):
+    base, page = studio
+    _seed(base, tmp_path, suite="다른스위트", sheets=["홈"])
+    page.reload()
+    page.locator('[data-id="tree-node"][data-name="상단 배너"]').click()
+    expect(rows(page)).to_have_count(2)
+    page.locator('[data-id="suite-select"]').select_option("다른스위트")
+    expect(rows(page)).to_have_count(1)
+    expect(page.locator('[data-id="import-modal"]')).to_be_hidden()
+    expect(page.locator('[data-id="nav-tab-library"]')).to_have_attribute("aria-selected", "true")
+    page.locator('[data-id="nav-tab-generate"]').click()
+    expect(page.locator('[data-id="gen-target-sheet"] option')).to_have_text(["시트를 선택하세요", "홈"])
+    expect(page.locator('#job')).to_be_hidden()
+    expect(page.locator('#tcs-toasts')).not_to_contain_text('요청을 처리하지 못했습니다')
 
 
 def test_tree_filters_and_search(studio):

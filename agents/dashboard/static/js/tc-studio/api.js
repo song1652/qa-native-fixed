@@ -65,6 +65,7 @@
     saveProfile: (name, fields) => request('PUT', `/api/tc-library/profiles/${enc(name)}`, fields),
     startJob: (suite, payload) => request('POST', `${S(suite)}/jobs`, payload),
     job: (jobId) => request('GET', `/api/tc-library/jobs/${enc(jobId)}`),
+    authoringContext: (suite) => request('GET', `${S(suite)}/authoring-context`),
     cancelJob: (jobId) => request('POST', `/api/tc-library/jobs/${enc(jobId)}/cancel`),
     coverage: (suite, sheet, path, profile) =>
       request('GET', `${S(suite)}/coverage?${new URLSearchParams({ sheet, path: path.join('/'), profile })}`),

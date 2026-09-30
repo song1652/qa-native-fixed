@@ -18,6 +18,7 @@ MAX_SOURCE_BYTES = 25 * 1024 * 1024
 
 AUTHORING_ROUTES: list[tuple[str, re.Pattern, str]] = [
     (m, re.compile(p + r"\Z"), h) for m, p, h in [
+        ("GET", rf"/api/tc-library/{_SUITE}/authoring-context", "_tca_context"),
         ("GET", r"/api/tc-library/import/mapping-profiles", "_tca_mapping_profiles"),
         ("POST", r"/api/tc-library/sources", "_tca_new_bundle"),
         ("GET", rf"/api/tc-library/sources/{_BUNDLE}", "_tca_bundle"),
@@ -105,6 +106,10 @@ class TcAuthoringRoutesMixin:
         from _tc_generate import get_job, invalid_drafts, log_tail
         self._tcl_json({"ok": True, "job": get_job(job_id), "log": log_tail(job_id),
                         "invalid": invalid_drafts(job_id)})
+
+    def _tca_context(self, suite: str):
+        from _tc_generate import latest_job
+        self._tcl_json({"ok": True, "job": latest_job(suite)})
 
     def _tca_cancel_job(self, job_id: str):
         from _tc_generate import cancel_job

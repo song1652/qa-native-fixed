@@ -124,3 +124,28 @@ def test_import_with_custom_mapping(studio):
     page.locator('[data-id="import-confirm"]').click()
     expect(page.locator('[data-id="suite-select"]')).to_have_value("웹")
     expect(page.locator("#grid-body tr[data-case]")).to_have_count(1)
+
+
+def test_reload_restores_saved_sources_target_and_review_job(studio):
+    _, page, tmp_path = studio
+    _generate(page, tmp_path)
+    expect(page.locator('#job-done')).to_be_visible(timeout=15000)
+    page.reload()
+    page.locator('[data-id="nav-tab-generate"]').click()
+    expect(page.locator('[data-id="src-chip"]')).to_have_count(1)
+    expect(page.locator('[data-id="gen-target-sheet"]')).to_have_value('혜택')
+    expect(page.locator('[data-id="gen-path-l2"]')).to_have_value('상단 배너')
+    expect(page.locator('[data-id="job-open-review"]')).to_be_visible()
+    page.locator('[data-id="job-open-review"]').click()
+    expect(page.locator('[data-id="draft-card"]')).to_have_count(2)
+    expect(page.locator('[data-id="draft-regen"]').first).to_be_enabled()
+    # 새 브라우저에서도 세션 저장소 없이 서버에 남은 소스를 읽는다.
+    other = page.context.browser.new_context()
+    try:
+        fresh = other.new_page()
+        fresh.goto(page.url)
+        fresh.locator('[data-id="nav-tab-generate"]').click()
+        expect(fresh.locator('[data-id="src-chip"]')).to_have_count(1)
+        expect(fresh.locator('[data-id="gen-target-sheet"]')).to_have_value('혜택')
+    finally:
+        other.close()
