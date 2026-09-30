@@ -72,8 +72,10 @@
 </div>`;
   }
 
-  function show(screen) {
-    screenVersion++;
+  // auto: 스위트를 불러온 뒤 첫 화면을 고르는 자동 전환. screenVersion은 '사용자가 다른 화면으로 갔는가'를
+  // 판단하는 값이라 자동 전환은 올리지 않는다 (올리면 뒤이어 고른 스위트가 화면 고르기를 포기한다)
+  function show(screen, auto) {
+    if (!auto) screenVersion++;
     state.screen = screen;
     $$('.step-item', root).forEach((b) => b.setAttribute('aria-selected', b.dataset.screen === screen));
     $$('.screen', root).forEach((s) => s.classList.toggle('active', s.dataset.screen === screen));
@@ -132,7 +134,7 @@
       await NS.generateView.loadSuite(context.job, screenVersion !== navigationVersion);
       if (state.suite !== suite) return;
       const current = state.suites.find((s) => s.suite === suite);
-      if (screenVersion === navigationVersion) show(current && current.count ? 'library' : 'generate');
+      if (screenVersion === navigationVersion) show(current && current.count ? 'library' : 'generate', true);
     }
   };
 
@@ -301,8 +303,10 @@
     // 첫 화면은 스위트를 읽은 뒤 한 번만 고른다 (먼저 라이브러리를 띄우면 깜빡인다).
     // 다른 메뉴에서 돌아와도 처음 들어온 것처럼 고르도록 이전 스위트를 비운다
     state.suite = '';
-    try { await NS.reloadSuites(); }
-    finally { if (!$('.screen.active', root)) show('library'); }   // 스위트가 없거나 불러오기 실패
+    // 폴백은 불러오기 실패·스위트 없음일 때만. 불러오는 사이 사용자가 스위트를 바꿔 이 호출이 먼저 빠진 경우엔
+    // 새 선택이 화면을 고른다 (여기서 라이브러리를 띄우면 새 선택이 '사용자가 탭을 눌렀다'고 보고 물러난다)
+    try { await NS.reloadSuites(); } catch (err) { if (!$('.screen.active', root)) show('library', true); throw err; }
+    if (!state.suites.length && !$('.screen.active', root)) show('library', true);
   }
 
   window.TCS = { init };
