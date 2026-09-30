@@ -34,7 +34,7 @@ class RevConflict(LibraryError):
 
 
 # API 경로 조각과 겹치는 이름은 스위트로 쓸 수 없다 (/api/tc-library/{profiles|sources|jobs|…})
-RESERVED_SUITES = {"import", "exports", "sources", "profiles", "jobs"}
+RESERVED_SUITES = {"import", "exports", "sources", "profiles", "jobs", "credentials", "source-diff"}
 
 
 def suite_dir(suite: str) -> Path:
@@ -322,6 +322,8 @@ def filter_cases(cases: list[dict], query: dict) -> list[dict]:
             continue
         if query.get("job") and case.get("draft_meta", {}).get("job_id") != query["job"]:
             continue
+        if query.get("needs_review") == "1" and not case.get("flags", {}).get("source_change"):
+            continue
         if q:
             haystack = json.dumps([case["feature"], case["precondition"], case["steps"],
                                    case["expected"], case["bullets"]], ensure_ascii=False)
@@ -349,7 +351,7 @@ def build_tree(cases: list[dict]) -> list[dict]:
                 children.append(node)
             node["count"] += 1
             node["draft"] += case["status"] == "draft"
-            node["needs_review"] += case["status"] == "needs_review"
+            node["needs_review"] += case["status"] == "needs_review" or bool(case.get("flags", {}).get("source_change"))
             node["invalid"] += case["has_error"]
             children = node["children"]
     return roots
@@ -416,6 +418,40 @@ def add_source_refs(suite: str, case_id: str, refs: list[str]) -> dict:
     def mutate(data: dict) -> dict:
         case = _find(data, case_id)
         case["source_refs"] = list(dict.fromkeys(case["source_refs"] + refs))
+        out["case"] = dict(case)
+        return data
+
+    update_state(_cases_path(suite), mutate)
+    return out["case"]
+
+
+def set_flag(suite: str, case_id: str, name: str, value) -> dict:
+    """검토 표시를 켜고 끈다 (value=None이면 지움). 내용 변경이 아니므로 rev를 올리지 않는다."""
+    out: dict = {}
+
+    def mutate(data: dict) -> dict:
+        case = _find(data, case_id)
+        flags = dict(case.get("flags", {}))
+        if value is None:
+            flags.pop(name, None)
+        else:
+            flags[name] = value
+        case["flags"] = flags
+        out["case"] = dict(case)
+        return data
+
+    update_state(_cases_path(suite), mutate)
+    return out["case"]
+
+
+def replace_source_version(suite: str, case_id: str, old_ref: str, new_ref: str) -> dict:
+    """출처의 버전 부분만 바꾼다: "conf:1@v14#§2" → "conf:1@v15#§2" (섹션 앵커는 유지)."""
+    out: dict = {}
+
+    def mutate(data: dict) -> dict:
+        case = _find(data, case_id)
+        case["source_refs"] = [new_ref + r[len(old_ref):] if r.startswith(old_ref) else r
+                               for r in case["source_refs"]]
         out["case"] = dict(case)
         return data
 

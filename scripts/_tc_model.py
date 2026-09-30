@@ -34,6 +34,8 @@ def new_case(**fields) -> dict:
         "updated_at": now_iso(),
         # 생성 초안 정보 (Phase 2): job_id, source_quote, duplicates[{case_id, similarity}]
         "draft_meta": {},
+        # 검토 표시 (Phase 3): source_change {ref, from, to, at} — 상태(status)와 따로 둔다 (명세 피드백 #7)
+        "flags": {},
     }
     case.update(fields)
     case["path"] = (list(case["path"]) + ["", "", ""])[:3]
