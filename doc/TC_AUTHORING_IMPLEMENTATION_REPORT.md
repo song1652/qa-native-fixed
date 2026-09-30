@@ -75,3 +75,12 @@
 - 검증: tc_library 121 passed; 전체 798 passed, 1 skipped, 기존 경고 2개. 실제 서버 화면에서 별도 확인용 스위트로 빈 시트 추가→디자인 모달 이름 변경→대·중·소분류 추가→새로고침 유지·TC 0건·JS 오류 없음 확인. 확인용 스위트는 state/template_backups에 보관해 기본 화면에는 남기지 않았다. API 스위트 목록은 기본양식·테스트케이스 시트·0건만 존재.
 - 증거: /tmp/tc-structure-unit.log, /tmp/tc-structure-full-final.log, /tmp/tc-structure-live.log, /tmp/tc-studio-rename-sheet-modal-final.png, /tmp/tc-studio-neutral-structure-final.png.
 - 계획과 다르게 한 것: 사용자 후속 요청에 따라 빈 분류 메타데이터·시트 추가 API·디자인 모달 추가 및 로컬 기본 양식의 서비스별 이름 제거. Push·병합 없음.
+
+### 기본 작성 프로필 정리 (사용자 후속 요청)
+
+- 확인: 기존 기본 규칙에 정상·예외·유효성 최소 개수, 코호트·D+날짜 예시, 자동화 가능 여부 추정이 포함되어 있었고 생성 역할은 모바일 앱 QA로 고정되어 있었다.
+- 변경: 기본 공통 규칙 4개(제공한 정보만 사용, TC 하나에 한 검증 목적·중복 제거, 결과가 다르다고 명시된 조건만 분리, Step/Expected 문체). 기본 최소 개수는 모두 0. 역할은 QA 엔지니어. 문서 또는 사용자 작성 규칙에 우선순위 정보가 없으면 P2, 자동화 정보가 없으면 AUTO 빈 값. 작성 패널 이름은 작성 규칙, 예시가 없는 경우 입력한 정보와 규칙으로 생성한다고 안내한다. PRD F3 기본값도 갱신했다.
+- 테스트: 기본 프로필의 강제 부족분 없음·공통 프롬프트·빈 예시 안내 RED 확인 후 GREEN. 기존 저장소/API 커버리지 assertion은 엄격 프로필을 명시하는 준비 단계로 변경하고 원래 정상 케이스 부족 assertion을 유지했다. 기본 프로필의 부족분 없음 API assertion도 추가했다. tc_library 122 passed; 전체 799 passed, 1 skipped, 기존 경고 2개.
+- 실제 LLM: 별도 확인용 빈 스위트에 주신 엑셀의 혜택 탭 버튼 설명을 입력하여 기본 모델로 TC 1건 생성. P2·AUTO 빈 값·quote_found true 확인, JS 오류 없음. 확인용 스위트는 state/template_backups에 보관하여 기본 화면은 테스트케이스 시트 하나·TC 0건 유지.
+- 증거: /tmp/tc-profile-unit-final.log, /tmp/tc-profile-full-final.log, /tmp/tc-profile-live.log, /tmp/tc-profile-generated-cases.json, /tmp/tc-studio-common-writing-rules.png, /tmp/tc-studio-common-rules-generated.png.
+- 계획과 다르게 한 것: 사용자 후속 요청에 따라 PRD F3와 검증된 계획의 기본 프로필 정책을 공통·문서 근거 중심으로 변경했다. 기존 커버리지 기능은 명시적인 엄격 프로필 테스트로 검증을 유지했다. Push·병합 없음.

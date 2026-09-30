@@ -82,7 +82,7 @@
             <div class="row"><button class="btn-sm" type="button" id="gen-add-branch" data-id="gen-add-branch" disabled>분류 추가</button><span class="help">대분류를 입력하세요. 중·소분류는 선택 사항입니다.</span></div>
             <div class="examples" data-id="gen-style-examples" id="gen-examples"></div>
           </div></div>
-        <div class="panel"><div class="panel-head">작성 프로필<span class="spacer"></span><button class="btn-sm" data-id="gen-profile-edit" id="gen-profile-edit">편집</button></div>
+        <div class="panel"><div class="panel-head">작성 규칙<span class="spacer"></span><button class="btn-sm" data-id="gen-profile-edit" id="gen-profile-edit">규칙 편집</button></div>
           <div class="panel-body" style="display:grid;gap:10px">
             <select class="select" id="gen-profile" data-id="gen-profile"></select>
             <ul class="profile-rules" id="gen-rules"></ul>
@@ -219,6 +219,7 @@
     const t = target();
     if (!state.suite || !t.sheet) { $('#gen-examples', root).innerHTML = ''; return; }
     const { items, total } = await api.list(state.suite, { path: [t.sheet, ...t.path.filter(Boolean)].join('/'), status: 'approved', limit: 10 });
+    if (!total) { $('#gen-examples', root).innerHTML = '<span class="faint">기존 TC가 없어 입력한 정보와 작성 규칙으로 생성합니다.</span>'; return; }
     $('#gen-examples', root).innerHTML = `<span class="faint">같은 가지의 문체 예시 ${Math.min(total, profile().examples || 8)}건을 함께 넣습니다 (권장 5~10건)</span>`
       + (items.length ? `<span>${items.slice(0, 4).map((c) => `· ${esc(c.case_id)} ${esc(c.feature)}`).join(' ')}</span>` : '<span class="faint">이 가지에는 예시가 없습니다</span>');
   }

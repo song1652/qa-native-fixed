@@ -52,3 +52,18 @@ def test_profiles_default_save_and_validation(library_dir):
         save_profile("", {})
     with pytest.raises(LibraryError):
         save_profile("x", {"rules": [""]})
+
+
+def test_default_authoring_uses_document_rules_without_mobile_or_case_quotas(library_dir):
+    from _tc_library import import_cases
+    from _tc_review import coverage_gaps
+    case = new_case(case_id='TC_0001', sheet='테스트케이스', path=['검색', '', ''], feature='검색', steps=['검색어 입력', '검색 버튼 선택'], expected='검색 결과 목록이 표시된다.')
+    import_cases('기본양식', ['테스트케이스'], [case], 'tester')
+    assert coverage_gaps('기본양식', '테스트케이스', ['검색'], DEFAULT_PROFILE)[0]['missing'] == []
+    chunk = prompt.chunk_sections(_sources(['검색어를 입력하고 검색 버튼을 누르면 검색 결과 목록이 표시된다.']))[0]
+    text = prompt.build_prompt(chunk=chunk, target={'sheet': '테스트케이스', 'path': ['검색', '', '']}, profile=DEFAULT_PROFILE, examples=[])
+    assert text.startswith('너는 QA 엔지니어다.')
+    assert '문서에 없는 동작은 추측하지 않는다' in text
+    assert '우선순위 정보가 없으면 P2' in text
+    assert '자동화 정보가 없으면 auto는 빈 문자열' in text
+    assert len(DEFAULT_PROFILE['rules']) == 4

@@ -49,6 +49,7 @@ def test_duplicates_resolution_and_coverage(seeded):
     assert result["deleted_draft"] == twin["case_id"]
     assert twin["case_id"] not in [c["case_id"] for c in lib.load_cases(SUITE)]
 
-    gaps = coverage_gaps(SUITE, "혜택", ["혜택 탭", "신규회원 한정 혜택", "돈불리기"], DEFAULT_PROFILE)
+    strict_profile = {**DEFAULT_PROFILE, "coverage": {"positive": 1, "negative": 1, "validation_if_input": 1}}
+    gaps = coverage_gaps(SUITE, "혜택", ["혜택 탭", "신규회원 한정 혜택", "돈불리기"], strict_profile)
     assert gaps == [{"feature": "진입 불가", "positive": 0, "negative": 2, "validation": 0,
                      "has_input": False, "missing": ["정상"]}]

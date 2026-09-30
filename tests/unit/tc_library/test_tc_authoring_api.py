@@ -84,9 +84,11 @@ def test_second_job_is_rejected_while_running(api, monkeypatch):
 
 def test_profiles_coverage_and_resolve_duplicate(api):
     assert [p["name"] for p in request_json(api, "GET", "/api/tc-library/profiles")[1]["profiles"]] == ["기본"]
-    status, saved = request_json(api, "PUT", "/api/tc-library/profiles/" + quote("엄격"), {"rules": ["경계값"]})
+    status, saved = request_json(api, "PUT", "/api/tc-library/profiles/" + quote("엄격"), {"rules": ["경계값"], "coverage": {"positive": 1, "negative": 1, "validation_if_input": 1}})
     assert (status, saved["profile"]["rules"]) == (200, ["경계값"])
     cov = request_json(api, "GET", f"/api/tc-library/{S}/coverage?sheet=" + quote("혜택") + "&path=" + quote("혜택 탭/신규회원 한정 혜택"))[1]
+    assert cov["features"][0]["missing"] == []
+    cov = request_json(api, "GET", f"/api/tc-library/{S}/coverage?sheet=" + quote("혜택") + "&path=" + quote("혜택 탭/신규회원 한정 혜택") + "&profile=" + quote("엄격"))[1]
     assert cov["features"][0]["missing"] == ["정상"]
     created = request_json(api, "POST", f"/api/tc-library/{S}/cases", {"sheet": "혜택", "path": ["혜택 탭", "상단 배너", ""], "feature": "배너 스크롤", "steps": ["혜택 탭 선택"], "expected": "상단에 광고 배너가 가로 스크롤 동작되어 노출된다."})[1]["case"]
     status, body = request_json(api, "POST", f"/api/tc-library/{S}/cases/{created['case_id']}/resolve-duplicate", {"rev": 1, "action": "skip"})

@@ -228,6 +228,7 @@ def test_blank_template_can_start_generation(studio, tmp_path):
     expect(page.locator('[data-id="gen-path-l1"] option')).to_contain_text(['사용자 기능', '+ 새로 만들기…'])
     page.locator('[data-id="gen-path-l2"]').select_option('로그인')
     page.locator('[data-id="gen-path-l3"]').select_option('오류 처리')
+    expect(page.locator('[data-id="gen-style-examples"]')).to_contain_text('입력한 정보와 작성 규칙')
     page.locator('[data-id="src-tab-paste"]').click()
     page.locator('[data-id="src-paste"]').fill('초대 링크 복사 버튼을 누르면 링크가 클립보드에 복사된다.')
     page.locator('[data-id="src-paste-add"]').click()

@@ -8,14 +8,12 @@ from _tc_model import now_iso
 
 DEFAULT_PROFILE = {
     "name": "기본",
-    "coverage": {"positive": 1, "negative": 1, "validation_if_input": 1},
+    "coverage": {"positive": 0, "negative": 0, "validation_if_input": 0},
     "rules": [
-        "기능마다 정상 케이스 1개 이상, 예외/부정 케이스 1개 이상을 만든다",
-        "입력 필드가 있으면 유효성 케이스를 1개 이상 만든다",
-        "코호트·날짜 조건(D+4~D+6 등)은 조건마다 행을 나눈다",
-        "P0 핵심 흐름 / P1 주요 기능 / P2 보조 기능 / P3 엣지 케이스",
-        "AUTO: 브라우저로 자동화할 수 있으면 Y-web, 앱 자동화가 필요하면 Y-app, 사람만 확인할 수 있으면 N",
-        "Step은 한 줄에 한 동작, Expected는 결과 한 문장 + 화면 문구는 '- ' 불릿",
+        "제공한 정보에 명시된 기능·조건·기대 결과를 기준으로 작성한다. 문서에 없는 동작은 추측하지 않는다",
+        "TC 하나에는 하나의 검증 목적을 담고, 중복 케이스는 합친다",
+        "조건에 따라 결과가 달라진다고 명시된 경우에만 케이스를 나눈다",
+        "Step은 한 줄에 한 동작, Expected는 확인 가능한 결과와 원문 화면 문구로 작성한다",
     ],
     "banned_phrases": ["정상 동작", "정상적으로 노출"],
     "examples": 8,
