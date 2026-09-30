@@ -63,3 +63,15 @@
 - 검증: 자동 선택·이름 변경·첫 정보 입력 화면·빈 분류 입력의 RED 확인 후 GREEN. tc_library 118 passed; 전체 795 passed, 1 skipped, 기존 경고 2개. 실제 실행 서버의 온보딩 시트를 테스트케이스로 변경하고 새로고침 유지 확인. PRD 파일 영역과 URL 입력칸 노출 확인, JS 오류 없음. 기본양식 0건 유지.
 - 계획과 다른 점: 사용자 후속 요청에 따라 첫 탭·초기 진입 화면과 시트 관리 기능 추가. 기존 생성 E2E는 대상 시트를 명시적으로 선택하도록 준비 단계만 수정하고 기존 생성·검토 assertions 유지. 새 이력 검사의 시간 순서는 저장소가 최신순을 반환하는 계약에 맞춰 확인했다.
 - 증거: /tmp/tc-authoring-followup-unit-final.log, /tmp/tc-authoring-followup-full-final.log, /tmp/tc-studio-prd-entry.png, /tmp/tc-studio-url-entry.png, /tmp/tc-studio-sheet-rename.png. Push·병합 없음.
+
+### 빈 기본 양식·구조 추가·디자인 모달 (사용자 후속 요청)
+
+- 기본 양식에서 원본 서비스별 시트 이름이 남은 것을 확인했다. 기존 기본양식의 삭제 이력은 state/template_backups/기본양식-20260930-171656에 보관하고, 기본양식을 테스트케이스 시트 하나·빈 분류·TC 0건으로 다시 가져왔다. ~/Downloads/TC_빈양식.xlsx도 같은 중립 양식으로 갱신했다. 기존 활성 TC가 있으면 대체하지 않도록 확인 도구에서 검사했다.
+- 시트 추가: 기존 엑셀의 컬럼·서식·드롭다운만 복사한다. TC 내용은 복사하지 않는다. 새 빈 데이터 행 스타일 누락을 추가 RED로 확인하고 보존하도록 수정했다.
+- 분류 추가: 대·중·소분류 입력 후 분류 추가를 누르면 TC 생성 전에도 저장된다. branches 메타데이터에 저장하며 트리에 TC 0건 가지로 표시한다. 중복 추가는 멱등, 누락된 상위 분류·잘못된 시트는 거부한다. 시트 이름 변경 시 빈 분류의 시트 이름도 갱신한다.
+- 시트 추가·이름 변경 모달: 브라우저 기본 prompt 제거. 기존 scrim/modal 스타일, 제목·입력·저장/추가·취소 버튼·오류 안내 적용. 중복 이름 오류 후 재입력, 취소·ESC, 포커스 복원 검증.
+- API: POST /api/tc-library/{suite}/sheets {name}; POST /api/tc-library/{suite}/branches {sheet, path}; 기존 /sheets/rename 사용.
+- 사용자 흐름: 기획 정보 · TC 생성 → 오른쪽 시트 추가 → 이름 입력·추가 → 대분류 입력(중·소분류 선택) → 분류 추가 → 왼쪽 PRD/텍스트/URL 입력 → 초안 생성.
+- 검증: tc_library 121 passed; 전체 798 passed, 1 skipped, 기존 경고 2개. 실제 서버 화면에서 별도 확인용 스위트로 빈 시트 추가→디자인 모달 이름 변경→대·중·소분류 추가→새로고침 유지·TC 0건·JS 오류 없음 확인. 확인용 스위트는 state/template_backups에 보관해 기본 화면에는 남기지 않았다. API 스위트 목록은 기본양식·테스트케이스 시트·0건만 존재.
+- 증거: /tmp/tc-structure-unit.log, /tmp/tc-structure-full-final.log, /tmp/tc-structure-live.log, /tmp/tc-studio-rename-sheet-modal-final.png, /tmp/tc-studio-neutral-structure-final.png.
+- 계획과 다르게 한 것: 사용자 후속 요청에 따라 빈 분류 메타데이터·시트 추가 API·디자인 모달 추가 및 로컬 기본 양식의 서비스별 이름 제거. Push·병합 없음.

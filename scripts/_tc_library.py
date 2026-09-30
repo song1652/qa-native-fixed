@@ -333,7 +333,7 @@ def filter_cases(cases: list[dict], query: dict) -> list[dict]:
     return out
 
 
-def build_tree(cases: list[dict]) -> list[dict]:
+def build_tree(cases: list[dict], branches: list[dict] | None = None) -> list[dict]:
     """시트 › 대분류 › 중분류 › 소분류 › 기능 트리 + 가지별 집계 (F2.2, F5.1)."""
     roots: list[dict] = []
     index: dict[tuple, dict] = {}
@@ -354,6 +354,21 @@ def build_tree(cases: list[dict]) -> list[dict]:
             node["needs_review"] += case["status"] == "needs_review" or bool(case.get("flags", {}).get("source_change"))
             node["invalid"] += case["has_error"]
             children = node["children"]
+    for branch in branches or []:
+        keys = [branch['sheet'], *[p for p in branch['path'] if p]]
+        children = roots
+        for depth, name in enumerate(keys):
+            key = tuple(keys[:depth + 1])
+            node = index.get(key)
+            if node is None:
+                node = {'name': name, 'level': 'sheet' if depth == 0 else f'l{depth}',
+                        'path': list(key), 'count': 0, 'draft': 0, 'needs_review': 0,
+                        'invalid': 0, 'children': []}
+                index[key] = node
+                children.append(node)
+            elif node['level'] == 'feature':
+                node['level'] = f'l{depth}'
+            children = node['children']
     return roots
 
 
@@ -509,6 +524,9 @@ def rename_sheet(suite: str, old: str, name: str, actor: str) -> None:
                     if name in data.get('sheets', []):
                         raise LibraryError('이미 존재하는 시트 이름입니다.', 'SHEET_EXISTS', 409)
                     data['sheets'] = [name if sheet == old else sheet for sheet in data.get('sheets', [])]
+                    for branch in data.get('branches', []):
+                        if branch['sheet'] == old:
+                            branch['sheet'] = name
                     for case in data.get('cases', []):
                         if case['sheet'] == old:
                             history.extend(_apply(case, {'sheet': name}, actor))
@@ -531,5 +549,80 @@ def rename_sheet(suite: str, old: str, name: str, actor: str) -> None:
                     update_state(path, lambda _, original=original: original)
                 raise
             _append_history(suite, history)
+    finally:
+        wb.close()
+
+
+def load_branches(suite: str) -> list[dict]:
+    return read_state(_cases_path(suite)).get('branches', [])
+
+
+def add_branch(suite: str, sheet: str, path: list[str]) -> dict:
+    if sheet not in load_profiles(suite):
+        raise LibraryError('시트를 선택하세요.', 'SHEET_NOT_FOUND', 404)
+    if not isinstance(path, list) or not 1 <= len(path) <= 3 or any(not isinstance(p, str) for p in path):
+        raise LibraryError('대·중·소분류 이름을 입력하세요.', 'INVALID_BRANCH')
+    path = [p.strip() for p in path] + [''] * (3 - len(path))
+    if not path[0] or any(path[i] and not path[i - 1] for i in range(1, 3)):
+        raise LibraryError('상위 분류부터 차례로 입력하세요.', 'INVALID_BRANCH')
+    if any(len(p) > 80 or '/' in p or any(ord(c) < 32 for c in p) for p in path):
+        raise LibraryError('분류 이름은 80자 이내이며 / 또는 제어 문자를 포함할 수 없습니다.', 'INVALID_BRANCH')
+    branch = {'sheet': sheet, 'path': path}
+    def mutate(data):
+        branches = data.setdefault('branches', [])
+        if branch not in branches:
+            branches.append(branch)
+        return data
+    update_state(_cases_path(suite), mutate)
+    return branch
+
+
+def add_sheet(suite: str, name: str) -> None:
+    """Add an empty worksheet using the existing template's formatting."""
+    import re
+    import tempfile
+    from copy import deepcopy
+    from dataclasses import replace
+    import openpyxl
+    from _tc_xlsx_export import write_sheet
+
+    name = name.strip() if isinstance(name, str) else ''
+    if not name or len(name) > 31 or re.search(r"[\\/*?:\[\]]", name) or name.startswith("'") or name.endswith("'"):
+        raise LibraryError('시트 이름은 1~31자이며 \\ / * ? : [ ]를 포함할 수 없습니다.', 'INVALID_SHEET')
+    root = suite_dir(suite)
+    profiles = load_profiles(suite)
+    if not profiles:
+        raise LibraryError('먼저 빈 엑셀 양식을 가져오세요.', 'TEMPLATE_REQUIRED')
+    workbook = root / 'template.xlsx'
+    profile_path = root / 'template_profile.json'
+    wb = openpyxl.load_workbook(workbook)
+    try:
+        if any(title.casefold() == name.casefold() for title in wb.sheetnames):
+            raise LibraryError('이미 존재하는 시트 이름입니다.', 'SHEET_EXISTS', 409)
+        source = next(iter(profiles.values()))
+        ws = wb.copy_worksheet(wb[source.sheet])
+        ws.title = name
+        ws.data_validations = deepcopy(wb[source.sheet].data_validations)
+        profile = replace(source, sheet=name)
+        write_sheet(ws, profile, [])
+        for col in range(1, ws.max_column + 1):
+            ws.cell(profile.style_row, col)._style = deepcopy(wb[source.sheet].cell(source.style_row, col)._style)
+        with tempfile.TemporaryDirectory(prefix='tc-add-sheet-') as temp:
+            out = Path(temp) / 'template.xlsx'
+            wb.save(out)
+            previous = {path: read_state(path) for path in [profile_path, _cases_path(suite)]}
+            original_workbook = workbook.read_bytes()
+            try:
+                shutil.copy2(out, workbook)
+                update_state(profile_path, lambda data: {**data, name: profile.to_dict()})
+                def mutate(data):
+                    data['sheets'] = list(dict.fromkeys([*data.get('sheets', []), name]))
+                    return data
+                update_state(_cases_path(suite), mutate)
+            except Exception:
+                workbook.write_bytes(original_workbook)
+                for path, original in previous.items():
+                    update_state(path, lambda _, original=original: original)
+                raise
     finally:
         wb.close()

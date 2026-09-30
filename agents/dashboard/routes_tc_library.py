@@ -34,6 +34,8 @@ ROUTES: list[tuple[str, re.Pattern, str]] = [
         ("POST", rf"/api/tc-library/{_SUITE}/bulk", "_tcl_bulk"),
         ("POST", rf"/api/tc-library/{_SUITE}/move", "_tcl_move"),
         ("POST", rf"/api/tc-library/{_SUITE}/sheets/rename", "_tcl_rename_sheet"),
+        ("POST", rf"/api/tc-library/{_SUITE}/branches", "_tcl_add_branch"),
+        ("POST", rf"/api/tc-library/{_SUITE}/sheets", "_tcl_add_sheet"),
         ("POST", rf"/api/tc-library/{_SUITE}/export/xlsx", "_tcl_export_xlsx"),
 
 
@@ -100,8 +102,8 @@ class TcLibraryRoutesMixin:
         self._tcl_json({"ok": True, "suites": list_suites()})
 
     def _tcl_tree(self, suite: str):
-        from _tc_library import build_tree, load_cases
-        self._tcl_json({"ok": True, "tree": build_tree(load_cases(suite))})
+        from _tc_library import build_tree, load_cases, load_branches
+        self._tcl_json({"ok": True, "tree": build_tree(load_cases(suite), load_branches(suite))})
 
     def _tcl_list(self, suite: str):
         from _tc_library import filter_cases, load_cases
@@ -306,3 +308,15 @@ class TcLibraryRoutesMixin:
         body = _read_body(self)
         rename_sheet(suite, body.get("sheet", ""), body.get("name", ""), self._tcl_actor())
         self._tcl_json({"ok": True})
+
+    def _tcl_add_branch(self, suite: str):
+        from _tc_library import add_branch
+        body = _read_body(self)
+        branch = add_branch(suite, body.get('sheet', ''), body.get('path', []))
+        self._tcl_json({'ok': True, 'branch': branch})
+
+    def _tcl_add_sheet(self, suite: str):
+        from _tc_library import add_sheet
+        body = _read_body(self)
+        add_sheet(suite, body.get('name', ''))
+        self._tcl_json({'ok': True})

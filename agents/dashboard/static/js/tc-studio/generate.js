@@ -73,12 +73,13 @@
       <div style="display:grid;gap:16px">
         <div class="panel"><div class="panel-head">2. 작성할 시트·분류</div>
           <div class="panel-body" style="display:grid;gap:10px">
-            <div class="field"><span class="label">시트</span><div class="row"><select class="select" id="gen-target-sheet" data-id="gen-target-sheet"></select><button class="btn-sm" type="button" data-id="gen-rename-sheet" id="gen-rename-sheet" disabled>이름 변경</button></div></div>
+            <div class="field"><span class="label">시트</span><div class="row" style="flex-wrap:nowrap"><select class="select" id="gen-target-sheet" data-id="gen-target-sheet" style="min-width:0"></select><button class="btn-sm" type="button" data-id="gen-add-sheet" id="gen-add-sheet" style="white-space:nowrap;flex-shrink:0">시트 추가</button><button class="btn-sm" type="button" data-id="gen-rename-sheet" id="gen-rename-sheet" style="white-space:nowrap;flex-shrink:0" disabled>이름 변경</button></div></div>
             <div class="picker" data-id="gen-target-path">
               ${[['l1', '대분류'], ['l2', '중분류'], ['l3', '소분류']].map(([k, l]) => `<div class="field"><span class="label">${l}</span>
                 <select class="select" id="gen-path-${k}" data-id="gen-path-${k}"></select>
                 <input class="input" id="gen-new-${k}" data-id="gen-new-${k}" placeholder="새 ${l} 이름" hidden></div>`).join('')}
             </div>
+            <div class="row"><button class="btn-sm" type="button" id="gen-add-branch" data-id="gen-add-branch" disabled>분류 추가</button><span class="help">대분류를 입력하세요. 중·소분류는 선택 사항입니다.</span></div>
             <div class="examples" data-id="gen-style-examples" id="gen-examples"></div>
           </div></div>
         <div class="panel"><div class="panel-head">작성 프로필<span class="spacer"></span><button class="btn-sm" data-id="gen-profile-edit" id="gen-profile-edit">편집</button></div>
@@ -109,7 +110,19 @@
         </div></div>
       </div>
     </div></div>
-  </section>`;
+  </section>
+  <div class="scrim" id="sheet-rename-modal" data-id="sheet-rename-modal" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="sheet-rename-title" style="width:min(440px,100%)">
+      <div class="panel-head" id="sheet-rename-title">시트 이름 변경</div>
+      <div class="panel-body" style="display:grid;gap:16px">
+        <div class="field"><label class="label" for="sheet-rename-name">시트 이름</label>
+          <input class="input" id="sheet-rename-name" data-id="sheet-rename-name" maxlength="31" placeholder="예: 회원가입, 결제, 검색" autocomplete="off" aria-describedby="sheet-rename-help sheet-rename-error">
+          <span class="help" id="sheet-rename-help">최대 31자. 기존 TC 내용과 ID는 유지됩니다.</span>
+          <span class="help" id="sheet-rename-error" data-id="sheet-rename-error" role="alert" style="color:var(--err)"></span></div>
+        <div class="row"><span class="spacer"></span><button class="btn btn-ghost" id="sheet-rename-cancel" data-id="sheet-rename-cancel">취소</button><button class="btn btn-primary" id="sheet-rename-save" data-id="sheet-rename-save">저장</button></div>
+      </div>
+    </div>
+  </div>`;
   }
 
   // ── 소스 목록 ────────────────────────────────────────────────
@@ -191,6 +204,7 @@
     const sheet = sheets.includes(keep.sheet) ? keep.sheet : '';
     $('#gen-target-sheet', root).innerHTML = '<option value="">시트를 선택하세요</option>' + sheets.map((n) => `<option ${n === sheet ? 'selected' : ''}>${esc(n)}</option>`).join('');
     $('#gen-rename-sheet', root).disabled = !sheet;
+    $('#gen-add-branch', root).disabled = !sheet;
     const path = [];
     ['l1', 'l2', 'l3'].forEach((k, i) => {
       const names = sheet ? children([sheet, ...path]).map((n) => n.name) : [];
@@ -306,16 +320,67 @@
       $$('[data-srcpane]', root).forEach((p) => { p.hidden = p.dataset.srcpane !== t.dataset.src; });
     }));
     tabs.forEach((t) => t.mount($(`[data-srcpane="${t.id}"]`, root), addSource));
-    $('#gen-rename-sheet', root).addEventListener('click', async () => {
-      const t = target();
-      const name = window.prompt('새 시트 이름 (최대 31자)', t.sheet);
-      if (name === null || name.trim() === t.sheet) return;
+    const sheetModal = $('#sheet-rename-modal', root);
+    const sheetName = $('#sheet-rename-name', root);
+    const sheetSave = $('#sheet-rename-save', root);
+    const sheetCancel = $('#sheet-rename-cancel', root);
+    const sheetError = $('#sheet-rename-error', root);
+    let sheetMode = 'rename', sheetTarget = null, sheetOpener = null;
+    function openSheetModal(mode, opener) {
+      sheetMode = mode;
+      sheetTarget = target();
+      sheetOpener = opener;
+      $('#sheet-rename-title', root).textContent = mode === 'add' ? '시트 추가' : '시트 이름 변경';
+      $('#sheet-rename-help', root).textContent = mode === 'add' ? '최대 31자. 기존 양식의 서식만 복사하며 TC 내용은 비워 둡니다.' : '최대 31자. 기존 TC 내용과 ID는 유지됩니다.';
+      sheetSave.textContent = mode === 'add' ? '추가' : '저장';
+      sheetName.value = mode === 'add' ? '' : sheetTarget.sheet;
+      sheetError.textContent = '';
+      sheetModal.hidden = false;
+      sheetName.focus();
+      sheetName.select();
+    }
+    function closeSheetModal() {
+      if (sheetSave.disabled) return;
+      sheetModal.hidden = true;
+      sheetOpener?.focus();
+    }
+    $('#gen-rename-sheet', root).addEventListener('click', (e) => openSheetModal('rename', e.currentTarget));
+    $('#gen-add-sheet', root).addEventListener('click', (e) => openSheetModal('add', e.currentTarget));
+    sheetCancel.addEventListener('click', closeSheetModal);
+    sheetModal.addEventListener('click', (e) => { if (e.target === sheetModal) closeSheetModal(); });
+    sheetModal.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') { e.preventDefault(); closeSheetModal(); }
+      if (e.key === 'Enter' && e.target === sheetName) { e.preventDefault(); sheetSave.click(); }
+      if (e.key === 'Tab') {
+        if (e.shiftKey && e.target === sheetName) { e.preventDefault(); sheetSave.focus(); }
+        else if (!e.shiftKey && e.target === sheetSave) { e.preventDefault(); sheetName.focus(); }
+      }
+    });
+    sheetSave.addEventListener('click', async () => {
+      const name = sheetName.value.trim();
+      if (!name) { sheetError.textContent = '시트 이름을 입력하세요.'; sheetName.focus(); return; }
+      sheetSave.disabled = true;
+      sheetCancel.disabled = true;
+      sheetError.textContent = '';
       try {
-        await api.renameSheet(state.suite, t.sheet, name);
+        if (sheetMode === 'add') await api.addSheet(state.suite, name);
+        else await api.renameSheet(state.suite, sheetTarget.sheet, name);
         await NS.reloadSuites(state.suite);
-        renderTarget({ sheet: name.trim(), path: t.path });
-        toast('시트 이름을 변경했습니다.', 'ok');
-      } catch (err) { toast(`이름을 변경하지 못했습니다: ${esc(err.message)}`, 'err'); }
+        renderTarget({ sheet: name, path: sheetMode === 'add' ? ['', '', ''] : sheetTarget.path });
+        sheetSave.disabled = false;
+        closeSheetModal();
+        toast(sheetMode === 'add' ? '빈 시트를 추가했습니다.' : '시트 이름을 변경했습니다.', 'ok');
+      } catch (err) { sheetError.textContent = err.message; }
+      finally { sheetSave.disabled = false; sheetCancel.disabled = false; }
+    });
+    $('#gen-add-branch', root).addEventListener('click', async () => {
+      const t = target();
+      try {
+        await api.addBranch(state.suite, t.sheet, t.path);
+        await NS.library.refresh();
+        renderTarget(t);
+        toast('분류를 추가했습니다.', 'ok');
+      } catch (err) { toast(`분류를 추가하지 못했습니다: ${esc(err.message)}`, 'err'); }
     });
     $('#gen-target-sheet', root).addEventListener('change', () => renderTarget({ sheet: $('#gen-target-sheet', root).value, path: ['', '', ''] }));
     ['l1', 'l2', 'l3'].forEach((k, i) => $(`#gen-path-${k}`, root).addEventListener('change', (e) => {

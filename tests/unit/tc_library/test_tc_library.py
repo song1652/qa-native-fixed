@@ -153,3 +153,41 @@ def test_sheet_rename_changes_only_letter_case_without_suffix(seeded):
     assert 'benefits' in wb.sheetnames and 'benefits1' not in wb.sheetnames
     wb.close()
     assert lib.get_case(SUITE, 'BEN_0001')['sheet'] == 'benefits'
+
+
+def test_empty_branches_are_saved_without_creating_cases(library_dir, template_xlsx):
+    lib.save_template(SUITE, template_xlsx, analyze_workbook(template_xlsx))
+    lib.import_cases(SUITE, ['혜택'], [], 'tester')
+    lib.add_branch(SUITE, '혜택', ['직접 작성', '로그인', '오류 처리'])
+    lib.add_branch(SUITE, '혜택', ['직접 작성', '로그인', '오류 처리'])
+    assert lib.load_cases(SUITE) == []
+    branches = lib.load_branches(SUITE)
+    assert branches == [{'sheet': '혜택', 'path': ['직접 작성', '로그인', '오류 처리']}]
+    tree = lib.build_tree([], branches)
+    assert tree[0]['children'][0]['children'][0]['children'][0]['name'] == '오류 처리'
+    assert tree[0]['count'] == 0
+    for sheet, path in [('없는 시트', ['기능']), ('혜택', ['', '중분류']), ('혜택', ['기능', '', '소분류'])]:
+        with pytest.raises(lib.LibraryError):
+            lib.add_branch(SUITE, sheet, path)
+    lib.rename_sheet(SUITE, '혜택', '사용자 작성', 'tester')
+    assert lib.load_branches(SUITE)[0]['sheet'] == '사용자 작성'
+    assert lib.build_tree([], lib.load_branches(SUITE))[0]['name'] == '사용자 작성'
+
+
+def test_add_sheet_copies_only_format_without_sample_cases(seeded):
+    import openpyxl
+    lib.add_sheet(SUITE, '회원가입')
+    assert len(lib.load_cases(SUITE)) == 6
+    assert lib.list_suites()[0]['sheets'] == ['혜택', '홈', '회원가입']
+    profile = lib.load_profiles(SUITE)['회원가입']
+    assert profile.sheet == '회원가입'
+    wb = openpyxl.load_workbook(lib.suite_dir(SUITE) / 'template.xlsx')
+    ws = wb['회원가입']
+    assert ws['G11'].value == 'Test Step'
+    assert ws['G13'].value is None and ws['H13'].value is None
+    assert ws['H13'].font.bold == wb['혜택']['H13'].font.bold
+    assert ws.data_validations.dataValidation
+    wb.close()
+    for name in ['회원가입', 'bad/name', '']:
+        with pytest.raises(lib.LibraryError):
+            lib.add_sheet(SUITE, name)
