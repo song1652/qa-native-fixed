@@ -287,3 +287,23 @@ def test_auto_controls_are_removed_from_studio(page, tmp_path):
         page.locator('#import-close').click()
         page.locator('[data-id="nav-tab-export"]').click()
         expect(page.locator('[data-id="md-card"]')).not_to_contain_text('AUTO')
+
+
+def test_drop_zone_shows_analyzing_state_until_preview_returns(page, tmp_path):
+    """분석이 늦어도 파일을 올린 자리에서 진행 중임이 보이고, 끝나면 원래 안내로 돌아간다."""
+    with dashboard_server(tmp_path / 'project') as base:
+        page.goto(base + '/tc-studio')
+        page.locator('[data-id="btn-import-xlsx"]').click()
+        held = []
+        page.route('**/api/tc-library/import/preview**', lambda route: held.append(route))
+        page.locator('#import-file').set_input_files(str(workbook(tmp_path / 'slow.xlsx')))
+        analyzing = page.locator('[data-id="import-analyzing"]')
+        expect(analyzing).to_be_visible()
+        expect(page.locator('#import-drop')).to_contain_text('slow.xlsx')
+        expect(page.locator('#import-drop')).to_have_attribute('aria-busy', 'true')
+        page.wait_for_function('() => true')
+        while not held:
+            page.wait_for_timeout(50)
+        held[0].continue_()
+        expect(analyzing).to_have_count(0)
+        expect(page.locator('#import-drop')).to_contain_text('엑셀 파일을 끌어다 놓거나 눌러서 선택')

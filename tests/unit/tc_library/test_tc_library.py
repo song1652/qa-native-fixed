@@ -25,7 +25,7 @@ def test_import_is_idempotent_and_updates_by_case_id(seeded):
     changed[0]["priority"] = "P1"
     assert lib.import_cases(SUITE, ["혜택", "홈"], changed, "tester")["updated"] == 1
     assert lib.get_case(SUITE, "BEN_0001")["rev"] == 2
-    assert lib.list_suites() == [{"suite": SUITE, "sheets": ["혜택", "홈"], "count": 6}]
+    assert lib.list_suites() == [{"suite": SUITE, "sheets": ["혜택", "홈"], "count": 6, "protected": False}]
 
 
 def test_patch_bumps_rev_and_rejects_stale_rev(seeded):

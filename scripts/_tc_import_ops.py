@@ -300,6 +300,20 @@ def plan_import(body: dict) -> dict:
         return run
 
 
+def _copy_style(cell, target, cache: dict) -> None:
+    """다른 워크북의 셀 서식을 값으로 옮긴다. cell._style은 원본 워크북의 서식 표 번호라 그대로 쓰면
+    대상 워크북에서 없는 번호(IndexError)나 엉뚱한 서식을 가리킨다. 같은 서식은 한 번만 변환한다."""
+    from copy import copy as shallow_copy
+    if not cell.has_style:
+        return
+    key = tuple(cell._style)
+    if key not in cache:
+        for name in ('font', 'border', 'fill', 'number_format', 'protection', 'alignment'):
+            setattr(target, name, shallow_copy(getattr(cell, name)))
+        cache[key] = shallow_copy(target._style)
+    target._style = shallow_copy(cache[key])
+
+
 def _merge_templates(run: dict, before: dict) -> tuple[bytes, dict]:
     import openpyxl
     from copy import copy as shallow_copy
@@ -309,6 +323,7 @@ def _merge_templates(run: dict, before: dict) -> tuple[bytes, dict]:
     profiles = json.loads(base64.b64decode(before['template_profile.json'])) if before['template_profile.json'] else {}
     try:
         for source in run['sources']:
+            styles: dict = {}          # 워크북마다 서식 번호가 다르다 — 올린 파일별로 새로 변환한다
             uploaded = openpyxl.load_workbook(_paths.TC_LIBRARY_DIR / '_uploads' / (source['preview_id'] + '.xlsx'))
             try:
                 if not template and source is first_source:
@@ -324,7 +339,7 @@ def _merge_templates(run: dict, before: dict) -> tuple[bytes, dict]:
                     for row in src:
                         for cell in row:
                             target = dst.cell(cell.row, cell.column, cell.value)
-                            target._style = shallow_copy(cell._style)
+                            _copy_style(cell, target, styles)
                             if cell.hyperlink:
                                 target._hyperlink = shallow_copy(cell.hyperlink)
                             if cell.comment:

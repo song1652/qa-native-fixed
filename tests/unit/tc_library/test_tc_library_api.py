@@ -63,7 +63,7 @@ def test_import_preview_rejects_non_xlsx_and_oversized_body(api):
 def test_read_endpoints(api):
     base_url, _ = api
     assert request_json(base_url, "GET", "/api/tc-library")[1]["suites"] == \
-        [{"suite": "야핏무브", "sheets": ["혜택", "홈"], "count": 6}]
+        [{"suite": "야핏무브", "sheets": ["혜택", "홈"], "count": 6, "protected": False}]
     tree = request_json(base_url, "GET", f"/api/tc-library/{S}/tree")[1]["tree"]
     assert [(n["name"], n["count"]) for n in tree] == [("혜택", 5), ("홈", 1)]
     listing = request_json(base_url, "GET",

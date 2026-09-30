@@ -158,11 +158,12 @@ class TcLibraryRoutesMixin:
         (upload_dir / f"{preview_id}.json").write_text(
             json.dumps({"filename": filename, "mapping": mapping}, ensure_ascii=False), encoding="utf-8")
         from _tc_xlsx_import import import_workbook
+        from collections import Counter
+        counts = Counter(c["sheet"] for c in import_workbook(xlsx, profiles, list(profiles), {}))  # 워크북은 한 번만 연다
         sheets = []
         for name, profile in profiles.items():
-            cases = import_workbook(xlsx, profiles, [name], {})
             sheets.append({"name": name, "header_row": profile.header_row,
-                           "data_start_row": profile.data_start_row, "cases": len(cases),
+                           "data_start_row": profile.data_start_row, "cases": counts[name],
                            "result_columns": list(profile.result_columns),
                            "warnings": profile.warnings})
         self._tcl_json({"ok": True, "preview_id": preview_id, "filename": filename,

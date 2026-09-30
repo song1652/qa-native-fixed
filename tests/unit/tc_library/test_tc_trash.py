@@ -154,3 +154,12 @@ def test_purge_rejects_malformed_id(seeded):
     with pytest.raises(lib.LibraryError) as exc:
         trash.purge("../x", SUITE)
     assert exc.value.code == "INVALID_TRASH"
+
+
+def test_default_suite_cannot_be_deleted(library_dir):
+    lib.import_cases(lib.DEFAULT_SUITE, ["테스트케이스"], [], "tester")
+    with pytest.raises(lib.LibraryError) as exc:
+        trash.delete_suite(lib.DEFAULT_SUITE, lib.DEFAULT_SUITE)
+    assert exc.value.code == "DEFAULT_SUITE"
+    assert lib.suite_dir(lib.DEFAULT_SUITE).is_dir()
+    assert [s["protected"] for s in lib.list_suites()] == [True]

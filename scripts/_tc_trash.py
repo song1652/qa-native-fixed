@@ -22,7 +22,7 @@ import _paths
 from _state import read_state, update_state
 from _tc_generate import ACTIVE, jobs_root
 from _tc_import_ops import _root as import_runs_root
-from _tc_library import LibraryError, load_cases, suite_dir, suite_lock
+from _tc_library import DEFAULT_SUITE, LibraryError, load_cases, suite_dir, suite_lock
 from _tc_model import now_iso
 
 RETENTION_DAYS = 30
@@ -62,6 +62,8 @@ def _suite_runs(suite: str) -> list[Path]:
 
 def delete_suite(suite: str, confirm: str) -> dict:
     """스위트를 휴지통으로 옮긴다. confirm은 화면이 보낸 스위트 이름 (엉뚱한 스위트 삭제 방지)."""
+    if suite == DEFAULT_SUITE:
+        raise LibraryError(f"'{DEFAULT_SUITE}'는 기본 양식이라 삭제할 수 없습니다", "DEFAULT_SUITE", 409)
     if confirm != suite:
         raise LibraryError("삭제할 스위트 이름이 일치하지 않습니다", "CONFIRM_MISMATCH")
     source = suite_dir(suite)

@@ -83,17 +83,21 @@
     files=Array.from(chosen); const token=++generation, selectedMapping=mapping();resetPlan();previews=[];
     $('#import-preview',root).hidden=true; $('#import-plan',root).disabled=true;
     $('#import-summary',root).textContent='파일 분석 중…';
+    const drop=$('#import-drop',root), idle=drop.dataset.idle??(drop.dataset.idle=drop.innerHTML);
+    drop.classList.add('busy'); drop.setAttribute('aria-busy','true');
     try {
-      for(const file of files){
+      for(const [i,file] of files.entries()){
         if(!/\.xlsx$/i.test(file.name)||file.size>25*1024*1024)throw new Error(`${file.name}: .xlsx, 25MB 이하 파일을 선택하세요`);
+        drop.innerHTML=`<b class="analyzing" role="status" data-id="import-analyzing">파일 분석 중… ${files.length>1?`(${i+1}/${files.length})`:''}</b><span class="faint">${esc(file.name)} · 시트와 헤더를 읽고 있습니다</span>`;
         const preview=await api.importPreview(file,selectedMapping);if(token!==generation)return;previews.push(preview);
       }
-      if(!$('#import-suite',root).value.trim())$('#import-suite',root).value=state.suite||files[0].name.replace(/\.xlsx$/i,'').replace(/_?Full$/i,'').replace(/[^\w가-힣-]/g,'_');
+      if(!$('#import-suite',root).value.trim())$('#import-suite',root).value=(state.suites.find(s=>s.suite===state.suite)||{protected:true}).protected?files[0].name.replace(/\.xlsx$/i,'').replace(/_?Full$/i,'').replace(/[^\w가-힣-]/g,'_'):state.suite;
       let index=0;
       $('#import-sheets',root).innerHTML=previews.map((p,pi)=>`<div style="margin-bottom:8px"><b>${esc(p.filename)}</b>${p.sheets.map(s=>{const n=++index;return `<div class="row" style="flex-wrap:wrap"><label class="radio"><input type="checkbox" data-sheet="${esc(s.name)}" data-file="${pi}" checked>${esc(s.name)} <span class="n">${s.cases}행 · 헤더 ${s.header_row}행</span></label><input class="input mono" data-prefix="${esc(s.name)}" data-file="${pi}" value="S${String(n).padStart(2,'0')}" maxlength="8" style="width:90px" aria-label="${esc(s.name)} 접두어"><select class="select" data-sheet-profile="${esc(s.name)}" data-file="${pi}" aria-label="${esc(s.name)} 시트별 매핑"><option value="">현재 공통 매핑</option>${profiles.map(x=>`<option value="${esc(x.id)}">${esc(x.name)}</option>`).join('')}</select></div>`;}).join('')}</div>`).join('');
       $('#import-warnings',root).innerHTML=previews.flatMap(p=>p.sheets.flatMap(s=>s.warnings.map(w=>`<li>${esc(p.filename)} · ${esc(s.name)}: ${esc(w)}</li>`))).join('');
       mappingDirty=false; $('#import-preview',root).hidden=false;updateSummary();
     }catch(err){if(token!==generation)return;previews=[];$('#import-summary',root).textContent=err.message;toast(`분석 실패: ${esc(err.message)}`,'err');}
+    finally{if(token===generation){drop.innerHTML=idle;drop.classList.remove('busy');drop.removeAttribute('aria-busy');}}
   }
   function selection() {
     const sources=previews.map((p,pi)=>{

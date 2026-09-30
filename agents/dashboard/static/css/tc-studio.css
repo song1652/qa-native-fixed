@@ -232,6 +232,9 @@
 .tc-studio .src-tab { border:1px solid var(--line); background:var(--card); color:var(--text2); border-radius:var(--radius-sm); padding:6px 10px; cursor:pointer; font-weight:600; font-size:12px; }
 .tc-studio .src-tab[aria-selected="true"] { border-color:var(--accent); color:var(--text); background:var(--accent-soft); }
 .tc-studio .drop { border:2px dashed var(--line2); border-radius:var(--radius); padding:26px 16px; text-align:center; color:var(--text2); display:grid; gap:6px; place-items:center; cursor:pointer; }
+.tc-studio .drop.busy { border-color:var(--accent); background:var(--accent-soft); color:var(--text); pointer-events:none; }
+.tc-studio .drop .analyzing { display:inline-flex; align-items:center; justify-content:center; gap:8px; color:var(--accent); }
+.tc-studio .drop .analyzing::before { content:""; width:14px; height:14px; border:2px solid currentColor; border-right-color:transparent; border-radius:50%; animation:spin .7s linear infinite; }
 .tc-studio .drop.over { border-color:var(--accent); background:var(--accent-soft); }
 .tc-studio .srcs { display:grid; gap:8px; }
 .tc-studio .src-card { display:grid; grid-template-columns:34px 1fr auto; gap:10px; align-items:center; padding:10px 12px; border:1px solid var(--line); border-radius:var(--radius-sm); background:var(--bg2); }

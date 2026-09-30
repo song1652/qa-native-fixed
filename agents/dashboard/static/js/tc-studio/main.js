@@ -144,7 +144,10 @@
     menu.hidden = !open;
     $('#suite-menu-btn', root).setAttribute('aria-expanded', open);
     if (open) {
-      $('#suite-menu-delete', root).disabled = !state.suite;
+      const isDefault = !!(state.suites.find((s) => s.suite === state.suite) || {}).protected;
+      const del = $('#suite-menu-delete', root);
+      del.disabled = !state.suite || isDefault;
+      del.title = isDefault ? '기본 양식은 삭제할 수 없습니다' : '';
       api.trash().then(({ items }) => { $('#trash-n', root).textContent = items.length; }).catch(() => {});
     }
   }

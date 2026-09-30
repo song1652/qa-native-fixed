@@ -40,6 +40,8 @@ class RevConflict(LibraryError):
 
 # API 경로 조각과 겹치는 이름은 스위트로 쓸 수 없다 (/api/tc-library/{profiles|sources|jobs|…})
 RESERVED_SUITES = {"import", "exports", "sources", "profiles", "jobs", "credentials", "source-diff", "trash"}
+# 처음 접속할 때 쓰는 빈 양식 스위트. 삭제할 수 없다
+DEFAULT_SUITE = "기본양식"
 
 
 def suite_dir(suite: str) -> Path:
@@ -151,7 +153,8 @@ def list_suites() -> list[dict]:
         with suite_lock(d.name):
             data = read_state(d / "cases.json")
         live = [c for c in data.get("cases", []) if not c.get("deleted")]
-        suites.append({"suite": d.name, "sheets": data.get("sheets", []), "count": len(live)})
+        suites.append({"suite": d.name, "sheets": data.get("sheets", []), "count": len(live),
+                       "protected": d.name == DEFAULT_SUITE})
     return suites
 
 
