@@ -53,3 +53,17 @@ def page(browser):
     yield p
     context.close()
     assert not errors, errors
+
+@pytest.fixture
+def fake_claude(tmp_path: Path, monkeypatch):
+    """가짜 claude 실행 파일을 만들고 TCS_CLAUDE_BIN으로 가리킨다. 모드는 FAKE_CLAUDE_MODE로 바꾼다."""
+    source = (Path(__file__).parent / "fake_claude.py").read_text(encoding="utf-8")
+    exe = tmp_path / "bin" / "claude"
+    exe.parent.mkdir()
+    exe.write_text(f"#!{sys.executable}\n" + source.split("\n", 1)[1], encoding="utf-8")
+    exe.chmod(0o755)
+    args_file = tmp_path / "claude_args.json"
+    monkeypatch.setenv("TCS_CLAUDE_BIN", str(exe))
+    monkeypatch.setenv("FAKE_CLAUDE_ARGS", str(args_file))
+    monkeypatch.setenv("FAKE_CLAUDE_MODE", "ok")
+    return args_file
