@@ -5,7 +5,6 @@ import re
 from datetime import datetime
 
 PRIORITIES = ("P0", "P1", "P2", "P3")
-AUTO_VALUES = ("Y-web", "Y-app", "N")
 # "" = 미실행. 엑셀의 빈 결과 칸과 1:1로 대응해야 왕복 시 NT로 바뀌지 않는다 (로드맵 Z1).
 EXECUTION_RESULTS = ("", "pass", "fail", "not_test", "na")
 STATUSES = ("draft", "approved", "rejected", "needs_review")
@@ -15,7 +14,7 @@ RESULT_TO_EXCEL = {"pass": "Pass", "fail": "Fail", "not_test": "NT", "na": "NA"}
 RESULT_PRECEDENCE = ("fail", "na", "pass", "not_test")
 EDITABLE_FIELDS = (
     "sheet", "path", "feature", "precondition", "steps", "expected", "bullets",
-    "priority", "auto", "execution_result", "status", "note",
+    "priority", "execution_result", "status", "note", "source_tc_id", "tags",
 )
 _VAGUE = (re.compile(r"정상\s*동작"), re.compile(r"정상적으로\s*노출"))
 _STEP_NO = re.compile(r"^\s*\d+\s*[.)]\s*")
@@ -29,14 +28,15 @@ def new_case(**fields) -> dict:
     case = {
         "case_id": "", "sheet": "", "path": ["", "", ""], "feature": "",
         "precondition": "", "steps": [], "expected": "", "bullets": [],
-        "priority": "", "auto": "", "execution_result": "", "status": "draft",
-        "note": "", "source_refs": [], "rev": 1, "deleted": False,
+        "priority": "", "execution_result": "", "status": "draft",
+        "note": "", "source_tc_id": "", "tags": [], "source_refs": [], "rev": 1, "deleted": False,
         "updated_at": now_iso(),
         # 생성 초안 정보 (Phase 2): job_id, source_quote, duplicates[{case_id, similarity}]
         "draft_meta": {},
         # 검토 표시 (Phase 3): source_change {ref, from, to, at} — 상태(status)와 따로 둔다 (명세 피드백 #7)
         "flags": {},
     }
+    fields.pop("auto", None)
     case.update(fields)
     case["path"] = (list(case["path"]) + ["", "", ""])[:3]
     return case
@@ -119,8 +119,6 @@ def validate_case(case: dict) -> list[dict]:
         add("warning", "PRIORITY_EMPTY", "우선순위가 지정되지 않았습니다")
     elif priority not in PRIORITIES:
         add("error", "PRIORITY_INVALID", f"우선순위 {priority!r}는 허용 값이 아닙니다 (P0~P3)")
-    if case.get("auto", "") not in ("",) + AUTO_VALUES:
-        add("error", "AUTO_INVALID", f"AUTO {case.get('auto')!r}는 허용 값이 아닙니다")
     if case.get("execution_result", "") not in EXECUTION_RESULTS:
         add("error", "RESULT_INVALID", "실행 결과 값이 올바르지 않습니다")
     text = join_expected(case.get("expected", ""), case.get("bullets", []))

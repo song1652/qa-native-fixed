@@ -1,6 +1,6 @@
 # 디렉토리 구조
 
-> **자동 생성** — `python scripts/update_directory.py` | 마지막 갱신: 2026-09-30 19:40
+> **자동 생성** — `python scripts/update_directory.py` | 마지막 갱신: 2026-09-30 22:36
 > 최근 실행: 2026-09-30 18:38 | single | tc_studio_demo | 5/5 | heal:0
 
 > 역할 설명 수정: `scripts/update_directory.py` 내 `SCRIPT_DESCRIPTIONS` / `FOLDER_DESCRIPTIONS` 편집.
@@ -43,6 +43,7 @@
 | `_tc_fetch.py` | 원격 문서 수집용 안전한 GET (SSRF 방어) |
 | `_tc_generate.py` | TC 초안 생성 작업 (제한된 claude -p) |
 | `_tc_html.py` | HTML·Confluence storage → markdown |
+| `_tc_import_ops.py` |  |
 | `_tc_library.py` | TC 라이브러리 저장소 (rev·이력·트리·필터) |
 | `_tc_md_export.py` | TC 라이브러리 → 파이프라인 md 내보내기 |
 | `_tc_model.py` | TC 스튜디오 케이스 모델·허용 값·검증 규칙 |
@@ -90,7 +91,7 @@
 | `api_demo/` | 1개 | - |
 | `customer_login/` | 2개 | - |
 | `partner_login/` | 2개 | - |
-| `tc_studio_demo/` | 5개 | 5/5 (100%) |
+| `tc_studio_demo/` | 8개 | 5/5 (100%) |
 
 ## tests/ — 테스트 산출물 (생성 코드·리포트·스크린샷)
 
@@ -137,6 +138,7 @@
 |------|------|
 | `coverage.json` | 커버리지 매트릭스 (coverage_matrix.py 생성) |
 | `discuss.json` | 팀 토론 상태 |
+| `import_profiles.json` | 런타임 생성 |
 | `pipeline.json` | 단일 파이프라인 상태 (FSM step 전이 검증 포함) |
 | `quick.json` | 빠른 실행 상태 |
 | `run_history.json` | 실행 이력 (매 실행 시 자동 append) |
@@ -188,6 +190,7 @@
 | `development/tc-studio/TC_AUTHORING_IMPLEMENTATION_REPORT.md` | TC Authoring Studio 구현 보고 |
 | `development/tc-studio/TC_AUTHORING_ROADMAP.md` | TC Authoring Studio 개발 로드맵 |
 | `development/tc-studio/plans/2026-09-29-tc-authoring-phase1.md` | TC Authoring Studio Phase 1 Implementation Plan — 라이브러리 + 엑셀 왕복 |
+| `development/tc-studio/plans/2026-09-30-import-integration.md` | Import 기능의 TC 스튜디오 통합 구현 계획 |
 | `development/tc-studio/plans/2026-09-30-tc-authoring-phase2.md` | TC Authoring Studio Phase 2 Implementation Plan — 파일 소스 · 생성 작업 · 초안 검토 |
 | `development/tc-studio/plans/2026-09-30-tc-authoring-phase3.md` | TC Authoring Studio Phase 3 Implementation Plan — Confluence · Figma · PRD URL · 출처 버전 추적 |
 | `development/tc-studio/plans/2026-09-30-tc-authoring-phase4.md` | TC Authoring Studio Phase 4 Implementation Plan — md 내보내기 (파이프라인 연결) |

@@ -221,8 +221,16 @@ class DashboardHandler(                                            # Phase-4/5/6
         if self._tcl_dispatch("GET"):
             return
 
+        # Compatibility for existing Import Studio bookmarks.
+        if path == "/import-studio":
+            self.send_response(308)
+            self.send_header("Location", "/tc-studio")
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+            return
+
         # index
-        if path in ("/", "/index.html", "/import-studio", "/tc-studio"):
+        if path in ("/", "/index.html", "/tc-studio"):
             self._serve_file(HERE / "index.html", "text/html; charset=utf-8")
             return
 

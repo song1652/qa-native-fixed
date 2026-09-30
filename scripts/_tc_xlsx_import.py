@@ -77,8 +77,12 @@ def read_sheet_cases(
         cases.append(new_case(
             case_id=case_id, sheet=profile.sheet, path=list(path), feature=feature,
             precondition=value(r, "precondition"), steps=parse_steps(steps_text),
-            expected=expected, bullets=bullets, priority=value(r, "priority"),
-            auto=value(r, "auto"), execution_result=merge_results(results),
+            expected=expected, bullets=bullets,
+            priority={"very_high": "P0", "high": "P1", "medium": "P2", "low": "P3"}.get(
+                value(r, "priority").lower(), value(r, "priority")),
+            source_tc_id=value(r, "source_tc_id"),
+            tags=list(dict.fromkeys(t.strip() for t in value(r, "tags").split(",") if t.strip())),
+            execution_result=merge_results(results),
             status="approved", note=note,
             source_refs=refs or [f"xlsx:{source_name}#{profile.sheet}!R{r}"],
         ))

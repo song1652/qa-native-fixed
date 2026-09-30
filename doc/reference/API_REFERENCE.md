@@ -131,10 +131,14 @@
 | 메서드 | 경로 | 설명 |
 |---|---|---|
 | GET | `/api/tc-library` | 스위트 목록 `{suites:[{suite, sheets, count}]}` |
-| POST | `/api/tc-library/import/preview?filename=` | 본문 = xlsx 바이트. 시트별 헤더 행·케이스 수·경고 + `preview_id` |
-| POST | `/api/tc-library/import` | `{preview_id, suite, sheets, prefixes}` → `{created, updated, unchanged}` (case_id가 같으면 갱신) |
+| POST | `/api/tc-library/import/preview?filename=&mapping=` | 본문 = xlsx 바이트. `mapping`은 URL 인코딩 JSON. 시트별 헤더 행·케이스 수·경고 + `preview_id` |
+| POST | `/api/tc-library/import/plan` | `{suite, sources:[{preview_id,sheets,prefixes,sheet_mappings?}]}` → `{run_id,status,rows,summary}`. 단일 `{preview_id,suite,sheets,prefixes}`도 지원 |
+| POST | `/api/tc-library/import` | `{run_id,skip:[case_id],overwrite:[case_id]}` → `{run_id,suite,status,created,updated,unchanged,skipped}`. 기존 단일 파일 본문 호환 지원 |
+| GET | `/api/tc-library/import/runs` | Excel→라이브러리 작업 목록 `{runs,errors}` |
+| GET | `/api/tc-library/import/runs/{run_id}` | 작업 상세·행별 변경·결정. 내부 스냅샷/저널 제외 |
+| POST | `/api/tc-library/import/runs/{run_id}/rollback` | 케이스·템플릿·분류·md 설정 복구. 이후 편집 시 409 `SUITE_CHANGED` |
 | GET | `/api/tc-library/{suite}/tree` | 시트 › 대분류 › 중분류 › 소분류 › 제목 트리와 가지별 집계 |
-| GET | `/api/tc-library/{suite}` | 케이스 목록. 쿼리: `sheet path status execution_result(빈 값=미실행) priority auto source invalid q offset limit` |
+| GET | `/api/tc-library/{suite}` | 케이스 목록. 쿼리: `sheet path status execution_result(빈 값=미실행) priority source invalid q offset limit` |
 | POST | `/api/tc-library/{suite}/cases` | 케이스 추가 (`after`로 위치 지정), 201 |
 | GET · PATCH · DELETE | `/api/tc-library/{suite}/cases/{case_id}` | 조회 · 부분 수정 `{rev, …}` · 소프트 삭제 `?rev=` |
 | POST | `/api/tc-library/{suite}/cases/{case_id}/duplicate` · `/restore` · `/revert` | 복제 · 삭제 복원 · 이력 되돌리기 `{history_id, rev}` |
@@ -145,6 +149,13 @@
 | GET | `/api/tc-library/exports/{export_id}/download` | 내보낸 xlsx 내려받기 |
 
 저장 위치: `state/tc_library/{suite}/` (`cases.json`, `history.jsonl`, `template.xlsx`, `template_profile.json`), 작업 공간 `state/tc_library/_uploads/`, `_exports/`.
+
+화면은 파일 분석 → 변경 미리보기 → 반영 순서를 사용한다. 미리보기 행은 `new/updated/same/conflict/error`이며 충돌은 skip 또는 overwrite, 오류는 skip 결정을 요구한다. 같은 이름의 시트를 여러 파일에서 한 작업에 선택하면 409 `DUPLICATE_SHEET`. 반영 전 업로드·스위트 변경은 409 `SOURCE_CHANGED`/`SUITE_CHANGED`로 거부한다. 가져오기 작업·복구 자료는 `state/tc_library/_import_runs/`에 저장한다. 기존 단일 파일 API는 서버가 계획을 만든 뒤 반영하는 호환 경로를 유지한다.
+
+매핑 필드: `source_tc_id,feature,steps,expected,precondition,l1,l2,l3,priority,tags,note`. 제목·Step·Expected는 필수이며 열은 A~XFD, 헤더 행은 1~1048576이다. 프로필은 기존 `state/import_profiles.json`의 `mappings` 형식으로 저장하여 `/api/import/profiles`와 공유한다. 잘못된 프로필은 400 `INVALID_PROFILE`, 잘못된 JSON은 400 `INVALID_JSON`, 이름 중복은 409 `PROFILE_EXISTS`, 없는 프로필은 404 `PROFILE_NOT_FOUND`.
+
+md 이력은 기존 `state/import_sessions`·`import_snapshots`를 사용한다. 손상된 목록 항목은 `errors`로 알리고 나머지를 반환한다. `/api/import/*` 및 `/api/import/runs/{run_id}/skipped.csv`는 유지한다. `/import-studio`는 `/tc-studio`로 이동한다.
+
 
 
 #### 생성·검토 (`routes_tc_authoring.py`)
@@ -163,7 +174,13 @@
 | POST | `/api/tc-library/jobs/{job_id}/cancel` | 작업 취소 |
 | GET | `/api/tc-library/{suite}/coverage?sheet&path&profile` | 기능별 커버리지 갭 |
 | POST | `/api/tc-library/{suite}/cases/{id}/resolve-duplicate` | 중복 처리 `{rev, action: update|skip|add, target_case_id, target_rev}` |
-| GET | `/api/tc-library/import/mapping-profiles` | Import Studio 매핑 프로필 → 열 매핑 |
+| GET | `/api/tc-library/import/mapping-profiles` | `{profiles:[{id,name,mapping:{header_row,columns},columns}]}`. 기존 `columns` 필드 유지 |
+| POST | `/api/tc-library/import/mapping-profiles` | `{name,mapping}` → 201 `{profile}` |
+| PUT | `/api/tc-library/import/mapping-profiles/{id}` | `{name,mapping}` → `{profile}` |
+| DELETE | `/api/tc-library/import/mapping-profiles/{id}` | `{deleted:id}` |
+| GET | `/api/tc-library/import/md-runs` | 기존 Excel→md 및 TC→md 작업 목록 `{runs,errors}` |
+| GET | `/api/tc-library/import/md-runs/{run_id}` | 공개 작업 상세·행별 before/after·`skipped_csv_url` |
+| POST | `/api/tc-library/import/md-runs/{run_id}/rollback` | 기존 md 스냅샷 복구. TC 작업이면 해당 스위트의 내보내기 기록도 복구 |
 
 생성 작업은 `claude -p --restricted --strict-mcp-config --tools "" --permission-mode dontAsk --no-session-persistence --output-format json --json-schema …`로 저장소 밖 임시 폴더에서 실행한다. 환경변수: `TCS_CLAUDE_BIN`(CLI 경로), `TCS_CLAUDE_MODEL`(모델), `TCS_CHUNK_TIMEOUT`(섹션당 초, 기본 300). 작업 기록은 `state/tc_library/_jobs/{job_id}/`.
 

@@ -22,7 +22,7 @@ def _other_format(tmp_path):
 def test_import_studio_profile_is_converted():
     assert mapping_from_import_profile({"tc_id": "A열", "title": "B열", "steps": "C열", "expected": "D열",
                                         "priority": "E열", "tags": "F열"}) == \
-        {"feature": "B", "steps": "C", "expected": "D", "priority": "E"}
+        {"source_tc_id": "A", "feature": "B", "steps": "C", "expected": "D", "priority": "E", "tags": "F"}
 
 
 def test_custom_mapping_reads_other_format(tmp_path):

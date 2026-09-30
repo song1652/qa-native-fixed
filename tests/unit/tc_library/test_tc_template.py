@@ -19,7 +19,6 @@ def test_dropdowns_and_no_formula_are_captured(template_xlsx):
 
     assert benefit.validations == {
         "priority": ["P0", "P1", "P2"],
-        "auto": ["AUTO"],
         "execution_result": ["Pass", "Fail", "NT", "NA"],
     }
     assert benefit.no_formula == '=IF(H{r}<>"",ROW(B{r})-12, "")'

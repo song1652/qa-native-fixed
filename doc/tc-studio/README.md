@@ -12,7 +12,10 @@ TC 스튜디오의 문서도 전체 문서 분류에 맞춰 사용·설계·개�
 | 실제 구현과 검증 범위 | [구현 보고](../development/tc-studio/TC_AUTHORING_IMPLEMENTATION_REPORT.md) |
 | 개발 절차와 단계 | [인수인계](../development/tc-studio/TC_AUTHORING_HANDOFF.md)·[로드맵](../development/tc-studio/TC_AUTHORING_ROADMAP.md) |
 | 완료된 상세 계획 | [Phase 1](../development/tc-studio/plans/2026-09-29-tc-authoring-phase1.md)·[Phase 2](../development/tc-studio/plans/2026-09-30-tc-authoring-phase2.md)·[Phase 3](../development/tc-studio/plans/2026-09-30-tc-authoring-phase3.md)·[Phase 4](../development/tc-studio/plans/2026-09-30-tc-authoring-phase4.md) |
-| Import Studio를 통합하는 방안 | [통합 검토](../development/tc-studio/IMPORT_STUDIO_INTEGRATION_REVIEW.md) |
+| Import 기능 통합 | [통합 검토·구현 범위](../development/tc-studio/IMPORT_STUDIO_INTEGRATION_REVIEW.md)·[통합 계획](../development/tc-studio/plans/2026-09-30-import-integration.md) |
+| API 계약 | [API 레퍼런스](../reference/API_REFERENCE.md) |
+
+Import 기능은 TC 스튜디오의 엑셀 가져오기·작업 이력에 통합했습니다. 여러 파일·매핑 프로필·변경 확인·복구는 사용자 설명서 6장을 확인하세요.
 
 사용자 설명서는 기획 정보 입력부터 TC 생성·직접 작성·수정·검토·Excel/Markdown 내보내기까지 설명합니다. 초기 설계·완료된 계획은 개발 참고 기록입니다.
 

@@ -36,10 +36,10 @@ def test_prompt_marks_sources_as_data_and_keeps_language():
     assert '"정상 동작"' in text
 
 
-def test_schema_limits_priority_and_auto():
+def test_schema_limits_priority_without_auto():
     item = prompt.DRAFTS_SCHEMA["properties"]["cases"]["items"]
     assert item["properties"]["priority"]["enum"] == ["P0", "P1", "P2", "P3"]
-    assert item["properties"]["auto"]["enum"] == ["", "Y-web", "Y-app", "N"]
+    assert "auto" not in item["properties"]
     assert set(item["required"]) >= {"source_ref", "source_quote"}
 
 
@@ -65,7 +65,7 @@ def test_default_authoring_uses_document_rules_without_mobile_or_case_quotas(lib
     assert text.startswith('너는 QA 엔지니어다.')
     assert '문서에 없는 동작은 추측하지 않는다' in text
     assert '우선순위 정보가 없으면 P2' in text
-    assert '자동화 정보가 없으면 auto는 빈 문자열' in text
+    assert 'auto' not in text and '자동화 대상' not in text
     assert len(DEFAULT_PROFILE['rules']) == 4
 
 
@@ -80,3 +80,8 @@ def test_prompt_distinguishes_case_title_sheet_and_classification():
     assert '대상 분류: ["등록 폼", "", ""]' in text
     assert 'path에 시트 이름을 넣지 않는다' in text
     assert '새 하위 분류가 근거에 없으면 path는 []' in text
+
+
+def test_authoring_schema_does_not_expose_auto():
+    import _tc_prompt
+    assert 'auto' not in str(_tc_prompt.DRAFTS_SCHEMA)

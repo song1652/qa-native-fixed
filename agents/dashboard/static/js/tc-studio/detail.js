@@ -34,10 +34,11 @@
           <div class="dpane active" data-pane="edit">
             <div class="two">
               <div class="field"><span class="label">우선순위</span><select class="select" id="detail-priority" data-id="detail-priority">${opt('', '미지정')}${NS.PRIORITIES.map((p) => opt(p, p)).join('')}</select></div>
-              <div class="field"><span class="label">AUTO</span><select class="select" id="detail-auto" data-id="detail-auto">${opt('', '미지정')}${NS.AUTO_VALUES.map((a) => opt(a, a)).join('')}</select></div>
               <div class="field"><span class="label">실행 결과</span><select class="select" id="detail-result" data-id="detail-result">${Object.entries(NS.RESULT_LABEL).map(([k, l]) => opt(k, l)).join('')}</select></div>
               <div class="field"><span class="label">검토 상태</span><select class="select" id="detail-status" data-id="detail-status">${Object.entries(NS.STATUS_LABEL).map(([k, l]) => opt(k, l)).join('')}</select></div>
             </div>
+            <div class="field"><label class="label" for="detail-source-tc-id">원본 TC ID</label><input class="input mono" id="detail-source-tc-id" data-id="detail-source-tc-id" readonly></div>
+            <div class="field"><label class="label" for="detail-tags">태그</label><input class="input" id="detail-tags" data-id="detail-tags" placeholder="쉼표로 구분"><span class="help">태그를 쉼표로 구분해 입력하세요.</span></div>
             <div class="field"><label class="label" for="detail-precondition">사전 조건</label><textarea class="textarea" id="detail-precondition" data-id="detail-precondition" rows="2"></textarea></div>
             <div class="field">
               <div class="row"><span class="label">Test Step</span><span class="spacer"></span><span class="faint" style="font-size:10.5px">끌어서 순서 변경 · <span class="kbd">Alt</span><span class="kbd">↑↓</span></span></div>
@@ -94,8 +95,8 @@
 
   const isDirty = () => current && draft && JSON.stringify(pick(current)) !== JSON.stringify(pick(draft));
   const pick = (c) => ({ feature: c.feature, precondition: c.precondition, steps: c.steps, expected: c.expected,
-    bullets: c.bullets, priority: c.priority, auto: c.auto, execution_result: c.execution_result,
-    status: c.status, note: c.note });
+    bullets: c.bullets, priority: c.priority, execution_result: c.execution_result,
+    status: c.status, note: c.note, tags: c.tags || [] });
   const currentTab = () => ($('.dtab[aria-selected="true"]', root) || {}).dataset?.pane || 'edit';
 
   function markDirty() {
@@ -114,12 +115,13 @@
     $('#detail-feature', root).value = c.feature;
     $('#d-path', root).textContent = [c.sheet, ...c.path.filter(Boolean)].join(' › ');
     $('#detail-priority', root).value = c.priority;
-    $('#detail-auto', root).value = c.auto;
     $('#detail-result', root).value = c.execution_result;
     $('#detail-status', root).value = c.status;
     $('#detail-precondition', root).value = c.precondition;
     $('#detail-expected', root).value = c.expected;
     $('#detail-note', root).value = c.note;
+    $('#detail-source-tc-id', root).value = c.source_tc_id || '';
+    $('#detail-tags', root).value = (c.tags || []).join(', ');
     const vague = /정상\s*동작|정상적으로\s*노출/.test(c.expected);
     $('#d-exp-help', root).textContent = vague ? '모호한 표현이 있습니다. 화면에 보이는 결과를 구체적으로 적어 주세요.' : '';
     $('#d-exp-help', root).className = 'help' + (vague ? ' err' : '');
@@ -260,7 +262,12 @@
     bindField('#detail-precondition', 'precondition');
     bindField('#detail-expected', 'expected');
     bindField('#detail-note', 'note');
-    [['#detail-priority', 'priority'], ['#detail-auto', 'auto'], ['#detail-result', 'execution_result'], ['#detail-status', 'status']]
+    $('#detail-tags', root).addEventListener('input', (e) => {
+      if (!draft) return;
+      draft.tags = [...new Set(e.target.value.split(',').map((t) => t.trim()).filter(Boolean))];
+      markDirty();
+    });
+    [['#detail-priority', 'priority'], ['#detail-result', 'execution_result'], ['#detail-status', 'status']]
       .forEach(([sel, field]) => $(sel, root).addEventListener('change', (e) => { draft[field] = e.target.value; markDirty(); }));
     $('#detail-step-add', root).addEventListener('click', () => {
       draft.steps.push(''); renderSteps(); markDirty();

@@ -53,7 +53,6 @@ def test_empty_priority_is_only_a_warning():
 
 def test_invalid_values_are_errors():
     assert "PRIORITY_INVALID" in _codes(_valid(priority="상"))
-    assert "AUTO_INVALID" in _codes(_valid(auto="AUTO"))
     assert "RESULT_INVALID" in _codes(_valid(execution_result="done"))
     assert "STEP_EMPTY" in _codes(_valid(steps=["앱 실행", " "]))
     assert "PATH_EMPTY" in _codes(_valid(path=["", "", ""]))

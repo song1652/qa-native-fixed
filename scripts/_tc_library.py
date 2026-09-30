@@ -11,6 +11,11 @@ from __future__ import annotations
 import json
 import secrets
 import shutil
+import os
+import time
+import threading
+from contextlib import contextmanager
+from functools import wraps
 from pathlib import Path
 
 import _paths
@@ -43,6 +48,79 @@ def suite_dir(suite: str) -> Path:
     return _paths.TC_LIBRARY_DIR / suite
 
 
+
+# ponytail: serialize a suite; per-resource locks only if measured import throughput requires it.
+_SUITE_LOCKS: dict[str, threading.RLock] = {}
+_SUITE_LOCKS_GUARD = threading.Lock()
+_SUITE_HELD = threading.local()
+
+
+@contextmanager
+def suite_lock(suite: str):
+    """Reentrant thread/process lock; kernel releases the native lock after a process crash."""
+    root = suite_dir(suite)
+    key = str(root.resolve())
+    held = getattr(_SUITE_HELD, 'keys', set())
+    if key in held:
+        yield
+        return
+    with _SUITE_LOCKS_GUARD:
+        lock = _SUITE_LOCKS.setdefault(key, threading.RLock())
+    with lock:
+        lock_dir = _paths.TC_LIBRARY_DIR / '_locks'
+        lock_dir.mkdir(parents=True, exist_ok=True)
+        import hashlib
+        lock_path = lock_dir / (hashlib.sha256(key.encode()).hexdigest() + '.lock')
+        with lock_path.open('a+b') as file:
+            if os.name == 'nt':
+                import msvcrt
+                if not file.seek(0, os.SEEK_END):
+                    file.write(b'0')
+                    file.flush()
+                deadline = time.monotonic() + _paths.LOCK_TIMEOUT_SECS
+                while True:
+                    file.seek(0)
+                    try:
+                        msvcrt.locking(file.fileno(), msvcrt.LK_NBLCK, 1)
+                        break
+                    except OSError as exc:
+                        if time.monotonic() >= deadline:
+                            raise LibraryError('스위트가 다른 작업에서 사용 중입니다', 'SUITE_LOCKED', 409) from exc
+                        time.sleep(0.05)
+            else:
+                import fcntl
+                fcntl.flock(file, fcntl.LOCK_EX)
+            _SUITE_HELD.keys = held | {key}
+            try:
+                from _tc_import_ops import recover_suite
+                recover_suite(suite)
+                yield
+            finally:
+                _SUITE_HELD.keys = held
+                if os.name == 'nt':
+                    file.seek(0)
+                    msvcrt.locking(file.fileno(), msvcrt.LK_UNLCK, 1)
+                else:
+                    fcntl.flock(file, fcntl.LOCK_UN)
+
+
+def without_auto(value):
+    """Hide retired fields without rewriting legacy stored data."""
+    if isinstance(value, dict):
+        return {key: without_auto(item) for key, item in value.items() if key not in ('auto', 'default_auto')}
+    if isinstance(value, list):
+        return [without_auto(item) for item in value]
+    return value
+
+
+def _locked(function):
+    @wraps(function)
+    def guarded(suite, *args, **kwargs):
+        with suite_lock(suite):
+            return without_auto(function(suite, *args, **kwargs))
+    return guarded
+
+
 def _cases_path(suite: str) -> Path:
     return suite_dir(suite) / "cases.json"
 
@@ -57,17 +135,20 @@ def list_suites() -> list[dict]:
         return []
     suites = []
     for d in sorted(p for p in root.iterdir() if p.is_dir() and not p.name.startswith("_")):
-        data = read_state(d / "cases.json")
+        with suite_lock(d.name):
+            data = read_state(d / "cases.json")
         live = [c for c in data.get("cases", []) if not c.get("deleted")]
         suites.append({"suite": d.name, "sheets": data.get("sheets", []), "count": len(live)})
     return suites
 
 
+@_locked
 def load_cases(suite: str, *, include_deleted: bool = False) -> list[dict]:
     cases = read_state(_cases_path(suite)).get("cases", [])
     return cases if include_deleted else [c for c in cases if not c.get("deleted")]
 
 
+@_locked
 def load_profiles(suite: str) -> dict[str, TemplateProfile]:
     path = suite_dir(suite) / "template_profile.json"
     if not path.exists():
@@ -76,6 +157,7 @@ def load_profiles(suite: str) -> dict[str, TemplateProfile]:
     return {name: TemplateProfile.from_dict(p) for name, p in raw.items()}
 
 
+@_locked
 def get_case(suite: str, case_id: str) -> dict:
     for case in load_cases(suite, include_deleted=True):
         if case["case_id"] == case_id:
@@ -88,6 +170,7 @@ def _entry(case_id: str, field: str, before, after, actor: str, kind: str = "edi
             "before": before, "after": after, "actor": actor, "kind": kind, "at": now_iso()}
 
 
+@_locked
 def _append_history(suite: str, entries: list[dict]) -> None:
     if not entries:
         return
@@ -120,6 +203,7 @@ def _find(data: dict, case_id: str, *, deleted: bool = False) -> dict:
     raise LibraryError(f"케이스가 없습니다: {case_id}", "CASE_NOT_FOUND", 404)
 
 
+@_locked
 def save_template(suite: str, xlsx_path: Path, profiles: dict[str, TemplateProfile]) -> None:
     target = suite_dir(suite)
     target.mkdir(parents=True, exist_ok=True)
@@ -130,6 +214,7 @@ def save_template(suite: str, xlsx_path: Path, profiles: dict[str, TemplateProfi
     )
 
 
+@_locked
 def import_cases(suite: str, sheets: list[str], incoming: list[dict], actor: str) -> dict:
     """case_id가 같으면 갱신, 없으면 추가 (F6.7). 같은 내용이면 건드리지 않는다."""
     summary = {"created": 0, "updated": 0, "unchanged": 0}
@@ -148,7 +233,7 @@ def import_cases(suite: str, sheets: list[str], incoming: list[dict], actor: str
                 history.append(_entry(new["case_id"], "*", None, "import", actor, "create"))
                 summary["created"] += 1
                 continue
-            changes = {f: new[f] for f in EDITABLE_FIELDS if f != "status" and old.get(f) != new[f]}
+            changes = {f: new[f] for f in EDITABLE_FIELDS if f != "status" and f in new and old.get(f) != new[f]}
             if old.get("deleted"):
                 old["deleted"] = False
                 changes.setdefault("status", old["status"])
@@ -164,6 +249,7 @@ def import_cases(suite: str, sheets: list[str], incoming: list[dict], actor: str
     return summary
 
 
+@_locked
 def patch_case(suite: str, case_id: str, base_rev: int, changes: dict, actor: str) -> dict:
     out: dict = {}
 
@@ -180,6 +266,7 @@ def patch_case(suite: str, case_id: str, base_rev: int, changes: dict, actor: st
     return out["case"]
 
 
+@_locked
 def bulk_patch(suite: str, items: list[dict], changes: dict, actor: str) -> dict:
     """rev가 맞는 케이스만 바꾸고 나머지는 conflicts로 돌려준다 (피드백 #15)."""
     result: dict = {"updated": [], "conflicts": []}
@@ -207,6 +294,7 @@ def _prefix_for(cases: list[dict], sheet: str) -> str:
     return "TC"
 
 
+@_locked
 def create_case(suite: str, fields: dict, actor: str, *, after: str | None = None) -> dict:
     from _tc_model import new_case
 
@@ -230,14 +318,17 @@ def create_case(suite: str, fields: dict, actor: str, *, after: str | None = Non
     return out["case"]
 
 
+@_locked
 def duplicate_case(suite: str, case_id: str, actor: str) -> dict:
     source = get_case(suite, case_id)
-    fields = {f: source[f] for f in EDITABLE_FIELDS}
+    fields = {f: source[f] for f in EDITABLE_FIELDS if f in source}
+    fields["source_tc_id"] = ""
     fields["source_refs"] = list(source.get("source_refs", []))
     created = create_case(suite, fields, actor, after=case_id)
     return created
 
 
+@_locked
 def delete_cases(suite: str, items: list[dict], actor: str) -> dict:
     result: dict = {"deleted": [], "conflicts": []}
     history: list[dict] = []
@@ -260,6 +351,7 @@ def delete_cases(suite: str, items: list[dict], actor: str) -> dict:
     return result
 
 
+@_locked
 def restore_case(suite: str, case_id: str, actor: str) -> dict:
     out: dict = {}
 
@@ -276,14 +368,16 @@ def restore_case(suite: str, case_id: str, actor: str) -> dict:
     return out["case"]
 
 
+@_locked
 def history(suite: str, case_id: str) -> list[dict]:
     path = _history_path(suite)
     if not path.exists():
         return []
     entries = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line]
-    return [e for e in reversed(entries) if e["case_id"] == case_id]
+    return [e for e in reversed(entries) if e["case_id"] == case_id and e.get("field") not in ("auto", "default_auto")]
 
 
+@_locked
 def revert(suite: str, case_id: str, history_id: str, base_rev: int, actor: str) -> dict:
     entry = next((e for e in history(suite, case_id) if e["history_id"] == history_id), None)
     if entry is None or entry["kind"] != "edit":
@@ -292,7 +386,7 @@ def revert(suite: str, case_id: str, history_id: str, base_rev: int, actor: str)
 
 def with_issues(case: dict) -> dict:
     issues = validate_case(case)
-    return {**case, "issues": issues, "has_error": any(i["level"] == "error" for i in issues)}
+    return {**without_auto(case), "issues": issues, "has_error": any(i["level"] == "error" for i in issues)}
 
 
 def filter_cases(cases: list[dict], query: dict) -> list[dict]:
@@ -312,8 +406,6 @@ def filter_cases(cases: list[dict], query: dict) -> list[dict]:
                 and case["execution_result"] != query["execution_result"]:
             continue
         if query.get("priority") and (case["priority"] or "-") != query["priority"]:
-            continue
-        if query.get("auto") and (case["auto"] or "-") != query["auto"]:
             continue
         if query.get("source") and not any(r.startswith(query["source"] + ":")
                                            for r in case["source_refs"]):
@@ -386,6 +478,7 @@ def _insert_index(cases: list[dict], sheet: str, path: list[str]) -> int:
     return index
 
 
+@_locked
 def add_drafts(suite: str, drafts: list[dict], actor: str) -> list[dict]:
     """생성 초안을 한 번에 추가한다 (Phase 2 G6). 대상 가지 끝에 순서대로 넣는다."""
     from _tc_model import new_case
@@ -412,6 +505,7 @@ def add_drafts(suite: str, drafts: list[dict], actor: str) -> list[dict]:
     return created
 
 
+@_locked
 def set_draft_meta(suite: str, case_id: str, changes: dict) -> dict:
     """초안 메타만 바꾼다 (rev를 올리지 않는 내부용: 중복 표시 해제 등)."""
     out: dict = {}
@@ -426,6 +520,7 @@ def set_draft_meta(suite: str, case_id: str, changes: dict) -> dict:
     return out["case"]
 
 
+@_locked
 def add_source_refs(suite: str, case_id: str, refs: list[str]) -> dict:
     """출처만 덧붙인다 (내용 변경이 아니므로 rev를 올리지 않는다)."""
     out: dict = {}
@@ -440,6 +535,7 @@ def add_source_refs(suite: str, case_id: str, refs: list[str]) -> dict:
     return out["case"]
 
 
+@_locked
 def set_flag(suite: str, case_id: str, name: str, value) -> dict:
     """검토 표시를 켜고 끈다 (value=None이면 지움). 내용 변경이 아니므로 rev를 올리지 않는다."""
     out: dict = {}
@@ -459,6 +555,7 @@ def set_flag(suite: str, case_id: str, name: str, value) -> dict:
     return out["case"]
 
 
+@_locked
 def replace_source_version(suite: str, case_id: str, old_ref: str, new_ref: str) -> dict:
     """출처의 버전 부분만 바꾼다: "conf:1@v14#§2" → "conf:1@v15#§2" (섹션 앵커는 유지)."""
     out: dict = {}
@@ -474,6 +571,7 @@ def replace_source_version(suite: str, case_id: str, old_ref: str, new_ref: str)
     return out["case"]
 
 
+@_locked
 def rename_sheet(suite: str, old: str, name: str, actor: str) -> None:
     """Rename the worksheet and its cases without changing case IDs."""
     import re
@@ -553,10 +651,12 @@ def rename_sheet(suite: str, old: str, name: str, actor: str) -> None:
         wb.close()
 
 
+@_locked
 def load_branches(suite: str) -> list[dict]:
     return read_state(_cases_path(suite)).get('branches', [])
 
 
+@_locked
 def add_branch(suite: str, sheet: str, path: list[str]) -> dict:
     if sheet not in load_profiles(suite):
         raise LibraryError('시트를 선택하세요.', 'SHEET_NOT_FOUND', 404)
@@ -577,6 +677,7 @@ def add_branch(suite: str, sheet: str, path: list[str]) -> dict:
     return branch
 
 
+@_locked
 def add_sheet(suite: str, name: str) -> None:
     """Add an empty worksheet using the existing template's formatting."""
     import re

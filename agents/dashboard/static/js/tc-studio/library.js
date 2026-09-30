@@ -35,8 +35,6 @@
             ${opt('', '검토 상태 전체')}${Object.entries(NS.STATUS_LABEL).map(([v, l]) => opt(v, l)).join('')}</select>
           <select class="fselect" id="lib-filter-priority" data-id="lib-filter-priority" aria-label="우선순위">
             ${opt('', '우선순위 전체')}${NS.PRIORITIES.map((p) => opt(p, p)).join('')}${opt('-', '미지정')}</select>
-          <select class="fselect" id="lib-filter-auto" data-id="lib-filter-auto" aria-label="AUTO">
-            ${opt('', 'AUTO 전체')}${NS.AUTO_VALUES.map((a) => opt(a, a)).join('')}${opt('-', '미지정')}</select>
           <select class="fselect" id="lib-filter-source" data-id="lib-filter-source" aria-label="출처">
             ${opt('', '출처 전체')}${opt('xlsx', '엑셀 가져오기')}${opt('conf', 'Confluence')}${opt('figma', 'Figma')}${opt('file', '파일·붙여넣기')}</select>
           ${NS.sourceWatch ? '<button class="fchip" data-id="lib-filter-needs-review" id="lib-filter-needs-review" aria-pressed="false">재검토 필요 <span class="n" id="n-review">0</span></button>' : ''}
@@ -67,7 +65,6 @@
         <div class="bulkbar" id="bulkbar" data-id="bulk-bar" hidden>
           <b><span id="bulk-n">0</span>건 선택</b>
           <select class="chip-select" data-id="bulk-priority" id="bulk-priority">${opt('', '우선순위…')}${NS.PRIORITIES.map((p) => opt(p, p)).join('')}</select>
-          <select class="chip-select" data-id="bulk-auto" id="bulk-auto">${opt('', 'AUTO…')}${NS.AUTO_VALUES.map((a) => opt(a, a)).join('')}</select>
           <select class="chip-select" data-id="bulk-result" id="bulk-result">${opt('', '실행 결과…')}${opt('none', '미실행')}${opt('pass', 'Pass')}${opt('fail', 'Fail')}${opt('not_test', 'Not Test')}${opt('na', 'N/A')}</select>
           <select class="chip-select" data-id="bulk-status" id="bulk-status">${opt('', '검토 상태…')}${opt('approved', '승인')}${opt('draft', '초안으로')}${opt('rejected', '반려')}</select>
           <button class="btn-sm" data-id="bulk-move" id="bulk-move">계층 이동…</button>
@@ -391,7 +388,6 @@
     onFilter('#lib-filter-result', 'execution_result');
     onFilter('#lib-filter-status', 'status');
     onFilter('#lib-filter-priority', 'priority');
-    onFilter('#lib-filter-auto', 'auto');
     onFilter('#lib-filter-source', 'source');
     let t;
     $('#lib-search', root).addEventListener('input', (e) => {
@@ -434,7 +430,6 @@
       if (v) await bulkSet(field, map(v), label);
     });
     bulkSelect('#bulk-priority', 'priority', '우선순위');
-    bulkSelect('#bulk-auto', 'auto', 'AUTO');
     bulkSelect('#bulk-result', 'execution_result', '실행 결과', (v) => (v === 'none' ? '' : v));
     bulkSelect('#bulk-status', 'status', '검토 상태');
     $('#bulk-clear', root).addEventListener('click', () => { state.selected.clear(); renderGrid(); });

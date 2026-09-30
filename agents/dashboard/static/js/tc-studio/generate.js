@@ -316,7 +316,7 @@
     renderSources();
   }
 
-  async function loadSuite(savedJob) {
+  async function loadSuite(savedJob, preserveTarget = false) {
     clearInterval(poll);
     const suite = state.suite;
     let saved = '';
@@ -327,7 +327,8 @@
     bundle = loaded ? { bundle_id: loaded.bundle_id, sources: loaded.sources } : { bundle_id: '', sources: [] };
     job = savedJob;
     state.reviewJob = job ? job.job_id : null;
-    renderTarget(job ? job.target : { sheet: '', path: ['', '', ''] });
+    const selected = target();
+    renderTarget(preserveTarget && selected.sheet ? selected : job ? job.target : { sheet: '', path: ['', '', ''] });
     renderSources();
     await loadProfiles(job && job.profile);
     if (state.suite !== suite) return;

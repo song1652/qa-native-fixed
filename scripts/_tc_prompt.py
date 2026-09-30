@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import json
 
-from _tc_model import AUTO_VALUES, PRIORITIES, format_steps, join_expected
+from _tc_model import PRIORITIES, format_steps, join_expected
 
 CHUNK_CHARS = 12_000   # 호출 1번에 넣는 소스 글자 수 상한 (섹션 단위로 묶는다)
 
@@ -28,7 +28,6 @@ DRAFTS_SCHEMA: dict = {
                     "expected": {"type": "string"},
                     "bullets": {"type": "array", "items": {"type": "string"}},
                     "priority": {"type": "string", "enum": list(PRIORITIES)},
-                    "auto": {"type": "string", "enum": ["", *AUTO_VALUES]},
                     "source_ref": {"type": "string"},
                     "source_quote": {"type": "string"},
                 },
@@ -109,7 +108,6 @@ def build_prompt(*, chunk: list[dict], target: dict, profile: dict, examples: li
 - 다음 표현은 쓰지 않는다: {banned}. "어떻게 보이는지"를 구체적으로 쓴다.
 - 소스에 없는 기능·문구를 지어내지 않는다. 근거가 없으면 케이스를 만들지 않는다.
 - 문서 또는 작성 규칙에 명시된 우선순위를 따른다. 우선순위 정보가 없으면 P2로 둔다.
-- 문서 또는 작성 규칙에 자동화 대상이 명시된 경우에만 auto를 Y-web, Y-app, N 중에서 고른다. 자동화 정보가 없으면 auto는 빈 문자열로 둔다.
 
 ## 작성 규칙 (프로필: {profile['name']})
 {rules}

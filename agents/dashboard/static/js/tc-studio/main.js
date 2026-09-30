@@ -12,6 +12,7 @@
     { id: 'export', label: '내보내기', module: 'exportView' },
   ];
   let root = null;
+  let screenVersion = 0;
 
   const available = () => SCREENS.filter((s) => NS[s.module]);
 
@@ -40,6 +41,7 @@
   }
 
   function show(screen) {
+    screenVersion++;
     state.screen = screen;
     $$('.step-item', root).forEach((b) => b.setAttribute('aria-selected', b.dataset.screen === screen));
     $$('.screen', root).forEach((s) => s.classList.toggle('active', s.dataset.screen === screen));
@@ -66,6 +68,7 @@
   // 가져오기 후에도 호출된다 (import.js)
   NS.reloadSuites = async function (prefer) {
     const previousSuite = state.suite;
+    const navigationVersion = screenVersion;
     state.suites = (await api.suites()).suites;
     let saved = prefer || '';
     if (!saved) { try { saved = localStorage.getItem(SUITE_KEY) || ''; } catch (e) { saved = ''; } }
@@ -85,12 +88,12 @@
     await NS.refreshCounts();
     if (changed && NS.generateView) {
       const suite = state.suite;
-      const context = await api.authoringContext(suite);
+      const context = suite ? await api.authoringContext(suite) : { job: null };
       if (state.suite !== suite) return;
-      await NS.generateView.loadSuite(context.job);
+      await NS.generateView.loadSuite(context.job, screenVersion !== navigationVersion);
       if (state.suite !== suite) return;
       const current = state.suites.find((s) => s.suite === suite);
-      show(current && current.count ? 'library' : 'generate');
+      if (screenVersion === navigationVersion) show(current && current.count ? 'library' : 'generate');
     }
   };
 
@@ -112,8 +115,6 @@
     $('#suite-select', root).addEventListener('change', (e) => NS.reloadSuites(e.target.value));
     show('library');
     await NS.reloadSuites();
-    const suite = state.suites.find((s) => s.suite === state.suite);
-    if (suite && suite.count === 0 && NS.generateView) show('generate');
   }
 
   window.TCS = { init };

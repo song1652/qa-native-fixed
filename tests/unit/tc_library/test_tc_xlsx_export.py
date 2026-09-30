@@ -29,16 +29,16 @@ def test_export_rewrites_rows_formulas_merges_and_dropdowns(template_xlsx, tmp_p
     wb = openpyxl.load_workbook(out)
     ws = wb["혜택"]
     assert ws["A17"].value == '=IF(H17<>"",ROW(B17)-12, "")'
-    assert ws["J4"].value == "=COUNTIF($K$13:$K$17,I4)"               # #REF! 복구
+    assert ws["J4"].value == "=COUNTIF($J$13:$J$17,I4)"               # #REF! 복구
     assert ws["J9"].value == "=IF($L3=0,0,COUNTA($A$13:$A$17))"       # 고정 범위 → 실제 범위
     assert {str(r) for r in ws.merged_cells.ranges} == {"B13:B17", "C14:C15", "C16:C17", "D16:D17", "E16:E17"}
     dvs = {dv.formula1: str(dv.sqref) for dv in ws.data_validations.dataValidation}
     assert dvs['"P0,P1,P2,P3"'] == "I13:I17"
-    assert dvs['"Pass,Fail,NT,NA"'] == "K13:L17"
+    assert dvs['"Pass,Fail,NT,NA"'] == "J13:K17"
     assert ws["I17"].value == "P3"
-    assert ws["K15"].value == ws["L15"].value == "Fail"
+    assert ws["J15"].value == ws["K15"].value == "Fail"
     assert ws["H17"].font.b is True                                  # 13행 스타일 복사
-    assert ws["M16"].value == "돈불리기 정책 변경\nid:BEN_0004"
+    assert ws["L16"].value == "돈불리기 정책 변경\nid:BEN_0004"
     assert [c.value for c in wb["History"][4]][1:3] == ["26.09.30", "8.6.0 반영"]
 
 def test_export_then_reimport_is_lossless(template_xlsx, tmp_path):

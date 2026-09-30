@@ -291,3 +291,9 @@
     ::-webkit-scrollbar-thumb:hover {
       background: rgba(139, 92, 246, 0.25);
     }
+
+/* Keep Studio dialogs outside the scroll area's mask stacking context. */
+.content-scroll:has(.tc-studio .scrim:not([hidden])) {
+  -webkit-mask-image: none;
+  mask-image: none;
+}

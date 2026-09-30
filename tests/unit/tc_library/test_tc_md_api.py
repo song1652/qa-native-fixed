@@ -25,24 +25,24 @@ def api(tmp_path: Path):
         request_json(base_url, "POST", "/api/tc-library/import", {
             "preview_id": preview["preview_id"], "suite": "야핏무브", "sheets": ["혜택"], "prefixes": {"혜택": "BEN"}})
         for case_id in ("BEN_0001", "BEN_0002"):
-            request_json(base_url, "PATCH", f"/api/tc-library/{S}/cases/{case_id}", {"rev": 1, "auto": "Y-web", "priority": "P0"})
+            request_json(base_url, "PATCH", f"/api/tc-library/{S}/cases/{case_id}", {"rev": 1, "priority": "P0"})
         yield base_url, project
 
 
 def test_md_export_flow(api):
     base_url, project = api
     body = request_json(base_url, "GET", f"/api/tc-library/{S}/export/md/eligibility")[1]
-    assert [f["count"] for f in body["funnel"]] == [5, 2, 2, 2, 0] and body["pages"] == ["yafit_benefit"]
+    assert [f["count"] for f in body["funnel"]] == [5, 5, 5, 0] and body["pages"] == ["yafit_benefit"]
     status, body = request_json(base_url, "PUT", f"/api/tc-library/{S}/md-groups",
                                 {"path": ["혜택", "혜택 탭"], "group": "yafit_benefit", "code": "YFB"})
     assert status == 200 and body["groups"][0]["code"] == "YFB"
 
     status, run = request_json(base_url, "POST", f"/api/tc-library/{S}/export/md")
-    assert status == 200 and run["summary"]["added"] == 2
+    assert status == 200 and run["summary"]["added"] == 5
     assert run["rows"][0]["file"].startswith("yafit_benefit/tc_YFB_01_")
     status, body = request_json(base_url, "POST", f"/api/tc-library/{S}/md-exports/{run['run_id']}/commit", {"skip": []})
-    assert (status, body["created"]) == (200, 2)
-    assert len(list((project / "testcases" / "yafit_benefit").glob("tc_YFB_*.md"))) == 2
+    assert (status, body["created"]) == (200, 5)
+    assert len(list((project / "testcases" / "yafit_benefit").glob("tc_YFB_*.md"))) == 5
     status, body = request_json(base_url, "POST", f"/api/tc-library/{S}/md-exports/{run['run_id']}/rollback")
     assert status == 200 and not list((project / "testcases" / "yafit_benefit").glob("tc_YFB_*.md"))
     status, body = request_json(base_url, "POST", f"/api/tc-library/{S}/md-exports/{run['run_id']}/commit", {"skip": []})

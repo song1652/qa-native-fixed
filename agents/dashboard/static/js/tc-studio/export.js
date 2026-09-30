@@ -46,7 +46,7 @@
   function mdCardHtml() {
     return `<div class="panel exp-card" style="padding:16px" data-id="md-card">
       <div class="head"><div class="fmt md">.md</div><div><b style="font-size:14px">파이프라인용 md로 내보내기</b>
-        <div class="help">AUTO=Y-web · 승인 · 추정 문구 없음 · 그룹 매핑된 케이스만 testcases/에 씁니다. 반영과 롤백은 Import Studio와 같은 방식입니다.</div></div></div>
+        <div class="help">승인 · 추정 문구 없음 · 그룹 매핑된 케이스만 testcases/에 씁니다. 반영 이력에서 내용을 확인하고 되돌릴 수 있습니다.</div></div></div>
       <div class="field"><span class="label">대상 조건</span><div class="funnel" data-id="md-eligibility" id="md-funnel"></div></div>
       <div class="field"><span class="label">그룹 매핑 (config/pages.json)</span><div data-id="md-group-map" id="md-groups"></div></div>
       <div class="warnbox" data-id="md-drift-warning" id="md-drift" hidden></div>
@@ -67,7 +67,7 @@
         <select class="fselect" data-id="md-map-group" data-i="${i}">${pageOpts || '<option value="">pages.json이 비어 있음</option>'}</select>
         <input class="input mono" data-id="md-map-code" data-i="${i}" placeholder="접두어" maxlength="8" style="width:80px">
         <button class="btn-sm" data-id="md-map-fix" data-i="${i}">매핑 추가</button></span>`}</div>`).join('')
-      || '<span class="help">AUTO=Y-web이고 승인된 케이스가 없습니다</span>';
+      || '<span class="help">승인된 케이스가 없습니다</span>';
     $$('[data-id="md-map-fix"]', root).forEach((b) => b.addEventListener('click', async () => {
       const i = b.dataset.i;
       try {
@@ -84,8 +84,8 @@
       <span>라이브러리가 원본입니다. 미리보기에서 파일마다 건너뛰기 또는 덮어쓰기를 고릅니다.</span>` : '';
     $('#md-excluded', root).innerHTML = `<summary class="muted" style="cursor:pointer;font-size:12px">제외된 ${el.excluded.length}건 보기</summary>
       <ul class="checks" style="margin-top:8px">${el.excluded.map((x) => `<li><span class="wr">!</span>${esc(x.case_id)} ${esc(x.feature)} · ${esc(x.reason)}</li>`).join('')}</ul>`;
-    $('#md-preview', root).disabled = !el.funnel[4].count;
-    $('#md-preview', root).textContent = `md 미리보기 (${el.funnel[4].count}건)`;
+    $('#md-preview', root).disabled = !el.funnel[el.funnel.length - 1].count;
+    $('#md-preview', root).textContent = `md 미리보기 (${el.funnel[el.funnel.length - 1].count}건)`;
   }
 
   const STATUS_TAG = { added: ['ok', '신규'], updated: ['info', '갱신'], conflict: ['warn', '충돌'], same: ['', '동일'], error: ['err', '오류'] };

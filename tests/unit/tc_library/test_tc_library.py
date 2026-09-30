@@ -43,7 +43,7 @@ def test_patch_bumps_rev_and_rejects_stale_rev(seeded):
 
 def test_bulk_patch_applies_matching_revs_and_reports_conflicts(seeded):
     result = lib.bulk_patch(SUITE, [{"case_id": "BEN_0001", "rev": 1},
-                                    {"case_id": "BEN_0002", "rev": 7}], {"auto": "Y-app"}, "t")
+                                    {"case_id": "BEN_0002", "rev": 7}], {"priority": "P2"}, "t")
     assert result["updated"] == ["BEN_0001"]
     assert [c["case_id"] for c in result["conflicts"]] == ["BEN_0002"]
 

@@ -7,7 +7,7 @@
 | 기준 문서 | [TC_AUTHORING_PRD.md](TC_AUTHORING_PRD.md) Draft v0.3 |
 | 목업 | [design-previews/tc-authoring-studio.html](../../../design-previews/tc-authoring-studio.html) (요소 ID = 목업의 `data-id` 속성) |
 | 작성일 | 2026-09-29 |
-| 시각 규칙 | Import Studio([`agents/dashboard/static/css/import-studio.css`](../../../agents/dashboard/static/css/import-studio.css))의 토큰, 버튼(`btn-primary`/`btn-ghost`/`btn-sm`/`btn-success`), 스테퍼(`step-circle`/`step-line`), 상태 배지 색(add=초록, update=파랑, conflict=노랑, error=빨강)을 그대로 쓴다. 대시보드가 다크 우선이므로 다크가 기본이고, 목업은 라이트 변형도 포함한다. |
+| 시각 규칙 | TC 스튜디오([`agents/dashboard/static/css/tc-studio.css`](../../../agents/dashboard/static/css/tc-studio.css))의 토큰, 버튼(`btn-primary`/`btn-ghost`/`btn-sm`/`btn-success`), 스테퍼(`step-circle`/`step-line`), 상태 배지 색(add=초록, update=파랑, conflict=노랑, error=빨강)을 그대로 쓴다. 대시보드가 다크 우선이므로 다크가 기본이고, 목업은 라이트 변형도 포함한다. |
 
 ## 0. 표기 규칙
 
@@ -90,7 +90,6 @@
 | `lib-filter-result` | 실행 결과 필터 | 필터 바 | 선택 → 해당 결과만 | — | 값: pass/fail/not_test/na | `?execution_result=` | F5.4 |
 | `lib-filter-status` | 검토 상태 필터 | 필터 바 | 선택 → 해당 작성·검토 상태만 | — | 값: draft/approved/rejected/needs_review | `?status=` | F5.4 |
 | `lib-filter-priority` | 우선순위 필터 | 필터 바 | 선택 → P0~P3/미지정 | — | "미지정"은 빈 값(가져온 케이스 대부분) | `?priority=` | F5.4 |
-| `lib-filter-auto` | AUTO 필터 | 필터 바 | 선택 → Y-web/Y-app/N/미지정 | — | — | `?auto=` | F5.4 |
 | `lib-filter-source` | 출처 필터 | 필터 바 | 선택 → 엑셀 가져오기 / Confluence / Figma / 파일·붙여넣기 | — | `source_refs` 접두사(`xlsx:`, `conf:`, `figma:`, `file:`)로 판정 | `?source=` | F5.4 |
 | `lib-filter-needs-review` | 재검토 필요 토글 칩 | 필터 바 | 클릭 → 켜짐/꺼짐. 칩 안 숫자 = 재검토 필요 건수 | 켜짐=보라 테두리(`aria-pressed=true`) | — | `?needs_review=1` | F5.4, F5.9 |
 | `lib-filter-invalid` | 검증 오류 토글 칩 | 필터 바 | 클릭 → 검증 오류가 있는 케이스만 | 동일 | — | `?invalid=1` | F5.4, F5.8 |
@@ -100,7 +99,7 @@
 
 ### 2.3 케이스 그리드
 
-컬럼은 선택 | 끌기 | A No. | 실행 결과 | B 대분류 | C 중분류 | D 소분류 | E 기능 | F 사전 조건 | G Test Step | H Expected Result | I 우선순위 | M 기타(id · src) 순서다. AUTO는 그리드 셀에서 빼고 상세 패널·일괄 편집·필터에서 관리한다. 실행 결과는 TC당 하나로 표시한다(Excel의 And/iOS K/L 매핑은 PRD O7). 작성·검토 상태는 상세 패널과 필요할 때 기타 칸의 배지로 보여준다. 계층 값이 위 행과 같으면 흐리게 표시한다.
+컬럼은 선택 | 끌기 | A No. | 실행 결과 | B 대분류 | C 중분류 | D 소분류 | E 기능 | F 사전 조건 | G Test Step | H Expected Result | I 우선순위 | M 기타(id · src) 순서다. 실행 결과는 TC당 하나로 표시한다(Excel의 And/iOS K/L 매핑은 PRD O7). 작성·검토 상태는 상세 패널과 필요할 때 기타 칸의 배지로 보여준다. 계층 값이 위 행과 같으면 흐리게 표시한다.
 
 | 요소 ID | 요소 | 위치 | 동작(트리거→결과) | 상태 | 검증·제약 | API 호출 | 관련 PRD |
 |---|---|---|---|---|---|---|---|
@@ -127,7 +126,6 @@
 |---|---|---|---|---|---|---|---|
 | `bulk-bar` | 일괄 편집 바 | 그리드 하단(sticky) | 1건 이상 선택 시 표시. "n건 선택" | — | — | — | F5.3 |
 | `bulk-priority` | 우선순위 일괄 변경 | 바 | 값 선택 → 선택 전체에 적용, 되돌리기 토스트 | loading | 각 항목 rev 동봉. 일부 충돌 시 "n건 중 1건(BEN_0009)은 다른 곳에서 바뀌어 건너뛰었습니다" 경고 | `POST /api/tc-library/{suite}/bulk` `{items:[{case_id,rev}], op:"set", field:"priority", value}` → `{updated:[…], conflicts:[…]}` | F5.3 |
-| `bulk-auto` | AUTO 일괄 변경 | 바 | 동일 | 동일 | 동일 | 동일 field:"auto" | F5.3 |
 | `bulk-result` | 실행 결과 일괄 변경 | 바 | Pass/Fail/Not Test/N/A 선택 → 선택 전체에 적용 | loading | 각 항목 rev 동봉, 충돌은 건별 안내 | 동일 field:"execution_result" | F5.3 |
 | `bulk-status` | 검토 상태 일괄 변경 | 바 | 승인 / 초안으로 / 반려 | 동일 | 검증 오류가 있는 케이스는 승인에서 제외하고 건수 안내 | 동일 field:"status" | F5.3, F5.8 |
 | `bulk-move` | 계층 이동 | 바 | 클릭 → `move-modal` | — | — | — | F5.3 |
@@ -144,7 +142,7 @@
 | `detail-feature` | 기능명 입력 | 패널 헤더 | 입력 → 변경 표시 | error: 빈 값 | 필수 | 저장 시 일괄 PATCH | F5.2 |
 | `detail-move` | 경로 이동 | 패널 헤더 경로 옆 | 클릭 → `move-modal` | — | — | — | F5.3 |
 | `detail-tab-edit` / `detail-tab-source` / `detail-tab-history` | 편집 · 원문 · 이력 탭 | 패널 탭 줄 | 클릭 → 해당 탭 | 선택 탭 밑줄 | — | 원문: `GET /api/tc-library/sources/{bundle}/excerpt?ref=` / 이력: `GET /api/tc-library/{suite}/cases/{case_id}/history` | F5.5, F5.11 |
-| `detail-priority` / `detail-auto` / `detail-result` / `detail-status` | 우선순위 · AUTO · 실행 결과 · 검토 상태 | 편집 탭 상단 | 변경 → 변경 표시 | — | 검토 상태를 approved로 바꿀 때 검증 오류가 있으면 저장 거부 | 저장 시 PATCH | F5.2, F5.8 |
+| `detail-priority` / `detail-result` / `detail-status` | 우선순위 · 실행 결과 · 검토 상태 | 편집 탭 상단 | 변경 → 변경 표시 | — | 검토 상태를 approved로 바꿀 때 검증 오류가 있으면 저장 거부 | 저장 시 PATCH | F5.2, F5.8 |
 | `detail-precondition` | 사전 조건 | 편집 탭 | 입력 | — | — | 저장 시 PATCH | F5.2 |
 | `detail-steps` | Step 목록 | 편집 탭 | 줄마다 번호 자동 표시(입력칸에는 번호 없이) | — | 빈 Step이 있으면 저장 거부 | 저장 시 PATCH `steps[]` | F5.2 |
 | `detail-step-drag` | Step 끌기 핸들 | 각 Step 왼쪽 | 끌어서 놓기 → 순서 변경, 번호 다시 매김. 키보드: 입력칸에서 Alt+↑/↓ | 끄는 중 반투명, 놓을 곳 보라 테두리 | — | — | F5.2 |
@@ -189,7 +187,7 @@
 | `import-mapping-profile` | 저장한 매핑 프로필 | 직접 매핑 영역 | 선택 → 헤더·컬럼 매핑값 채움. 새 이름으로 저장 가능 | — | 기존 Import Studio 프로필을 읽어 이전 | `GET /api/tc-library/import/profiles`, `PUT /api/tc-library/import/profiles/{name}` | F2.1, D6 |
 | `import-column-mapping` | 헤더 행·필수 컬럼·그룹 매핑 | 직접 매핑 영역 | 변경 → 샘플 행 미리보기와 오류 건수 갱신 | — | 제목·Step·Expected 및 `case_id` 생성/매핑 규칙 필수 | `POST /api/tc-library/import/preview` | F2.1 |
 | `import-sheets` | 가져올 시트 체크 목록 | 모달 | 시트별 체크. History처럼 TC 헤더가 없는 시트는 disabled | — | 최소 1개 | — | F2.2 |
-| (경고 목록) | 분석 결과 체크리스트 | 모달 | 병합 해제 결과, template_profile 저장, `#REF!` 요약 수식, 우선순위·AUTO 공란, K/L 결과 컬럼 미수입 안내 | ✓ / ! | — | — | F2.3, F2.6, F6.3 |
+| (경고 목록) | 분석 결과 체크리스트 | 모달 | 병합 해제 결과, template_profile 저장, `#REF!` 요약 수식, 우선순위 공란, K/L 결과 컬럼 미수입 안내 | ✓ / ! | — | — | F2.3, F2.6, F6.3 |
 | `import-confirm` | n건 가져오기 | 모달 하단 | 클릭 → 가져오기 실행. 완료 토스트 "926건을 가져왔습니다. 시트 6개 · 가지 31개" | loading | 이미 같은 case_id(`기타`의 `id:`)가 있으면 새로 추가하지 않고 **갱신**. 갱신 건수 따로 표시 | `POST /api/tc-library/import` `{preview_id, sheets[]}` → `{created, updated, skipped}` | F2.4, F6.7 |
 | `import-cancel` / `import-close` | 취소 · 닫기 | 모달 | 닫힘, preview 폐기 | — | — | — | — |
 
@@ -229,7 +227,7 @@
 | `gen-path-l1` / `gen-path-l2` / `gen-path-l3` | 대·중·소분류 | 계층 선택기 | 선택. "+ 새 중분류…" 선택 시 이름 입력칸 표시 | — | 새 이름은 같은 부모 안 중복 불가 | — | F2.2 (9장 #13) |
 | `gen-style-examples` | 문체 예시 안내 | 계층 선택기 아래 | 선택한 가지의 기존 케이스 중 프롬프트에 넣을 예시 목록. 5건 미만이면 "권장 5~10건" 안내 | — | 최대 10건 | `GET /api/tc-library/{suite}?path=…&limit=10&status=approved` | F2.5 |
 | `gen-profile` | 작성 프로필 선택 | 작성 프로필 패널 | 선택 → 아래 규칙 요약 갱신. "+ 새 프로필로 저장…" | — | — | `GET /api/tc-library/profiles` | F3 |
-| `gen-profile-edit` | 프로필 편집 | 패널 헤더 | 클릭 → 편집 시트(커버리지, 조건 분기, 우선순위 기준, AUTO 판정, 문체, 금지 표현) | — | 이름 필수, 금지 표현은 줄 단위 | `PUT /api/tc-library/profiles/{name}` | F3 |
+| `gen-profile-edit` | 프로필 편집 | 패널 헤더 | 클릭 → 편집 시트(커버리지, 조건 분기, 우선순위 기준, 문체, 금지 표현) | — | 이름 필수, 금지 표현은 줄 단위 | `PUT /api/tc-library/profiles/{name}` | F3 |
 
 ### 3.3 생성 실행과 진행
 
@@ -258,7 +256,7 @@
 | `review-filter` | 전체 / 미검토 / 중복 후보 / invalid | 목록 상단 세그먼트 | 클릭 → 카드 필터 | 선택 보라 | — | `GET /api/tc-library/{suite}?status=draft&job_id=…` | F5.5 |
 | `review-approve-clean` | 문제없는 초안 일괄 승인 | 목록 상단 오른쪽 | 클릭 → 중복 후보·invalid·추정 문구가 **없는** 미검토 초안만 승인. 토스트에 남겨 둔 건수와 이유 | 대상 0건이면 disabled | — | `POST /api/tc-library/{suite}/bulk` field:"status" value:"approved" | F5.5, 성공 지표 |
 | `draft-list` | 초안 카드 목록 | 왼쪽 | — | 비었으면 "검토할 초안이 없습니다. 새로 생성에서 초안을 만드세요" | — | — | F5.5 |
-| `draft-card` | 초안 카드 | 목록 | 클릭 또는 J/K → 포커스(보라 테두리), 오른쪽 원문에서 해당 문장 강조 + 스크롤. 사전 조건 / Test Step / Expected / 우선·AUTO 표시. 결정된 카드는 흐려짐 | 포커스 / 승인(60% 불투명) / 반려(45%) / 중복(노랑 테두리) / invalid(빨강 점선) | — | — | F5.5 |
+| `draft-card` | 초안 카드 | 목록 | 클릭 또는 J/K → 포커스(보라 테두리), 오른쪽 원문에서 해당 문장 강조 + 스크롤. 사전 조건 / Test Step / Expected / 우선순위 표시. 결정된 카드는 흐려짐 | 포커스 / 승인(60% 불투명) / 반려(45%) / 중복(노랑 테두리) / invalid(빨강 점선) | — | — | F5.5 |
 | `draft-source-ref` | 출처 칩 | 카드 오른쪽 위 | 클릭 → 카드 포커스와 원문 강조 | — | 케이스마다 source_ref 정확히 1개 | — | F4.5, 목표 5 |
 | `draft-approve` | 승인 | 카드 하단 | 클릭 또는 A → approved, 다음 카드로 포커스, 되돌리기 토스트 | disabled: invalid이거나 중복 처리 미선택(툴팁에 사유) | — | `PATCH /api/tc-library/{suite}/cases/{case_id}` `{rev, status:"approved"}` | F5.5 |
 | `draft-reject` | 반려 | 카드 하단 | 클릭 또는 R → rejected, 다음 카드 | — | — | `PATCH …` `{rev, status:"rejected"}` | F5.5 |
@@ -299,7 +297,7 @@
 
 | 요소 ID | 요소 | 위치 | 동작(트리거→결과) | 상태 | 검증·제약 | API 호출 | 관련 PRD |
 |---|---|---|---|---|---|---|---|
-| `md-eligibility` | 대상 조건 퍼널 | md 카드 | 라이브러리 전체 → AUTO=Y-web → 승인됨 → 추정 문구 없음 → pages.json 매핑됨. 막대 길이는 전체 대비 비율, 마지막 단계 초록 | — | — | `GET /api/tc-library/{suite}/export/md/eligibility` → `{total, y_web, approved, no_estimated, mapped}` | F7.1 |
+| `md-eligibility` | 대상 조건 퍼널 | md 카드 | 라이브러리 전체 → 승인됨 → 추정 문구·검증 오류 없음 → pages.json 매핑됨. 막대 길이는 전체 대비 비율, 마지막 단계 초록 | — | — | `GET /api/tc-library/{suite}/export/md/eligibility` → `{funnel:[{label,count}], branches, groups, pages, excluded, drifted}` | F7.1 |
 | `md-group-map` | 그룹 매핑 목록 | md 카드 | 가지 → 그룹코드와 `config/pages.json` 매핑 여부. 매핑 없으면 빨강 "URL 없음 · n건 제외" | — | — | 위 응답 `groups[]` | F7.1, F7.3 |
 | `md-map-fix` | 매핑 추가 | 매핑 없는 행 | 클릭 → 대시보드 페이지 관리 화면(pages.json 편집)으로 이동 | — | — | — | F7.1 |
 | `md-drift-warning` | 직접 수정된 파일 경고 | md 카드 | `testcases/`에서 마지막 내보내기 이후 바뀐 파일 목록. 미리보기에서 각 충돌의 처리 방법을 고르도록 안내 | 노랑 | 해시 비교 | 위 응답 `drifted_files[]` | F7.5 |
@@ -354,7 +352,7 @@
 | 소스 버전 변경 | `banner-source-changed` + 트리 노랑 점 + 그리드 `재검토 필요` 배지 | 재검토 필터, 변경 확인 완료 |
 | 초안 0건 | `draft-list`: "검토할 초안이 없습니다" | 새로 생성으로 |
 | 엑셀 검사 실패 | ✕ 항목 + 내려받기 disabled | 원인 케이스 링크로 라이브러리 이동 |
-| md 대상 0건 | 퍼널 마지막 0, 미리보기 버튼 disabled, 제외 사유 펼침 | AUTO·승인·추정 문구 정리 |
+| md 대상 0건 | 퍼널 마지막 0, 미리보기 버튼 disabled, 제외 사유 펼침 | 승인·검증·추정 문구 정리 |
 
 ---
 
@@ -366,7 +364,7 @@
 |---|---|---|---|---|---|
 | GET | `/api/tc-library` | 스위트 목록 | `[{suite, sheets, count}]` | `suite-select` | §5 |
 | GET | `/api/tc-library/{suite}/tree` | 계층 트리 + 상태 집계 | 트리 노드 배열 | `lib-tree`, `gen-target-*`, `move-target` | F2.2, F5.1 |
-| GET | `/api/tc-library/{suite}` | 케이스 목록(필터·검색·페이지) `?sheet&path&status&execution_result&priority&auto&source&needs_review&invalid&q&offset&limit` | `{items, total}` | `lib-grid`, 필터 전부 | F5.1, F5.4 |
+| GET | `/api/tc-library/{suite}` | 케이스 목록(필터·검색·페이지) `?sheet&path&status&execution_result&priority&source&needs_review&invalid&q&offset&limit` | `{items, total}` | `lib-grid`, 필터 전부 | F5.1, F5.4 |
 | POST | `/api/tc-library/{suite}/cases` | 케이스 추가 | 새 케이스 | `btn-add-case` | F5.3 |
 | GET | `/api/tc-library/{suite}/cases/{case_id}` | 케이스 1건 | 케이스 + validation | `detail-panel` | F5.1 |
 | PATCH | `/api/tc-library/{suite}/cases/{case_id}` | 필드 수정 `{rev, …}` | 200 케이스 / 409 `{server_case}` | 셀 편집, `detail-save`, 검토 승인·반려 | F5.2, F5.5 |
@@ -409,9 +407,8 @@
 
 실제 `야핏무브_Full.xlsx`(읽기 전용)를 열어 확인한 내용과 화면을 설계하며 드러난 빈틈이다.
 
-1. **AUTO 드롭다운 값이 PRD와 다르다.** 모든 TC 시트의 J열 데이터 유효성 허용값은 `"AUTO"` 한 가지뿐이다(예: 혜택 `J13:J198`). `Y-web/Y-app/N`을 쓰면 기존 드롭다운 규칙을 어긴다. F6.2의 "드롭다운 범위를 넓힌다"만으로는 부족하고, 목록 값 자체를 바꿀지 정해야 한다(O4와 묶어서 결정).
 2. **`platforms` 필드의 근거가 없다.** K/L(And/iOS)은 플랫폼 속성이 아니라 결과 컬럼이다(허용값 `Pass,Fail,NT,NA`). 플랫폼 한정 정보는 사전 조건 텍스트에 있다(홈 시트 "- only And"). §5 표의 `platforms` = "K/L 헤더"는 F2.4("결과 컬럼 K/L은 가져오지 않는다")와 충돌한다. 필드를 빼거나 사전 조건에서 뽑는 규칙을 정해야 한다.
-3. **우선순위·AUTO가 전 시트에서 비어 있다.** F2.4대로 926건을 `approved`로 가져오면 F5.8 "허용된 우선순위" 검증에서 926건 모두 오류가 된다. 빈 값을 오류로 볼지 경고로 볼지 정해야 한다. 목업은 "미지정 = 노랑 경고, 승인 차단 안 함"으로 가정했다.
+3. **우선순위가 전 시트에서 비어 있다.** F2.4대로 926건을 `approved`로 가져오면 F5.8 "허용된 우선순위" 검증에서 926건 모두 오류가 된다. 빈 값을 오류로 볼지 경고로 볼지 정해야 한다. 목업은 "미지정 = 노랑 경고, 승인 차단 안 함"으로 가정했다.
 4. **헤더 자동 탐지 기준이 필요하다.** 1~9행에 요약표("구분 / COUNT / 수행률", "And / iOS")가 있어 헤더 후보가 여럿이다. "No.·기능·Expected Result를 모두 포함한 첫 행" 같은 판정 기준을 F2.1에 적어야 한다.
 5. **기타 컬럼에 사람이 쓴 메모가 이미 있다.** 혜택 R16 "돈불리기 정책 변경 (신규 온보딩 추가 필요)". F6.5의 `id:… | src:…`를 같은 칸에 쓰면 메모와 섞인다. 재가져오기(F6.7) 때 메모와 추적 정보를 나누는 규칙이 필요하고, 라이브러리 모델에 `note` 필드가 필요하다.
 6. **`source_refs[]`(배열), F4.5 "정확히 1개", md의 단일 `source_ref`가 서로 어긋난다.** 수동 편집으로 출처를 여러 개 연결하면 md에 무엇을 쓸지 정해야 한다. 엑셀에서 가져온 케이스의 출처 표기(`xlsx:파일#시트!행`?)도 §5에 정의가 없다.
@@ -428,3 +425,7 @@
 17. **History 시트 날짜 형식.** 실제 History 시트는 `25.09.11` 같은 `YY.MM.DD` 텍스트다. F6.4에 형식을 적어 두면 좋다.
 18. **"출처" 필터(F5.4)의 값 목록이 정의되지 않았다.** 목업은 `xlsx / conf / figma / file` 접두사로 가정했다.
 19. **요약 수식은 `#REF!` 말고도 범위가 시트마다 다르게 고정돼 있다.** 혜택은 `COUNTA($A$13:$A$390)`인데 데이터는 198행에서 끝난다. F6.3의 재작성 대상에 COUNTA 범위와 소문자 `average()`(O5)를 함께 적어 두기를 제안한다.
+
+## 2026-09-30 후속 변경
+
+자동화 여부 관련 UI·API 필터·일괄 수정·작성 규칙·Excel 열을 제거했습니다. md 퍼널은 승인·검증·문구 확인·그룹 연결만 사용합니다. 과거 목업과 Phase 검증 계획은 당시 설계 기록입니다.

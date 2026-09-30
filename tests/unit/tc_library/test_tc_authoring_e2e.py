@@ -121,6 +121,7 @@ def test_import_with_custom_mapping(studio):
     expect(page.locator('[data-id="import-sheets"] .radio')).to_have_count(1)
     page.locator('[data-id="import-suite"]').fill("웹")
     page.locator('[data-prefix="로그인"]').fill("LOG")
+    page.locator('[data-id="import-plan"]').click()
     page.locator('[data-id="import-confirm"]').click()
     expect(page.locator('[data-id="suite-select"]')).to_have_value("웹")
     expect(page.locator("#grid-body tr[data-case]")).to_have_count(1)

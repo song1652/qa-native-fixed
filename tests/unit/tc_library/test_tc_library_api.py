@@ -93,7 +93,7 @@ def test_bulk_create_duplicate_move_delete_restore(api):
     base_url, _ = api
     status, body = request_json(base_url, "POST", f"/api/tc-library/{S}/bulk", {
         "items": [{"case_id": "BEN_0001", "rev": 1}, {"case_id": "BEN_0002", "rev": 9}],
-        "op": "set", "field": "auto", "value": "Y-app"})
+        "op": "set", "field": "priority", "value": "P2"})
     assert (body["updated"], [c["case_id"] for c in body["conflicts"]]) == (["BEN_0001"], ["BEN_0002"])
 
     status, body = request_json(base_url, "POST", f"/api/tc-library/{S}/cases", {

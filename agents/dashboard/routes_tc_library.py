@@ -26,6 +26,10 @@ ROUTES: list[tuple[str, re.Pattern, str]] = [
         ("GET", r"/api/tc-library", "_tcl_suites"),
         ("POST", r"/api/tc-library/import/preview", "_tcl_import_preview"),
         ("POST", r"/api/tc-library/import", "_tcl_import_commit"),
+        ("POST", r"/api/tc-library/import/plan", "_tcl_import_plan"),
+        ("GET", r"/api/tc-library/import/runs", "_tcl_import_runs"),
+        ("GET", r"/api/tc-library/import/runs/(?P<run_id>libimp_[0-9a-f]{16})", "_tcl_import_run"),
+        ("POST", r"/api/tc-library/import/runs/(?P<run_id>libimp_[0-9a-f]{16})/rollback", "_tcl_import_rollback"),
         ("GET", rf"/api/tc-library/exports/{_ID}/download", "_tcl_export_download"),
 
         ("GET", rf"/api/tc-library/{_SUITE}/tree", "_tcl_tree"),
@@ -136,8 +140,10 @@ class TcLibraryRoutesMixin:
         upload_dir.mkdir(parents=True, exist_ok=True)
         xlsx = upload_dir / f"{preview_id}.xlsx"
         xlsx.write_bytes(data)
-        mapping = json.loads(self._tcl_query["mapping"]) if self._tcl_query.get("mapping") else None
         try:
+            mapping = json.loads(self._tcl_query["mapping"]) if self._tcl_query.get("mapping") else None
+            if mapping is not None and not isinstance(mapping, dict):
+                raise LibraryError('매핑 설정이 올바르지 않습니다', 'INVALID_MAPPING')
             profiles = analyze_with_mapping(xlsx, mapping) if mapping else analyze_workbook(xlsx)
         except LibraryError:
             xlsx.unlink(missing_ok=True)
@@ -158,34 +164,36 @@ class TcLibraryRoutesMixin:
         self._tcl_json({"ok": True, "preview_id": preview_id, "filename": filename,
                         "sheets": sheets})
 
+    def _tcl_import_body(self):
+        from _tc_library import LibraryError
+        try:
+            body = _read_body(self)
+            if not isinstance(body, dict):
+                raise ValueError('JSON object required')
+            return body
+        except (ValueError, UnicodeDecodeError) as exc:
+            raise LibraryError('올바른 JSON 본문이 필요합니다', 'INVALID_JSON') from exc
+
+    def _tcl_import_plan(self):
+        from _tc_import_ops import plan_import
+        self._tcl_json({"ok": True, **plan_import(self._tcl_import_body())})
+
     def _tcl_import_commit(self):
-        from _tc_library import LibraryError, import_cases, save_template
-        from _tc_template import analyze_with_mapping, analyze_workbook
-        from _tc_xlsx_import import import_workbook
-        body = _read_body(self)
-        preview_id = str(body.get("preview_id", ""))
-        if not re.fullmatch(r"imp_[0-9a-f]{12}", preview_id):
-            raise LibraryError("미리보기 id가 올바르지 않습니다", "INVALID_PREVIEW")
-        upload = _paths.TC_LIBRARY_DIR / "_uploads" / f"{preview_id}.xlsx"
-        if not upload.exists():
-            raise LibraryError("미리보기가 만료됐습니다. 파일을 다시 선택하세요", "PREVIEW_EXPIRED", 410)
-        meta = json.loads(upload.with_suffix(".json").read_text(encoding="utf-8"))
-        suite = str(body.get("suite", "")).strip()
-        profiles = analyze_with_mapping(upload, meta["mapping"]) if meta.get("mapping") else analyze_workbook(upload)
-        sheets = [s for s in body.get("sheets", []) if s in profiles]
-        if not sheets:
-            raise LibraryError("가져올 시트를 하나 이상 고르세요", "NO_SHEETS")
-        prefixes = {k: v for k, v in (body.get("prefixes") or {}).items()
-                    if re.fullmatch(r"[A-Z][A-Z0-9]{0,7}", str(v))}
-        renamed = upload.with_name(meta["filename"])
-        cases = import_workbook(upload, profiles, sheets, prefixes)
-        for case in cases:
-            case["source_refs"] = [r.replace(upload.name, renamed.name) for r in case["source_refs"]]
-        save_template(suite, upload, {s: profiles[s] for s in sheets})
-        summary = import_cases(suite, sheets, cases, self._tcl_actor())
-        upload.unlink(missing_ok=True)
-        upload.with_suffix(".json").unlink(missing_ok=True)
-        self._tcl_json({"ok": True, "suite": suite, **summary})
+        from _tc_import_ops import commit_import
+        self._tcl_json({"ok": True, **commit_import(self._tcl_import_body(), self._tcl_actor())})
+
+    def _tcl_import_runs(self):
+        from _tc_import_ops import list_runs, public_run
+        errors = []
+        self._tcl_json({"ok": True, "runs": [public_run(run, summary_only=True) for run in list_runs(errors)], "errors": errors})
+
+    def _tcl_import_run(self, run_id: str):
+        from _tc_import_ops import get_run, public_run
+        self._tcl_json({"ok": True, **public_run(get_run(run_id))})
+
+    def _tcl_import_rollback(self, run_id: str):
+        from _tc_import_ops import rollback_import
+        self._tcl_json({"ok": True, **rollback_import(run_id, self._tcl_actor())})
 
     # ── 쓰기 ──────────────────────────────────────────────────────
     def _tcl_patch_case(self, suite: str, case_id: str):

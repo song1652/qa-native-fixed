@@ -6,6 +6,8 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 HEADER_ALIASES: dict[str, tuple[str, ...]] = {
+    "source_tc_id": ("tc_id", "tc id", "scenario id", "test scenario id"),
+    "tags": ("tags", "태그"),
     "no": ("no.", "no"),
     "l1": ("대분류",),
     "l2": ("중분류",),
@@ -15,7 +17,6 @@ HEADER_ALIASES: dict[str, tuple[str, ...]] = {
     "steps": ("test step", "test steps", "테스트 절차"),
     "expected": ("expected result", "기대결과", "기대 결과"),
     "priority": ("우선순위",),
-    "auto": ("auto",),
     "env": ("환경",),
     "note": ("기타", "비고"),
 }
@@ -37,6 +38,7 @@ class TemplateProfile:
     no_formula: str | None = None            # "=IF(H{r}<>\"\",ROW(B{r})-12, \"\")"
     style_row: int = 0
     warnings: list[str] = field(default_factory=list)
+    excluded_columns: list[int] = field(default_factory=list)
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -117,6 +119,7 @@ def analyze_sheet(ws) -> TemplateProfile | None:
 
     return TemplateProfile(
         sheet=ws.title, header_row=header_row, data_start_row=data_start,
+        excluded_columns=[cell.column for cell in ws[header_row] if _norm(cell.value) == "auto"],
         columns=columns, result_columns=result_columns, validations=validations,
         no_formula=no_formula, style_row=data_start, warnings=warnings,
     )
@@ -145,11 +148,13 @@ def _letter(col: str) -> int:
 
 # Import Studio 매핑 프로필의 필드 → TC 스튜디오 필드
 IMPORT_STUDIO_FIELDS = {"title": "feature", "steps": "steps", "expected": "expected",
-                        "precondition": "precondition", "priority": "priority", "group": "l1"}
+                        "precondition": "precondition", "priority": "priority", "group": "l1",
+                        "tc_id": "source_tc_id", "source_tc_id": "source_tc_id", "tags": "tags",
+                        "l1": "l1", "l2": "l2", "l3": "l3"}
 
 
 def mapping_from_import_profile(mappings: dict[str, str]) -> dict[str, str]:
-    """Import Studio 프로필 {"title": "B열", …} → {"feature": "B", …} (tc_id·tags는 쓰지 않는다)."""
+    """Import Studio 프로필 {"title": "B열", …} → {"feature": "B", …} 원본 ID·태그도 보존한다."""
     return {IMPORT_STUDIO_FIELDS[k]: v.replace("열", "").strip().upper()
             for k, v in mappings.items() if k in IMPORT_STUDIO_FIELDS and v}
 
@@ -157,7 +162,7 @@ def mapping_from_import_profile(mappings: dict[str, str]) -> dict[str, str]:
 def profile_from_mapping(ws, mapping: dict) -> TemplateProfile:
     """다른 양식 직접 매핑 (Phase 2 G0). mapping: {"header_row": 1, "columns": {"feature": "B", …},
     "result_columns": {"And": "K"}}. 대분류 열이 없으면 시트 이름을 대분류로 쓴다."""
-    columns = {field: _letter(col) for field, col in mapping.get("columns", {}).items() if col}
+    columns = {field: _letter(col) for field, col in mapping.get("columns", {}).items() if col and field != "auto"}
     missing = [f for f in ("feature", "steps", "expected") if f not in columns]
     if missing:
         from _tc_library import LibraryError
@@ -167,6 +172,7 @@ def profile_from_mapping(ws, mapping: dict) -> TemplateProfile:
     return TemplateProfile(sheet=ws.title, header_row=header_row, data_start_row=header_row + 1,
                            columns=columns, result_columns=result_columns, validations={},
                            no_formula=None, style_row=header_row + 1,
+                           excluded_columns=[cell.column for cell in ws[header_row] if _norm(cell.value) == "auto"],
                            warnings=["직접 매핑한 양식입니다. 병합·요약 수식 보정 없이 값만 씁니다"])
 
 

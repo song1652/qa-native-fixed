@@ -51,6 +51,17 @@
     importPreview: (file, mapping) =>
       request('POST', `/api/tc-library/import/preview?filename=${enc(file.name)}${mapping ? `&mapping=${enc(JSON.stringify(mapping))}` : ''}`, file),
     importCommit: (payload) => request('POST', '/api/tc-library/import', payload),
+    importPlan: (payload) => request('POST', '/api/tc-library/import/plan', payload),
+    importRuns: () => request('GET', '/api/tc-library/import/runs'),
+    importRun: (id) => request('GET', `/api/tc-library/import/runs/${enc(id)}`),
+    rollbackImport: (id) => request('POST', `/api/tc-library/import/runs/${enc(id)}/rollback`),
+    saveMappingProfile: (payload) => request('POST', '/api/tc-library/import/mapping-profiles', payload),
+    updateMappingProfile: (id, payload) => request('PUT', `/api/tc-library/import/mapping-profiles/${enc(id)}`, payload),
+    deleteMappingProfile: (id) => request('DELETE', `/api/tc-library/import/mapping-profiles/${enc(id)}`),
+    mdImportRuns: () => request('GET', '/api/tc-library/import/md-runs'),
+    mdImportRun: (id) => request('GET', `/api/tc-library/import/md-runs/${enc(id)}`),
+    rollbackMdImport: (id) => request('POST', `/api/tc-library/import/md-runs/${enc(id)}/rollback`),
+    skippedCsvUrl: (id) => `/api/import/runs/${enc(id)}/skipped.csv`,
     exportXlsx: (suite, payload) => request('POST', `${S(suite)}/export/xlsx`, payload),
     downloadUrl: (exportId) => `/api/tc-library/exports/${enc(exportId)}/download`,
     // ── Phase 2: 소스·프로필·생성 작업·검토 ──

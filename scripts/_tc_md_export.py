@@ -1,7 +1,7 @@
 """TC 라이브러리 → 파이프라인용 testcases/{group}/tc_*.md (PRD F7, 로드맵 M4~M6).
 
 미리보기·커밋·롤백은 Import Studio(_import_commit)를 그대로 쓴다. 이 모듈은 다음만 한다:
-- 대상 판정 퍼널: 전체 → AUTO=Y-web → 승인 → 추정 문구·검증 오류 없음 → 그룹 매핑됨
+- 대상 판정 퍼널: 전체 → 승인 → 추정 문구·검증 오류 없음 → 그룹 매핑됨
 - 라이브러리 가지(시트 › 대분류 › 중분류 › 소분류) → pages.json 그룹 + tc_id 접두어 매핑 (가장 긴 접두 일치)
 - case_id → md tc_id 고정 배정 (다시 내보내도 같은 파일을 갱신)
 - 드리프트: 마지막으로 내보낸 뒤 testcases/ 파일을 사람이 직접 고쳤으면 충돌(FILE_DRIFT)로 올린다
@@ -20,7 +20,7 @@ import _paths
 from _import_commit import _atomic_json, _target_for, commit_run, create_preview_from_rows, load_run, rollback_run
 from _import_validator import load_existing_testcases
 from _state import read_state, update_state
-from _tc_library import LibraryError, load_cases, suite_dir, with_issues
+from _tc_library import LibraryError, load_cases, suite_dir, with_issues, _locked
 from _tc_model import format_steps, join_expected
 from _tc_review import classify
 
@@ -33,6 +33,7 @@ def _config_path(suite: str):
     return suite_dir(suite) / "md_export.json"
 
 
+@_locked
 def load_config(suite: str) -> dict:
     cfg = read_state(_config_path(suite))
     return {"groups": cfg.get("groups", []), "ids": cfg.get("ids", {}), "exported": cfg.get("exported", {})}
@@ -46,6 +47,7 @@ def _pages() -> dict:
     return {k: v for k, v in data.items() if not k.startswith("_")}
 
 
+@_locked
 def save_group(suite: str, path: list[str], group: str, code: str) -> dict:
     """가지 → 그룹 매핑 추가·교체. 그룹은 pages.json에 있어야 한다 (URL이 없으면 파이프라인이 못 돈다)."""
     path = [p for p in path if p]
@@ -77,16 +79,16 @@ def group_for(case: dict, groups: list[dict]) -> dict | None:
     return max(hits, key=lambda g: len(g["path"])) if hits else None
 
 
+@_locked
 def eligibility(suite: str) -> dict:
     """퍼널·가지별 매핑 상태·제외 이유·드리프트 파일 (원격 호출 없음)."""
     cfg = load_config(suite)
     cases = [with_issues(c) for c in load_cases(suite)]
-    web = [c for c in cases if c["auto"] == "Y-web"]
-    approved = [c for c in web if c["status"] == "approved"]
+    approved = [c for c in cases if c["status"] == "approved"]
     clean = [c for c in approved if not c["has_error"] and all(b["verified"] for b in c["bullets"])]
     mapped = [c for c in clean if group_for(c, cfg["groups"])]
     excluded = []
-    for c in web:
+    for c in cases:
         if c["status"] != "approved":
             excluded.append({"case_id": c["case_id"], "feature": c["feature"], "reason": "미승인"})
         elif c["has_error"]:
@@ -104,7 +106,7 @@ def eligibility(suite: str) -> dict:
                                          "code": g["code"] if g else "", "count": 0})
         item["count"] += 1
     return {
-        "funnel": [{"label": "라이브러리 전체", "count": len(cases)}, {"label": "AUTO = Y-web", "count": len(web)},
+        "funnel": [{"label": "라이브러리 전체", "count": len(cases)},
                    {"label": "승인됨", "count": len(approved)}, {"label": "추정 문구·검증 오류 없음", "count": len(clean)},
                    {"label": "pages.json 그룹 매핑됨", "count": len(mapped)}],
         "branches": sorted(branches.values(), key=lambda b: b["path"]),
@@ -117,6 +119,7 @@ def _file_sha(path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+@_locked
 def drifted_files(suite: str) -> list[dict]:
     cfg = load_config(suite)
     existing = load_existing_testcases(_paths.TESTCASES_DIR)
@@ -128,6 +131,7 @@ def drifted_files(suite: str) -> list[dict]:
     return out
 
 
+@_locked
 def _allocate_ids(suite: str, cases: list[dict], groups: list[dict]) -> dict[str, str]:
     """case_id → tc_id ("{code}_{NN}"). 한번 배정한 번호는 유지하고, 새 번호는 기존 파일과도 겹치지 않게 한다."""
     existing = set(load_existing_testcases(_paths.TESTCASES_DIR))
@@ -135,8 +139,20 @@ def _allocate_ids(suite: str, cases: list[dict], groups: list[dict]) -> dict[str
     def mutate(cfg: dict) -> dict:
         ids = dict(cfg.get("ids", {}))
         used = set(ids.values()) | existing
+        desired = [str(c.get("source_tc_id") or "").strip() for c in cases if c["case_id"] not in ids]
+        if any(i and desired.count(i) > 1 for i in desired):
+            raise LibraryError("원본 TC ID가 중복됩니다", "DUPLICATE_SOURCE_ID")
         for case in cases:
             if case["case_id"] in ids:
+                continue
+            source_id = str(case.get("source_tc_id") or "").strip()
+            if source_id:
+                if not re.fullmatch(r"[\w-]+", source_id):
+                    raise LibraryError("원본 TC ID 형식이 올바르지 않습니다", "INVALID_SOURCE_ID")
+                if source_id in ids.values():
+                    raise LibraryError("다른 케이스에 배정된 원본 TC ID입니다", "DUPLICATE_SOURCE_ID")
+                ids[case["case_id"]] = source_id
+                used.add(source_id)
                 continue
             code = group_for(case, groups)["code"]
             n = 1 + max([int(m.group(1)) for i in used if (m := re.fullmatch(rf"{code}_(\d+)", i))] + [0])
@@ -147,11 +163,12 @@ def _allocate_ids(suite: str, cases: list[dict], groups: list[dict]) -> dict[str
     return update_state(_config_path(suite), mutate)["ids"]
 
 
+@_locked
 def build_rows(suite: str) -> list[dict]:
     """대상 케이스 → Import Studio 행 (파일 쓰기 전)."""
     cfg = load_config(suite)
     cases = [c for c in (with_issues(c) for c in load_cases(suite))
-             if c["auto"] == "Y-web" and c["status"] == "approved" and not c["has_error"]
+             if c["status"] == "approved" and not c["has_error"]
              and all(b["verified"] for b in c["bullets"]) and group_for(c, cfg["groups"])]
     ids = _allocate_ids(suite, cases, cfg["groups"])
     rows = []
@@ -159,6 +176,7 @@ def build_rows(suite: str) -> list[dict]:
         tags = [{"positive": "positive", "negative": "negative", "validation": "validation"}[classify(case)]]
         if case["bullets"]:
             tags.append("content")
+        tags = list(dict.fromkeys([*case.get("tags", []), *tags]))
         rows.append({
             "tc_id": ids[case["case_id"]], "title": case["feature"], "precondition": case["precondition"],
             "steps": format_steps(case["steps"]), "expected": join_expected(case["expected"], case["bullets"]),
@@ -169,6 +187,7 @@ def build_rows(suite: str) -> list[dict]:
     return rows
 
 
+@_locked
 def preview(suite: str) -> dict:
     rows = build_rows(suite)
     if not rows:
@@ -176,7 +195,11 @@ def preview(suite: str) -> dict:
     run = create_preview_from_rows(rows, {"kind": "tc_library", "suite": suite},
                                    _paths.TESTCASES_DIR, _paths.IMPORT_SESSIONS_DIR)
     drift = {d["tc_id"] for d in drifted_files(suite)}
+    exported = load_config(suite)["exported"]
     for row in run["rows"]:
+        if row.get("status") == "updated" and row["tc_id"] not in exported:
+            row.update(status="conflict", reason="기존 MD와 원본 ID가 같습니다. 연결 또는 건너뛰기를 선택하세요",
+                       reason_code="EXISTING_MD_LINK", excluded=False, decision="pending")
         if row["tc_id"] in drift and row.get("status") in ("updated", "same"):
             row.update(status="conflict", reason="마지막 내보내기 이후 파일을 직접 고쳤습니다",
                        reason_code="FILE_DRIFT", excluded=False, decision="pending")
@@ -186,6 +209,7 @@ def preview(suite: str) -> dict:
     return run
 
 
+@_locked
 def commit(suite: str, run_id: str, skip_tc_ids: list[str]) -> dict:
     """충돌 중 skip_tc_ids는 건너뛰고 나머지 충돌은 라이브러리 값으로 덮어쓴다."""
     run = load_run(_paths.IMPORT_SESSIONS_DIR, run_id)
@@ -213,6 +237,7 @@ def commit(suite: str, run_id: str, skip_tc_ids: list[str]) -> dict:
     return result
 
 
+@_locked
 def rollback(suite: str, run_id: str) -> dict:
     run = load_run(_paths.IMPORT_SESSIONS_DIR, run_id)
     if run.get("tc_library_suite") != suite:

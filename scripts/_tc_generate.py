@@ -26,7 +26,7 @@ from pathlib import Path
 import _paths
 from _state import read_state, update_state
 from _tc_library import LibraryError, add_drafts, get_case, load_cases, patch_case, set_draft_meta
-from _tc_model import AUTO_VALUES, PRIORITIES, now_iso, parse_steps
+from _tc_model import PRIORITIES, now_iso, parse_steps
 from _tc_profiles import get_profile
 from _tc_prompt import DRAFTS_SCHEMA, build_prompt, chunk_sections
 from _tc_review import find_duplicates
@@ -194,9 +194,6 @@ def build_draft(raw: dict, *, target: dict, allowed: dict[str, str], job_id: str
         errors.append("Expected가 없습니다")
     if raw.get("priority") not in PRIORITIES:
         errors.append(f"우선순위 {raw.get('priority')!r}")
-    auto = raw.get("auto", "")
-    if auto not in ("", *AUTO_VALUES):
-        errors.append(f"AUTO {auto!r}")
     base = [p for p in target["path"] if p]
     path = [p.strip() for p in (raw.get("path") or []) if p.strip()]
     if path[: len(base)] != base:      # 대상 가지 기준 상대 경로로 본다
@@ -212,7 +209,7 @@ def build_draft(raw: dict, *, target: dict, allowed: dict[str, str], job_id: str
         "precondition": raw.get("precondition", "").strip(), "steps": steps,
         "expected": raw["expected"].strip(),
         "bullets": [{"text": b.strip(), "verified": kind in verified_kinds} for b in raw.get("bullets", []) if b.strip()],
-        "priority": raw["priority"], "auto": auto, "source_refs": [ref],
+        "priority": raw["priority"], "source_refs": [ref],
         "draft_meta": {"job_id": job_id, "source_quote": quote,
                        "quote_found": bool(quote) and norm(quote) in norm(allowed[ref])},
     }, []
@@ -242,7 +239,7 @@ def run_job(job_id: str, *, runner=run_claude) -> dict:
         if job["mode"] == "regenerate":
             case = get_case(job["suite"], job["case_id"])
             regenerate = {"case": {k: case[k] for k in ("path", "feature", "precondition", "steps",
-                                                        "expected", "bullets", "priority", "auto")},
+                                                        "expected", "bullets", "priority")},
                           "note": job["note"]}
             wanted = set(case["source_refs"])
             chunks = [[i for i in chunk if i["ref"] in wanted] or chunk for chunk in chunks][:1]
@@ -287,7 +284,7 @@ def run_job(job_id: str, *, runner=run_claude) -> dict:
             if regenerate and drafts:
                 current = get_case(job["suite"], job["case_id"])
                 fields = {k: drafts[0][k] for k in ("path", "feature", "precondition", "steps",
-                                                    "expected", "bullets", "priority", "auto")}
+                                                    "expected", "bullets", "priority")}
                 patch_case(job["suite"], job["case_id"], current["rev"], fields, "generator")
                 set_draft_meta(job["suite"], job["case_id"], {**drafts[0]["draft_meta"],
                     "job_id": current.get("draft_meta", {}).get("job_id", job_id),

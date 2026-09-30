@@ -48,7 +48,8 @@ def write_sheet(ws, profile: TemplateProfile, cases: list[dict]) -> int:
             "feature": case["feature"], "precondition": case["precondition"],
             "steps": format_steps(case["steps"]),
             "expected": join_expected(case["expected"], case["bullets"]),
-            "priority": case["priority"], "auto": case["auto"], "note": note_cell(case),
+            "priority": case["priority"], "note": note_cell(case),
+            "source_tc_id": case.get("source_tc_id", ""), "tags": ", ".join(case.get("tags", [])),
         }
         for key, val in values.items():
             if key in cols:
@@ -150,6 +151,9 @@ def export_workbook(
         for sheet, profile in profiles.items():
             if sheet in wb.sheetnames and sheet not in drop_sheets:
                 write_sheet(wb[sheet], profile, cases_by_sheet.get(sheet, []))
+        for sheet, profile in profiles.items():
+            if sheet in wb.sheetnames and sheet not in drop_sheets:
+                _remove_excluded_columns(wb, wb[sheet], profile)
         append_history(wb, history_note, today or date.today())
         out_path.parent.mkdir(parents=True, exist_ok=True)
         wb.save(str(out_path))
@@ -170,11 +174,14 @@ def verify_export(
         for sheet, expected in cases_by_sheet.items():
             if sheet not in wb.sheetnames:
                 continue
-            ws, profile = wb[sheet], profiles[sheet]
+            ws = wb[sheet]
+            profile = _shift_profile(profiles[sheet], _excluded_columns(profiles[sheet]))
             got = read_sheet_cases(ws, profile, source_name=out_path.name, prefix="X",
                                    existing_ids=set())
             key = lambda c: (c["case_id"], tuple(c["path"]), c["feature"], tuple(c["steps"]),
-                             c["expected"], c["priority"], c["execution_result"], c["note"])
+                             c["expected"], c["priority"], c["execution_result"], c["note"],
+                             c.get("source_tc_id", "") if "source_tc_id" in profile.columns else "",
+                             tuple(c.get("tags", [])) if "tags" in profile.columns else ())
             same = [key(c) for c in got] == [key(c) for c in expected]
             checks.append({
                 "level": "ok" if same else "error", "code": "ROUNDTRIP",
@@ -191,3 +198,138 @@ def verify_export(
     finally:
         wb.close()
     return checks
+
+
+def _excluded_columns(profile: TemplateProfile) -> list[int]:
+    return sorted(set(profile.excluded_columns + ([profile.columns['auto']] if 'auto' in profile.columns else [])))
+
+
+def _shift_profile(profile: TemplateProfile, removed: list[int]) -> TemplateProfile:
+    from dataclasses import replace
+    shift = lambda col: col - sum(old < col for old in removed)
+    return replace(profile, columns={key: shift(col) for key, col in profile.columns.items() if key != 'auto' and col not in removed},
+                   result_columns={key: shift(col) for key, col in profile.result_columns.items() if col not in removed},
+                   excluded_columns=[])
+
+
+def _shift_formula(formula: str, removed: list[int], owner: str, target: str, header_row: int) -> str:
+    from openpyxl.formula.tokenizer import Tokenizer
+    from openpyxl.utils import column_index_from_string
+    tokens = Tokenizer(formula).items
+    for token in tokens:
+        if token.type != 'OPERAND' or token.subtype != 'RANGE':
+            continue
+        prefix, reference = token.value.rsplit('!', 1) if '!' in token.value else ('', token.value)
+        referenced_sheet = prefix.strip("'").replace("''", "'") if prefix else owner
+        if referenced_sheet != target:
+            continue
+        def relocate(match):
+            if int(match.group(3).replace('$', '')) < header_row:
+                return match.group(0)
+            col = column_index_from_string(match.group(2))
+            if col in removed:
+                return '#REF!'
+            return match.group(1) + get_column_letter(col - sum(old < col for old in removed)) + match.group(3)
+        if re.fullmatch(r'\$?[A-Z]{1,3}:\$?[A-Z]{1,3}', reference):
+            def relocate_column(match):
+                col = column_index_from_string(match.group(2))
+                return match.group(1) + get_column_letter(col - sum(old < col for old in removed))
+            reference = re.sub(r'(\$?)([A-Z]{1,3})', relocate_column, reference)
+        else:
+            reference = re.sub(r'(?<![A-Za-z0-9_])(\$?)([A-Z]{1,3})(\$?\d+)(?![A-Za-z0-9_])', relocate, reference)
+        token.value = (prefix + '!' if prefix else '') + reference
+    return '=' + ''.join(token.value for token in tokens)
+
+
+
+def _retired_formula_reference(formula: str, owner: str, target: str, removed: list[int], header_row: int, retired: set[tuple[int, int]]) -> bool:
+    from openpyxl.formula.tokenizer import Tokenizer
+    from openpyxl.utils.cell import range_boundaries
+    for token in Tokenizer(formula).items:
+        if token.type != 'OPERAND' or token.subtype != 'RANGE':
+            continue
+        prefix, reference = token.value.rsplit('!', 1) if '!' in token.value else ('', token.value)
+        if (prefix.strip("'").replace("''", "'") if prefix else owner) != target:
+            continue
+        try:
+            lo, first, hi, last = range_boundaries(reference)
+        except ValueError:
+            continue
+        if lo is None or hi is None:
+            continue
+        first, last = first or 1, last or 1048576
+        if last >= header_row and any(lo <= col <= hi for col in removed):
+            return True
+        if any(lo <= col <= hi and first <= row <= last for row, col in retired):
+            return True
+    return False
+
+
+def _remove_excluded_columns(wb, ws, profile: TemplateProfile) -> None:
+    from openpyxl.worksheet.cell_range import CellRange
+    removed = _excluded_columns(profile)
+    if not removed:
+        return
+    summary_cells = [cell for row in ws.iter_rows(max_row=profile.header_row - 1) for cell in row if cell.value is not None] if profile.header_row > 1 else []
+    label_columns = {cell.column for cell in summary_cells if isinstance(cell.value, str) and not cell.value.startswith('=') and re.search(r'\bAUTO\b', cell.value, re.I)}
+    retired = {(cell.row, cell.column) for cell in summary_cells if cell.column in label_columns}
+    while True:
+        dependent = {(cell.row, cell.column) for cell in summary_cells if cell.data_type == 'f' and _retired_formula_reference(cell.value, ws.title, ws.title, removed, profile.header_row, retired)}
+        if dependent <= retired:
+            break
+        retired |= dependent
+    for sheet in wb.worksheets:
+        for row in sheet:
+            for cell in row:
+                if cell.data_type == 'f' and _retired_formula_reference(cell.value, sheet.title, ws.title, removed, profile.header_row, retired):
+                    cell.value = None
+    for row, col in retired:
+        ws.cell(row, col).value = None
+    def shift_range(original):
+        rng = CellRange(str(original))
+        kept = [col for col in range(rng.min_col, rng.max_col + 1) if col not in removed]
+        if not kept:
+            return None
+        rng.min_col = min(kept) - sum(old < min(kept) for old in removed)
+        rng.max_col = max(kept) - sum(old < max(kept) for old in removed)
+        return str(rng)
+    summary = [(cell.row, cell.column, cell.value, copy(cell._style), copy(cell.hyperlink), copy(cell.comment))
+               for row in ws.iter_rows(max_row=profile.header_row - 1) for cell in row if cell.value is not None] if profile.header_row > 1 else []
+    merged = [str(rng) if rng.max_row < profile.header_row else shift_range(rng) for rng in ws.merged_cells.ranges]
+    for rng in list(ws.merged_cells.ranges):
+        ws.unmerge_cells(str(rng))
+    validations = []
+    for validation in ws.data_validations.dataValidation:
+        ranges = [shift_range(rng) for rng in validation.sqref.ranges]
+        ranges = [rng for rng in ranges if rng]
+        if ranges:
+            validation.sqref = MultiCellRange(' '.join(ranges))
+            validations.append(validation)
+    ws.data_validations.dataValidation = validations
+    dimensions = [(key, copy(value)) for key, value in ws.column_dimensions.items()]
+    for col in reversed(removed):
+        ws.delete_cols(col)
+    ws.column_dimensions.clear()
+    from openpyxl.utils import column_index_from_string
+    for key, dimension in dimensions:
+        col = column_index_from_string(key)
+        if col not in removed:
+            moved = col - sum(old < col for old in removed)
+            dimension.index = get_column_letter(moved)
+            dimension.min = dimension.max = moved
+            ws.column_dimensions[dimension.index] = dimension
+    if summary:
+        for row in ws.iter_rows(max_row=profile.header_row - 1):
+            for cell in row:
+                cell.value = None
+        for row, col, value, style, hyperlink, comment in summary:
+            cell = ws.cell(row, col, value)
+            cell._style, cell.hyperlink, cell.comment = style, hyperlink, comment
+    for rng in merged:
+        if rng:
+            ws.merge_cells(rng)
+    for sheet in wb.worksheets:
+        for row in sheet:
+            for cell in row:
+                if cell.data_type == 'f':
+                    cell.value = _shift_formula(cell.value, removed, sheet.title, ws.title, profile.header_row)

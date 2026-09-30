@@ -98,7 +98,7 @@
 
 | 위치 | 남겨 둔 내용 |
 |---|---|
-| http://localhost:8766/tc-studio | TC스튜디오_실사용: 서로 다른 제목 5개, 회원등록 › 등록 폼, 승인·Y-web·P1·Pass |
+| http://localhost:8766/tc-studio | TC스튜디오_실사용: 서로 다른 제목 5개, 회원등록 › 등록 폼, 승인·P1·Pass |
 | 기획 정보 · TC 생성 | 저장된 PRD.md + 직접 입력한 설명, 대상 시트·분류, 완료 작업, 초안 검토·재생성 버튼 |
 | TC스튜디오_편집검증 | 실제 생성·메모 재생성·원문 확인·반려/되돌리기·일괄 승인·복제/삭제/복원·이력 되돌리기·수동 작성·일괄 수정·검색/필터·계층 이동을 확인한 데이터 3건 |
 | TC스튜디오_엑셀왕복 | 최신 Excel을 다시 가져온 TC 5개. 제목·분류·Step·Expected·우선순위·Pass 유지 |
@@ -139,3 +139,35 @@
 
 - 대·중·소분류 옆 그리드 컬럼을 기능 → 제목으로 변경. 트리 경로 안내·검색 입력·상세 입력의 접근성 이름·계층 이동 모달·새 TC의 초기 제목도 일치시켰다.
 - 헤더 계약 assertion RED 확인 후 관련 실제 브라우저 테스트 3 passed. 실제 서버의 화면 표시 Chromium에서도 제목 컬럼과 제목 상세 입력·기존 TC 5건 유지 확인. 증거: state/tc_studio_user_flow/24-title-column.png, /tmp/tc-title-label-live.log. Push 없음.
+
+## Import 기능의 TC 스튜디오 통합 (2026-09-30)
+
+사용자 승인에 따라 [통합 계획](plans/2026-09-30-import-integration.md)의 기능을 추가했습니다. 기존 Import 전용 메뉴·JS/CSS를 제거하고 `/import-studio`에서 `/tc-studio`로 이동합니다. 공용 md 엔진과 `/api/import/*`, 기존 매핑·작업·스냅샷 자료는 유지합니다.
+
+- Excel 가져오기: 파일당 25MB 상한으로 여러 파일 선택, 공통/시트별 매핑, 기존 프로필 읽기와 새 프로필 저장·수정·삭제.
+- 원본 보존: 내부 case_id와 source_tc_id 구분, 원본 태그·대중소분류 보존.
+- 변경 확인: 화면에서 변경 미리보기 후 반영. 신규·갱신·동일·충돌·오류와 before/after 표시, 충돌 skip/overwrite·오류 skip 결정. 반영 직전 업로드와 스위트 변경 검사.
+- 작업·복구: Excel→라이브러리 작업 목록·상세와 템플릿 포함 복구, 이후 편집 시 복구 거부. 기존 Excel→md 및 TC→md 이력·제외 CSV·복구. TC md 작업은 내보내기 기록도 복구.
+- 검증 오류: 매핑·JSON 입력 오류는 400, 본문 크기 초과는 413. 손상된 작업은 오류 안내를 표시하고 다른 작업 조회를 계속 제공.
+- 제한: 여러 파일의 동일 이름 시트는 한 작업에 선택할 수 없음(`DUPLICATE_SHEET`). 다른 양식은 먼저 공통 매핑으로 파일 분석을 통과한 뒤 시트별 프로필을 적용.
+
+문서: [사용자 설명서](../../guides/tc-studio/TC_AUTHORING_USER_GUIDE.md) 가져오기·이력 절차, [API](../../reference/API_REFERENCE.md) 통합 계약, [통합 검토](IMPORT_STUDIO_INTEGRATION_REVIEW.md) 최종 설계와 제한을 반영했습니다.
+
+최종 통합 검증: 아래 자동화 여부 제거 후속 검증까지 포함하여 전체 **856 passed, 1 skipped**, `tests/unit/tc_library` **178 passed**. 별도 Import 공용 엔진·대시보드·core 회귀가 전체 명령에 포함됩니다.
+
+## 자동화 여부 제거 후속 변경 (2026-09-30)
+
+사용자 명시 요청으로 AUTO 필드와 관련 매핑·생성 규칙·입력·필터·일괄 수정·md 대상 분기·Excel 열을 제거했습니다. 현재 md 조건은 승인·검증 오류 없음·추정 문구 없음·URL 그룹 매핑입니다. 위 Phase와 과거 LLM 검증에 등장하는 AUTO/Y-web 값은 당시 검증 기록이며 현재 동작을 의미하지 않습니다. 초기 Phase 계획 원문은 보존합니다. 배포 샘플 빈 양식의 해당 열·요약과 드롭다운도 제거하고 TC 0건을 유지합니다. 후속 전체 회귀와 실제 가져오기 재검증을 완료했습니다.
+
+### 최종 확인과 작업 인계
+
+- 테스트: `.venv/bin/python -m pytest tests/unit -q` → **856 passed, 1 skipped** (150.01초). `.venv/bin/python -m pytest tests/unit/tc_library -q` → **178 passed** (112.50초).
+- TDD: ID/태그 왕복, 프로필 CRUD, 작업 반영·복구·동시 writer, UI 초기화/미리보기 경쟁, AUTO 제거, AUTO 요약과 전체 열 수식 이동 각각 실패를 확인한 후 수정했습니다. 기존 검증을 삭제하지 않았고, AUTO 대상 제한이 사라진 테스트는 더 많은 승인 TC의 정확한 수·ID·내용을 확인하도록 갱신했습니다.
+- 실제 화면: Chromium을 표시한 상태에서 2개 Excel과 시트별 다른 프로필을 가져오고, 원본 ID·태그 표시·태그 수정·다시 열기, 충돌 skip/overwrite, 라이브러리 rollback, 편집 후 rollback 거절, md 반영/rollback/재반영, 새 빈 양식 0건을 확인했습니다. 기존 History 시트와 원본 파일도 보존했습니다.
+- 실제 LLM: 로컬 Claude로 이메일 형식 검증 초안 1건을 생성했습니다(`job_b5ed1e084acd`, done, kept=1, invalid=0, cost_usd=0.0479). 실제 localhost:8877에서 오류 문구를 확인하고, 화면에서 문구를 확인 상태로 변경·저장·승인했습니다. 기존 2건과 함께 Excel/md 최종 3건을 내보냈습니다. 테스트 코드 실행은 이번 범위에 포함하지 않습니다.
+- 웹 자료: `TC스튜디오_가져오기통합` 승인 TC 3건, `TC스튜디오_빈양식확인` TC 0건, 매핑 프로필과 작업 이력을 남겼습니다. 기존 스위트·파이프라인 상태는 보존했습니다.
+- 증거: `state/tc_studio_import_integration/result.json`, `trace.zip`, 화면 `01`~`13`, `생성포함_최종.xlsx`; 내보낸 md는 `testcases/tc_studio_demo/`에 있습니다. 실패 단계의 화면은 별도 `state/tc_studio_import_integration/red-screenshots/`에 보관합니다.
+- 문서: 사용자 안내서의 최신 실제 화면 6개, 통합 절차, PRD·요소 명세·API·로드맵·빈 양식·기획 예시를 갱신했습니다.
+- 계획과 다르게 한 것: 사용자 후속 요청에 따라 AUTO를 전부 제거했습니다. 기존 Phase 계획은 과거 기록으로 유지합니다. 운영 데이터/API 호환을 위해 공용 Import 엔진과 기존 저장 AUTO 값은 수정하지 않으며, 현재 TC 화면·응답·작성·내보내기에 영향을 주지 않습니다.
+- 제한: 한 가져오기 작업에서 여러 파일의 동명 시트는 함께 선택할 수 없습니다. 시트 이름을 구분하거나 파일별로 가져오세요. Windows 잠금 분기는 구현했지만 이 Mac 환경에서는 실행 검증하지 못했습니다.
+- 작업 위치: `/Users/junghoyoung/qa-native-tc-studio`, `feat/tc-studio-phase1`. Push·병합은 수행하지 않았습니다. 실사용 생성 자료는 로컬에 유지합니다.

@@ -23,7 +23,7 @@ def studio(tmp_path: Path, page: Page):
     with dashboard_server(project) as base_url:
         _seed(base_url, tmp_path)
         for case_id in ("BEN_0001", "BEN_0002"):
-            request_json(base_url, "PATCH", f"/api/tc-library/{S}/cases/{case_id}", {"rev": 1, "auto": "Y-web", "priority": "P0"})
+            request_json(base_url, "PATCH", f"/api/tc-library/{S}/cases/{case_id}", {"rev": 1, "priority": "P0"})
         page.goto(base_url + "/tc-studio")
         page.locator('[data-id="nav-tab-export"]').click()
         yield base_url, page, project
@@ -35,12 +35,12 @@ def test_map_preview_commit_and_rollback(studio):
     expect(page.locator('[data-id="md-eligibility"] .v').last).to_have_text("0")
     page.locator('[data-id="md-map-code"]').first.fill("YFB")
     page.locator('[data-id="md-map-fix"]').first.click()
-    expect(page.locator('[data-id="md-eligibility"] .v').last).to_have_text("2")
+    expect(page.locator('[data-id="md-eligibility"] .v').last).to_have_text("5")
     page.locator('[data-id="md-preview"]').click()
-    expect(page.locator('[data-id="md-preview-panel"] tbody tr')).to_have_count(2)
+    expect(page.locator('[data-id="md-preview-panel"] tbody tr')).to_have_count(5)
     page.locator('[data-id="md-commit"]').click()
-    expect(page.locator("#md-result-text")).to_have_text("반영 완료 · 신규 2 · 갱신 0")
-    assert len(list((project / "testcases" / "yafit_benefit").glob("tc_YFB_*.md"))) == 2
+    expect(page.locator("#md-result-text")).to_have_text("반영 완료 · 신규 5 · 갱신 0")
+    assert len(list((project / "testcases" / "yafit_benefit").glob("tc_YFB_*.md"))) == 5
     page.locator('[data-id="md-rollback"]').click()
     expect(page.locator('[data-id="md-preview-panel"]')).to_be_hidden()
     assert not list((project / "testcases" / "yafit_benefit").glob("tc_YFB_*.md"))

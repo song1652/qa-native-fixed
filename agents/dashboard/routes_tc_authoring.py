@@ -9,6 +9,7 @@ import re
 from pathlib import Path
 
 from dash_http import _read_body, _read_raw_body
+from routes_tc_import_admin import ADMIN_ROUTES, TcImportAdminRoutesMixin
 
 _SUITE = r"(?P<suite>[^/]+)"
 _CASE = r"(?P<case_id>[\w-]+)"
@@ -37,7 +38,10 @@ AUTHORING_ROUTES: list[tuple[str, re.Pattern, str]] = [
 ]
 
 
-class TcAuthoringRoutesMixin:
+AUTHORING_ROUTES[:0] = ADMIN_ROUTES
+
+
+class TcAuthoringRoutesMixin(TcImportAdminRoutesMixin):
     """_tcl_dispatch가 부른다. 응답 도우미는 TcLibraryRoutesMixin의 _tcl_json·_tcl_actor를 쓴다."""
 
     # ── 소스 묶음 ─────────────────────────────────────────────────
@@ -80,13 +84,7 @@ class TcAuthoringRoutesMixin:
 
     def _tca_mapping_profiles(self):
         """Import Studio에 저장된 매핑 프로필을 TC 스튜디오 열 매핑으로 바꿔 돌려준다 (G0)."""
-        import _paths
-        from dash_http import _read_profiles_locked
-        from _tc_template import mapping_from_import_profile
-        profiles = _read_profiles_locked(_paths.IMPORT_PROFILES_PATH).get("profiles", [])
-        self._tcl_json({"ok": True, "profiles": [
-            {"id": p["id"], "name": p["name"], "columns": mapping_from_import_profile(p.get("mappings", {}))}
-            for p in profiles]})
+        self._tci_profiles()
 
     # ── 생성 작업 ─────────────────────────────────────────────────
     def _tca_start_job(self, suite: str):

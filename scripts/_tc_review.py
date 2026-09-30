@@ -58,7 +58,7 @@ def resolve_duplicate(suite: str, draft_id: str, draft_rev: int, action: str, ac
     if action != "update":
         raise LibraryError(f"지원하지 않는 처리입니다: {action}", "INVALID_ACTION")
     target = get_case(suite, target_id)
-    fields = ("feature", "precondition", "steps", "expected", "bullets", "priority", "auto")
+    fields = ("feature", "precondition", "steps", "expected", "bullets", "priority")
     changes = {f: draft[f] for f in fields if draft[f] != target[f] and (draft[f] or f == "precondition")}
     patch_case(suite, target_id, target_rev, {**changes, "status": "approved"}, actor)
     updated = add_source_refs(suite, target_id, draft["source_refs"])

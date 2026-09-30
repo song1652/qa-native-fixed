@@ -8,7 +8,7 @@
     tree: [],
     items: [],          // 현재 필터 결과 (서버 응답 그대로, issues 포함)
     total: 0,
-    filters: { q: '', path: '', status: '', execution_result: '', priority: '', auto: '',
+    filters: { q: '', path: '', status: '', execution_result: '', priority: '',
                source: '', invalid: false, needs_review: false },
     selected: new Set(),
     activeId: '',
@@ -19,7 +19,6 @@
   NS.STATUS_LABEL = { draft: '초안', approved: '승인', rejected: '반려', needs_review: '재검토 필요' };
   NS.RESULT_LABEL = { '': '미실행', pass: 'Pass', fail: 'Fail', not_test: 'Not Test', na: 'N/A' };
   NS.PRIORITIES = ['P0', 'P1', 'P2', 'P3'];
-  NS.AUTO_VALUES = ['Y-web', 'Y-app', 'N'];
 
   // 필터 → GET /api/tc-library/{suite} 쿼리. 실행 결과 "none" = 미실행(빈 값).
   NS.queryFromFilters = function (f) {
