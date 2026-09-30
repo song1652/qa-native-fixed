@@ -155,3 +155,39 @@ def export_workbook(
         wb.save(str(out_path))
     finally:
         wb.close()
+
+def verify_export(
+    out_path: Path, profiles: dict[str, TemplateProfile],
+    cases_by_sheet: dict[str, list[dict]],
+) -> list[dict]:
+    """저장한 파일을 다시 열어 라이브러리와 같은지 검사한다 (F6.6)."""
+    import openpyxl
+    from _tc_xlsx_import import read_sheet_cases
+
+    checks: list[dict] = []
+    wb = openpyxl.load_workbook(str(out_path))
+    try:
+        for sheet, expected in cases_by_sheet.items():
+            if sheet not in wb.sheetnames:
+                continue
+            ws, profile = wb[sheet], profiles[sheet]
+            got = read_sheet_cases(ws, profile, source_name=out_path.name, prefix="X",
+                                   existing_ids=set())
+            key = lambda c: (c["case_id"], tuple(c["path"]), c["feature"], tuple(c["steps"]),
+                             c["expected"], c["priority"], c["execution_result"], c["note"])
+            same = [key(c) for c in got] == [key(c) for c in expected]
+            checks.append({
+                "level": "ok" if same else "error", "code": "ROUNDTRIP",
+                "message": f"{sheet}: {len(got)}건 {'라이브러리와 일치' if same else '라이브러리와 다름'}",
+            })
+            refs = [
+                c.coordinate for row in ws.iter_rows(max_row=profile.header_row)
+                for c in row if isinstance(c.value, str) and "#REF!" in c.value
+            ]
+            checks.append({
+                "level": "error" if refs else "ok", "code": "SUMMARY_REF",
+                "message": f"{sheet}: 요약 수식 #REF! {len(refs)}개",
+            })
+    finally:
+        wb.close()
+    return checks
