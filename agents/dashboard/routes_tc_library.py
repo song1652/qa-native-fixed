@@ -28,7 +28,17 @@ ROUTES: list[tuple[str, re.Pattern, str]] = [
         ("POST", r"/api/tc-library/import", "_tcl_import_commit"),
         ("GET", rf"/api/tc-library/{_SUITE}/tree", "_tcl_tree"),
         ("GET", rf"/api/tc-library/{_SUITE}", "_tcl_list"),
+        ("POST", rf"/api/tc-library/{_SUITE}/cases", "_tcl_create"),
+        ("POST", rf"/api/tc-library/{_SUITE}/bulk", "_tcl_bulk"),
+        ("POST", rf"/api/tc-library/{_SUITE}/move", "_tcl_move"),
+
         ("GET", rf"/api/tc-library/{_SUITE}/cases/{_CASE}", "_tcl_get_case"),
+        ("PATCH", rf"/api/tc-library/{_SUITE}/cases/{_CASE}", "_tcl_patch_case"),
+        ("DELETE", rf"/api/tc-library/{_SUITE}/cases/{_CASE}", "_tcl_delete_case"),
+        ("POST", rf"/api/tc-library/{_SUITE}/cases/{_CASE}/duplicate", "_tcl_duplicate"),
+        ("POST", rf"/api/tc-library/{_SUITE}/cases/{_CASE}/restore", "_tcl_restore"),
+        ("POST", rf"/api/tc-library/{_SUITE}/cases/{_CASE}/revert", "_tcl_revert"),
+
         ("GET", rf"/api/tc-library/{_SUITE}/cases/{_CASE}/history", "_tcl_history"),
     ]
 ]
@@ -157,3 +167,66 @@ class TcLibraryRoutesMixin:
         upload.unlink(missing_ok=True)
         upload.with_suffix(".json").unlink(missing_ok=True)
         self._tcl_json({"ok": True, "suite": suite, **summary})
+
+    # ── 쓰기 ──────────────────────────────────────────────────────
+    def _tcl_patch_case(self, suite: str, case_id: str):
+        from _tc_library import patch_case, with_issues
+        body = _read_body(self)
+        rev = int(body.pop("rev"))
+        case = patch_case(suite, case_id, rev, body, self._tcl_actor())
+        self._tcl_json({"ok": True, "case": with_issues(case)})
+
+    def _tcl_bulk(self, suite: str):
+        from _tc_library import LibraryError, bulk_patch, delete_cases
+        body = _read_body(self)
+        items = [{"case_id": str(i["case_id"]), "rev": int(i["rev"])} for i in body.get("items", [])]
+        op = body.get("op", "set")
+        if op == "delete":
+            result = delete_cases(suite, items, self._tcl_actor())
+        elif op == "set":
+            result = bulk_patch(suite, items, {body["field"]: body["value"]}, self._tcl_actor())
+        else:
+            raise LibraryError(f"지원하지 않는 작업입니다: {op}", "INVALID_OP")
+        self._tcl_json({"ok": True, **result})
+
+    def _tcl_move(self, suite: str):
+        from _tc_library import bulk_patch
+        body = _read_body(self)
+        items = [{"case_id": str(i["case_id"]), "rev": int(i["rev"])} for i in body.get("items", [])]
+        changes = {"sheet": body["sheet"], "path": (list(body["path"]) + ["", "", ""])[:3]}
+        if body.get("feature"):
+            changes["feature"] = body["feature"]
+        result = bulk_patch(suite, items, changes, self._tcl_actor())
+        self._tcl_json({"ok": True, "moved": result["updated"], "conflicts": result["conflicts"]})
+
+    def _tcl_create(self, suite: str):
+        from _tc_library import create_case, with_issues
+        body = _read_body(self)
+        after = body.pop("after", None)
+        case = create_case(suite, body, self._tcl_actor(), after=after)
+        self._tcl_json({"ok": True, "case": with_issues(case)}, 201)
+
+    def _tcl_duplicate(self, suite: str, case_id: str):
+        from _tc_library import duplicate_case, with_issues
+        self._tcl_json({"ok": True, "case": with_issues(
+            duplicate_case(suite, case_id, self._tcl_actor()))}, 201)
+
+    def _tcl_delete_case(self, suite: str, case_id: str):
+        from _tc_library import delete_cases
+        rev = int(self._tcl_query.get("rev", -1))
+        result = delete_cases(suite, [{"case_id": case_id, "rev": rev}], self._tcl_actor())
+        if result["conflicts"]:
+            self._tcl_json({"ok": False, "code": "REV_CONFLICT",
+                            "server_case": result["conflicts"][0]}, 409)
+            return
+        self._tcl_json({"ok": True, "deleted": result["deleted"]})
+
+    def _tcl_restore(self, suite: str, case_id: str):
+        from _tc_library import restore_case
+        self._tcl_json({"ok": True, "case": restore_case(suite, case_id, self._tcl_actor())})
+
+    def _tcl_revert(self, suite: str, case_id: str):
+        from _tc_library import revert, with_issues
+        body = _read_body(self)
+        case = revert(suite, case_id, str(body["history_id"]), int(body["rev"]), self._tcl_actor())
+        self._tcl_json({"ok": True, "case": with_issues(case)})

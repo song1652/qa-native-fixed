@@ -75,6 +75,41 @@ def test_read_endpoints(api):
     assert [i["code"] for i in case["issues"]] == ["PRIORITY_EMPTY"]
 
 
+def test_patch_conflict_and_revert(api):
+    base_url, _ = api
+    path = f"/api/tc-library/{S}/cases/BEN_0002"
+    status, body = request_json(base_url, "PATCH", path, {"rev": 1, "priority": "P1"})
+    assert (status, body["case"]["rev"]) == (200, 2)
+    status, body = request_json(base_url, "PATCH", path, {"rev": 1, "priority": "P2"})
+    assert (status, body["code"], body["server_case"]["priority"]) == (409, "REV_CONFLICT", "P1")
+
+    history = request_json(base_url, "GET", path + "/history")[1]["history"]
+    hid = next(e["history_id"] for e in history if e["field"] == "priority")
+    status, body = request_json(base_url, "POST", path + "/revert", {"history_id": hid, "rev": 2})
+    assert (status, body["case"]["priority"]) == (200, "")
+
+
+def test_bulk_create_duplicate_move_delete_restore(api):
+    base_url, _ = api
+    status, body = request_json(base_url, "POST", f"/api/tc-library/{S}/bulk", {
+        "items": [{"case_id": "BEN_0001", "rev": 1}, {"case_id": "BEN_0002", "rev": 9}],
+        "op": "set", "field": "auto", "value": "Y-app"})
+    assert (body["updated"], [c["case_id"] for c in body["conflicts"]]) == (["BEN_0001"], ["BEN_0002"])
+
+    status, body = request_json(base_url, "POST", f"/api/tc-library/{S}/cases", {
+        "sheet": "혜택", "path": ["혜택 탭", "상단 배너", ""], "feature": "새 기능", "after": "BEN_0003"})
+    assert (status, body["case"]["case_id"]) == (201, "BEN_0006")
+    status, body = request_json(base_url, "POST", f"/api/tc-library/{S}/cases/BEN_0001/duplicate")
+    assert (status, body["case"]["case_id"]) == (201, "BEN_0007")
+    status, body = request_json(base_url, "POST", f"/api/tc-library/{S}/move", {
+        "items": [{"case_id": "BEN_0006", "rev": 1}], "sheet": "혜택",
+        "path": ["혜택 탭", "신규회원 한정 혜택", "돈불리기"]})
+    assert body["moved"] == ["BEN_0006"]
+
+    assert request_json(base_url, "DELETE", f"/api/tc-library/{S}/cases/BEN_0003?rev=9")[0] == 409
+    assert request_json(base_url, "DELETE", f"/api/tc-library/{S}/cases/BEN_0003?rev=1")[0] == 200
+    status, body = request_json(base_url, "POST", f"/api/tc-library/{S}/cases/BEN_0003/restore")
+    assert (status, body["case"]["rev"]) == (200, 3)
 def test_rejects_bad_suite_and_cross_origin_writes(api):
     base_url, _ = api
     status, body = request_json(base_url, "GET", "/api/tc-library/..%2Fetc/tree")
