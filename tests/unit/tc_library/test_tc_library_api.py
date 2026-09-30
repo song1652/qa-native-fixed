@@ -110,6 +110,16 @@ def test_bulk_create_duplicate_move_delete_restore(api):
     assert request_json(base_url, "DELETE", f"/api/tc-library/{S}/cases/BEN_0003?rev=1")[0] == 200
     status, body = request_json(base_url, "POST", f"/api/tc-library/{S}/cases/BEN_0003/restore")
     assert (status, body["case"]["rev"]) == (200, 3)
+def test_export_and_download(api):
+    base_url, _ = api
+    status, body = request_json(base_url, "POST", f"/api/tc-library/{S}/export/xlsx",
+                                {"scope": "all", "history_note": "Phase 1"})
+    assert status == 200 and body["count"] == 6
+    assert {c["level"] for c in body["checks"]} == {"ok"}, body["checks"]
+    with urllib.request.urlopen(
+            f"{base_url}/api/tc-library/exports/{body['export_id']}/download", timeout=10) as resp:
+        assert resp.read(2) == b"PK"
+        assert "filename*=UTF-8''" in resp.headers["Content-Disposition"]
 def test_rejects_bad_suite_and_cross_origin_writes(api):
     base_url, _ = api
     status, body = request_json(base_url, "GET", "/api/tc-library/..%2Fetc/tree")

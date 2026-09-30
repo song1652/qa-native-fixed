@@ -26,11 +26,15 @@ ROUTES: list[tuple[str, re.Pattern, str]] = [
         ("GET", r"/api/tc-library", "_tcl_suites"),
         ("POST", r"/api/tc-library/import/preview", "_tcl_import_preview"),
         ("POST", r"/api/tc-library/import", "_tcl_import_commit"),
+        ("GET", rf"/api/tc-library/exports/{_ID}/download", "_tcl_export_download"),
+
         ("GET", rf"/api/tc-library/{_SUITE}/tree", "_tcl_tree"),
         ("GET", rf"/api/tc-library/{_SUITE}", "_tcl_list"),
         ("POST", rf"/api/tc-library/{_SUITE}/cases", "_tcl_create"),
         ("POST", rf"/api/tc-library/{_SUITE}/bulk", "_tcl_bulk"),
         ("POST", rf"/api/tc-library/{_SUITE}/move", "_tcl_move"),
+        ("POST", rf"/api/tc-library/{_SUITE}/export/xlsx", "_tcl_export_xlsx"),
+
 
         ("GET", rf"/api/tc-library/{_SUITE}/cases/{_CASE}", "_tcl_get_case"),
         ("PATCH", rf"/api/tc-library/{_SUITE}/cases/{_CASE}", "_tcl_patch_case"),
@@ -230,3 +234,56 @@ class TcLibraryRoutesMixin:
         body = _read_body(self)
         case = revert(suite, case_id, str(body["history_id"]), int(body["rev"]), self._tcl_actor())
         self._tcl_json({"ok": True, "case": with_issues(case)})
+
+    # ── 내보내기 ──────────────────────────────────────────────────
+    def _tcl_export_xlsx(self, suite: str):
+        from _tc_library import LibraryError, load_cases, load_profiles, suite_dir
+        from _tc_xlsx_export import export_workbook, verify_export
+        body = _read_body(self)
+        profiles = load_profiles(suite)
+        if not profiles:
+            raise LibraryError("템플릿이 없습니다. 먼저 엑셀을 가져오세요", "NO_TEMPLATE", 409)
+        cases = load_cases(suite)
+        scope = body.get("scope", "all")
+        drop: tuple[str, ...] = ()
+        if scope == "approved":
+            cases = [c for c in cases if c["status"] == "approved"]
+        elif scope == "sheets":
+            keep = set(body.get("sheets", []))
+            cases = [c for c in cases if c["sheet"] in keep]
+            drop = tuple(s for s in profiles if s not in keep)
+        elif scope == "case_ids":
+            keep = set(body.get("case_ids", []))
+            cases = [c for c in cases if c["case_id"] in keep]
+        by_sheet: dict[str, list[dict]] = {s: [] for s in profiles if s not in drop}
+        for case in cases:
+            if case["sheet"] in by_sheet:
+                by_sheet[case["sheet"]].append(case)
+        export_id = "exp_" + secrets.token_hex(6)
+        out_dir = _paths.TC_LIBRARY_DIR / "_exports"
+        out = out_dir / f"{export_id}.xlsx"
+        export_workbook(suite_dir(suite) / "template.xlsx", profiles, by_sheet, out,
+                        history_note=str(body.get("history_note", "")), drop_sheets=drop)
+        checks = verify_export(out, {s: profiles[s] for s in by_sheet}, by_sheet)
+        filename = f"{suite}_Full_{date.today():%Y%m%d}.xlsx"
+        (out_dir / f"{export_id}.json").write_text(
+            json.dumps({"suite": suite, "filename": filename}, ensure_ascii=False), encoding="utf-8")
+        self._tcl_json({"ok": True, "export_id": export_id, "filename": filename,
+                        "checks": checks, "count": sum(map(len, by_sheet.values()))})
+
+    def _tcl_export_download(self, item_id: str):
+        out_dir = _paths.TC_LIBRARY_DIR / "_exports"
+        path, meta = out_dir / f"{item_id}.xlsx", out_dir / f"{item_id}.json"
+        if not (re.fullmatch(r"exp_[0-9a-f]{12}", item_id) and path.exists() and meta.exists()):
+            self._tcl_json({"ok": False, "code": "NOT_FOUND"}, 404)
+            return
+        filename = json.loads(meta.read_text(encoding="utf-8"))["filename"]
+        content = path.read_bytes()
+        self.send_response(200)
+        self.send_header("Content-Type",
+                         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        self.send_header("Content-Disposition",
+                         f"attachment; filename=\"export.xlsx\"; filename*=UTF-8''{quote(filename)}")
+        self.send_header("Content-Length", str(len(content)))
+        self.end_headers()
+        self.wfile.write(content)
