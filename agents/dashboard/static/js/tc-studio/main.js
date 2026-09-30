@@ -1,10 +1,23 @@
 // TC 스튜디오 — 진입점: 셸 렌더, 스위트 선택, 화면 전환. 공개 API: window.TCS.init(selector)
+// 화면 모듈(generateView·reviewView·exportView·importModal)은 스크립트가 로드된 것만 붙는다.
 (function (NS) {
   'use strict';
 
   const { state, api, esc, $, $$ } = NS;
   const SUITE_KEY = 'tcs-suite';
+  const SCREENS = [
+    { id: 'library', label: 'TC 라이브러리', module: 'library', count: 'cnt-lib' },
+    { id: 'generate', label: '새로 생성', module: 'generateView' },
+    { id: 'review', label: '초안 검토', module: 'reviewView', count: 'cnt-review' },
+    { id: 'export', label: '내보내기', module: 'exportView' },
+  ];
   let root = null;
+
+  const available = () => SCREENS.filter((s) => NS[s.module]);
+
+  function navHtml() {
+    return available().map((s, i) => `${i ? '<div class="step-line"></div>' : ''}<button class="step-item" role="tab" data-id="nav-tab-${s.id}" data-screen="${s.id}" aria-selected="${i === 0}"><span class="step-circle">${i + 1}</span><span class="step-label">${s.label}</span>${s.count ? `<span class="step-count num" id="${s.count}">0</span>` : ''}</button>`).join('');
+  }
 
   function shellHtml() {
     return `
@@ -17,13 +30,9 @@
       <span class="spacer"></span>
       ${NS.importModal ? '<button class="btn btn-ghost" data-id="btn-import-xlsx" id="btn-import-xlsx">엑셀 가져오기</button>' : ''}
     </div>
-    <nav class="wizard" role="tablist" aria-label="스튜디오 화면">
-      <button class="step-item" role="tab" data-id="nav-tab-library" data-screen="library" aria-selected="true"><span class="step-circle">1</span><span class="step-label">TC 라이브러리</span><span class="step-count num" id="cnt-lib">0</span></button>
-      ${NS.exportView ? '<div class="step-line"></div><button class="step-item" role="tab" data-id="nav-tab-export" data-screen="export" aria-selected="false"><span class="step-circle">2</span><span class="step-label">내보내기</span></button>' : ''}
-    </nav>
+    <nav class="wizard" role="tablist" aria-label="스튜디오 화면">${navHtml()}</nav>
   </header>
-  ${NS.library.html()}
-  ${NS.exportView ? NS.exportView.html() : ''}
+  ${available().map((s) => NS[s.module].html()).join('')}
  </div>
  ${NS.importModal ? NS.importModal.html() : ''}
  <div class="toasts" id="tcs-toasts" aria-live="polite"></div>
@@ -34,8 +43,10 @@
     state.screen = screen;
     $$('.step-item', root).forEach((b) => b.setAttribute('aria-selected', b.dataset.screen === screen));
     $$('.screen', root).forEach((s) => s.classList.toggle('active', s.dataset.screen === screen));
-    if (screen === 'export' && NS.exportView) NS.exportView.onShow();
+    const spec = SCREENS.find((s) => s.id === screen);
+    if (spec && NS[spec.module].onShow) NS[spec.module].onShow();
   }
+  NS.show = show;
 
   function renderSuiteSelect() {
     const sel = $('#suite-select', root);
@@ -45,6 +56,12 @@
     const cur = state.suites.find((s) => s.suite === state.suite);
     $('#cnt-lib', root).textContent = cur ? cur.count : 0;
   }
+
+  NS.refreshCounts = async function () {
+    const badge = $('#cnt-review', root);
+    if (!badge || !state.suite) return;
+    badge.textContent = (await api.list(state.suite, { status: 'draft', limit: 1 })).total;
+  };
 
   // 가져오기 후에도 호출된다 (import.js)
   NS.reloadSuites = async function (prefer) {
@@ -56,6 +73,7 @@
     renderSuiteSelect();
     state.selected.clear();
     await NS.library.refresh();
+    await NS.refreshCounts();
   };
 
   // 화면 이벤트에서 시작한 요청이 실패하면(서버 재시작·네트워크 끊김) 처리되지 않은 오류로 남기지 않고
@@ -69,10 +87,8 @@
   async function init(selector) {
     root = document.querySelector(selector);
     root.innerHTML = shellHtml();
-    NS.library.mount(root);
-    // 가져오기(W2)·내보내기(W3) 모듈은 스크립트가 로드된 경우에만 붙는다
+    available().forEach((s) => NS[s.module].mount(root));
     if (NS.importModal) NS.importModal.mount(root);
-    if (NS.exportView) NS.exportView.mount(root);
     $$('.step-item', root).forEach((b) => b.addEventListener('click', () => show(b.dataset.screen)));
     if (NS.importModal) $('#btn-import-xlsx', root).addEventListener('click', () => NS.importModal.open());
     $('#suite-select', root).addEventListener('change', (e) => NS.reloadSuites(e.target.value));

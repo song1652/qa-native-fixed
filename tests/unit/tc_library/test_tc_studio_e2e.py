@@ -50,7 +50,7 @@ def test_route_sidebar_and_tabs(studio):
     expect(page.locator("#tab-tc_studio")).to_have_class(re.compile("active"))
     expect(page.locator('[data-id="suite-select"] option')).to_have_text(["야핏무브 (6)"])
     expect(page.locator('[data-id="nav-tab-library"]')).to_be_visible()
-    expect(page.locator('[data-id="nav-tab-generate"]')).to_have_count(0)
+    expect(page.locator('[data-id="nav-tab-generate"]')).to_be_visible()
 
 
 def test_tree_filters_and_search(studio):
