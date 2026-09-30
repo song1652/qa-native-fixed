@@ -1,5 +1,7 @@
 # PRD: TC Authoring Studio (문서 기반 테스트케이스 작성·관리)
 
+> **설계 참고 문서**: 최초 설계와 제안이 포함되어 있으며, 현재 화면과 일부 차이가 있을 수 있습니다. 사용 방법은 [사용자 설명서](TC_AUTHORING_USER_GUIDE.md), 실제 구현과 확인 범위는 [구현 보고](TC_AUTHORING_IMPLEMENTATION_REPORT.md)를 참고하세요.
+
 | 항목 | 내용 |
 |---|---|
 | 작성일 | 2026-09-29 |
@@ -8,7 +10,7 @@
 | 근거 | 에이전트 3명(아키텍트, QA 리드, 연동/보안)의 논의 결과와 사용자 요구사항 |
 | 기준 템플릿 | `야핏무브_Full.xlsx` (모바일 앱 수동 QA용 Full TC) |
 | 요소별 동작 명세 | [TC_AUTHORING_ELEMENT_SPEC.md](TC_AUTHORING_ELEMENT_SPEC.md) (화면 요소 약 170개 · API 제안 · PRD 피드백 19건) |
-| 목업 | [design-previews/tc-authoring-studio.html](../design-previews/tc-authoring-studio.html) (브라우저로 열기, 클릭 가능) |
+| 목업 | [design-previews/tc-authoring-studio.html](../../design-previews/tc-authoring-studio.html) (브라우저로 열기, 클릭 가능) |
 | 구현 계획 | [로드맵](TC_AUTHORING_ROADMAP.md) · [개발 인수인계](TC_AUTHORING_HANDOFF.md) · [Phase별 계획](plans/) |
 
 ---

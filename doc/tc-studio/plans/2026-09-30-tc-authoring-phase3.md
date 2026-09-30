@@ -8,7 +8,7 @@
 
 **Tech Stack:** Python 3.14 표준 라이브러리(urllib, html.parser, ipaddress, difflib), Confluence REST (Cloud v2 · Server/DC v1), Figma REST v1, 바닐라 JS, pytest + Playwright
 
-**Spec:** [PRD](../TC_AUTHORING_PRD.md) F1.3·F1.4·F5.9·§7 · [명세](../TC_AUTHORING_ELEMENT_SPEC.md) 3.1·2.6장 · [목업](../../design-previews/tc-authoring-studio.html) 2번 화면 소스 탭·1번 화면 배너 · [로드맵](../TC_AUTHORING_ROADMAP.md) · 선행: [Phase 2 계획](2026-09-30-tc-authoring-phase2.md) 완료
+**Spec:** [PRD](../TC_AUTHORING_PRD.md) F1.3·F1.4·F5.9·§7 · [명세](../TC_AUTHORING_ELEMENT_SPEC.md) 3.1·2.6장 · [목업](../../../design-previews/tc-authoring-studio.html) 2번 화면 소스 탭·1번 화면 배너 · [로드맵](../TC_AUTHORING_ROADMAP.md) · 선행: [Phase 2 계획](2026-09-30-tc-authoring-phase2.md) 완료
 
 > **검증 상태 (2026-09-30):** Phase 2까지 적용한 저장소 사본에 이 계획을 그대로 적용해 새 테스트 22개(단위·API 18 + E2E 4)를 포함한 `tests/unit/tc_library` 99개와 전체 775개가 통과했다. 원격 서비스는 녹화 응답(`fake_web` 픽스처)으로 검증했고 **실제 Confluence·Figma 계정으로는 확인하지 않았다.** 그래서 W11에 실제 계정 확인 절차를 넣었다.
 
@@ -2405,7 +2405,7 @@ git commit -m "feat(tc-studio): W10 출처 변경 배너·재검토 필터·차�
 ## Task W11: 문서 갱신 + 실제 계정 확인 + Phase 3 완료
 
 **Files:**
-- Modify: `doc/API_REFERENCE.md`, `doc/SCRIPTS_GUIDE.md`, `scripts/update_directory.py`, `doc/TC_AUTHORING_ELEMENT_SPEC.md`, `doc/TC_AUTHORING_ROADMAP.md`
+- Modify: `doc/API_REFERENCE.md`, `doc/SCRIPTS_GUIDE.md`, `scripts/update_directory.py`, `doc/tc-studio/TC_AUTHORING_ELEMENT_SPEC.md`, `doc/tc-studio/TC_AUTHORING_ROADMAP.md`
 
 - [ ] **Step 1: API 레퍼런스** — Phase 2에서 만든 "생성·검토" 표 아래에 C5 표를 그대로 옮기고, 한 줄을 붙인다: "원격 요청은 `_tc_fetch.fetch()`만 거친다: https·호스트 허용 목록·내부망 차단·리다이렉트 재검사(최대 3)·15초·20MB. 자격증명 파일 `config/confluence_config.json`, `config/figma_config.json`(git 제외), 환경변수 `CONFLUENCE_BASE_URL` `CONFLUENCE_EMAIL` `CONFLUENCE_TOKEN` `FIGMA_TOKEN`이 우선한다."
 
@@ -2431,7 +2431,7 @@ git commit -m "feat(tc-studio): W10 출처 변경 배너·재검토 필터·차�
 
 - [ ] **Step 3: 명세 정리** — `TC_AUTHORING_ELEMENT_SPEC.md` 8장의 `/api/authoring/credentials*` → `/api/tc-library/credentials*`, `/api/authoring/sources/diff` → `/api/tc-library/source-diff`, `/api/tc-library/{suite}/source-changes`에 `POST …/scan`을 추가하고 `/api/tc-library/cases/{case_id}/ack-source` → `/api/tc-library/{suite}/cases/{case_id}/ack-source`.
 
-Run: `grep -c "/api/authoring/" doc/TC_AUTHORING_ELEMENT_SPEC.md`
+Run: `grep -c "/api/authoring/" doc/tc-studio/TC_AUTHORING_ELEMENT_SPEC.md`
 Expected: `0`
 
 - [ ] **Step 4: 실제 계정으로 확인** (테스트는 녹화 응답만 썼다)
@@ -2445,7 +2445,7 @@ Expected: `0`
 - [ ] **Step 5: 완료 표시 + 커밋** — 로드맵 상단 "상세 계획" 표의 Phase 3 행에 `✅ 완료 (YYYY-MM-DD)`
 
 ```bash
-git add doc/API_REFERENCE.md doc/SCRIPTS_GUIDE.md scripts/update_directory.py doc/TC_AUTHORING_ELEMENT_SPEC.md doc/TC_AUTHORING_ROADMAP.md
+git add doc/API_REFERENCE.md doc/SCRIPTS_GUIDE.md scripts/update_directory.py doc/tc-studio/TC_AUTHORING_ELEMENT_SPEC.md doc/tc-studio/TC_AUTHORING_ROADMAP.md
 git commit -m "docs(tc-studio): W11 Phase 3 원격 소스·출처 추적 문서 갱신"
 ```
 

@@ -8,7 +8,7 @@
 
 **Tech Stack:** Python 3.14, pypdf, python-docx, Claude Code CLI 2.1.28x(`-p`, `--restricted`, `--json-schema`), 바닐라 JS, pytest + Playwright
 
-**Spec:** [PRD](../TC_AUTHORING_PRD.md) F1.1·F1.2·F1.5·F1.6, F3, F4, F5.5~F5.7, F5.10, D4 · [명세](../TC_AUTHORING_ELEMENT_SPEC.md) 3·4장 · [목업](../../design-previews/tc-authoring-studio.html) 2·3번 화면 · [로드맵](../TC_AUTHORING_ROADMAP.md) · 선행: [Phase 1 계획](2026-09-29-tc-authoring-phase1.md) 완료
+**Spec:** [PRD](../TC_AUTHORING_PRD.md) F1.1·F1.2·F1.5·F1.6, F3, F4, F5.5~F5.7, F5.10, D4 · [명세](../TC_AUTHORING_ELEMENT_SPEC.md) 3·4장 · [목업](../../../design-previews/tc-authoring-studio.html) 2·3번 화면 · [로드맵](../TC_AUTHORING_ROADMAP.md) · 선행: [Phase 1 계획](2026-09-29-tc-authoring-phase1.md) 완료
 
 > **검증 상태 (2026-09-30):** 이 계획의 코드는 Phase 1을 적용한 저장소 사본에 그대로 적용해 확인했다. 새 단위·API 테스트 31개 + E2E 6개를 포함해 `tests/unit/tc_library` 77개와 전체 753개(사본은 `tests/generated/`가 없어 1개 더 건너뜀)가 통과했다. 실제 `claude` CLI(haiku)로 생성 작업을 1회 돌려 초안 5건이 한국어로, 출처·인용 모두 원문과 일치하게 나오는 것도 확인했다(비용 $0.08, 약 2분). E2E는 20회 반복 중 19회 통과했다(나머지 1회는 재현되지 않은 시간 초과).
 
@@ -3379,8 +3379,8 @@ git commit -m "feat(tc-studio): W7 가져오기 모달 다른 양식 직접 매�
 **Files:**
 - Modify: `doc/API_REFERENCE.md` (Phase 1에서 만든 "TC 스튜디오 라이브러리" 절 끝)
 - Modify: `doc/SCRIPTS_GUIDE.md`, `scripts/update_directory.py` (Phase 1 W4에서 넣은 TC 스튜디오 행 아래)
-- Modify: `doc/TC_AUTHORING_ELEMENT_SPEC.md` 8장 (결정 Y6 경로), `doc/TC_AUTHORING_PRD.md` F4.2·F4.4 (결정 Y1·Y3)
-- Modify: `doc/TC_AUTHORING_ROADMAP.md` (상세 계획 표)
+- Modify: `doc/tc-studio/TC_AUTHORING_ELEMENT_SPEC.md` 8장 (결정 Y6 경로), `doc/tc-studio/TC_AUTHORING_PRD.md` F4.2·F4.4 (결정 Y1·Y3)
+- Modify: `doc/tc-studio/TC_AUTHORING_ROADMAP.md` (상세 계획 표)
 
 - [ ] **Step 1: API 레퍼런스** — "TC 스튜디오 라이브러리" 표 아래에 추가:
 
@@ -3430,7 +3430,7 @@ git commit -m "feat(tc-studio): W7 가져오기 모달 다른 양식 직접 매�
   - `TC_AUTHORING_ELEMENT_SPEC.md` 8장: `/api/authoring/sources*` → `/api/tc-library/sources/{bundle}*`, `/api/authoring/profiles*` → `/api/tc-library/profiles*`, `/api/authoring/jobs*` → `/api/tc-library/{suite}/jobs`(시작)·`/api/tc-library/jobs/{id}*`(조회·취소). SSE 행은 "1.5초 폴링 (Phase 2 결정 Y3)"으로 바꾼다.
   - `TC_AUTHORING_PRD.md` F4.2 끝에 "구현: 파일 도구도 주지 않고(`--tools ""`) 소스는 프롬프트로만 넘기며 결과는 `--json-schema` 구조화 출력으로 받는다 (Phase 2 결정 Y1·Y2)."를 붙이고, F4.4의 "SSE(`_watch_files`)"를 "1.5초 폴링"으로 바꾼다.
 
-Run: `grep -c "/api/authoring/" doc/TC_AUTHORING_ELEMENT_SPEC.md`
+Run: `grep -c "/api/authoring/" doc/tc-studio/TC_AUTHORING_ELEMENT_SPEC.md`
 Expected: `0`
 
 - [ ] **Step 4: Phase 2 완료 기준 확인**
@@ -3444,7 +3444,7 @@ Expected: `0`
 - [ ] **Step 5: 커밋**
 
 ```bash
-git add doc/API_REFERENCE.md doc/SCRIPTS_GUIDE.md scripts/update_directory.py doc/TC_AUTHORING_ELEMENT_SPEC.md doc/TC_AUTHORING_PRD.md doc/TC_AUTHORING_ROADMAP.md
+git add doc/API_REFERENCE.md doc/SCRIPTS_GUIDE.md scripts/update_directory.py doc/tc-studio/TC_AUTHORING_ELEMENT_SPEC.md doc/tc-studio/TC_AUTHORING_PRD.md doc/tc-studio/TC_AUTHORING_ROADMAP.md
 git commit -m "docs(tc-studio): W8 Phase 2 API·스크립트·결정 문서 갱신"
 ```
 

@@ -8,7 +8,7 @@
 
 **Tech Stack:** Python 3.14, 기존 Import Studio 커밋 엔진, 바닐라 JS, pytest + Playwright
 
-**Spec:** [PRD](../TC_AUTHORING_PRD.md) F7, O1·O3·O7 · [명세](../TC_AUTHORING_ELEMENT_SPEC.md) 5.2장 · [목업](../../design-previews/tc-authoring-studio.html) 797~845행(md 카드) · [로드맵](../TC_AUTHORING_ROADMAP.md) · 선행: [Phase 1 계획](2026-09-29-tc-authoring-phase1.md) (Phase 2·3과는 독립이지만, 이 계획의 diff는 Phase 3까지 적용한 상태 기준이다)
+**Spec:** [PRD](../TC_AUTHORING_PRD.md) F7, O1·O3·O7 · [명세](../TC_AUTHORING_ELEMENT_SPEC.md) 5.2장 · [목업](../../../design-previews/tc-authoring-studio.html) 797~845행(md 카드) · [로드맵](../TC_AUTHORING_ROADMAP.md) · 선행: [Phase 1 계획](2026-09-29-tc-authoring-phase1.md) (Phase 2·3과는 독립이지만, 이 계획의 diff는 Phase 3까지 적용한 상태 기준이다)
 
 > **검증 상태 (2026-09-30):** Phase 3까지 적용한 저장소 사본에 이 계획을 적용해 새 테스트 14개(단위·API 12 + E2E 2)를 포함한 `tests/unit/tc_library` 113개와 전체 789개가 통과했고, 전체를 3번 연속 돌려도 모두 통과했다. 기존 Import Studio·대시보드 테스트 186개는 `_import_commit.py` 수정 후에도 그대로 통과했다.
 
@@ -1346,7 +1346,7 @@ git commit -m "feat(tc-studio): W12 내보내기 화면 md 카드"
 ## Task W13: 문서 갱신 + 실제 파이프라인 연결 확인 + Phase 4 완료
 
 **Files:**
-- Modify: `doc/TEST_CASE_GUIDE.md`, `doc/API_REFERENCE.md`, `doc/SCRIPTS_GUIDE.md`, `scripts/update_directory.py`, `doc/TC_AUTHORING_PRD.md`, `doc/TC_AUTHORING_ROADMAP.md`
+- Modify: `doc/TEST_CASE_GUIDE.md`, `doc/API_REFERENCE.md`, `doc/SCRIPTS_GUIDE.md`, `scripts/update_directory.py`, `doc/tc-studio/TC_AUTHORING_PRD.md`, `doc/tc-studio/TC_AUTHORING_ROADMAP.md`
 
 - [ ] **Step 1: TC 작성 가이드** — `doc/TEST_CASE_GUIDE.md`
   - 75행 표: `` `high` \| `medium` \| `low` `` → `` `very_high` \| `high` \| `medium` \| `low` ``, 설명 끝에 "(very_high = 차단급 핵심 흐름, TC 스튜디오 P0)"
@@ -1365,7 +1365,7 @@ git commit -m "feat(tc-studio): W12 내보내기 화면 md 카드"
 
 `scripts/update_directory.py`의 `"_tc_source_watch.py"` 줄 아래: `"_tc_md_export.py":         "TC 라이브러리 → 파이프라인 md 내보내기",`. 같은 파일의 `parse_cases.py`·`sync_test_data.py` 설명에 data_key 계약(`{프로덕트}.{데이터셋}`)이 틀리게 적혀 있으면 함께 고친다.
 
-- [ ] **Step 3: PRD 미결 사항 닫기** — `doc/TC_AUTHORING_PRD.md` 9장 O1·O3·O7 행 끝에 "→ 해결: Phase 4 M1 (결정 V1)"을 붙인다.
+- [ ] **Step 3: PRD 미결 사항 닫기** — `doc/tc-studio/TC_AUTHORING_PRD.md` 9장 O1·O3·O7 행 끝에 "→ 해결: Phase 4 M1 (결정 V1)"을 붙인다.
 
 - [ ] **Step 4: 실제 파이프라인으로 확인**
   1. `config/pages.json`에 웹으로 열리는 그룹 하나를 추가한다 (예: 야핏무브 친구 초대 웹 랜딩 URL)
@@ -1377,7 +1377,7 @@ git commit -m "feat(tc-studio): W12 내보내기 화면 md 카드"
 - [ ] **Step 5: 완료 표시 + 커밋** — 로드맵 상단 "상세 계획" 표의 Phase 4 행에 `✅ 완료 (YYYY-MM-DD)`
 
 ```bash
-git add doc/TEST_CASE_GUIDE.md doc/API_REFERENCE.md doc/SCRIPTS_GUIDE.md scripts/update_directory.py doc/TC_AUTHORING_PRD.md doc/TC_AUTHORING_ROADMAP.md
+git add doc/TEST_CASE_GUIDE.md doc/API_REFERENCE.md doc/SCRIPTS_GUIDE.md scripts/update_directory.py doc/tc-studio/TC_AUTHORING_PRD.md doc/tc-studio/TC_AUTHORING_ROADMAP.md
 git commit -m "docs(tc-studio): W13 Phase 4 md 내보내기·data_key 계약 문서 갱신"
 ```
 

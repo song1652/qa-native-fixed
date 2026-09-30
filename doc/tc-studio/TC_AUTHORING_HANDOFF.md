@@ -2,7 +2,7 @@
 
 > **독자**: TC 스튜디오 기능을 구현할 개발 에이전트(LLM)와 그 작업을 맡기는 사람.
 > 이 문서 하나로 "무엇을, 어떤 순서로 읽고, 어떻게 진행하고, 언제 멈추고, 무엇을 보고하는지"를 알 수 있게 썼다.
-> 작성: 2026-09-30 · 구현 상태: **아직 코드 없음** (계획만 있음. 모든 계획 코드는 저장소 사본에서 실행까지 검증됨)
+> 작성: 2026-09-30 · 문서 성격: **최초 구현 시 사용한 개발 절차 기록**. Phase 1~4 구현 완료 후의 결과와 제한은 [구현 보고](TC_AUTHORING_IMPLEMENTATION_REPORT.md), 현재 사용 방법은 [사용자 설명서](TC_AUTHORING_USER_GUIDE.md)를 참고한다.
 
 ---
 
@@ -24,12 +24,12 @@ QA 대시보드에 **"TC 스튜디오"** 화면을 추가한다.
 | 순서 | 문서 | 언제 · 왜 | 얼마나 |
 |---|---|---|---|
 | 1 | **이 문서** | 시작 전 | 전부 |
-| 2 | [`CLAUDE.md`](../CLAUDE.md) | 시작 전. 저장소 절대 규칙(LLM SDK 금지, `update_state`, 레지스트리 상수 등) | "행동 원칙"·"절대 규칙" 절 |
+| 2 | [`CLAUDE.md`](../../CLAUDE.md) | 시작 전. 저장소 절대 규칙(LLM SDK 금지, `update_state`, 레지스트리 상수 등) | "행동 원칙"·"절대 규칙" 절 |
 | 3 | [`TC_AUTHORING_ROADMAP.md`](TC_AUTHORING_ROADMAP.md) | 시작 전. 전체 Phase·작업 ID·결정 사항 모음·진행 방법 | 전부 (짧다) |
 | 4 | **현재 Phase 계획** [`plans/`](plans/) | 작업할 때. **실제 작업 지시서** — 파일 경로, 붙여 넣을 코드, 테스트, 실행 명령, 기대 결과가 모두 있다 | 헤더·Global Constraints·결정 표는 전부, 작업은 **지금 하는 작업 절만** |
 | — | [`TC_AUTHORING_PRD.md`](TC_AUTHORING_PRD.md) | 계획의 작업이 "PRD F5.2"처럼 가리킬 때, 또는 계획만으로 의도가 모호할 때 | 가리킨 항목만 |
 | — | [`TC_AUTHORING_ELEMENT_SPEC.md`](TC_AUTHORING_ELEMENT_SPEC.md) | 화면 작업(W로 시작)에서 버튼·입력의 동작·`data-id`를 확인할 때 | 해당 화면 절만 |
-| — | [`../design-previews/tc-authoring-studio.html`](../design-previews/tc-authoring-studio.html) | 화면 작업에서 모양을 볼 때. 브라우저로 열면 클릭해 볼 수 있다 | 계획이 가리킨 줄 범위 |
+| — | [`../design-previews/tc-authoring-studio.html`](../../design-previews/tc-authoring-studio.html) | 화면 작업에서 모양을 볼 때. 브라우저로 열면 클릭해 볼 수 있다 | 계획이 가리킨 줄 범위 |
 
 **우선순위:** 계획 문서 > 로드맵의 결정 표 > PRD > 명세 > 목업. 계획이 PRD·명세와 다르면 **계획이 맞다**(검증 과정에서 바뀐 결정이 계획에 반영돼 있다. 예: API 경로, 실행 결과 필드 이름, 생성 세션 권한). 계획의 W 문서 작업이 나중에 PRD·명세를 계획에 맞게 고친다.
 
@@ -90,7 +90,7 @@ git status                       # 깨끗한지 확인. 작업은 새 브랜치�
 | 상황 | 할 일 |
 |---|---|
 | diff의 `-` 줄이 파일에 없다 | 앞 작업을 빠뜨렸거나 순서가 틀린 것이다. `git log`로 앞 작업 커밋을 확인한다. 저장소가 계획 뒤에 바뀐 것이면 의미가 같은 위치에 적용하고 보고한다 |
-| 계획 코드를 넣었는데 테스트가 실패 | 오류 메시지와 테스트를 읽고 **원인을 먼저 찾는다**(추측으로 고치지 않는다). 환경 차이(패키지 버전, 경로, 브라우저)인지 코드 문제인지 가른다. 고치면 [`agents/lessons_learned.md`](../agents/lessons_learned.md)에 한 줄 기록 |
+| 계획 코드를 넣었는데 테스트가 실패 | 오류 메시지와 테스트를 읽고 **원인을 먼저 찾는다**(추측으로 고치지 않는다). 환경 차이(패키지 버전, 경로, 브라우저)인지 코드 문제인지 가른다. 고치면 [`agents/lessons_learned.md`](../../agents/lessons_learned.md)에 한 줄 기록 |
 | E2E가 가끔만 실패 | 같은 테스트를 단독으로 5번 돌려 본다. 단독에서 매번 통과하고 전체 실행 때만 가끔 실패하면 부하로 보고(대기 시간은 이미 10초로 늘려 둠). 단독에서도 실패하면 결함이다 |
 | 실제 Confluence·Figma 응답이 녹화본과 다름 (Phase 3 W11) | 실제 응답 모양으로 `connector_fixtures.py`를 먼저 고치고, 테스트가 실패하는 것을 본 뒤 코드를 고친다 |
 | 계획과 PRD·명세가 다름 | 계획을 따른다 (2장 우선순위) |
@@ -140,10 +140,10 @@ git status                       # 깨끗한지 확인. 작업은 새 브랜치�
 ```
 너는 qa-native-fixed 저장소에서 "TC Authoring Studio" 기능을 구현하는 개발자다.
 
-1. doc/TC_AUTHORING_HANDOFF.md를 끝까지 읽고 그 절차를 따른다.
+1. doc/tc-studio/TC_AUTHORING_HANDOFF.md를 끝까지 읽고 그 절차를 따른다.
 2. CLAUDE.md의 "행동 원칙"과 "절대 규칙"을 읽는다.
-3. doc/TC_AUTHORING_ROADMAP.md를 읽는다.
-4. 이번에는 Phase {N}만 한다: doc/plans/{Phase N 계획 파일}의 작업을 {첫 작업 ID}부터 순서대로 진행한다.
+3. doc/tc-studio/TC_AUTHORING_ROADMAP.md를 읽는다.
+4. 이번에는 Phase {N}만 한다: doc/tc-studio/plans/{Phase N 계획 파일}의 작업을 {첫 작업 ID}부터 순서대로 진행한다.
    - 각 작업은 "실패하는 테스트 → 실패 확인 → 계획 코드 적용 → 통과 확인 → 커밋" 순서를 지킨다.
    - 계획의 코드는 검증된 코드다. 그대로 쓰고, 테스트를 약하게 고치지 않는다.
    - 계획과 다르게 해야 하면 이유를 커밋 메시지와 보고에 적는다.

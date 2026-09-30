@@ -8,7 +8,7 @@
 
 **Tech Stack:** Python 3.14, openpyxl 3.1.5, 표준 `http.server` 기반 대시보드, 바닐라 JS, pytest + Playwright(E2E)
 
-**Spec:** [PRD](../TC_AUTHORING_PRD.md) · [요소별 동작 명세](../TC_AUTHORING_ELEMENT_SPEC.md) · [목업](../../design-previews/tc-authoring-studio.html) · [로드맵](../TC_AUTHORING_ROADMAP.md)
+**Spec:** [PRD](../TC_AUTHORING_PRD.md) · [요소별 동작 명세](../TC_AUTHORING_ELEMENT_SPEC.md) · [목업](../../../design-previews/tc-authoring-studio.html) · [로드맵](../TC_AUTHORING_ROADMAP.md)
 
 > **검증 상태 (2026-09-29):** 이 계획의 백엔드 코드(B1~B10)와 테스트는 저장소 밖 임시 폴더에서 실제로 실행해 **32개 테스트 통과**를 확인했다. 실제 `야핏무브_Full.xlsx`(6시트 926건)도 가져오기 → 내보내기 → 다시 가져오기 후 내용이 전부 일치했고 요약 수식 `#REF!`는 0개였다. 화면(W1~W8) 코드는 검증 전이며 E2E 테스트가 합격 기준이다.
 
@@ -47,7 +47,7 @@
 | `agents/dashboard/static/js/tc-studio/{api,state,library,detail,import,export,main}.js` | 화면 모듈 (`window.TCS_NS` 네임스페이스, 공개 API `window.TCS.init`) | W1~W7 |
 | `agents/dashboard/static/css/tc-studio.css` | `.tc-studio` 스코프 스타일 (목업 CSS 이식) | W1 |
 | `agents/dashboard/index.html`, `static/js/router.js` | 사이드바 메뉴·스크립트 로드·라우팅 | W1 |
-| `doc/API_REFERENCE.md`, `doc/SCRIPTS_GUIDE.md`, `doc/TC_AUTHORING_ELEMENT_SPEC.md`, `scripts/update_directory.py` | 문서 갱신 | W8 |
+| `doc/API_REFERENCE.md`, `doc/SCRIPTS_GUIDE.md`, `doc/tc-studio/TC_AUTHORING_ELEMENT_SPEC.md`, `scripts/update_directory.py` | 문서 갱신 | W8 |
 
 ---
 
@@ -895,7 +895,7 @@ git commit -m "feat(tc-studio): B3 엑셀 시트를 라이브러리 케이스로
 - [ ] **Step 1: 경로 상수 추가** — `scripts/_paths.py`의 `IMPORT_PROFILES_PATH = STATE_DIR / "import_profiles.json"` 바로 아래:
 
 ```python
-# TC 스튜디오 라이브러리 (doc/TC_AUTHORING_PRD.md §5). 스위트마다 하위 폴더,
+# TC 스튜디오 라이브러리 (doc/tc-studio/TC_AUTHORING_PRD.md §5). 스위트마다 하위 폴더,
 # "_uploads"·"_exports"처럼 "_"로 시작하는 폴더는 스위트가 아니라 작업 공간이다.
 TC_LIBRARY_DIR = STATE_DIR / "tc_library"
 ```
@@ -4113,8 +4113,8 @@ git commit -m "feat(tc-studio): W3 엑셀 내보내기 화면"
 - Modify: `doc/API_REFERENCE.md` — "상태 변경 (POST)" 표 아래에 새 절
 - Modify: `doc/SCRIPTS_GUIDE.md` — `scripts/_validators.py` 행 아래
 - Modify: `scripts/update_directory.py` — `SCRIPT_DESCRIPTIONS`의 `"_validators.py"` 항목 아래
-- Modify: `doc/TC_AUTHORING_ELEMENT_SPEC.md` — 8장 케이스 경로 (로드맵 Z2)
-- Modify: `doc/TC_AUTHORING_ROADMAP.md` — 상세 계획 표에 완료 표시
+- Modify: `doc/tc-studio/TC_AUTHORING_ELEMENT_SPEC.md` — 8장 케이스 경로 (로드맵 Z2)
+- Modify: `doc/tc-studio/TC_AUTHORING_ROADMAP.md` — 상세 계획 표에 완료 표시
 
 - [ ] **Step 1: API 레퍼런스** — `doc/API_REFERENCE.md`의 "#### 리포트 삭제" 절 끝(“…대상 파일을 모두 보존합니다.”) 아래에 추가:
 
@@ -4163,9 +4163,9 @@ git commit -m "feat(tc-studio): W3 엑셀 내보내기 화면"
     "_tc_xlsx_export.py":     "TC 라이브러리 → 템플릿 사본 xlsx + 무결성 검사",
 ```
 
-- [ ] **Step 4: 명세서 경로 정리** — `doc/TC_AUTHORING_ELEMENT_SPEC.md` 8장 표에서 `/api/tc-library/cases/{case_id}`로 시작하는 경로를 모두 `/api/tc-library/{suite}/cases/{case_id}`로 바꾸고, 표 위 설명 끝에 한 문장 추가: "케이스 경로에는 스위트가 들어간다 (로드맵 Z2)."
+- [ ] **Step 4: 명세서 경로 정리** — `doc/tc-studio/TC_AUTHORING_ELEMENT_SPEC.md` 8장 표에서 `/api/tc-library/cases/{case_id}`로 시작하는 경로를 모두 `/api/tc-library/{suite}/cases/{case_id}`로 바꾸고, 표 위 설명 끝에 한 문장 추가: "케이스 경로에는 스위트가 들어간다 (로드맵 Z2)."
 
-Run: `grep -c "/api/tc-library/cases/" doc/TC_AUTHORING_ELEMENT_SPEC.md`
+Run: `grep -c "/api/tc-library/cases/" doc/tc-studio/TC_AUTHORING_ELEMENT_SPEC.md`
 Expected: `0`
 
 - [ ] **Step 5: 문서 동기화 테스트 + 전체 회귀**
@@ -4180,10 +4180,10 @@ Expected: 전부 통과, 1 skipped
 3. 내려받은 파일을 다시 가져온다 → `추가 0 · 갱신 0 · 그대로 926`이어야 한다 (고친 내용이 이미 라이브러리에 있으므로)
 4. 내려받은 파일을 엑셀에서 열어 요약 표 숫자·드롭다운(P0~P3)·History 마지막 행을 눈으로 확인한다
 
-- [ ] **Step 7: 로드맵 표시 + 커밋** — `doc/TC_AUTHORING_ROADMAP.md` 상단 "상세 계획" 표의 Phase 1 행 끝에 `✅ 완료 (YYYY-MM-DD)`를 붙인다 (실제 날짜)
+- [ ] **Step 7: 로드맵 표시 + 커밋** — `doc/tc-studio/TC_AUTHORING_ROADMAP.md` 상단 "상세 계획" 표의 Phase 1 행 끝에 `✅ 완료 (YYYY-MM-DD)`를 붙인다 (실제 날짜)
 
 ```bash
-git add doc/API_REFERENCE.md doc/SCRIPTS_GUIDE.md scripts/update_directory.py doc/TC_AUTHORING_ELEMENT_SPEC.md doc/TC_AUTHORING_ROADMAP.md
+git add doc/API_REFERENCE.md doc/SCRIPTS_GUIDE.md scripts/update_directory.py doc/tc-studio/TC_AUTHORING_ELEMENT_SPEC.md doc/tc-studio/TC_AUTHORING_ROADMAP.md
 git commit -m "docs(tc-studio): W4 Phase 1 API·스크립트 문서 갱신"
 ```
 
