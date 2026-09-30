@@ -113,6 +113,7 @@ from routes_import import ImportRoutesMixin                       # Phase-4
 from routes_get import GetRoutesMixin                             # Phase-5
 from routes_tc_library import TcLibraryRoutesMixin
 from routes_tc_authoring import TcAuthoringRoutesMixin            # TC 스튜디오 생성·검토
+from routes_tc_connectors import TcConnectorRoutesMixin            # TC 스튜디오 원격 소스
 
 from dash_http import BodyTooLarge
 from routes_ops import OpsRoutesMixin                             # Phase-6
@@ -150,6 +151,7 @@ REMOTE_API_ALLOWLIST = [
 class DashboardHandler(                                            # Phase-4/5/6
     TcLibraryRoutesMixin,
     TcAuthoringRoutesMixin,
+    TcConnectorRoutesMixin,
     ImportRoutesMixin,
     GetRoutesMixin,
     OpsRoutesMixin,
