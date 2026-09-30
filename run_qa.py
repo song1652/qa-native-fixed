@@ -109,6 +109,7 @@ def _launch_headless_pipeline() -> None:
         subprocess.Popen(
             [
                 "claude", "-p", HEADLESS_PROMPT,
+                "--settings", '{"disableAllHooks":true}',
                 "--strict-mcp-config",
                 "--tools", "Read,Write,Edit,Glob,Grep,Bash",
                 "--permission-mode", "acceptEdits",

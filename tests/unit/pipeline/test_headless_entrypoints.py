@@ -118,6 +118,7 @@ class TestRunQaLaunchHeadless:
             assert "--strict-mcp-config" in args
             assert "--allowedTools" in args
             assert "Bash(.venv/bin/python *)" in args
+            assert json.loads(args[args.index("--settings") + 1]) == {"disableAllHooks": True}
 
     def test_output_format_text(self, tmp_path):
         mock_popen_ctx, root_ctx = self._popen_ctx(tmp_path)
