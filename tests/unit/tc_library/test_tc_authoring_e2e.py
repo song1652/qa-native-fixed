@@ -103,3 +103,23 @@ def test_review_regeneration_preserves_case_and_bulk_skips_estimates(studio):
     expect(cards.first).to_have_attribute("data-case", case_id)
     expect(cards).to_have_count(2)
     expect(cards.first.locator('[data-id="draft-approve"]')).to_be_enabled()
+
+# ── W7: 가져오기 직접 매핑 ─────────────────────────────────────
+def test_import_with_custom_mapping(studio):
+    _, page, tmp_path = studio
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "로그인"
+    ws.append(["ID", "제목", "절차", "기대 결과"])
+    ws.append(["L-1", "로그인 성공", "1. 아이디 입력\n2. 로그인 선택", "홈으로 이동한다."])
+    path = tmp_path / "other.xlsx"
+    wb.save(path)
+    page.locator('[data-id="btn-import-xlsx"]').click()
+    page.locator('[data-id="import-mapping-mode"]').select_option("custom")
+    page.locator('[data-id="import-file-input"]').set_input_files(str(path))
+    expect(page.locator('[data-id="import-sheets"] .radio')).to_have_count(1)
+    page.locator('[data-id="import-suite"]').fill("웹")
+    page.locator('[data-prefix="로그인"]').fill("LOG")
+    page.locator('[data-id="import-confirm"]').click()
+    expect(page.locator('[data-id="suite-select"]')).to_have_value("웹")
+    expect(page.locator("#grid-body tr[data-case]")).to_have_count(1)
