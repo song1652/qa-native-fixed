@@ -72,7 +72,7 @@
 | `case_id` | 안정 ID (예: `BEN_0042`). 가져올 때 새로 부여 | 기타 컬럼 `id:` | frontmatter `id` |
 | `suite` / `sheet` | 프로덕트 / 시트 (예: 야핏무브 / 혜택) | 시트 | 그룹 폴더 |
 | `path` | [대분류, 중분류, 소분류] | B~D (병합) | tags 보조 |
-| `feature` | 기능 | E | 조건·기대 결과로 검증 목적을 구별하는 제목. 시트·분류 경로만 반복하지 않는다 |
+| `feature` | 제목 | E | 조건·기대 결과로 검증 목적을 구별하는 제목. 시트·분류 경로만 반복하지 않는다 |
 | `precondition` | 사전 조건 | F | `## Precondition` |
 | `steps[]` | 순서 있는 단계 | G (`1. …` 줄바꿈) | `## Steps` |
 | `expected` + `expected_bullets[{text, verified}]` | 결과 문장과 UI 문구 | H | `## Expected` |

@@ -21,7 +21,7 @@
             <span id="d-dirty" hidden title="저장하지 않은 변경"><i class="dirty-dot"></i></span>
             <button class="icon-btn" data-id="detail-close" id="detail-close" aria-label="패널 닫기">✕</button>
           </div>
-          <input class="input" id="detail-feature" data-id="detail-feature" style="font-weight:600;font-size:14px" aria-label="기능">
+          <input class="input" id="detail-feature" data-id="detail-feature" style="font-weight:600;font-size:14px" aria-label="제목">
           <div class="row" style="font-size:11.5px"><span class="faint">경로</span><span id="d-path" class="crumbpath"></span>
             <button class="btn-sm" data-id="detail-move" id="detail-move">이동…</button></div>
         </div>

@@ -18,7 +18,7 @@
         <div class="tree-tools">
           <input class="input" id="tree-search" data-id="tree-search" placeholder="가지 이름 검색" autocomplete="off">
           <div class="row" style="justify-content:space-between">
-            <span class="faint" style="font-size:11px">시트 › 대분류 › 중분류 › 소분류 › 기능</span>
+            <span class="faint" style="font-size:11px">시트 › 대분류 › 중분류 › 소분류 › 제목</span>
             <button class="icon-btn" data-id="tree-collapse-all" id="tree-collapse-all" title="모두 접기" aria-label="모두 접기">⊟</button>
           </div>
         </div>
@@ -28,7 +28,7 @@
       <div class="center">
         <div id="lib-banners"></div>
         <div class="filterbar" role="search">
-          <div class="search"><input class="input" id="lib-search" data-id="lib-search" placeholder="기능, Step, Expected, UI 문구 검색  ( / )" autocomplete="off"></div>
+          <div class="search"><input class="input" id="lib-search" data-id="lib-search" placeholder="제목, Step, Expected, UI 문구 검색  ( / )" autocomplete="off"></div>
           <select class="fselect" id="lib-filter-result" data-id="lib-filter-result" aria-label="실행 결과">
             ${opt('', '실행 결과 전체')}${opt('none', '미실행')}${opt('pass', 'Pass')}${opt('fail', 'Fail')}${opt('not_test', 'Not Test')}${opt('na', 'N/A')}</select>
           <select class="fselect" id="lib-filter-status" data-id="lib-filter-status" aria-label="검토 상태">
@@ -58,7 +58,7 @@
               <th><input type="checkbox" id="grid-check-all" data-id="grid-check-all" aria-label="전체 선택"></th>
               <th></th><th><span class="xl">A</span>No.</th>
               <th><span class="xl">B</span>대분류</th><th><span class="xl">C</span>중분류</th><th><span class="xl">D</span>소분류</th>
-              <th><span class="xl">E</span>기능</th><th><span class="xl">F</span>사전 조건</th><th><span class="xl">G</span>Test Step</th>
+              <th><span class="xl">E</span>제목</th><th><span class="xl">F</span>사전 조건</th><th><span class="xl">G</span>Test Step</th>
               <th><span class="xl">H</span>Expected Result</th><th><span class="xl">I</span>우선순위</th><th>실행 결과</th><th><span class="xl">M</span>기타 (id · src)</th>
             </tr></thead>
             <tbody id="grid-body"></tbody>
@@ -94,7 +94,7 @@
       <div class="panel-head"><span id="mv-title">계층 이동</span><span class="spacer"></span><button class="icon-btn" data-id="move-close" id="move-close" aria-label="닫기">✕</button></div>
       <div class="panel-body" style="display:grid;gap:10px">
         <div class="field"><span class="label">시트 › 대분류 › 중분류 › 소분류</span><select class="select" id="move-target" data-id="move-target"></select></div>
-        <div class="field"><span class="label">기능</span><input class="input" id="move-feature" data-id="move-feature" placeholder="비워 두면 기존 기능명 유지"></div>
+        <div class="field"><span class="label">제목</span><input class="input" id="move-feature" data-id="move-feature" placeholder="비워 두면 기존 제목 유지"></div>
         <div class="row"><span class="spacer"></span><button class="btn btn-ghost" id="move-cancel" data-id="move-cancel">취소</button><button class="btn btn-primary" id="move-confirm" data-id="move-confirm">이동</button></div>
       </div>
     </div>
@@ -374,8 +374,8 @@
   async function addCase() {
     const base = byId(state.activeId) || state.items[0];
     const fields = base
-      ? { sheet: base.sheet, path: base.path, feature: '새 기능', after: base.case_id }
-      : { feature: '새 기능' };
+      ? { sheet: base.sheet, path: base.path, feature: '새 제목', after: base.case_id }
+      : { feature: '새 제목' };
     const { case: created } = await api.createCase(state.suite, fields);
     await refresh();
     NS.detail.open(created.case_id);

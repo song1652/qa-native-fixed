@@ -92,6 +92,7 @@ def test_chip_and_cell_edits_persist(studio):
     _, page = studio
     row = page.locator('tr[data-case="BEN_0002"]')
     headers = page.locator("#grid thead th").all_text_contents()
+    assert headers[6] == "E제목"
     priority_index = next(i for i, text in enumerate(headers) if "우선순위" in text)
     assert headers[priority_index + 1] == "실행 결과"
     expect(row.locator("td").nth(priority_index + 1).locator('[data-id="grid-result"]')).to_be_visible()

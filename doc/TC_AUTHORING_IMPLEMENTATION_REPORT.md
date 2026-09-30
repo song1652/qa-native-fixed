@@ -134,3 +134,8 @@
 - 주요 증거: actions.log, final.json, TC스튜디오_실사용.xlsx, authoring-trace.zip, export-pipeline-trace.zip, editing-trace.zip, results-trace.zip, repair-trace.zip, delivery-trace.zip, 18-final-saved-sources.png, 20-final-clear-titles.png, 21-final-priority-and-pass.png, 22-latest-pipeline-report.png, 23-report-list-preview.png.
 - RED/GREEN 로그: /tmp/tc-human-launch-red.log·green.log, /tmp/tc-human-title-red.log·green.log, /tmp/tc-human-suite-red.log·green.log, /tmp/tc-human-context-red.log, /tmp/tc-human-hook-red.log·green.log. 실제 훅 분리 CLI: /tmp/tc-human-hook-live.log (QA_HOOK_ISOLATION_OK).
 - 최종 검사 로그: /tmp/tc-human-library-final.log, /tmp/tc-human-full-final-committed.log. 실제 파이프라인은 logs/run_qa_headless.txt, 브라우저 표시 빠른 실행은 logs/quick_run.txt.
+
+### 제목 항목 표시 (사용자 후속 요청)
+
+- 대·중·소분류 옆 그리드 컬럼을 기능 → 제목으로 변경. 트리 경로 안내·검색 입력·상세 입력의 접근성 이름·계층 이동 모달·새 TC의 초기 제목도 일치시켰다.
+- 헤더 계약 assertion RED 확인 후 관련 실제 브라우저 테스트 3 passed. 실제 서버의 화면 표시 Chromium에서도 제목 컬럼과 제목 상세 입력·기존 TC 5건 유지 확인. 증거: state/tc_studio_user_flow/24-title-column.png, /tmp/tc-title-label-live.log. Push 없음.
