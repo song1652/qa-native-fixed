@@ -48,6 +48,12 @@ ROUTES: list[tuple[str, re.Pattern, str]] = [
 ]
 
 
+# 생성·검토 라우트(Phase 2)가 앞에 와야 `/api/tc-library/{suite}` 패턴에 먼저 잡히지 않는다
+from routes_tc_authoring import AUTHORING_ROUTES  # noqa: E402
+
+ROUTES[:0] = AUTHORING_ROUTES
+
+
 class TcLibraryRoutesMixin:
     """DashboardHandler(TcLibraryRoutesMixin, …, BaseHTTPRequestHandler) 형태로 쓴다."""
 
@@ -112,7 +118,7 @@ class TcLibraryRoutesMixin:
     # ── 가져오기 ──────────────────────────────────────────────────
     def _tcl_import_preview(self):
         """본문 = xlsx 원본 바이트 (로드맵 Z3). ?filename= 필수."""
-        from _tc_template import analyze_workbook
+        from _tc_template import analyze_with_mapping, analyze_workbook
         from _tc_library import LibraryError
         filename = Path(self._tcl_query.get("filename", "")).name
         if not filename.lower().endswith(".xlsx"):
@@ -125,13 +131,17 @@ class TcLibraryRoutesMixin:
         upload_dir.mkdir(parents=True, exist_ok=True)
         xlsx = upload_dir / f"{preview_id}.xlsx"
         xlsx.write_bytes(data)
+        mapping = json.loads(self._tcl_query["mapping"]) if self._tcl_query.get("mapping") else None
         try:
-            profiles = analyze_workbook(xlsx)
+            profiles = analyze_with_mapping(xlsx, mapping) if mapping else analyze_workbook(xlsx)
+        except LibraryError:
+            xlsx.unlink(missing_ok=True)
+            raise
         except Exception as exc:
             xlsx.unlink(missing_ok=True)
             raise LibraryError(f"엑셀을 읽을 수 없습니다: {exc}", "UNREADABLE_XLSX") from exc
         (upload_dir / f"{preview_id}.json").write_text(
-            json.dumps({"filename": filename}, ensure_ascii=False), encoding="utf-8")
+            json.dumps({"filename": filename, "mapping": mapping}, ensure_ascii=False), encoding="utf-8")
         from _tc_xlsx_import import import_workbook
         sheets = []
         for name, profile in profiles.items():
@@ -145,7 +155,7 @@ class TcLibraryRoutesMixin:
 
     def _tcl_import_commit(self):
         from _tc_library import LibraryError, import_cases, save_template
-        from _tc_template import analyze_workbook
+        from _tc_template import analyze_with_mapping, analyze_workbook
         from _tc_xlsx_import import import_workbook
         body = _read_body(self)
         preview_id = str(body.get("preview_id", ""))
@@ -156,7 +166,7 @@ class TcLibraryRoutesMixin:
             raise LibraryError("미리보기가 만료됐습니다. 파일을 다시 선택하세요", "PREVIEW_EXPIRED", 410)
         meta = json.loads(upload.with_suffix(".json").read_text(encoding="utf-8"))
         suite = str(body.get("suite", "")).strip()
-        profiles = analyze_workbook(upload)
+        profiles = analyze_with_mapping(upload, meta["mapping"]) if meta.get("mapping") else analyze_workbook(upload)
         sheets = [s for s in body.get("sheets", []) if s in profiles]
         if not sheets:
             raise LibraryError("가져올 시트를 하나 이상 고르세요", "NO_SHEETS")

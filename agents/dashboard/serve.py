@@ -112,6 +112,8 @@ from dash_http import (                                          # Phase-3
 from routes_import import ImportRoutesMixin                       # Phase-4
 from routes_get import GetRoutesMixin                             # Phase-5
 from routes_tc_library import TcLibraryRoutesMixin
+from routes_tc_authoring import TcAuthoringRoutesMixin            # TC 스튜디오 생성·검토
+
 from dash_http import BodyTooLarge
 from routes_ops import OpsRoutesMixin                             # Phase-6
 LOGS_DIR.mkdir(exist_ok=True)
@@ -147,6 +149,7 @@ REMOTE_API_ALLOWLIST = [
 
 class DashboardHandler(                                            # Phase-4/5/6
     TcLibraryRoutesMixin,
+    TcAuthoringRoutesMixin,
     ImportRoutesMixin,
     GetRoutesMixin,
     OpsRoutesMixin,
@@ -387,6 +390,8 @@ class DashboardHandler(                                            # Phase-4/5/6
         if not self._check_csrf_origin():
             self.send_response(403)
             self.end_headers()
+            return
+        if self._tcl_dispatch("PUT"):
             return
         prefix = "/api/import/profiles/"
         if path.startswith(prefix):
