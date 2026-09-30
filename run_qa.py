@@ -66,11 +66,18 @@ def print_cases(test_cases: list):
 
 
 HEADLESS_PROMPT = (
-    "CLAUDE.md 파이프라인대로 QA 자동화를 실행해줘. state/pipeline.json이 준비되어 있어. "
-    "01_analyze -> 전략수립(심의 후 plan을 state/pipeline.json에 저장. "
-    "step 값은 스크립트가 자동으로 관리하므로 직접 바꾸지 말 것) -> 코드작성 -> 03_lint -> "
-    "요약작성 -> 04_approve -> 05_execute -> 06_heal 순서로 끝까지 진행해줘. "
-    "모든 파이썬 명령은 프로젝트 루트의 .venv/bin/python 을 사용해서 실행해."
+    "CLAUDE.md의 단일 파이프라인으로 state/pipeline.json에 준비된 TC를 끝까지 실행하세요. "
+    "01_analyze -> 02a_dialog -> 체크리스트 심의와 plan 저장 -> 02_generate -> scaffold 직접 완성 -> "
+    "03_lint -> 03a_dialog -> 체크리스트 리뷰와 review 저장 -> 04_approve -> "
+    "05_execute --no-report -> 06_heal 순서로 진행하고, 실패하면 CLAUDE.md의 힐링 절차를 따르세요. "
+    "전체 통과를 확인한 뒤 마지막 05_execute로 HTML 리포트를 생성하세요. "
+    "모든 Python 명령은 프로젝트 루트의 .venv/bin/python을 사용하세요. "
+    "state 변경은 update_state와 레지스트리 상수를 사용하고 step을 수동 덮어쓰지 마세요. "
+    "md 하나당 실제 동작과 Expected를 검증하는 테스트 파일·함수 하나를 작성하세요. "
+    "사용할 수 없는 MCP·스킬·에이전트 도구는 직접 체크리스트 판단으로 진행하세요. "
+    "추가 에이전트를 호출하지 말고, 주어진 TC와 DOM을 근거로 추가 질문 없이 완료하세요. "
+    "외부 LLM SDK·API 키·dangerously-skip-permissions 사용, git commit·push는 금지합니다. "
+    "완료 시 실제 실행 결과와 리포트 경로를 보고하세요."
 )
 
 
@@ -82,11 +89,8 @@ def _launch_headless_pipeline() -> None:
     영원히 멈춰있는 문제가 있었다. --auto(기본값)에서는 이 스크립트가 직접
     claude CLI를 non-interactive 모드로 실행해 파이프라인을 완결시킨다.
 
-    주의: --permission-mode acceptEdits 만으로는 Bash 도구 호출(pytest 실행 등)이
-    non-interactive 세션에서 승인 주체 없이 막힐 수 있어, 이 로컬 자동화 용도에서는
-    --dangerously-skip-permissions를 사용한다. 신뢰할 수 없는 원격/공용 환경에서는
-    이 플래그 대신 .claude/settings.json에 필요한 Bash 패턴만 명시적으로 allow하는
-    방식으로 바꿀 것.
+    파일 편집은 acceptEdits, 실행은 프로젝트 .venv/bin/python 패턴만 허용한다.
+    MCP 설정과 사용 도구를 제한하여 대시보드에서도 같은 권한으로 자동 실행한다.
     """
     import subprocess
 
@@ -105,7 +109,11 @@ def _launch_headless_pipeline() -> None:
         subprocess.Popen(
             [
                 "claude", "-p", HEADLESS_PROMPT,
-                "--dangerously-skip-permissions",
+                "--strict-mcp-config",
+                "--tools", "Read,Write,Edit,Glob,Grep,Bash",
+                "--permission-mode", "acceptEdits",
+                "--allowedTools", "Read", "Write", "Edit", "Glob", "Grep",
+                "Bash(.venv/bin/python *)",
                 "--output-format", "text",
             ],
             cwd=str(PROJECT_ROOT),

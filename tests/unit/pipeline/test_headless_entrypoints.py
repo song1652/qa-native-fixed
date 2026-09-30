@@ -106,13 +106,18 @@ class TestRunQaLaunchHeadless:
     def test_headless_prompt_not_empty(self):
         assert len(self.mod.HEADLESS_PROMPT) > 10
 
-    def test_dangerously_skip_permissions_flag(self, tmp_path):
+    def test_headless_uses_explicit_permissions(self, tmp_path):
         mock_popen_ctx, root_ctx = self._popen_ctx(tmp_path)
         with mock_popen_ctx as mock_popen, root_ctx:
             mock_popen.return_value = MagicMock()
             self.mod._launch_headless_pipeline()
             args = mock_popen.call_args[0][0]
-            assert "--dangerously-skip-permissions" in args
+            assert "--dangerously-skip-permissions" not in args
+            assert args[args.index("--permission-mode") + 1] == "acceptEdits"
+            assert args[args.index("--tools") + 1] == "Read,Write,Edit,Glob,Grep,Bash"
+            assert "--strict-mcp-config" in args
+            assert "--allowedTools" in args
+            assert "Bash(.venv/bin/python *)" in args
 
     def test_output_format_text(self, tmp_path):
         mock_popen_ctx, root_ctx = self._popen_ctx(tmp_path)
