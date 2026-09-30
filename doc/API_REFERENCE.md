@@ -163,6 +163,22 @@
 | GET | `/api/tc-library/import/mapping-profiles` | Import Studio 매핑 프로필 → 열 매핑 |
 
 생성 작업은 `claude -p --restricted --strict-mcp-config --tools "" --permission-mode dontAsk --no-session-persistence --output-format json --json-schema …`로 저장소 밖 임시 폴더에서 실행한다. 환경변수: `TCS_CLAUDE_BIN`(CLI 경로), `TCS_CLAUDE_MODEL`(모델), `TCS_CHUNK_TIMEOUT`(섹션당 초, 기본 300). 작업 기록은 `state/tc_library/_jobs/{job_id}/`.
+#### 원격 소스·출처 추적 (`routes_tc_connectors.py`)
+
+| 메서드 | 경로 | 설명 ||---|---|---|
+| GET | `/api/tc-library/credentials` | 연결 상태 (토큰 없음) |
+| PUT | `/api/tc-library/credentials/{confluence\|figma}` | 저장 → 연결 상태 |
+| POST | `/api/tc-library/sources/{bundle}/url` | `{url}` → 201 `{source}` |
+| POST | `/api/tc-library/sources/{bundle}/confluence` | `{url, children}` → 201 `{sources}` |
+| POST | `/api/tc-library/sources/{bundle}/figma` | `{url}` → 201 `{source}` |
+| GET | `/api/tc-library/sources/{bundle}/assets/{name}` | Figma 프레임 PNG |
+| GET | `/api/tc-library/source-diff?ref=` | 차이 |
+| POST | `/api/tc-library/{suite}/source-changes/scan` | 원격 버전 확인 → 표시 |
+| GET | `/api/tc-library/{suite}/source-changes` | 표시된 변경 (원격 호출 없음) |
+| POST | `/api/tc-library/{suite}/cases/{id}/ack-source` | 확인 완료 |
+
+원격 요청은 `_tc_fetch.fetch()`만 거친다: https·호스트 허용 목록·내부망 차단·리다이렉트 재검사(최대 3)·15초·20MB. 자격증명 파일 `config/confluence_config.json`, `config/figma_config.json`(git 제외), 환경변수 `CONFLUENCE_BASE_URL` `CONFLUENCE_EMAIL` `CONFLUENCE_TOKEN` `FIGMA_TOKEN`이 우선한다.
+
 ### 원격 모드 위험도 분류
 
 | 분류 | 엔드포인트 | 원격 모드 기본값 |

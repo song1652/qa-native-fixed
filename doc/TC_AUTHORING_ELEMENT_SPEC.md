@@ -171,7 +171,7 @@
 | `lib-empty` | 빈 라이브러리 | 가운데 전체 | 스위트에 케이스가 0건이면 트리·필터·그리드 대신 표시. 엑셀 아이콘, 설명, 두 버튼 | — | — | — | F2.4 |
 | `empty-import-xlsx` | 엑셀 가져오기 (주 버튼) | 빈 상태 | 클릭 → `import-modal` | — | — | — | F2 |
 | `empty-generate` | 문서로 새로 생성 | 빈 상태 | 클릭 → 새로 생성 탭 | — | 빈 라이브러리면 문체 예시(F2.5)가 없다는 안내를 생성 화면에 표시 | — | F4 |
-| `banner-source-changed` | 소스 변경 배너 | 필터 바 위 | 소스 버전 변화 감지 시 노랑 배너: "{문서} v14 → v15 · 관련 케이스 6건이 재검토 필요" | — | 배너는 재검토 건이 0이 되면 사라짐 | `GET /api/tc-library/{suite}/source-changes` (라이브러리 진입 시, 그리고 SSE 이벤트) | F5.9 |
+| `banner-source-changed` | 소스 변경 배너 | 필터 바 위 | 소스 버전 변화 감지 시 노랑 배너: "{문서} v14 → v15 · 관련 케이스 6건이 재검토 필요" | — | 배너는 재검토 건이 0이 되면 사라짐 | `GET /api/tc-library/{suite}/source-changes` (표시된 변경 조회; 원격 버전 확인은 사용자가 요청한 POST …/scan에서만) | F5.9 |
 | `banner-review-now` | 6건만 보기 | 배너 | 클릭 → `lib-filter-needs-review` 켬 | — | — | — | F5.9 |
 | `banner-diff` | 바뀐 부분 보기 | 배너 | 클릭 → 첫 재검토 케이스의 원문 탭(diff 포함) | — | — | `GET /api/tc-library/source-diff?ref=conf:48213377&from=14&to=15` | F5.9 |
 
@@ -375,6 +375,7 @@
 | GET | `/api/tc-library/{suite}/cases/{case_id}/history` | 변경 이력 | 이력 배열 | `detail-history` | F5.11 |
 | POST | `/api/tc-library/{suite}/cases/{case_id}/revert` | 이전 값으로 되돌리기 `{history_id, rev}` | 케이스 | `detail-history-revert`, 되돌리기 토스트 | F5.11 |
 | POST | `/api/tc-library/{suite}/cases/{case_id}/resolve-duplicate` | 중복 처리 `{action, target_case_id, target_rev}` | 결과 케이스 | `dup-*` | F5.6 |
+| POST | `/api/tc-library/{suite}/source-changes/scan` | 원격 버전 확인·표시 | `{checked, changes, errors}` | `btn-check-sources` | F5.9 |
 | GET | `/api/tc-library/{suite}/source-changes` | 소스 버전 변화와 영향 케이스 | `[{ref, from, to, case_ids}]` | `banner-source-changed` | F5.9 |
 | POST | `/api/tc-library/{suite}/cases/{case_id}/ack-source` | 새 소스 버전 확인 `{ref, to_version, rev}` | 케이스 | `detail-mark-reviewed` | F5.9 |
 | GET | `/api/tc-library/{suite}/coverage` | 커버리지 갭 `?path&profile` | 기능별 충족 여부 | `coverage-gap` | F5.10 |

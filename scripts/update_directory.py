@@ -77,6 +77,12 @@ SCRIPT_DESCRIPTIONS: dict[str, str] = {
     "_tc_prompt.py":          "TC 생성 프롬프트·출력 스키마",
     "_tc_review.py":          "TC 초안 중복·커버리지 검토 도우미",
     "_tc_generate.py":        "TC 초안 생성 작업 (제한된 claude -p)",
+    "_tc_fetch.py":           "원격 문서 수집용 안전한 GET (SSRF 방어)",
+    "_tc_html.py":            "HTML·Confluence storage → markdown",
+    "_tc_credentials.py":     "Confluence·Figma 자격증명",
+    "_tc_connectors.py":      "PRD URL·Confluence·Figma 소스 수집",
+    "_tc_source_watch.py":    "출처 버전 변경 추적",
+
 
 
     "_python.py":             ".venv 경로 자동 감지",
