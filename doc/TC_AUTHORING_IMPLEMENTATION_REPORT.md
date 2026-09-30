@@ -84,3 +84,53 @@
 - 실제 LLM: 별도 확인용 빈 스위트에 주신 엑셀의 혜택 탭 버튼 설명을 입력하여 기본 모델로 TC 1건 생성. P2·AUTO 빈 값·quote_found true 확인, JS 오류 없음. 확인용 스위트는 state/template_backups에 보관하여 기본 화면은 테스트케이스 시트 하나·TC 0건 유지.
 - 증거: /tmp/tc-profile-unit-final.log, /tmp/tc-profile-full-final.log, /tmp/tc-profile-live.log, /tmp/tc-profile-generated-cases.json, /tmp/tc-studio-common-writing-rules.png, /tmp/tc-studio-common-rules-generated.png.
 - 계획과 다르게 한 것: 사용자 후속 요청에 따라 PRD F3와 검증된 계획의 기본 프로필 정책을 공통·문서 근거 중심으로 변경했다. 기존 커버리지 기능은 명시적인 엄격 프로필 테스트로 검증을 유지했다. Push·병합 없음.
+
+## 실제 사용자 흐름 검증 보고 (2026-09-30)
+
+- 끝낸 작업: 화면이 보이는 Chromium에서 기획 정보 입력 → 실제 로컬 LLM 생성·재생성 → TC 수정·승인 → Excel 왕복 → md 미리보기·반영·롤백 → 단일 파이프라인 버튼 실행 → 생성된 실제 Playwright 테스트 실행 → 웹 HTML 리포트 확인. 후속 수정과 검증 결과 커밋 5개, 브랜치 feat/tc-studio-phase1. Push·병합 없음.
+- 테스트: tests/unit/tc_library **126 passed** / 전체 **803 passed, 1 skipped**, 기존 경고 2개. 실제 파이프라인 **5 passed, 0 failed, 0 skipped**, 힐링 0회. 같은 테스트의 브라우저 표시 빠른 실행도 5/5 통과. 마지막 제목·분류 수정 후 단일 파이프라인 재실행도 5/5 통과. Skip은 기존 P63의 TEST_DATA_PATH 참조 검사이며 해당 구형 데이터 경로 참조가 없어 스킵된다. 실제 생성 테스트 5개는 스킵되지 않았다.
+- 수동 확인: 사용자 문서가 없어 회원 등록 로컬 페이지와 PRD.md를 작성했다. 페이지에서 이름 미입력·이메일 형식 오류·약관 미동의·정상 등록·초기화의 다섯 동작과 화면 문구를 직접 조작해 확인했다. TC 데이터나 파이프라인 상태를 API로 주입하지 않고 화면의 파일 선택·입력·버튼으로 작업했다. 실제 로컬 LLM 신규 생성 3회(5건·1건·1건), 메모 재생성 1회, 코드 생성 단일 파이프라인 2회 확인. 화면 입력과 산출물은 삭제하지 않고 남겨 두었다.
+- 계획과 다르게 한 것: 사용자 후속 요청에 따라 실제 사용 검증에서 발견한 ① 자동 실행 권한 제한 ② feature 제목·시트/분류 구분 지시 ③ 기존 스위트의 필터 해제·서버 저장 생성 작업 복원 ④ 자동 실행 자식 CLI의 훅 분리를 추가했다. 기존 훅이 다른 세션의 서버 재시작 지시를 자동 실행에 주입했으므로 자식 CLI에만 disableAllHooks를 적용했다. 수동 Claude 훅 설정은 변경하지 않았다. 각 수정은 실패 테스트 확인 → 구현 → 통과 → 커밋. 기존 계획 assertion을 약하게 변경하지 않았다. 새 API와 복원 동작은 PRD F1.7/D7에 기록했다.
+- 발견한 문제·위험: 위 네 가지는 agents/lessons_learned.md에 기록하고 수정했다. 실행 스크립트가 지운 기존 추적 스크린샷·영상은 복원했다. 회사 Confluence/Figma 인증 정보가 없어 연결 설정 UI와 기존 녹화 응답 테스트까지 확인했으며 실제 회사 문서 수집은 확인하지 않았다. 사용자가 단일 또는 병렬을 허용해 단일 코드 생성 파이프라인을 선택했다. Studio의 Pass 값은 실제 5/5 통과 결과를 확인한 뒤 화면의 일괄 수정으로 기록했다. 파이프라인에서 Studio로 자동 동기화한 결과는 아니다.
+- 사람이 결정해야 할 것: 없음. 기존 브라우저 탭은 새로고침하면 수정된 스위트 복원 동작을 사용할 수 있다.
+
+### 지금 웹에서 볼 수 있는 정보
+
+| 위치 | 남겨 둔 내용 |
+|---|---|
+| http://localhost:8766/tc-studio | TC스튜디오_실사용: 서로 다른 제목 5개, 회원등록 › 등록 폼, 승인·Y-web·P1·Pass |
+| 기획 정보 · TC 생성 | 저장된 PRD.md + 직접 입력한 설명, 대상 시트·분류, 완료 작업, 초안 검토·재생성 버튼 |
+| TC스튜디오_편집검증 | 실제 생성·메모 재생성·원문 확인·반려/되돌리기·일괄 승인·복제/삭제/복원·이력 되돌리기·수동 작성·일괄 수정·검색/필터·계층 이동을 확인한 데이터 3건 |
+| TC스튜디오_엑셀왕복 | 최신 Excel을 다시 가져온 TC 5개. 제목·분류·Step·Expected·우선순위·Pass 유지 |
+| TC스튜디오_생성개선확인 | 수정한 생성 지시로 실제 LLM이 만든 목적별 제목 1개, 중복 없는 분류, 승인 |
+| 기본양식 | 테스트케이스 시트 하나·분류 없음·TC 0건 유지. 야핏무브 데모 없음 |
+| 단일 파이프라인 | Total 5, Passed 5, Failed 0, Pass Rate 100%, 최신 리포트 보기 |
+| http://localhost:8766/reports/report_20260930_183846.html | 제목·분류 수정 후 최신 5/5 통과 HTML 리포트 |
+| http://localhost:8877 | 실제 테스트한 회원 등록 페이지. 서버 유지 |
+
+### 검증한 화면 작업
+
+| 작업 | 결과 |
+|---|---|
+| 빈 Excel 가져오기·시트 추가·디자인 모달 이름 변경·빈 분류 추가 | 성공 |
+| 파일 PRD + 붙여넣기 정보 입력 → 실제 로컬 claude 생성 | 5 TC 생성 |
+| 공개 HTTPS URL 수집·소스 제거·연결 설정 | example.com 수집 성공. 미연결 Confluence/Figma 설정 화면 확인 |
+| 작성 규칙 편집·이름 저장 → 생성·메모 재생성 | 실제 LLM으로 성공 |
+| TC 원문·변경 이력·수정·문구 확인·승인·반려·되돌리기 | 성공 |
+| 복제·삭제·삭제 복원·수동 추가·일괄 수정·검색·필터·분류 이동 | 성공 |
+| Excel 검사·다운로드·다시 가져오기 | 2시트 × 왕복 일치/수식 참조 = 4개 OK, TC 5개 유지. 기존 6시트 검증의 12개와 같은 검사 기준 |
+| md 그룹 매핑·미리보기·반영·롤백·재반영 | 5파일 성공, 제목 변경 반영 후에도 ID TSD_01~05 유지 |
+| 페이지 URL 관리 → 단일 파이프라인 실행 버튼 | 실제 로컬 claude가 자체 완결 테스트 파일·영문 함수 5개 생성. TODO/pass scaffold 없음 |
+| 실행 결과·리포트 열기·리포트 목록 미리보기 | 5/5 통과 확인 |
+| 기존 스위트 전환·검색 필터 해제·새로고침·새 브라우저 | 기존 TC·소스·대상·검토 작업 복원, 새 Excel 요청 없음 |
+
+### 산출물·증거
+
+- 재현용 페이지·기획 정보: tests/fixtures/tc_studio_demo/index.html, PRD.md, README.md.
+- 실제 Studio에서 반영한 md 5개: testcases/tc_studio_demo/.
+- 실제 파이프라인이 작성한 테스트 5개: tests/generated/tc_studio_demo/.
+- 최신 단일 리포트: tests/reports/report_20260930_183846.html. 브라우저 표시 빠른 실행 리포트: tests/reports/parallel_index_20260930_181408.html. 이전 실행 리포트도 보존했다.
+- 화면 추적·스크린샷·입력/작업 기록·다운로드 Excel: state/tc_studio_user_flow/. state는 gitignore 대상이나 현재 PC와 웹에 보존한다.
+- 주요 증거: actions.log, final.json, TC스튜디오_실사용.xlsx, authoring-trace.zip, export-pipeline-trace.zip, editing-trace.zip, results-trace.zip, repair-trace.zip, delivery-trace.zip, 18-final-saved-sources.png, 20-final-clear-titles.png, 21-final-priority-and-pass.png, 22-latest-pipeline-report.png, 23-report-list-preview.png.
+- RED/GREEN 로그: /tmp/tc-human-launch-red.log·green.log, /tmp/tc-human-title-red.log·green.log, /tmp/tc-human-suite-red.log·green.log, /tmp/tc-human-context-red.log, /tmp/tc-human-hook-red.log·green.log. 실제 훅 분리 CLI: /tmp/tc-human-hook-live.log (QA_HOOK_ISOLATION_OK).
+- 최종 검사 로그: /tmp/tc-human-library-final.log, /tmp/tc-human-full-final-committed.log. 실제 파이프라인은 logs/run_qa_headless.txt, 브라우저 표시 빠른 실행은 logs/quick_run.txt.
