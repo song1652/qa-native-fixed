@@ -136,14 +136,22 @@ def _history_once(suite: str, entries: list[dict]) -> None:
     _append_history(suite, [entry for entry in entries if entry['history_id'] not in ids])
 
 
+def _pending_path(run_id: str) -> Path:
+    """반영·롤백이 진행 중인 작업 표시. 복구 확인이 모든 작업 파일(스냅샷 포함 수 MB)을 매번 읽지 않게 한다."""
+    return _root() / (run_id + '.pending')
+
+
 def recover_suite(suite: str) -> None:
     """Called under the suite lock before every library read/write. Finish durable intent."""
-    for path in _root().glob('libimp_*.json'):
+    for marker in _root().glob('libimp_*.pending'):
         try:
-            run = _read_run(path)
-        except LibraryError:
+            if marker.read_text(encoding='utf-8') != suite:
+                continue
+            run = _read_run(marker.with_suffix('.json'))
+        except (LibraryError, OSError):
             continue
-        if run.get('suite') != suite or run.get('status') not in ('committing', 'rolling_back'):
+        if run.get('status') not in ('committing', 'rolling_back'):
+            marker.unlink(missing_ok=True)       # 표시만 남고 작업은 끝났거나 시작 전에 멈췄다
             continue
         journal = run['journal']
         current = _snapshot(suite)
@@ -155,10 +163,14 @@ def recover_suite(suite: str) -> None:
         run['after_hash'] = _fingerprint(_snapshot(suite))
         run.pop('journal', None)
         _save(run)
+        marker.unlink(missing_ok=True)
 
 
 def _transaction(run: dict, after: dict, entries: list[dict], final_status: str) -> None:
     before = _snapshot(run['suite'])
+    pending = _pending_path(run['run_id'])
+    pending.parent.mkdir(parents=True, exist_ok=True)
+    pending.write_text(run['suite'], encoding='utf-8')     # 저널을 쓰기 전에 표시 (중단 시 복구 대상)
     run['journal'] = {'before': before, 'after': after, 'history': entries, 'final_status': final_status}
     run['status'] = 'committing' if final_status == 'committed' else 'rolling_back'
     _save(run)
@@ -170,6 +182,7 @@ def _transaction(run: dict, after: dict, entries: list[dict], final_status: str)
         run['status'] = 'preview_ready' if final_status == 'committed' else 'committed'
         run.pop('journal', None)
         _save(run)
+        pending.unlink(missing_ok=True)
         raise
     # A history append failure leaves the durable journal intact for idempotent recovery.
     _history_once(run['suite'], entries)
@@ -177,6 +190,7 @@ def _transaction(run: dict, after: dict, entries: list[dict], final_status: str)
     run['after_hash'] = _fingerprint(_snapshot(run['suite']))
     run.pop('journal', None)
     _save(run)
+    pending.unlink(missing_ok=True)
 
 
 def _sources(body: dict) -> list[dict]:

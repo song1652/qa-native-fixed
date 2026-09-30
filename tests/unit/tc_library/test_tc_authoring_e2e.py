@@ -174,8 +174,10 @@ def test_review_marks_drafts_that_break_profile_style_and_bulk_skips_them(studio
                              {"rules": ["규칙"], "expected_endings": ["없는끝."]})
     assert status == 200
     page.reload()
+    expect(page.locator("#grid-body tr[data-case]")).to_have_count(6)       # 첫 로딩이 끝난 뒤 조작 (선택이 덮이지 않게)
     page.locator('[data-id="nav-tab-generate"]').click()
     page.locator('[data-id="gen-profile"]').select_option("문체")
+    expect(page.locator("#gen-rules")).to_contain_text("없는끝.")            # 이 프로필로 생성된다
     cards = _open_review(page, tmp_path)
     expect(cards.first.locator('[data-id="draft-style"]')).to_have_attribute("title", "Expected 끝맺음이 작성 규칙과 다릅니다 (없는끝.)")
     page.locator('[data-id="review-approve-clean"]').click()

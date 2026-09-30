@@ -339,3 +339,12 @@ def test_imported_cases_are_review_locked_and_reimport_keeps_human_review(roots)
     plan = operation.plan_import(upload(roots, feature='엑셀 수정'))
     operation.commit_import({'run_id': plan['run_id'], 'overwrite': [case['case_id']]}, 'test')
     assert load_cases('suite')[0]['review_source'] == 'human'
+
+
+def test_suite_reads_do_not_parse_finished_runs(roots, monkeypatch):
+    """잠금마다 모든 작업 파일(스냅샷 포함 수 MB)을 읽으면 큰 스위트가 수 초씩 느려진다. 진행 중 표시가 없으면 읽지 않는다."""
+    operation = ops()
+    operation.commit_import({'run_id': operation.plan_import(upload(roots))['run_id']}, 'test')
+    assert not list(operation._root().glob('*.pending'))                   # 끝난 작업은 표시를 남기지 않는다
+    monkeypatch.setattr(operation, '_read_run', lambda path: (_ for _ in ()).throw(AssertionError(f'read {path}')))
+    assert len(load_cases('suite')) == 1

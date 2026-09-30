@@ -63,6 +63,10 @@
 .tc-studio .step-line { height:2px; flex:1 1 24px; min-width:18px; background:var(--line); margin:0 10px; }
 .tc-studio .screen { display:none; }
 .tc-studio .screen.active { display:block; }
+/* 첫 화면을 고르기 전(스위트 불러오는 중)에는 빈 화면 대신 안내를 보인다 */
+.tc-studio .studio-loading { display:none; align-items:center; justify-content:center; gap:8px; padding:48px 16px; color:var(--text2); font-size:13px; }
+.tc-studio .studio-loading::before { content:""; width:14px; height:14px; border:2px solid var(--accent); border-right-color:transparent; border-radius:50%; animation:spin .7s linear infinite; }
+.tc-studio .studio:not(:has(.screen.active)) .studio-loading { display:flex; }
 .tc-studio .btn { padding:7px 14px; border-radius:var(--radius-sm); font-size:12.5px; font-weight:600; cursor:pointer; border:1px solid transparent; transition:all .15s; display:inline-flex; align-items:center; gap:6px; white-space:nowrap; }
 .tc-studio .btn-primary { background:var(--accent); color:var(--on-accent); box-shadow:0 2px 12px var(--accent-glow); }
 .tc-studio .btn-primary:hover { background:var(--accent2); }

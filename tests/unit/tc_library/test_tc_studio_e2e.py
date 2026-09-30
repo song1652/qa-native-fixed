@@ -319,6 +319,7 @@ def test_reentering_studio_with_empty_suite_opens_planning_screen(studio):
     base_url, page = studio
     import_cases("빈스위트", ["테스트케이스"], [], "tester")
     page.reload()
+    expect(page.locator("#grid-body tr[data-case]")).to_have_count(6)       # 첫 로딩이 끝난 뒤 스위트를 바꾼다
     page.locator("#suite-select").select_option("빈스위트")
     expect(page.locator('[data-screen="generate"].screen')).to_have_class(re.compile("active"))
     page.evaluate("selectView('reports')")
@@ -329,6 +330,7 @@ def test_reentering_studio_with_empty_suite_opens_planning_screen(studio):
     expect(page.locator("#suite-select")).to_have_value("빈스위트")
     expect(page.locator('[data-screen="generate"].screen')).to_have_class(re.compile("active"))
     assert "library" not in page.evaluate("window.__screens")      # 라이브러리가 잠깐 보였다 바뀌지 않는다
+    expect(page.locator('[data-id="studio-loading"]')).to_be_hidden()    # 불러오기가 끝나면 안내는 사라진다
 
 
 def test_export_selected_sheets_are_checkbox_chips_with_counts(studio):

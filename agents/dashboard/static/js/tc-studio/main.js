@@ -41,6 +41,7 @@
     <nav class="wizard" role="tablist" aria-label="스튜디오 화면">${navHtml()}</nav>
   </header>
   ${available().map((s) => NS[s.module].html()).join('')}
+  <div class="studio-loading" data-id="studio-loading" role="status">스위트를 불러오는 중…</div>
  </div>
  ${NS.importModal ? NS.importModal.html() : ''}
  <div class="scrim" id="suite-delete-modal" data-id="suite-delete-modal" hidden>
