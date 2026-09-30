@@ -10,6 +10,9 @@ pending_impl.json
 
 # Test outputs (screenshots/reports are now tracked)
 tests/traces/
+# 단위 E2E(tests/unit) 실패 스크린샷 — 파이프라인 결과가 아니라 로컬 디버깅용
+tests/screenshots/tc_library__*
+tests/screenshots/dashboard__*
 
 # Log files in parallel/
 parallel/*.txt
