@@ -78,5 +78,11 @@
     scanSources: (suite) => request('POST', `${S(suite)}/source-changes/scan`),
     sourceDiff: (ref) => request('GET', `/api/tc-library/source-diff?ref=${enc(ref)}`),
     ackSource: (suite, id) => request('POST', `${C(suite, id)}/ack-source`),
+    // ── Phase 4: md 내보내기 ──
+    mdEligibility: (suite) => request('GET', `${S(suite)}/export/md/eligibility`),
+    saveMdGroup: (suite, path, group, code) => request('PUT', `${S(suite)}/md-groups`, { path, group, code }),
+    mdPreview: (suite) => request('POST', `${S(suite)}/export/md`),
+    mdCommit: (suite, runId, skip) => request('POST', `${S(suite)}/md-exports/${enc(runId)}/commit`, { skip }),
+    mdRollback: (suite, runId) => request('POST', `${S(suite)}/md-exports/${enc(runId)}/rollback`),
   };
 })(window.TCS_NS = window.TCS_NS || {});
