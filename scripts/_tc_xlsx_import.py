@@ -62,6 +62,8 @@ def read_sheet_cases(
                 for deeper in range(depth + 1, 3):
                     path[deeper] = ""
                 feature = ""
+        if "l1" not in cols and not path[0]:
+            path[0] = profile.sheet            # 직접 매핑 양식에 대분류 열이 없을 때
         feature = value(r, "feature") or feature
         note, case_id, refs = split_note(raw_note)
         if not case_id or case_id in used:

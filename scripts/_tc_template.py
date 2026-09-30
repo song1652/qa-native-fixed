@@ -135,3 +135,46 @@ def analyze_workbook(path: Path) -> dict[str, TemplateProfile]:
         return profiles
     finally:
         wb.close()
+
+
+def _letter(col: str) -> int:
+    from openpyxl.utils import column_index_from_string
+
+    return column_index_from_string(col.replace("열", "").strip().upper())
+
+
+# Import Studio 매핑 프로필의 필드 → TC 스튜디오 필드
+IMPORT_STUDIO_FIELDS = {"title": "feature", "steps": "steps", "expected": "expected",
+                        "precondition": "precondition", "priority": "priority", "group": "l1"}
+
+
+def mapping_from_import_profile(mappings: dict[str, str]) -> dict[str, str]:
+    """Import Studio 프로필 {"title": "B열", …} → {"feature": "B", …} (tc_id·tags는 쓰지 않는다)."""
+    return {IMPORT_STUDIO_FIELDS[k]: v.replace("열", "").strip().upper()
+            for k, v in mappings.items() if k in IMPORT_STUDIO_FIELDS and v}
+
+
+def profile_from_mapping(ws, mapping: dict) -> TemplateProfile:
+    """다른 양식 직접 매핑 (Phase 2 G0). mapping: {"header_row": 1, "columns": {"feature": "B", …},
+    "result_columns": {"And": "K"}}. 대분류 열이 없으면 시트 이름을 대분류로 쓴다."""
+    columns = {field: _letter(col) for field, col in mapping.get("columns", {}).items() if col}
+    missing = [f for f in ("feature", "steps", "expected") if f not in columns]
+    if missing:
+        from _tc_library import LibraryError
+        raise LibraryError(f"필수 열을 지정하세요: {', '.join(missing)}", "MAPPING_INCOMPLETE")
+    header_row = int(mapping.get("header_row") or 1)
+    result_columns = {name: _letter(col) for name, col in (mapping.get("result_columns") or {}).items()}
+    return TemplateProfile(sheet=ws.title, header_row=header_row, data_start_row=header_row + 1,
+                           columns=columns, result_columns=result_columns, validations={},
+                           no_formula=None, style_row=header_row + 1,
+                           warnings=["직접 매핑한 양식입니다. 병합·요약 수식 보정 없이 값만 씁니다"])
+
+
+def analyze_with_mapping(path: Path, mapping: dict) -> dict[str, TemplateProfile]:
+    import openpyxl
+
+    wb = openpyxl.load_workbook(str(path))
+    try:
+        return {ws.title: profile_from_mapping(ws, mapping) for ws in wb.worksheets}
+    finally:
+        wb.close()
