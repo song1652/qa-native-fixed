@@ -33,6 +33,7 @@ ROUTES: list[tuple[str, re.Pattern, str]] = [
         ("POST", rf"/api/tc-library/{_SUITE}/cases", "_tcl_create"),
         ("POST", rf"/api/tc-library/{_SUITE}/bulk", "_tcl_bulk"),
         ("POST", rf"/api/tc-library/{_SUITE}/move", "_tcl_move"),
+        ("POST", rf"/api/tc-library/{_SUITE}/sheets/rename", "_tcl_rename_sheet"),
         ("POST", rf"/api/tc-library/{_SUITE}/export/xlsx", "_tcl_export_xlsx"),
 
 
@@ -299,3 +300,9 @@ class TcLibraryRoutesMixin:
         self.send_header("Content-Length", str(len(content)))
         self.end_headers()
         self.wfile.write(content)
+
+    def _tcl_rename_sheet(self, suite: str):
+        from _tc_library import rename_sheet
+        body = _read_body(self)
+        rename_sheet(suite, body.get("sheet", ""), body.get("name", ""), self._tcl_actor())
+        self._tcl_json({"ok": True})

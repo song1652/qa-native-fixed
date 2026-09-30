@@ -457,3 +457,79 @@ def replace_source_version(suite: str, case_id: str, old_ref: str, new_ref: str)
 
     update_state(_cases_path(suite), mutate)
     return out["case"]
+
+
+def rename_sheet(suite: str, old: str, name: str, actor: str) -> None:
+    """Rename the worksheet and its cases without changing case IDs."""
+    import re
+    import tempfile
+    import openpyxl
+    from _tc_generate import active_job
+
+    name = name.strip() if isinstance(name, str) else ''
+    if not name or len(name) > 31 or re.search(r"[\\/*?:\[\]]", name) or name.startswith("'") or name.endswith("'"):
+        raise LibraryError('시트 이름은 1~31자이며 \\ / * ? : [ ]를 포함할 수 없습니다.', 'INVALID_SHEET')
+    running = active_job()
+    if running and running['suite'] == suite:
+        raise LibraryError('생성이 끝난 후 시트 이름을 변경하세요.', 'JOB_RUNNING', 409)
+    root = suite_dir(suite)
+    workbook = root / 'template.xlsx'
+    profiles_path = root / 'template_profile.json'
+    profiles = read_state(profiles_path)
+    if old not in profiles:
+        raise LibraryError('시트가 없습니다.', 'SHEET_NOT_FOUND', 404)
+    if name == old:
+        return
+    wb = openpyxl.load_workbook(workbook)
+    try:
+        if any(title.casefold() == name.casefold() for title in wb.sheetnames if title != old):
+            raise LibraryError('이미 존재하는 시트 이름입니다.', 'SHEET_EXISTS', 409)
+        ws = wb[old]
+        if old.casefold() == name.casefold():
+            ws.title = '_rename_' + secrets.token_hex(4)
+        ws.title = name
+        with tempfile.TemporaryDirectory(prefix='tc-sheet-') as temp:
+            renamed = Path(temp) / 'template.xlsx'
+            wb.save(renamed)
+            json_paths = [_cases_path(suite), profiles_path]
+            md_path = root / 'md_export.json'
+            if md_path.exists():
+                json_paths.append(md_path)
+            jobs_root = _paths.TC_LIBRARY_DIR / '_jobs'
+            for job_path in jobs_root.glob('*/status.json'):
+                job = read_state(job_path)
+                if job.get('suite') == suite and job.get('target', {}).get('sheet') == old:
+                    json_paths.append(job_path)
+            originals = {path: read_state(path) for path in json_paths}
+            original_workbook = workbook.read_bytes()
+            history = []
+            try:
+                shutil.copy2(renamed, workbook)
+                def mutate(data):
+                    if name in data.get('sheets', []):
+                        raise LibraryError('이미 존재하는 시트 이름입니다.', 'SHEET_EXISTS', 409)
+                    data['sheets'] = [name if sheet == old else sheet for sheet in data.get('sheets', [])]
+                    for case in data.get('cases', []):
+                        if case['sheet'] == old:
+                            history.extend(_apply(case, {'sheet': name}, actor))
+                    return data
+                new_profiles = {name if key == old else key: {**value, 'sheet': name if key == old else value['sheet']} for key, value in profiles.items()}
+                update_state(profiles_path, lambda _: new_profiles)
+                for path in json_paths[2:]:
+                    def update_related(data):
+                        for group in data.get('groups', []):
+                            if group['path'] and group['path'][0] == old:
+                                group['path'][0] = name
+                        if data.get('target', {}).get('sheet') == old:
+                            data['target']['sheet'] = name
+                        return data
+                    update_state(path, update_related)
+                update_state(_cases_path(suite), mutate)
+            except Exception:
+                workbook.write_bytes(original_workbook)
+                for path, original in originals.items():
+                    update_state(path, lambda _, original=original: original)
+                raise
+            _append_history(suite, history)
+    finally:
+        wb.close()

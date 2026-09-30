@@ -210,8 +210,10 @@ def test_blank_template_can_start_generation(studio, tmp_path):
     expect(page.locator('[data-id="suite-select"]')).to_have_value('빈양식')
     expect(rows(page)).to_have_count(0)
     page.locator('[data-id="nav-tab-generate"]').click()
-    expect(page.locator('[data-id="gen-target-sheet"] option')).to_have_text(['혜택', '홈'])
-    page.locator('[data-id="gen-path-l1"]').select_option('__new')
+    expect(page.locator('[data-id="gen-target-sheet"]')).to_have_value('')
+    expect(page.locator('[data-id="gen-target-sheet"] option')).to_have_text(['시트를 선택하세요', '혜택', '홈'])
+    page.locator('[data-id="gen-target-sheet"]').select_option('혜택')
+    expect(page.locator('[data-id="gen-new-l1"]')).to_be_visible()
     page.locator('[data-id="gen-new-l1"]').fill('사용자 기능')
     page.locator('[data-id="src-tab-paste"]').click()
     page.locator('[data-id="src-paste"]').fill('초대 링크 복사 버튼을 누르면 링크가 클립보드에 복사된다.')
@@ -219,3 +221,24 @@ def test_blank_template_can_start_generation(studio, tmp_path):
     expect(page.locator('[data-id="gen-submit"]')).to_be_enabled()
     _, data = request_json(base_url, 'GET', '/api/tc-library/' + quote('빈양식'))
     assert data['total'] == 0
+    page.reload()
+    expect(page.locator('[data-id="nav-tab-generate"]')).to_have_attribute('aria-selected', 'true')
+    expect(page.locator('.wizard [role="tab"]').first).to_have_attribute('data-id', 'nav-tab-generate')
+    expect(page.locator('[data-id="src-file-drop"]')).to_be_visible()
+    page.locator('[data-id="src-tab-url"]').click()
+    expect(page.locator('[data-id="src-url-url"]')).to_be_visible()
+
+
+def test_sheet_name_can_be_changed_and_survives_reload(studio):
+    base_url, page = studio
+    page.locator('[data-id="nav-tab-generate"]').click()
+    expect(page.locator('[data-id="gen-target-sheet"]')).to_have_value('')
+    page.locator('[data-id="gen-target-sheet"]').select_option('혜택')
+    page.once('dialog', lambda dialog: dialog.accept('회원 혜택'))
+    page.locator('[data-id="gen-rename-sheet"]').click()
+    expect(page.locator('[data-id="gen-target-sheet"]')).to_have_value('회원 혜택')
+    page.reload()
+    page.locator('[data-id="nav-tab-generate"]').click()
+    expect(page.locator('[data-id="gen-target-sheet"] option')).to_have_text(['시트를 선택하세요', '회원 혜택', '홈'])
+    _, body = request_json(base_url, 'GET', f'/api/tc-library/{S}/cases/BEN_0001')
+    assert body['case']['sheet'] == '회원 혜택'

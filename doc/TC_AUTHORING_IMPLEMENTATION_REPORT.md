@@ -54,3 +54,12 @@
 - 실제 로컬 LLM: 빈 양식에 사용자 제공 엑셀의 혜택 탭 버튼 설명을 발췌해 TC 1건 생성. 화면에서 기능명을 수정하고 새로고침 후 저장 유지 확인. 확인용 TC는 UI에서 삭제해 기본양식 0건 유지. 생성 산출물은 /tmp/tc-blank-generated-cases.json, 화면은 /tmp/tc-studio-blank-generated-edit.png. 빈 양식 파일은 ~/Downloads/TC_빈양식.xlsx.
 - 야핏무브 확인용 스위트 및 보관본은 사용자 삭제 요청으로 제거. API에는 기본양식 6시트·0건만 존재.
 - 계획과 다르게 한 것: 사용자 후속 요청에 따른 컬럼 위치 변경 및 빈 양식 생성 흐름 보완. 새 분류에 기존 예시 TC를 채워 넣지 않고 작성 규칙·입력 문서로 생성한다. Push·병합 없음.
+
+### 작성 시작 화면·시트 이름 후속 수정
+
+- 사용자 요청: 온보딩 자동 선택 이유 확인, 시트 이름 변경, 첫 화면의 PRD·URL 입력 위치 개선.
+- 변경: 초기 시트는 “시트를 선택하세요”. 첫 탭은 “기획 정보 · TC 생성”. 빈 스위트로 접속하면 “1. 기획 정보 입력” 화면이 열린다. PRD 파일·텍스트·PRD URL·Confluence·Figma 입력 탭을 안내한다. 시트를 선택하면 “이름 변경” 버튼으로 수정 가능. 빈 분류는 이름 입력칸을 바로 표시한다.
+- 이름 변경 API: POST /api/tc-library/{suite}/sheets/rename, JSON {sheet, name}. TC ID·내용 보존, 변경 이력·rev 갱신, 엑셀 시트·프로필·기존 생성 작업 대상·md 그룹 경로 동기화. 잘못된 이름·중복 이름·실행 중 생성 거부. 저장 실패 시 기존 파일 복구. 영문 대소문자만 변경해도 숫자 접미어가 붙지 않도록 처리.
+- 검증: 자동 선택·이름 변경·첫 정보 입력 화면·빈 분류 입력의 RED 확인 후 GREEN. tc_library 118 passed; 전체 795 passed, 1 skipped, 기존 경고 2개. 실제 실행 서버의 온보딩 시트를 테스트케이스로 변경하고 새로고침 유지 확인. PRD 파일 영역과 URL 입력칸 노출 확인, JS 오류 없음. 기본양식 0건 유지.
+- 계획과 다른 점: 사용자 후속 요청에 따라 첫 탭·초기 진입 화면과 시트 관리 기능 추가. 기존 생성 E2E는 대상 시트를 명시적으로 선택하도록 준비 단계만 수정하고 기존 생성·검토 assertions 유지. 새 이력 검사의 시간 순서는 저장소가 최신순을 반환하는 계약에 맞춰 확인했다.
+- 증거: /tmp/tc-authoring-followup-unit-final.log, /tmp/tc-authoring-followup-full-final.log, /tmp/tc-studio-prd-entry.png, /tmp/tc-studio-url-entry.png, /tmp/tc-studio-sheet-rename.png. Push·병합 없음.

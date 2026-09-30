@@ -72,6 +72,7 @@ def test_figma_draft_shows_frame_in_review(studio):
     page.locator('[data-id="src-figma-url"]').fill(FIGMA_URL)
     page.locator('[data-id="src-figma-fetch"]').click()
     expect(page.locator('[data-id="src-chip"]')).to_have_count(1)
+    page.locator('[data-id="gen-target-sheet"]').select_option("혜택")
     page.locator('[data-id="gen-path-l2"]').select_option("상단 배너")
     page.locator('[data-id="gen-submit"]').click()
     page.locator('[data-id="job-open-review"]').click(timeout=15000)

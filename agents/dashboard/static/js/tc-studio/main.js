@@ -6,8 +6,8 @@
   const { state, api, esc, $, $$ } = NS;
   const SUITE_KEY = 'tcs-suite';
   const SCREENS = [
+    { id: 'generate', label: '기획 정보 · TC 생성', module: 'generateView' },
     { id: 'library', label: 'TC 라이브러리', module: 'library', count: 'cnt-lib' },
-    { id: 'generate', label: '새로 생성', module: 'generateView' },
     { id: 'review', label: '초안 검토', module: 'reviewView', count: 'cnt-review' },
     { id: 'export', label: '내보내기', module: 'exportView' },
   ];
@@ -94,6 +94,8 @@
     $('#suite-select', root).addEventListener('change', (e) => NS.reloadSuites(e.target.value));
     show('library');
     await NS.reloadSuites();
+    const suite = state.suites.find((s) => s.suite === state.suite);
+    if (suite && suite.count === 0 && NS.generateView) show('generate');
   }
 
   window.TCS = { init };

@@ -60,8 +60,9 @@
   <section class="screen" id="screen-generate" data-screen="generate">
     <div class="wrap"><div class="gen">
       <div class="panel">
-        <div class="panel-head">소스 <span class="faint" style="font-weight:400">문서 내용은 생성 시 데이터로만 쓰입니다</span></div>
+        <div class="panel-head">1. 기획 정보 입력</div>
         <div class="panel-body" style="display:grid;gap:12px">
+          <p class="help" style="margin:0">PRD 파일을 올리거나 텍스트·URL·Confluence·Figma 탭에서 기획 정보를 추가하세요. 입력한 내용을 바탕으로 LLM이 TC 초안을 작성합니다.</p>
           <div class="src-tabs" role="tablist">${tabs.map((t, i) => `<button class="src-tab" role="tab" data-id="src-tab-${t.id}" data-src="${t.id}" aria-selected="${i === 0}">${esc(t.label)}</button>`).join('')}</div>
           ${tabs.map((t, i) => `<div data-srcpane="${t.id}" ${i ? 'hidden' : ''}>${t.html()}</div>`).join('')}
           <div id="src-extra"></div>
@@ -70,9 +71,9 @@
         </div>
       </div>
       <div style="display:grid;gap:16px">
-        <div class="panel"><div class="panel-head">어디에 넣을까요</div>
+        <div class="panel"><div class="panel-head">2. 작성할 시트·분류</div>
           <div class="panel-body" style="display:grid;gap:10px">
-            <div class="field"><span class="label">시트</span><select class="select" id="gen-target-sheet" data-id="gen-target-sheet"></select></div>
+            <div class="field"><span class="label">시트</span><div class="row"><select class="select" id="gen-target-sheet" data-id="gen-target-sheet"></select><button class="btn-sm" type="button" data-id="gen-rename-sheet" id="gen-rename-sheet" disabled>이름 변경</button></div></div>
             <div class="picker" data-id="gen-target-path">
               ${[['l1', '대분류'], ['l2', '중분류'], ['l3', '소분류']].map(([k, l]) => `<div class="field"><span class="label">${l}</span>
                 <select class="select" id="gen-path-${k}" data-id="gen-path-${k}"></select>
@@ -187,14 +188,15 @@
   function renderTarget(keep = target()) {
     const sheets = [...new Set([...state.tree.map((n) => n.name),
       ...(state.suites.find((s) => s.suite === state.suite)?.sheets || [])])];
-    const sheet = sheets.includes(keep.sheet) ? keep.sheet : sheets[0];
-    $('#gen-target-sheet', root).innerHTML = sheets.map((n) => `<option ${n === sheet ? 'selected' : ''}>${esc(n)}</option>`).join('');
+    const sheet = sheets.includes(keep.sheet) ? keep.sheet : '';
+    $('#gen-target-sheet', root).innerHTML = '<option value="">시트를 선택하세요</option>' + sheets.map((n) => `<option ${n === sheet ? 'selected' : ''}>${esc(n)}</option>`).join('');
+    $('#gen-rename-sheet', root).disabled = !sheet;
     const path = [];
     ['l1', 'l2', 'l3'].forEach((k, i) => {
       const names = sheet ? children([sheet, ...path]).map((n) => n.name) : [];
       const cur = names.includes(keep.path[i]) ? keep.path[i] : (i === 0 ? names[0] || '' : '');
       fillSelect(k, names, cur, i > 0);
-      $(`#gen-new-${k}`, root).hidden = true;
+      $(`#gen-new-${k}`, root).hidden = $(`#gen-path-${k}`, root).value !== '__new';
       path.push(cur);
     });
     loadExamples();
@@ -304,6 +306,17 @@
       $$('[data-srcpane]', root).forEach((p) => { p.hidden = p.dataset.srcpane !== t.dataset.src; });
     }));
     tabs.forEach((t) => t.mount($(`[data-srcpane="${t.id}"]`, root), addSource));
+    $('#gen-rename-sheet', root).addEventListener('click', async () => {
+      const t = target();
+      const name = window.prompt('새 시트 이름 (최대 31자)', t.sheet);
+      if (name === null || name.trim() === t.sheet) return;
+      try {
+        await api.renameSheet(state.suite, t.sheet, name);
+        await NS.reloadSuites(state.suite);
+        renderTarget({ sheet: name.trim(), path: t.path });
+        toast('시트 이름을 변경했습니다.', 'ok');
+      } catch (err) { toast(`이름을 변경하지 못했습니다: ${esc(err.message)}`, 'err'); }
+    });
     $('#gen-target-sheet', root).addEventListener('change', () => renderTarget({ sheet: $('#gen-target-sheet', root).value, path: ['', '', ''] }));
     ['l1', 'l2', 'l3'].forEach((k, i) => $(`#gen-path-${k}`, root).addEventListener('change', (e) => {
       if (e.target.value === '__new') { $(`#gen-new-${k}`, root).hidden = false; $(`#gen-new-${k}`, root).focus(); return; }

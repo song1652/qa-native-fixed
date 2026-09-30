@@ -95,3 +95,61 @@ def test_suite_name_cannot_escape_library_dir(library_dir):
     for bad in ("../etc", "_uploads", ""):
         with pytest.raises(lib.LibraryError):
             lib.suite_dir(bad)
+
+
+def test_rename_sheet_preserves_cases_template_and_md_mapping(seeded):
+    import openpyxl
+    from _state import read_state, update_state
+    root = lib.suite_dir(SUITE)
+    update_state(root / 'md_export.json', lambda _: {'groups': [{'path': ['혜택', '혜택 탭'], 'group': 'benefits', 'code': 'BEN'}], 'ids': {'BEN_0001': 'BEN_01'}})
+    jobs = root.parent / '_jobs' / 'job_rename' / 'status.json'
+    update_state(jobs, lambda _: {'suite': SUITE, 'status': 'done', 'target': {'sheet': '혜택'}})
+    lib.rename_sheet(SUITE, '혜택', '회원 혜택', 'tester')
+    case = lib.get_case(SUITE, 'BEN_0001')
+    assert case['sheet'] == '회원 혜택' and case['rev'] == 2
+    assert case['feature'] == seeded[0]['feature']
+    assert lib.list_suites()[0]['sheets'] == ['회원 혜택', '홈']
+    assert lib.load_profiles(SUITE)['회원 혜택'].sheet == '회원 혜택'
+    wb = openpyxl.load_workbook(root / 'template.xlsx')
+    assert '회원 혜택' in wb.sheetnames and '혜택' not in wb.sheetnames
+    wb.close()
+    assert read_state(jobs)['target']['sheet'] == '회원 혜택'
+    cfg = read_state(root / 'md_export.json')
+    assert cfg['groups'][0]['path'] == ['회원 혜택', '혜택 탭']
+    assert cfg['ids']['BEN_0001'] == 'BEN_01'
+    assert lib.history(SUITE, 'BEN_0001')[0]['field'] == 'sheet'
+    for invalid in ['홈', 'History', '', 'bad/name', 'x' * 32]:
+        with pytest.raises(lib.LibraryError):
+            lib.rename_sheet(SUITE, '회원 혜택', invalid, 'tester')
+    assert lib.get_case(SUITE, 'BEN_0001')['sheet'] == '회원 혜택'
+
+
+def test_rename_sheet_restores_template_when_case_write_fails(seeded, monkeypatch):
+    from _state import read_state
+    root = lib.suite_dir(SUITE)
+    before_xlsx = (root / 'template.xlsx').read_bytes()
+    before_profiles = read_state(root / 'template_profile.json')
+    real_update = lib.update_state
+    failed = False
+    def fail_once(path, mutate):
+        nonlocal failed
+        if path.name == 'cases.json' and not failed:
+            failed = True
+            raise OSError('disk write failed')
+        return real_update(path, mutate)
+    monkeypatch.setattr(lib, 'update_state', fail_once)
+    with pytest.raises(OSError, match='disk write failed'):
+        lib.rename_sheet(SUITE, '혜택', '회원 혜택', 'tester')
+    assert (root / 'template.xlsx').read_bytes() == before_xlsx
+    assert read_state(root / 'template_profile.json') == before_profiles
+    assert lib.get_case(SUITE, 'BEN_0001')['sheet'] == '혜택'
+
+
+def test_sheet_rename_changes_only_letter_case_without_suffix(seeded):
+    import openpyxl
+    lib.rename_sheet(SUITE, '혜택', 'Benefits', 'tester')
+    lib.rename_sheet(SUITE, 'Benefits', 'benefits', 'tester')
+    wb = openpyxl.load_workbook(lib.suite_dir(SUITE) / 'template.xlsx')
+    assert 'benefits' in wb.sheetnames and 'benefits1' not in wb.sheetnames
+    wb.close()
+    assert lib.get_case(SUITE, 'BEN_0001')['sheet'] == 'benefits'

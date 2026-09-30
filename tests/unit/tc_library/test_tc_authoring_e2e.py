@@ -29,6 +29,7 @@ def _generate(page: Page, tmp_path: Path) -> None:
     page.locator('[data-id="nav-tab-generate"]').click()
     page.locator('[data-id="src-file-input"]').set_input_files(str(prd))
     expect(page.locator('[data-id="src-chip"]')).to_have_count(1)
+    page.locator('[data-id="gen-target-sheet"]').select_option("혜택")
     page.locator('[data-id="gen-path-l2"]').select_option("상단 배너")
     page.locator('[data-id="gen-submit"]').click()
 

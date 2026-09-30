@@ -30,6 +30,7 @@
 
   NS.api = {
     suites: () => request('GET', '/api/tc-library'),
+    renameSheet: (suite, sheet, name) => request('POST', `${S(suite)}/sheets/rename`, { sheet, name }),
     tree: (suite) => request('GET', `${S(suite)}/tree`),
     list: (suite, query) => request('GET', `${S(suite)}?${new URLSearchParams(query)}`),
     getCase: (suite, id) => request('GET', C(suite, id)),
