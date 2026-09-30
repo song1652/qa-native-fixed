@@ -352,7 +352,10 @@
 .tc-studio .btn-danger-solid { background:#DC2626; color:#fff; border:0; }
 .tc-studio .btn-danger-solid:disabled { opacity:.45; cursor:not-allowed; }
 .tc-studio .trash-list { list-style:none; margin:0; padding:0; display:grid; gap:6px; }
-.tc-studio .trash-list li { display:grid; grid-template-columns:1fr auto; gap:10px; align-items:center; padding:10px 12px; border:1px solid var(--line); border-radius:var(--radius-sm); background:var(--card); font-size:13px; }
+.tc-studio .trash-list li { display:grid; grid-template-columns:1fr auto auto; gap:10px; align-items:center; padding:10px 12px; border:1px solid var(--line); border-radius:var(--radius-sm); background:var(--card); font-size:13px; }
+.tc-studio .btn-sm-danger { background:transparent; color:var(--err); border-color:var(--err-bg); }
+.tc-studio .btn-sm-danger:hover { background:var(--err-bg); }
+.tc-studio .trash-list .confirm-row { grid-column:1 / -1; display:flex; gap:8px; align-items:center; }
 .tc-studio .scrim { position:fixed; inset:0; background:rgba(5,4,15,.55); display:grid; place-items:center; padding:16px; z-index:40; }
 .tc-studio .modal { width:min(620px,100%); max-height:88vh; overflow:auto; background:var(--bg2); border:1px solid var(--line2); border-radius:var(--radius); box-shadow:var(--shadow); }
 .tc-studio .modal .panel-head { font-size:14px; }

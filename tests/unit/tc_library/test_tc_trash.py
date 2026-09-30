@@ -126,7 +126,31 @@ def test_expired_items_are_purged_when_listed(seeded):
 
 def test_purge_removes_one_item(seeded):
     meta = trash.delete_suite(SUITE, SUITE)
-    trash.purge(meta["trash_id"])
+    assert trash.purge(meta["trash_id"], SUITE)["suite"] == SUITE
     assert trash.list_trash() == []
-    with pytest.raises(lib.LibraryError):
-        trash.purge(meta["trash_id"])
+    with pytest.raises(lib.LibraryError) as exc:
+        trash.purge(meta["trash_id"], SUITE)
+    assert exc.value.code == "TRASH_NOT_FOUND"
+
+
+def test_purge_requires_matching_suite_name(seeded):
+    meta = trash.delete_suite(SUITE, SUITE)
+    with pytest.raises(lib.LibraryError) as exc:
+        trash.purge(meta["trash_id"], "다른스위트")
+    assert exc.value.code == "CONFIRM_MISMATCH"
+    assert [i["trash_id"] for i in trash.list_trash()] == [meta["trash_id"]]
+
+
+def test_purge_after_restore_is_not_found(seeded):
+    meta = trash.delete_suite(SUITE, SUITE)
+    trash.restore_suite(meta["trash_id"])
+    with pytest.raises(lib.LibraryError) as exc:
+        trash.purge(meta["trash_id"], SUITE)
+    assert exc.value.code == "TRASH_NOT_FOUND"
+    assert lib.suite_dir(SUITE).is_dir()
+
+
+def test_purge_rejects_malformed_id(seeded):
+    with pytest.raises(lib.LibraryError) as exc:
+        trash.purge("../x", SUITE)
+    assert exc.value.code == "INVALID_TRASH"

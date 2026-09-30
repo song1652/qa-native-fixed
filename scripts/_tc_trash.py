@@ -120,6 +120,8 @@ def restore_suite(trash_id: str) -> dict:
         raise LibraryError("휴지통에 없는 항목입니다", "TRASH_NOT_FOUND", 404)
     suite = meta["suite"]
     with suite_lock(suite):
+        if not (source / "meta.json").exists():   # 락을 기다리는 사이 영구 삭제됐는지 다시 확인
+            raise LibraryError("휴지통에 없는 항목입니다", "TRASH_NOT_FOUND", 404)
         if suite_dir(suite).exists():
             raise LibraryError(f"같은 이름의 스위트 '{suite}'가 이미 있습니다. 그 스위트를 삭제한 뒤 복원하세요",
                                "SUITE_EXISTS", 409)
@@ -134,8 +136,16 @@ def restore_suite(trash_id: str) -> dict:
     return meta
 
 
-def purge(trash_id: str) -> None:
+def purge(trash_id: str, confirm: str) -> dict:
+    """휴지통 항목 하나를 영구 삭제한다. confirm은 화면이 보낸 스위트 이름 (엉뚱한 항목 삭제 방지)."""
     target = _trash_dir(trash_id)
-    if not (target / "meta.json").exists():
+    meta = read_state(target / "meta.json")
+    if not meta.get("trash_id"):
         raise LibraryError("휴지통에 없는 항목입니다", "TRASH_NOT_FOUND", 404)
-    shutil.rmtree(target)
+    if confirm != meta["suite"]:
+        raise LibraryError("삭제할 스위트 이름이 일치하지 않습니다", "CONFIRM_MISMATCH")
+    with suite_lock(meta["suite"]):          # restore_suite와 같은 락 — 복원과 동시에 돌지 않게 한다
+        if not (target / "meta.json").exists():   # 락을 기다리는 사이 복원·삭제됐는지 다시 확인
+            raise LibraryError("휴지통에 없는 항목입니다", "TRASH_NOT_FOUND", 404)
+        shutil.rmtree(target)
+    return meta

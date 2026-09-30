@@ -110,7 +110,8 @@
     const count=payload.sources.reduce((n,s)=>n+previews.find(p=>p.preview_id===s.preview_id).sheets.filter(x=>s.sheets.includes(x.name)).reduce((n,x)=>n+x.cases,0),0);
     const valid=!mappingDirty&&previews.length&&payload.sources.length&&/^[\w가-힣-]+$/.test(payload.suite)&&!payload.suite.startsWith('_')&&payload.sources.every(s=>s.sheets.every(x=>/^[A-Z][A-Z0-9]{0,7}$/.test(s.prefixes[x])));
     $('#import-plan',root).disabled=!valid||busy;
-    $('#import-summary',root).textContent=valid?`${count}건 · 변경 미리보기를 확인하세요`:'스위트·시트·접두어를 확인하세요';
+    const noSheets=previews.length&&previews.every(p=>!p.sheets.length);
+    $('#import-summary',root).textContent=valid?`${count}건 · 변경 미리보기를 확인하세요`:noSheets?'인식된 시트가 없습니다. 헤더(대분류·기능·Step·Expected Result)를 찾지 못했습니다. 양식 인식에서 직접 매핑을 선택하세요':'스위트·시트·접두어를 확인하세요';
     $('#import-confirm',root).textContent=`${count}건 가져오기`;
   }
   function caseText(c){

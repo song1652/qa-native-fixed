@@ -268,8 +268,7 @@ class TcLibraryRoutesMixin:
 
     def _tcl_trash_purge(self, trash_id: str):
         from _tc_trash import purge
-        purge(trash_id)
-        self._tcl_json({"ok": True})
+        self._tcl_json({"ok": True, "purged": purge(trash_id, self._tcl_query.get("confirm", ""))})
 
     def _tcl_restore(self, suite: str, case_id: str):
         from _tc_library import restore_case

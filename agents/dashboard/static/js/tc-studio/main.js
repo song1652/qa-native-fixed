@@ -211,7 +211,8 @@
       const left = Math.max(0, Math.ceil((new Date(t.expires_at) - Date.now()) / 86400000));
       return `<li data-trash="${esc(t.trash_id)}"><div><b>${esc(t.suite)}</b><div class="help">TC ${t.cases}건 · 시트 ${t.sheets}개 · ${esc(fmtTime(t.deleted_at))} 삭제 · ${left}일 남음</div>
         <div class="help err" data-id="trash-error" hidden></div></div>
-        <button class="btn-sm" type="button" data-id="trash-restore">복원</button></li>`;
+        <button class="btn-sm" type="button" data-id="trash-restore" aria-label="'${esc(t.suite)}' 복원">복원</button>
+        <button class="btn-sm btn-sm-danger" type="button" data-id="trash-purge" aria-label="'${esc(t.suite)}' 영구삭제">영구삭제</button></li>`;
     }).join('') || '<li class="faint" data-id="trash-empty">삭제한 스위트가 없습니다</li>';
     $$('[data-id="trash-restore"]', root).forEach((b) => b.addEventListener('click', async () => {
       const li = b.closest('li');
@@ -227,6 +228,36 @@
         box.hidden = false;
         b.disabled = false;
       }
+    }));
+    $$('[data-id="trash-purge"]', root).forEach((b) => b.addEventListener('click', () => {
+      const li = b.closest('li');
+      const suite = items.find((t) => t.trash_id === li.dataset.trash).suite;
+      const row = document.createElement('div');
+      row.className = 'confirm-row';
+      row.setAttribute('role', 'alert');
+      row.innerHTML = `<span class="help err">'${esc(suite)}' 스위트를 영구삭제합니다. 복원할 수 없습니다.</span><span class="spacer"></span>
+        <button class="btn-sm" type="button" data-id="trash-purge-cancel">취소</button>
+        <button class="btn-sm btn-danger-solid" type="button" data-id="trash-purge-confirm">영구삭제 확정</button>`;
+      li.appendChild(row);
+      b.disabled = true;
+      const cancel = $('[data-id="trash-purge-cancel"]', row);
+      cancel.focus();
+      cancel.addEventListener('click', () => { row.remove(); b.disabled = false; b.focus(); });
+      $('[data-id="trash-purge-confirm"]', row).addEventListener('click', async (ev) => {
+        ev.target.disabled = true;
+        try {
+          await api.purgeTrash(li.dataset.trash, suite);
+          NS.toast(`'${esc(suite)}' 스위트를 영구삭제했습니다.`, 'ok');
+          await renderTrash();
+        } catch (err) {
+          if (err.status === 404) { await renderTrash(); return; }
+          const box = $('[data-id="trash-error"]', li);
+          box.textContent = err.message;
+          box.hidden = false;
+          row.remove();
+          b.disabled = false;
+        }
+      });
     }));
   }
 

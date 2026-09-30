@@ -32,11 +32,18 @@ def _merged_lookup(ws) -> dict[tuple[int, int], object]:
     return lookup
 
 
+# 원본 엑셀의 Test Level 값 → 라이브러리 우선순위 (5단계를 4단계로 접는다)
+PRIORITY_ALIASES = {"very_high": "P0", "high": "P1", "medium": "P2", "low": "P3",
+                    "bat": "P0", "level 1": "P0", "level 2": "P1", "level 3": "P2", "level 4": "P3"}
+
+
 def read_sheet_cases(
     ws, profile: TemplateProfile, *, source_name: str, prefix: str,
-    existing_ids: set[str],
+    existing_ids: set[str], ws_values=None,
 ) -> list[dict]:
+    """ws_values: 같은 시트를 data_only=True로 연 것. 수식 칸은 엑셀이 저장한 계산 결과를 쓴다."""
     merged = _merged_lookup(ws)
+    merged_values = _merged_lookup(ws_values) if ws_values is not None else {}
     cols = profile.columns
 
     def value(row: int, key: str) -> str:
@@ -44,6 +51,8 @@ def read_sheet_cases(
         if col is None:
             return ""
         raw = merged.get((row, col), ws.cell(row, col).value)
+        if isinstance(raw, str) and raw.startswith("="):
+            raw = None if ws_values is None else merged_values.get((row, col), ws_values.cell(row, col).value)
         return "" if raw is None else str(raw).strip()
 
     used = set(existing_ids)
@@ -78,8 +87,7 @@ def read_sheet_cases(
             case_id=case_id, sheet=profile.sheet, path=list(path), feature=feature,
             precondition=value(r, "precondition"), steps=parse_steps(steps_text),
             expected=expected, bullets=bullets,
-            priority={"very_high": "P0", "high": "P1", "medium": "P2", "low": "P3"}.get(
-                value(r, "priority").lower(), value(r, "priority")),
+            priority=PRIORITY_ALIASES.get(value(r, "priority").lower(), value(r, "priority")),
             source_tc_id=value(r, "source_tc_id"),
             tags=list(dict.fromkeys(t.strip() for t in value(r, "tags").split(",") if t.strip())),
             execution_result=merge_results(results),
@@ -96,6 +104,7 @@ def import_workbook(
     import openpyxl
 
     wb = openpyxl.load_workbook(str(path), data_only=False)
+    wb_values = openpyxl.load_workbook(str(path), data_only=True)
     try:
         cases: list[dict] = []
         used: set[str] = set()
@@ -103,10 +112,11 @@ def import_workbook(
             prefix = prefixes.get(sheet) or f"S{index:02d}"
             sheet_cases = read_sheet_cases(
                 wb[sheet], profiles[sheet], source_name=path.name, prefix=prefix,
-                existing_ids=used,
+                existing_ids=used, ws_values=wb_values[sheet],
             )
             used.update(c["case_id"] for c in sheet_cases)
             cases.extend(sheet_cases)
         return cases
     finally:
         wb.close()
+        wb_values.close()

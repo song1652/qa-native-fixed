@@ -9,15 +9,15 @@ HEADER_ALIASES: dict[str, tuple[str, ...]] = {
     "source_tc_id": ("tc_id", "tc id", "scenario id", "test scenario id"),
     "tags": ("tags", "태그"),
     "no": ("no.", "no"),
-    "l1": ("대분류",),
-    "l2": ("중분류",),
-    "l3": ("소분류",),
-    "feature": ("기능",),
-    "precondition": ("사전 조건", "사전조건"),
-    "steps": ("test step", "test steps", "테스트 절차"),
+    "l1": ("대분류", "main category"),
+    "l2": ("중분류", "sub category"),
+    "l3": ("소분류", "detail category"),
+    "feature": ("기능", "tc summary", "tc summuery"),
+    "precondition": ("사전 조건", "사전조건", "precondition"),
+    "steps": ("test step", "test steps", "step", "steps", "테스트 절차"),
     "expected": ("expected result", "기대결과", "기대 결과"),
     "priority": ("우선순위",),
-    "env": ("환경",),
+    "env": ("환경", "test result"),
     "note": ("기타", "비고"),
 }
 REQUIRED_COLUMNS = ("l1", "feature", "steps", "expected")
@@ -89,7 +89,9 @@ def analyze_sheet(ws) -> TemplateProfile | None:
                 break
             result_columns[str(label).strip()] = col
             col += 1
-    data_start = sub_row + 1 if result_columns else sub_row
+    for label in [k for k in result_columns if _norm(k) == "test level"]:
+        columns.setdefault("priority", result_columns.pop(label))   # 결과 아래 칸의 Test Level = 우선순위
+    data_start = sub_row + 1 if result_columns or "priority" in columns else sub_row
 
     validations: dict[str, list[str]] = {}
     col_to_field = {c: f for f, c in columns.items()}

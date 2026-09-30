@@ -32,6 +32,7 @@
     suites: () => request('GET', '/api/tc-library'),
     deleteSuite: (suite) => request('DELETE', `${S(suite)}?confirm=${enc(suite)}`),
     trash: () => request('GET', '/api/tc-library/trash'),
+    purgeTrash: (id, suite) => request('DELETE', `/api/tc-library/trash/${enc(id)}?confirm=${enc(suite)}`),
     restoreTrash: (id) => request('POST', `/api/tc-library/trash/${enc(id)}/restore`),
     addSheet: (suite, name) => request('POST', `${S(suite)}/sheets`, { name }),
     renameSheet: (suite, sheet, name) => request('POST', `${S(suite)}/sheets/rename`, { sheet, name }),

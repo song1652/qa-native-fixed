@@ -319,3 +319,21 @@ def test_suite_delete_is_blocked_while_generation_runs(studio, monkeypatch):
     page.locator('[data-id="suite-delete-cancel"]').click()
     page.locator('[data-id="job-cancel"]').click()
     expect(page.locator("#job-fail")).to_be_visible(timeout=15000)
+
+
+def test_trashed_suite_can_be_purged_after_inline_confirm(studio):
+    base, page, _ = studio
+    open_suite_delete(page)
+    page.locator('[data-id="suite-delete-confirm"]').click()
+    expect(page.locator('[data-id="suite-select"] option')).to_have_text(["스위트 없음"])
+    page.locator('[data-id="suite-menu-btn"]').click()
+    page.locator('[data-id="suite-menu-trash"]').click()
+    item = page.locator('[data-id="trash-list"] li')
+    item.locator('[data-id="trash-purge"]').click()
+    item.locator('[data-id="trash-purge-cancel"]').click()          # 취소하면 그대로 남는다
+    expect(item).to_have_count(1)
+    item.locator('[data-id="trash-purge"]').click()
+    item.locator('[data-id="trash-purge-confirm"]').click()
+    expect(page.locator('[data-id="trash-empty"]')).to_be_visible()
+    expect(page.locator("#trash-n")).to_have_text("0")
+    expect(page.locator('[data-id="trash-modal"]')).to_be_visible()  # 연속 삭제를 위해 모달은 유지
