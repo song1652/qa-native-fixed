@@ -167,7 +167,8 @@ def _slug(text: str) -> str:
 
 
 def _add(bundle_id: str, kind: str, title: str, markdown: str, digest: str,
-         pages: int, warnings: list[str]) -> dict:
+         pages: int, warnings: list[str], *, ref: str = "", version: str = "",
+         origin: str = "", assets: dict[str, bytes] | None = None) -> dict:
     d = _bundle_dir(bundle_id)
     if not (d / "manifest.json").exists():
         raise SourceError("소스 묶음이 없습니다", "BUNDLE_NOT_FOUND", 404)
@@ -178,19 +179,26 @@ def _add(bundle_id: str, kind: str, title: str, markdown: str, digest: str,
     entry: dict = {}
 
     def mutate(manifest: dict) -> dict:
-        ref = f"{kind}:{digest[:12]}"
-        if any(s["ref"] == ref for s in manifest["sources"]):
+        source_ref = ref or f"{kind}:{digest[:12]}"
+        if any(s["ref"] == source_ref for s in manifest["sources"]):
             raise SourceError("이미 추가한 소스입니다", "SOURCE_EXISTS", 409)
         # 지운 번호를 다시 쓰지 않는다 (지운 뒤 추가해도 s01·s02가 겹치지 않게)
         n = max([int(x["source_id"][1:]) for x in manifest["sources"]] + [manifest.get("last_n", 0)]) + 1
         manifest["last_n"] = n
         filename = f"{n:02d}_{_slug(title)}.md"
         (d / filename).write_text(markdown, encoding="utf-8")
+        asset_names = []
+        for name, data in (assets or {}).items():
+            safe = f"{n:02d}_{_slug(name)}.png"
+            (d / "assets").mkdir(exist_ok=True)
+            (d / "assets" / safe).write_bytes(data)
+            asset_names.append(safe)
         entry.update({
-            "source_id": f"s{n:02d}", "kind": kind, "title": title, "ref": ref,
-            "version": digest[:12], "sha256": digest, "chars": len(markdown), "pages": pages,
+            "source_id": f"s{n:02d}", "kind": kind, "title": title, "ref": source_ref,
+            "version": version or digest[:12], "sha256": digest, "chars": len(markdown), "pages": pages,
             "sections": len(split_sections(markdown)), "truncated": truncated,
-            "warnings": warnings, "file": filename, "added_at": now_iso(),
+            "warnings": warnings, "file": filename, "origin": origin, "assets": asset_names,
+            "added_at": now_iso(),
         })
         manifest["sources"].append(dict(entry))
         return manifest
@@ -217,6 +225,41 @@ def add_paste(bundle_id: str, text: str) -> dict:
         raise SourceError("붙여넣은 내용이 없습니다", "EMPTY_SOURCE")
     title = text.strip().splitlines()[0][:30]
     return _add(bundle_id, "paste", title, text, hashlib.sha256(raw).hexdigest(), 0, [])
+
+
+def add_fetched(bundle_id: str, *, kind: str, title: str, markdown: str, ref: str, version: str,
+                origin: str, warnings: list[str] | None = None, pages: int = 0,
+                assets: dict[str, bytes] | None = None) -> dict:
+    """원격 소스(url·conf·figma) 추가 (Phase 3). ref에는 버전이 들어간다: "conf:48213377@v14"."""
+    if not markdown.strip():
+        raise SourceError("가져온 문서에 본문이 없습니다", "EMPTY_SOURCE")
+    digest = hashlib.sha256(markdown.encode("utf-8")).hexdigest()
+    return _add(bundle_id, kind, title, markdown, digest, pages, list(warnings or []),
+                ref=ref, version=version, origin=origin, assets=assets)
+
+
+def asset_path(bundle_id: str, name: str) -> Path:
+    if not re.fullmatch(r"\d\d_[\w가-힣]+\.png", name):
+        raise SourceError("파일 이름이 올바르지 않습니다", "INVALID_ASSET")
+    path = _bundle_dir(bundle_id) / "assets" / name
+    if not path.exists():
+        raise SourceError("이미지가 없습니다", "ASSET_NOT_FOUND", 404)
+    return path
+
+
+def find_source(ref: str) -> tuple[str, dict] | None:
+    """버전 포함 ref("conf:123@v14")를 가진 소스를 모든 묶음에서 찾는다 (가장 최근 묶음 우선)."""
+    root = sources_root()
+    if not root.exists():
+        return None
+    for d in sorted(root.iterdir(), key=lambda p: p.stat().st_mtime, reverse=True):
+        manifest = d / "manifest.json"
+        if not manifest.exists():
+            continue
+        for entry in json.loads(manifest.read_text(encoding="utf-8"))["sources"]:
+            if entry["ref"] == ref:
+                return d.name, entry
+    return None
 
 
 def remove_source(bundle_id: str, source_id: str) -> None:

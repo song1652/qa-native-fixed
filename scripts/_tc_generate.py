@@ -264,7 +264,8 @@ def run_job(job_id: str, *, runner=run_claude) -> dict:
             allowed = {i["ref"]: i["text"] for i in chunk}
             drafts = []
             for raw in output.get("cases", []):
-                draft, errors = build_draft(raw, target=target, allowed=allowed, job_id=job_id)
+                draft, errors = build_draft(raw, target=target, allowed=allowed, job_id=job_id,
+                                            verified_kinds=("figma",))   # Figma 화면 문구 = 확인된 문구
                 if errors:
                     invalid.append({"section": n + 1, "raw": raw, "errors": errors})
                     sections[n]["invalid"] += 1
