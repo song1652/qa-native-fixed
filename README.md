@@ -237,3 +237,7 @@ python agents/dashboard/serve.py
 | [`doc/PIPELINE_STATE.md`](doc/PIPELINE_STATE.md) | state/pipeline.json 전체 스키마 |
 | [`doc/DIRECTORY.md`](doc/DIRECTORY.md) | 프로젝트 디렉토리 트리 |
 | [`doc/TC_AUTHORING_PRD.md`](doc/TC_AUTHORING_PRD.md) | TC Authoring Studio PRD (문서 기반 TC 작성·웹 편집·xlsx/md 내보내기) — Draft |
+| [`doc/TC_AUTHORING_ELEMENT_SPEC.md`](doc/TC_AUTHORING_ELEMENT_SPEC.md) | TC Authoring Studio 화면 요소별 동작 명세 + API 제안 · 목업: [`design-previews/tc-authoring-studio.html`](design-previews/tc-authoring-studio.html) |
+| [`doc/TC_AUTHORING_HANDOFF.md`](doc/TC_AUTHORING_HANDOFF.md) | **TC Authoring Studio 개발 인수인계** — 구현을 맡을 때 가장 먼저 읽는 문서 (읽는 순서·진행 방법·보고 형식) |
+| [`doc/TC_AUTHORING_ROADMAP.md`](doc/TC_AUTHORING_ROADMAP.md) | TC Authoring Studio 로드맵 — Phase 1~4 작업 ID·결정 사항 모음 |
+| [`doc/plans/`](doc/plans/) | TC Authoring Studio Phase별 상세 구현 계획 (검증된 코드·테스트 포함) |
