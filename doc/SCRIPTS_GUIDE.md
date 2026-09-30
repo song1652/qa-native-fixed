@@ -394,6 +394,8 @@ python scripts/05_execute.py
 | `scripts/_tc_credentials.py` | Confluence·Figma 자격증명 (마스킹·환경변수 우선) | ❌ (대시보드가 import) |
 | `scripts/_tc_connectors.py` | PRD URL·Confluence·Figma 소스 수집 | ❌ (대시보드가 import) |
 | `scripts/_tc_source_watch.py` | 출처 버전 변경 확인·차이·확인 완료 | ❌ (대시보드가 import) |
+| `scripts/_tc_md_export.py` | TC 라이브러리 → testcases/{group}/tc_*.md (퍼널·그룹 매핑·tc_id 고정·드리프트, 커밋·롤백은 Import Studio) | ❌ (대시보드가 import) |
+
 
 
 | `agents/dashboard/tools/scope_tc_studio_css.py` | 목업 CSS → `static/css/tc-studio.css` 생성 (목업을 고친 뒤 다시 실행) | ✅ (`python agents/dashboard/tools/scope_tc_studio_css.py <목업> <출력>`) |

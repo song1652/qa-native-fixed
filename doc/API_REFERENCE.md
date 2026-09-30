@@ -163,9 +163,11 @@
 | GET | `/api/tc-library/import/mapping-profiles` | Import Studio 매핑 프로필 → 열 매핑 |
 
 생성 작업은 `claude -p --restricted --strict-mcp-config --tools "" --permission-mode dontAsk --no-session-persistence --output-format json --json-schema …`로 저장소 밖 임시 폴더에서 실행한다. 환경변수: `TCS_CLAUDE_BIN`(CLI 경로), `TCS_CLAUDE_MODEL`(모델), `TCS_CHUNK_TIMEOUT`(섹션당 초, 기본 300). 작업 기록은 `state/tc_library/_jobs/{job_id}/`.
+
 #### 원격 소스·출처 추적 (`routes_tc_connectors.py`)
 
-| 메서드 | 경로 | 설명 ||---|---|---|
+| 메서드 | 경로 | 설명 |
+|---|---|---|
 | GET | `/api/tc-library/credentials` | 연결 상태 (토큰 없음) |
 | PUT | `/api/tc-library/credentials/{confluence\|figma}` | 저장 → 연결 상태 |
 | POST | `/api/tc-library/sources/{bundle}/url` | `{url}` → 201 `{source}` |
@@ -178,6 +180,18 @@
 | POST | `/api/tc-library/{suite}/cases/{id}/ack-source` | 확인 완료 |
 
 원격 요청은 `_tc_fetch.fetch()`만 거친다: https·호스트 허용 목록·내부망 차단·리다이렉트 재검사(최대 3)·15초·20MB. 자격증명 파일 `config/confluence_config.json`, `config/figma_config.json`(git 제외), 환경변수 `CONFLUENCE_BASE_URL` `CONFLUENCE_EMAIL` `CONFLUENCE_TOKEN` `FIGMA_TOKEN`이 우선한다.
+
+#### md 내보내기 (`routes_tc_md.py`)
+
+| 메서드 | 경로 | 설명 |
+|---|---|---|
+| GET | `/api/tc-library/{suite}/export/md/eligibility` | 퍼널·가지 매핑·제외·드리프트 |
+| PUT | `/api/tc-library/{suite}/md-groups` | `{path, group, code}` |
+| POST | `/api/tc-library/{suite}/export/md` | 미리보기 → `{run_id, summary, rows[{tc_id, case_id, status, reason, reason_code, file, excluded, before, after}]}` |
+| POST | `/api/tc-library/{suite}/md-exports/{run_id}/commit` | `{skip: [tc_id]}` → Import Studio 커밋 결과 |
+| POST | `/api/tc-library/{suite}/md-exports/{run_id}/rollback` | 롤백 |
+
+`ImportRunError`는 409 `{code}`로 반환한다. 미리보기·반영·롤백은 기존 Import Studio 커밋 엔진을 사용한다.
 
 ### 원격 모드 위험도 분류
 

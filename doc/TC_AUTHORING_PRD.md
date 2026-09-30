@@ -195,14 +195,14 @@ PRD는 문서의 역할이며 파일과 URL은 같은 PRD를 전달하는 두 �
 
 | # | 내용 | 영향 |
 |---|---|---|
-| O1 | **`data_key`를 세 곳이 서로 다르게 해석한다.** 템플릿은 `test_data[key].attr`, `validate_data_keys`는 `[group][key]`, `sync_test_data.py`는 프로덕트 파일명으로 본다. | md 내보내기 전에 정리해야 한다 |
+| O1 | **`data_key`를 세 곳이 서로 다르게 해석한다.** 템플릿은 `test_data[key].attr`, `validate_data_keys`는 `[group][key]`, `sync_test_data.py`는 프로덕트 파일명으로 본다. | md 내보내기 전에 정리해야 한다 → 해결: Phase 4 M1 (결정 V1) |
 | O2 | 기존 CL/PL TC가 비표준 태그 `general`을 쓰고 값을 하드코딩하고 있다 | 생성기가 이 나쁜 패턴을 따라 한다 |
-| O3 | `parse_cases`가 추가 frontmatter 키를 버린다. `source_ref`를 보존하도록 조금 고친다 | 추적성 |
+| O3 | `parse_cases`가 추가 frontmatter 키를 버린다. `source_ref`를 보존하도록 조금 고친다 | 추적성 → 해결: Phase 4 M1 (결정 V1) |
 | O4 | AUTO 값 체계(`Y-web`/`Y-app`/`N`)를 팀이 합의해야 한다 | 지금은 모든 시트에서 비어 있다 |
 | O5 | 원본이 Google Sheets에서 온 파일인지 확인해야 한다. 소문자 `average()` 같은 수식이 왕복 후에도 유지되는지가 걸린다 | 엑셀 무결성 |
 | O6 | 라이브러리 저장소를 git으로 관리할지 정해야 한다. git으로 관리하면 팀 공유와 diff가 쉽고, gitignore하면 개인 작업 공간이 된다 | 협업 방식 |
-| O7 | **md 우선순위에 `very_high` 추가.** 지금 파이프라인은 `high`/`medium`/`low`만 안다. `_import_commit._render`(207~209행)는 그 밖의 값을 조용히 `medium`으로 바꾸고, `coverage_matrix.py`는 `low`로 센다. 허용 값을 넓히려면 `_import_commit.py`, `coverage_matrix.py`, `templates/tc-template.md`, `doc/TEST_CASE_GUIDE.md`와 대시보드 커버리지 표시를 함께 고쳐야 한다. | 이걸 고치기 전에 md를 내보내면 P0 케이스가 medium으로 떨어진다 |
-| O7 | 목업은 TC당 실행 결과 1개를 표시한다. 기존 Excel은 And/iOS 결과 컬럼이 따로 있으므로 플랫폼별로 저장·가져오기·내보내기를 할지 결정해야 한다. 결정 전에는 K/L 결과를 가져오거나 임의 복제하지 않는다 | 결과 데이터 모델과 Excel 왕복 |
+| O7 | **md 우선순위에 `very_high` 추가.** 지금 파이프라인은 `high`/`medium`/`low`만 안다. `_import_commit._render`(207~209행)는 그 밖의 값을 조용히 `medium`으로 바꾸고, `coverage_matrix.py`는 `low`로 센다. 허용 값을 넓히려면 `_import_commit.py`, `coverage_matrix.py`, `templates/tc-template.md`, `doc/TEST_CASE_GUIDE.md`와 대시보드 커버리지 표시를 함께 고쳐야 한다. | 이걸 고치기 전에 md를 내보내면 P0 케이스가 medium으로 떨어진다 → 해결: Phase 4 M1 (결정 V1) |
+| O7 | 목업은 TC당 실행 결과 1개를 표시한다. 기존 Excel은 And/iOS 결과 컬럼이 따로 있으므로 플랫폼별로 저장·가져오기·내보내기를 할지 결정해야 한다. 결정 전에는 K/L 결과를 가져오거나 임의 복제하지 않는다 | 결과 데이터 모델과 Excel 왕복 → 해결: Phase 4 M1 (결정 V1) |
 
 별도 Import Studio 화면 제거 완료 기준: 기존 매핑 프로필을 새 화면에서 사용할 수 있고, 임의 양식 Excel의 미리보기·가져오기와 md 커밋·롤백이 통과해야 한다. 기존 `/api/import/*` 사용처와 북마크의 이동 경로를 확인한 다음 화면·라우트를 정리한다. 공용 엔진과 기존 작업 이력·스냅샷은 화면 제거 대상이 아니다.
 

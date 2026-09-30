@@ -60,7 +60,7 @@ SCRIPT_DESCRIPTIONS: dict[str, str] = {
     "heal_utils.py":          "힐링 공용 유틸 (classify_error 7분류, append_lessons)",
     "result_parser.py":       "pytest JSON 리포트 파싱 (단일/병렬 공유)",
     "report_html.py":         "HTML 리포트 생성 (단일/병렬 공통)",
-    "parse_cases.py":         "tc_*.md 파싱",
+    "parse_cases.py":         "tc_*.md 파싱 (data_key: {프로덕트}.{데이터셋})",
     "hook_utils.py":          "훅 스크립트 공통 유틸: check_state() + remaining_steps_hint() — 레지스트리 기반 잔여 단계 지시문 생성",
     "structured_log.py":      "구조화 로그 (JSON Lines → logs/structured.jsonl)",
     "_paths.py":              "중앙 경로 상수 + read_state/write_state/update_state 원자적 I/O (FSM 전이 검증 내장)",
@@ -82,6 +82,7 @@ SCRIPT_DESCRIPTIONS: dict[str, str] = {
     "_tc_credentials.py":     "Confluence·Figma 자격증명",
     "_tc_connectors.py":      "PRD URL·Confluence·Figma 소스 수집",
     "_tc_source_watch.py":    "출처 버전 변경 추적",
+    "_tc_md_export.py":         "TC 라이브러리 → 파이프라인 md 내보내기",
 
 
 
@@ -91,7 +92,7 @@ SCRIPT_DESCRIPTIONS: dict[str, str] = {
     "dom_helpers.js":         "JS 공통 유틸 (isVisible·esc·getSelectorsSimple) — _js()가 자동 주입",
     "team_discuss.py":        "팀 토론 초기화",
     "team_approve.py":        "팀 토론 승인 (터미널용)",
-    "sync_test_data.py":      "test_data.json 동기화",
+    "sync_test_data.py":      "test_data/{프로덕트}.json 데이터셋 동기화",
     "coverage_matrix.py":     "커버리지 매트릭스 생성 (→ state/coverage.json)",
     "flaky_detector.py":      "Flaky Test 감지기 (run_history.json 분석 → state/flaky_tests.json)",
     "update_directory.py":    "doc/DIRECTORY.md 자동 생성 (이 파일)",

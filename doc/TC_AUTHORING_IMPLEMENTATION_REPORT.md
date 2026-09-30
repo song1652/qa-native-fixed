@@ -4,6 +4,7 @@
 브랜치: `feat/tc-studio-phase1`. 모든 Phase를 같은 브랜치에 순서대로 누적한다. Push하지 않는다.
 
 ## Phase 1 보고
+
 - 끝낸 작업: B1~B10, W1~W4 (작업별 14개 커밋).
 - 테스트: tests/unit/tc_library 40 passed / 전체 717 passed, 1 skipped. 기존 pytest 경고 2개.
 - 수동 확인: Chromium 대시보드에서 실제 야핏무브_Full.xlsx 6시트·926건 가져오기, BEN_0001 우선순위 P3 수정, 내보내기 무결성 12개 OK, 내려받기, 재가져오기 추가 0·갱신 0·그대로 926. 원본 SHA-256 유지, JS 오류 없음. 출력의 P0~P3 드롭다운과 History 마지막 입력 행 확인. Excel 앱에서 수식 숫자 재계산·표시 확인은 미수행.
@@ -12,6 +13,7 @@
 - 사람이 결정해야 할 것: 없음. 사용자 지시에 따라 다음 Phase로 이어간다.
 
 ## Phase 2 보고
+
 - 끝낸 작업: G1~G7, W5~W8 (작업별 11개 커밋, 브랜치 feat/tc-studio-phase1).
 - 테스트: tests/unit/tc_library 77 passed / 전체 754 passed, 1 skipped. 기존 경고 2개.
 - 수동 확인: 실제 로컬 claude 2회. G5 haiku에서 배너 초안 3건·인용 확인. W8 Chromium에서 실제 TC_AUTHORING_PRD.md F1/F2 원문 발췌를 기본 모델에 전달하여 초안 31건·형식 오류 0건, 인용 31/31 일치, 원문 하이라이트·한국어 유지·추정 배지 9건 확인. 2건 승인 후 라이브러리와 다운로드한 xlsx의 ID 확인, JS 오류 없음. 배너 개편 실제 기획서는 로컬에 없어 실제 보유 PRD의 TC 스튜디오 가지로 확인했다.
@@ -20,9 +22,26 @@
 - 사람이 결정해야 할 것: 없음. 사용자 지시에 따라 Phase 3으로 이어간다.
 
 ## Phase 3 보고
+
 - 끝낸 작업: C1~C5, W9~W11 구현·문서 (작업별 8개 커밋, 브랜치 feat/tc-studio-phase1). 실제 회사 계정 확인은 미수행.
 - 테스트: tests/unit/tc_library 99 passed (3회 연속) / 전체 776 passed, 1 skipped. 상세 저장 경쟁 조건의 단독 재현 검사 수정 후 5회 연속 통과.
 - 수동 확인: 실제 공개 HTTPS https://example.com 수집 → 제목 Example Domain, markdown 185자·버전 해시 12자 확인. Confluence·Figma·버전 변경·이미지는 녹화 응답과 Chromium E2E로 확인했다. 원본/작업 worktree의 자격증명 파일과 환경변수 모두 없음을 값 노출 없이 확인하여 회사 실계정 수집은 수행하지 않았다.
 - 계획과 다르게 한 것: W10에서 배너 조회로 드러난 상세 저장 경쟁 조건을 수정했다. 기존 저장·이력·되돌리기 테스트에 배너 지연·저장 완료 검증을 추가하고 saveDetail의 두 번째 open에 현재 탭을 전달했다. W11은 실제 계정 자격증명이 없어 로드맵에 구현·자동 테스트 완료와 실계정 미확인을 분리해 기록했다. 사용자 연속 진행 지시에 따라 이를 기록하고 Phase 4로 진행한다.
 - 발견한 문제·위험: 상세 탭 경쟁 조건은 lessons_learned.md에 기록하고 수정. 실제 Confluence·Figma 응답·권한·이미지와 회사 문서의 복잡한 매크로는 추가 확인이 필요하다.
 - 사람이 결정해야 할 것: 회사 계정으로 연결 및 실제 문서 확인을 나중에 수행해야 한다. 구현 진행을 위한 질문은 하지 않는다.
+
+## Phase 4 보고
+
+- 끝낸 작업: M1~M3, W12~W13 (작업별 5개 커밋, 브랜치 feat/tc-studio-phase1).
+- 테스트: tests/unit/tc_library 113 passed / 전체 790 passed, 1 skipped (3회 연속: 94.15s, 93.67s, 93.71s). 기존 경고 2개. M1 지정 Import Studio·대시보드·core 회귀에 경로 복원 검증을 포함해 266 passed, 1 skipped.
+- 수동 확인: coverage_matrix.py → state/coverage.json 생성, sync_test_data.py --dry-run → 누락 없음. 별도 임시 프로젝트와 실제 로컬 초대 웹 페이지에 pages.json 그룹을 만들고, 한국어 화면 문구를 확인한 승인·Y-web 케이스 1건을 스튜디오 화면으로 매핑→미리보기→md 반영했다. 실제 claude가 기존 DOM 분석·전략·scaffold·직접 코드 작성·lint·리뷰·승인·실행·리포트 파이프라인을 완료했고 1 passed, 0 failed, 100%, heal_count 0, step done. md 직접 수정 후 FILE_DRIFT 확인. md의 very_high·source_ref·data_key null 및 생성 코드의 한국어 assertion을 확인했다. 회사 실서비스 URL 대신 격리된 로컬 페이지로 파이프라인 연결을 검증한 범위다.
+- 계획과 다르게 한 것: M1 지정 회귀 순서에서 기존 dashboard_server가 임시 경로를 복원하지 않아 core 테스트 27개 오류가 발생했다. 기존 Studio fixture에 종료 후 경로 동일 assertion을 추가해 RED를 확인하고 서버 context 종료 시 _paths·serve 경로 및 Host/Origin을 복원해 GREEN을 확인했다. 실제 파이프라인은 금지된 권한 플래그를 쓰는 기존 자동 실행기를 호출하지 않도록 run_qa.py --no-auto 후 acceptEdits 및 명시적으로 허용한 파일·Python 도구로 claude를 실행했다. 별도 worktree·임시 프로젝트의 초기화와 macOS /var 경로 정규화는 수동 검증 도구에만 적용했다. 최종 문서 검토에서 API 표 복사 중 누락된 개행도 수정했다.
+- 발견한 문제·위험: 테스트 경로 누수는 lessons_learned.md에 기록하고 수정했다. 회사 웹 서비스의 실제 TC는 별도 검증이 필요하며, 이번 100%는 로컬 웹 smoke 1건의 결과다.
+- 사람이 결정해야 할 것: 없음. Push·병합은 수행하지 않았다.
+
+## 검증 자료
+- Phase 1 전체: /tmp/tc-w4-full.log; tc_library: /tmp/tc-w3-green.log; 실제 926건 왕복: /tmp/tc-phase1-manual.log.
+- Phase 2 전체: /tmp/tc-w8-full.log; tc_library: /tmp/tc-phase2-unit.log; 실제 생성·승인·엑셀: /tmp/tc-phase2-manual.log; 화면: /tmp/tc-phase2-real-review.png.
+- Phase 3 전체: /tmp/tc-phase3-full-green.log; tc_library 반복: /tmp/tc-phase3-repeat-{1,2,3}.log; 상세 경쟁 조건 재현·검증: /tmp/tc-w10-race-red.log, /tmp/tc-detail-race-green-{1..5}.log.
+- Phase 4 전체 반복: /tmp/tc-phase4-full-{1,2,3}.log; tc_library: /tmp/tc-phase4-unit.log; 지정 회귀: /tmp/tc-m1-regression-green.log; 실제 파이프라인: /tmp/tc-phase4-manual.log; 화면: /tmp/tc-phase4-md.png.
+- 실제 파이프라인 산출물: /private/var/folders/q4/qsd5zshs6mnd052zbpjftxsh0000gn/T/tc-phase4-pipeline-qn3li4x_/ (md, 생성 Python, 상태, claude-pipeline.log, tests/reports/report_20260930_100933.html). 임시 자료는 저장소에 커밋하지 않았다.

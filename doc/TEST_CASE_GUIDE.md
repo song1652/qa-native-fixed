@@ -71,10 +71,12 @@ type: structured
 | 필드 | 필수 | 값 | 설명 |
 |------|------|-----|------|
 | `id` | **필수** | `tc_{번호}` 또는 `"{그룹코드}_{번호}"` | 케이스 고유 식별자. 그룹코드 포함 시 따옴표로 감싸기 (예: `"CL_01"`, `"PL_02"`) |
-| `data_key` | **필수** | [`test_data.json`](../config/test_data.json) 키 \| `null` | 입력값 참조 키. 입력 불필요 시 `null` |
-| `priority` | **필수** | `high` \| `medium` \| `low` | 우선순위 |
+| `data_key` | **필수** | `{프로덕트}.{데이터셋}` \| `null` | test_data/{프로덕트}.json 안의 {데이터셋} 키. 점이 없으면 그룹 폴더명을 프로덕트로 본다 |
+| `priority` | **필수** | `very_high` \| `high` \| `medium` \| `low` | 우선순위 (very_high = 차단급 핵심 흐름, TC 스튜디오 P0) |
 | `tags` | **필수** | 배열 `[유형, 분류]` | 테스트 유형 태그 |
 | `type` | **필수** | `structured` \| `natural` | 케이스 형식 |
+
+추가 frontmatter 키 `source_ref`는 TC 스튜디오가 쓰는 출처다 (`tc-library:{스위트}/{case_id}`). 파서는 보존만 하고 파이프라인은 쓰지 않는다.
 
 ### 유형 태그 (tags)
 
@@ -92,8 +94,8 @@ type: structured
 | `content` | 콘텐츠/텍스트 확인 |
 
 ### data_key 규칙
-- [`config/test_data.json`](../config/test_data.json)의 키와 1:1 매핑
-- Steps에서 `test_data[{data_key}].{속성}` 형식으로 참조
+- `{프로덕트}.{데이터셋}` → `test_data/{프로덕트}.json` 안의 `{데이터셋}` 키. 점이 없으면 그룹 폴더명을 프로덕트로 본다
+- Steps에서 `test_data[{프로덕트}][{데이터셋}].{속성}` 형식으로 참조
 - 입력값이 필요 없는 케이스는 `null`
 
 ---
@@ -102,6 +104,7 @@ type: structured
 
 | 등급 | 기준 |
 |------|------|
+| **very_high** | 차단급 핵심 흐름 — TC 스튜디오 P0 |
 | **high** | 핵심 기능 — 서비스 접근, 로그인, 주요 플로우 |
 | **medium** | 보조 기능 — 유효성 검증, 에러 처리 |
 | **low** | 엣지케이스 — 특수문자, 경계값, 대소문자 등 |
@@ -167,7 +170,7 @@ type: structured
 - `1.`, `2.`, `3.` 번호로 순서 명시 **(권장)**
 - 번호 없는 평문 줄도 파서가 지원하나, 가독성과 일관성을 위해 번호 형식 사용을 권장
 - 각 step = **단일 액션** (입력 or 클릭 or 이동 하나씩)
-- 입력값은 `test_data[{data_key}].{속성}` 형식으로 참조 (하드코딩 금지)
+- 입력값은 `test_data[{프로덕트}][{데이터셋}].{속성}` 형식으로 참조 (하드코딩 금지)
 
 ```markdown
 ## Steps
@@ -254,9 +257,9 @@ type: structured
 - [ ] 파일명이 `tc_{번호}_{설명}.md` 또는 `tc_{그룹코드}_{번호}_{설명}.md` 형식으로 작성됨
 - [ ] **YAML frontmatter**가 파일 최상단에 있음 (`---` 블록)
 - [ ] frontmatter 필수 필드 5개: `id`, `data_key`, `priority`, `tags`, `type`
-- [ ] **priority**가 `high` / `medium` / `low` 중 하나
-- [ ] **data_key**가 [`config/test_data.json`](../config/test_data.json) 키와 일치 (또는 `null`)
-- [ ] Steps 입력값이 `test_data[{data_key}].{속성}` 형식 (하드코딩 금지)
+- [ ] **priority**가 `very_high` / `high` / `medium` / `low` 중 하나
+- [ ] **data_key**가 `test_data/{프로덕트}.json`에 {데이터셋} 키가 있음 (또는 `null`)
+- [ ] Steps 입력값이 `test_data[{프로덕트}][{데이터셋}].{속성}` 형식 (하드코딩 금지)
 - [ ] 제목이 테스트 목적을 명확하게 표현함 (15자 이내)
 - [ ] `Precondition`이 `0.` 으로 시작함
 - [ ] `Steps`가 단일 액션씩 작성됨 (번호 형식 `1.`, `2.` 권장; 평문도 파서 지원)
