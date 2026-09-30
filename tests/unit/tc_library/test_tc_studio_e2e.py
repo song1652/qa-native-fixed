@@ -51,6 +51,7 @@ def test_route_sidebar_and_tabs(studio):
     expect(page.locator('[data-id="suite-select"] option')).to_have_text(["야핏무브 (6)"])
     expect(page.locator('[data-id="nav-tab-library"]')).to_be_visible()
     expect(page.locator('[data-id="nav-tab-generate"]')).to_be_visible()
+    expect(page.locator('[data-id="nav-tab-review"]')).to_be_visible()
 
 
 def test_tree_filters_and_search(studio):

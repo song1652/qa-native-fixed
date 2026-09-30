@@ -278,7 +278,9 @@ def run_job(job_id: str, *, runner=run_claude) -> dict:
                 fields = {k: drafts[0][k] for k in ("path", "feature", "precondition", "steps",
                                                     "expected", "bullets", "priority", "auto")}
                 patch_case(job["suite"], job["case_id"], current["rev"], fields, "generator")
-                set_draft_meta(job["suite"], job["case_id"], {**drafts[0]["draft_meta"], "regenerated_note": job["note"]})
+                set_draft_meta(job["suite"], job["case_id"], {**drafts[0]["draft_meta"],
+                    "job_id": current.get("draft_meta", {}).get("job_id", job_id),
+                    "regenerated_job_id": job_id, "regenerated_note": job["note"]})
                 sections[n]["kept"] = 1
                 kept += 1
             elif drafts:

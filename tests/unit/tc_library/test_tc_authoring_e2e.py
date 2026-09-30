@@ -61,3 +61,45 @@ def test_profile_edit_and_save(studio):
     page.locator('[data-id="gen-profile-save"]').click()
     expect(page.locator('[data-id="gen-profile"]')).to_have_value("결제 엄격")
     expect(page.locator("#gen-rules li").first).to_have_text("경계값을 모두 쓴다")
+
+
+# ── W6: 초안 검토 (계획의 빈 테스트 블록 보완) ──────────────────
+def _open_review(page, tmp_path):
+    _generate(page, tmp_path)
+    expect(page.locator("#job-done")).to_be_visible(timeout=15000)
+    expect(page.locator("#cnt-review")).to_have_text("2")
+    page.locator('[data-id="job-open-review"]').click()
+    expect(page.locator('[data-id="draft-card"]')).to_have_count(2)
+    return page.locator('[data-id="draft-card"]')
+
+
+def test_review_quote_approve_reject_and_undo(studio):
+    _, page, tmp_path = studio
+    cards = _open_review(page, tmp_path)
+    expect(page.locator('[data-id="source-excerpt"] mark')).to_have_count(1)
+    expect(cards.first).to_contain_text("추정")
+    cards.first.locator('[data-id="draft-approve"]').click()
+    expect(cards.first).to_contain_text("승인")
+    expect(page.locator("#rv-ok")).to_have_text("1")
+    expect(page.locator("#cnt-review")).to_have_text("1")
+    page.locator('[data-id="draft-undo"]').click()
+    expect(page.locator("#rv-ok")).to_have_text("0")
+    expect(page.locator("#rv-left")).to_have_text("2")
+    cards.nth(1).locator('[data-id="draft-reject"]').click()
+    expect(page.locator("#rv-rej")).to_have_text("1")
+    expect(page.locator("#cnt-review")).to_have_text("1")
+
+
+def test_review_regeneration_preserves_case_and_bulk_skips_estimates(studio):
+    _, page, tmp_path = studio
+    cards = _open_review(page, tmp_path)
+    case_id = cards.first.get_attribute("data-case")
+    page.locator('[data-id="review-approve-clean"]').click()
+    expect(page.locator("#rv-left")).to_have_text("2")
+    cards.first.locator('[data-id="draft-regen"]').click()
+    cards.first.locator('[data-id="draft-regen-note"]').fill("배너 경계 조건을 다시 확인하세요")
+    cards.first.locator('[data-id="draft-regen-submit"]').click()
+    expect(page.locator("#tcs-toasts")).to_contain_text("다시 만들었습니다", timeout=15000)
+    expect(cards.first).to_have_attribute("data-case", case_id)
+    expect(cards).to_have_count(2)
+    expect(cards.first.locator('[data-id="draft-approve"]')).to_be_enabled()
