@@ -141,7 +141,7 @@
 | `detail-close` | 닫기 | 패널 헤더 | 클릭 → 패널 닫고 그리드 넓힘 | — | 변경 있으면 확인 | — | — |
 | `detail-feature` | 기능명 입력 | 패널 헤더 | 입력 → 변경 표시 | error: 빈 값 | 필수 | 저장 시 일괄 PATCH | F5.2 |
 | `detail-move` | 경로 이동 | 패널 헤더 경로 옆 | 클릭 → `move-modal` | — | — | — | F5.3 |
-| `detail-tab-edit` / `detail-tab-source` / `detail-tab-history` | 편집 · 원문 · 이력 탭 | 패널 탭 줄 | 클릭 → 해당 탭 | 선택 탭 밑줄 | — | 원문: `GET /api/authoring/sources/excerpt?ref=` / 이력: `GET /api/tc-library/{suite}/cases/{case_id}/history` | F5.5, F5.11 |
+| `detail-tab-edit` / `detail-tab-source` / `detail-tab-history` | 편집 · 원문 · 이력 탭 | 패널 탭 줄 | 클릭 → 해당 탭 | 선택 탭 밑줄 | — | 원문: `GET /api/tc-library/sources/{bundle}/excerpt?ref=` / 이력: `GET /api/tc-library/{suite}/cases/{case_id}/history` | F5.5, F5.11 |
 | `detail-priority` / `detail-auto` / `detail-result` / `detail-status` | 우선순위 · AUTO · 실행 결과 · 검토 상태 | 편집 탭 상단 | 변경 → 변경 표시 | — | 검토 상태를 approved로 바꿀 때 검증 오류가 있으면 저장 거부 | 저장 시 PATCH | F5.2, F5.8 |
 | `detail-precondition` | 사전 조건 | 편집 탭 | 입력 | — | — | 저장 시 PATCH | F5.2 |
 | `detail-steps` | Step 목록 | 편집 탭 | 줄마다 번호 자동 표시(입력칸에는 번호 없이) | — | 빈 Step이 있으면 저장 거부 | 저장 시 PATCH `steps[]` | F5.2 |
@@ -173,7 +173,7 @@
 | `empty-generate` | 문서로 새로 생성 | 빈 상태 | 클릭 → 새로 생성 탭 | — | 빈 라이브러리면 문체 예시(F2.5)가 없다는 안내를 생성 화면에 표시 | — | F4 |
 | `banner-source-changed` | 소스 변경 배너 | 필터 바 위 | 소스 버전 변화 감지 시 노랑 배너: "{문서} v14 → v15 · 관련 케이스 6건이 재검토 필요" | — | 배너는 재검토 건이 0이 되면 사라짐 | `GET /api/tc-library/{suite}/source-changes` (라이브러리 진입 시, 그리고 SSE 이벤트) | F5.9 |
 | `banner-review-now` | 6건만 보기 | 배너 | 클릭 → `lib-filter-needs-review` 켬 | — | — | — | F5.9 |
-| `banner-diff` | 바뀐 부분 보기 | 배너 | 클릭 → 첫 재검토 케이스의 원문 탭(diff 포함) | — | — | `GET /api/authoring/sources/diff?ref=conf:48213377&from=14&to=15` | F5.9 |
+| `banner-diff` | 바뀐 부분 보기 | 배너 | 클릭 → 첫 재검토 케이스의 원문 탭(diff 포함) | — | — | `GET /api/tc-library/source-diff?ref=conf:48213377&from=14&to=15` | F5.9 |
 
 **rev 충돌** (목업 상태 `rev 충돌`): 셀·패널·일괄 저장이 409를 받으면 값을 되돌리지 않고 오류 토스트를 띄운다. 토스트는 자동으로 닫히지 않는다. 문구: "BEN_0009를 저장하지 못했습니다. 다른 곳에서 먼저 바뀌었습니다 (내 rev 5, 서버 rev 6). 변경 내용은 그대로 남아 있습니다." 버튼은 `toast-conflict-compare`, `toast-conflict-reload` 두 개다. v1은 단일 사용자이므로 "덮어쓰기"는 넣지 않는다(비교 후 수동 반영).
 
@@ -202,21 +202,21 @@
 | 요소 ID | 요소 | 위치 | 동작(트리거→결과) | 상태 | 검증·제약 | API 호출 | 관련 PRD |
 |---|---|---|---|---|---|---|---|
 | `src-tab-file` / `src-tab-paste` / `src-tab-url` / `src-tab-confluence` / `src-tab-figma` | 소스 종류 탭 | 소스 패널 상단 | 클릭 → 해당 입력 영역. PRD 파일과 PRD URL은 동일한 문서 소스로 처리 | 선택 탭 보라 | 여러 종류를 섞어 넣을 수 있음 | — | F1 |
-| `src-file-drop` | 파일 드롭존 | 파일 탭 | 파일을 끌어다 놓기 또는 클릭 → 업로드 후 소스 카드 추가 | hover·dragover 보라 / loading(카드에 "수집 중") / error 토스트 | .pdf .docx .md .txt, 25MB 이하, 매직바이트 검사, PDF 200쪽 이하. 초과 시 413 → "25MB를 넘습니다" | `POST /api/authoring/sources` (multipart, kind=file) → manifest 항목 | F1.1, §7 업로드 |
+| `src-file-drop` | 파일 드롭존 | 파일 탭 | 파일을 끌어다 놓기 또는 클릭 → 업로드 후 소스 카드 추가 | hover·dragover 보라 / loading(카드에 "수집 중") / error 토스트 | .pdf .docx .md .txt, 25MB 이하, 매직바이트 검사, PDF 200쪽 이하. 초과 시 413 → "25MB를 넘습니다" | `POST /api/tc-library/sources/{bundle}/{kind}` (multipart, kind=file) → manifest 항목 | F1.1, §7 업로드 |
 | `src-file-input` | 숨은 파일 입력 | 파일 탭 | 드롭존 클릭 시 열림 | — | accept 속성으로 1차 거름, 서버가 최종 검사 | 위와 같음 | F1.1 |
 | `src-paste` | 붙여넣기 입력칸 | 붙여넣기 탭 | 입력 → 아래 크기 표시 "12.4 KB / 1 MB" | 1MB 초과 시 빨강, 추가 버튼 disabled | 1MB 이하 | — | F1.2 |
-| `src-paste-add` | 소스로 추가 | 붙여넣기 탭 | 클릭 → 소스 카드 추가(`file:sha256…#paste`) | 빈 입력이면 오류 토스트 | — | `POST /api/authoring/sources` `{kind:"paste", text}` | F1.2 |
-| `src-prd-url` / `src-prd-url-fetch` | PRD URL 입력·수집 | PRD URL 탭 | HTTPS 문서 URL 입력 → HTML/PDF/DOCX/Markdown/텍스트 추출 후 소스 카드 추가 | loading / error(접근 제한·지원하지 않는 형식·크기 초과) | 로그인·스크립트 렌더링이 필요한 일반 URL은 파일 업로드 또는 전용 연결 안내 | `POST /api/authoring/sources` `{kind:"url", url}` | F1.3 |
+| `src-paste-add` | 소스로 추가 | 붙여넣기 탭 | 클릭 → 소스 카드 추가(`file:sha256…#paste`) | 빈 입력이면 오류 토스트 | — | `POST /api/tc-library/sources/{bundle}/{kind}` `{kind:"paste", text}` | F1.2 |
+| `src-prd-url` / `src-prd-url-fetch` | PRD URL 입력·수집 | PRD URL 탭 | HTTPS 문서 URL 입력 → HTML/PDF/DOCX/Markdown/텍스트 추출 후 소스 카드 추가 | loading / error(접근 제한·지원하지 않는 형식·크기 초과) | 로그인·스크립트 렌더링이 필요한 일반 URL은 파일 업로드 또는 전용 연결 안내 | `POST /api/tc-library/sources/{bundle}/{kind}` `{kind:"url", url}` | F1.3 |
 | `src-confluence-url` | Confluence URL | Confluence 탭 | 입력 | error: ID를 못 뽑으면 빨강 + "페이지 ID를 찾을 수 없습니다. /pages/{id} 또는 pageId= 가 들어간 주소를 넣어 주세요." | 클라이언트는 형식만 검사. 서버는 URL에서 ID만 뽑고 설정된 base로 요청 조립(SSRF) | — | F1.3, §7 SSRF |
 | `src-confluence-children` | 하위 페이지 포함 | Confluence 탭 | 체크 → 깊이 1, 최대 20개 수집 | — | 20개를 넘으면 카드에 "잘림" 경고 | 요청 파라미터 `include_children` | F1.3 |
-| `src-confluence-fetch` | 수집 | Confluence 탭 | 클릭 → 카드 추가(수집 중) → 완료 시 글자 수·이미지 수·표 수·버전 표시 | loading / error 카드(빨간 태그: "권한 없음 403", "연결 설정이 없습니다") | 타임아웃 15초, 20MB | `POST /api/authoring/sources` `{kind:"confluence", url, include_children}` | F1.3, F1.5, F1.6 |
+| `src-confluence-fetch` | 수집 | Confluence 탭 | 클릭 → 카드 추가(수집 중) → 완료 시 글자 수·이미지 수·표 수·버전 표시 | loading / error 카드(빨간 태그: "권한 없음 403", "연결 설정이 없습니다") | 타임아웃 15초, 20MB | `POST /api/tc-library/sources/{bundle}/{kind}` `{kind:"confluence", url, include_children}` | F1.3, F1.5, F1.6 |
 | `src-figma-url` | Figma URL | Figma 탭 | 입력 | error: "/file/ 또는 /design/ 주소를 넣어 주세요" | fileKey·node-id 추출 | — | F1.4 |
-| `src-figma-fetch` | 수집 | Figma 탭 | 클릭 → 카드(프레임 수, TEXT 수, 전이 수, lastModified) | loading / error | PNG 최대 10장 | `POST /api/authoring/sources` `{kind:"figma", url}` | F1.4, F1.6 |
-| `cred-status-confluence` / `cred-status-figma` | 연결 상태 태그 | 소스 패널 | 설정됨: 초록 "Confluence 연결됨 · qa****@example.com". 미설정: 회색 "연결 안 됨" + 해당 탭 수집 버튼 disabled | — | 토큰은 절대 표시·반환하지 않음(`{configured, base_url, email_masked}`만) | `GET /api/authoring/credentials` | §7 자격증명 |
-| `cred-settings` | 연결 설정 | 소스 패널 | 클릭 → 설정 시트(base URL, 이메일, 토큰 입력. 저장 후 토큰은 다시 보여주지 않음) | — | 환경변수가 있으면 "환경변수 사용 중" 표시하고 입력 disabled | `PUT /api/authoring/credentials/{confluence|figma}` | §7, Phase 3 |
+| `src-figma-fetch` | 수집 | Figma 탭 | 클릭 → 카드(프레임 수, TEXT 수, 전이 수, lastModified) | loading / error | PNG 최대 10장 | `POST /api/tc-library/sources/{bundle}/{kind}` `{kind:"figma", url}` | F1.4, F1.6 |
+| `cred-status-confluence` / `cred-status-figma` | 연결 상태 태그 | 소스 패널 | 설정됨: 초록 "Confluence 연결됨 · qa****@example.com". 미설정: 회색 "연결 안 됨" + 해당 탭 수집 버튼 disabled | — | 토큰은 절대 표시·반환하지 않음(`{configured, base_url, email_masked}`만) | `GET /api/tc-library/credentials` | §7 자격증명 |
+| `cred-settings` | 연결 설정 | 소스 패널 | 클릭 → 설정 시트(base URL, 이메일, 토큰 입력. 저장 후 토큰은 다시 보여주지 않음) | — | 환경변수가 있으면 "환경변수 사용 중" 표시하고 입력 disabled | `PUT /api/tc-library/credentials/{confluence|figma}` | §7, Phase 3 |
 | `src-list` | 수집한 소스 목록 | 소스 패널 하단 | 소스마다 카드 | 비었으면 "아직 수집한 소스가 없습니다" | — | — | F1.6 |
 | `src-chip` | 소스 카드 | 목록 | 아이콘(C/F/PDF/T), 제목, `source_ref` 칩(버전 포함), 글자 수·이미지 수·표·프레임 태그, 잘림/OCR 미지원 경고(노랑), 실패(빨강) | 수집 중(파랑 태그) / 경고 / 실패 | — | — | F1.5, F1.6 |
-| `src-chip-remove` | 소스 제거 | 카드 오른쪽 | 클릭 → 번들에서 제외 | — | 생성 중에는 disabled | `DELETE /api/authoring/sources/{source_id}` | F1.5 |
+| `src-chip-remove` | 소스 제거 | 카드 오른쪽 | 클릭 → 번들에서 제외 | — | 생성 중에는 disabled | `DELETE /api/tc-library/sources/{bundle}/{source_id}` | F1.5 |
 
 ### 3.2 대상 위치와 프로필
 
@@ -226,22 +226,22 @@
 | `gen-target-path` | 계층 선택기 | 같은 패널 | 대분류 › 중분류 › 소분류 연쇄 드롭다운 | — | 대분류 필수, 나머지 선택 | — | F2.2 |
 | `gen-path-l1` / `gen-path-l2` / `gen-path-l3` | 대·중·소분류 | 계층 선택기 | 선택. "+ 새 중분류…" 선택 시 이름 입력칸 표시 | — | 새 이름은 같은 부모 안 중복 불가 | — | F2.2 (9장 #13) |
 | `gen-style-examples` | 문체 예시 안내 | 계층 선택기 아래 | 선택한 가지의 기존 케이스 중 프롬프트에 넣을 예시 목록. 5건 미만이면 "권장 5~10건" 안내 | — | 최대 10건 | `GET /api/tc-library/{suite}?path=…&limit=10&status=approved` | F2.5 |
-| `gen-profile` | 작성 프로필 선택 | 작성 프로필 패널 | 선택 → 아래 규칙 요약 갱신. "+ 새 프로필로 저장…" | — | — | `GET /api/authoring/profiles` | F3 |
-| `gen-profile-edit` | 프로필 편집 | 패널 헤더 | 클릭 → 편집 시트(커버리지, 조건 분기, 우선순위 기준, AUTO 판정, 문체, 금지 표현) | — | 이름 필수, 금지 표현은 줄 단위 | `PUT /api/authoring/profiles/{name}` | F3 |
+| `gen-profile` | 작성 프로필 선택 | 작성 프로필 패널 | 선택 → 아래 규칙 요약 갱신. "+ 새 프로필로 저장…" | — | — | `GET /api/tc-library/profiles` | F3 |
+| `gen-profile-edit` | 프로필 편집 | 패널 헤더 | 클릭 → 편집 시트(커버리지, 조건 분기, 우선순위 기준, AUTO 판정, 문체, 금지 표현) | — | 이름 필수, 금지 표현은 줄 단위 | `PUT /api/tc-library/profiles/{name}` | F3 |
 
 ### 3.3 생성 실행과 진행
 
 | 요소 ID | 요소 | 위치 | 동작(트리거→결과) | 상태 | 검증·제약 | API 호출 | 관련 PRD |
 |---|---|---|---|---|---|---|---|
-| `gen-submit` | 초안 생성 | 생성 패널 | 클릭 → 작업 생성, 진행 표시. 옆 도움말 "소스 2개 · 약 18,400자 · 예상 2분" | 수집 성공 소스 0개면 disabled / loading(작업 중) / 다른 작업이 돌고 있으면 disabled + "다른 생성 작업이 진행 중입니다" | 한 번에 1건(F4.1). 실패 후에는 "다시 생성"으로 바뀜 | `POST /api/authoring/jobs` `{suite, sheet, path, profile, source_ids[], example_case_ids[]}` → `{job_id}` (진행 중이면 409) | F4.1, F4.2 |
-| `job-panel` | 작업 패널 | 생성 버튼 아래 | 작업 ID, 상태 배지, 5단계 진행 막대, 현재 단계 설명 | — | — | `GET /api/authoring/jobs/{id}` + SSE `status.json` 변경 이벤트 | F4.4 |
-| `job-progress` | 단계 막대 | 작업 패널 | queued(대기) → fetching(수집) → drafting(초안 작성) → validating(검증) → done(완료). 끝난 단계 초록, 현재 보라, 실패 빨강 | — | 섹션 단위 생성이면 "섹션 3개 중 2번째 작성 중 · 초안 11건" | SSE | F4.4, F4.5 |
-| `job-cancel` | 취소 | 작업 패널 | 클릭 → 프로세스 종료, 패널 숨김, 토스트 | 완료·실패 후 숨김 | 이미 만든 초안 처리 정책은 9장 #11 | `POST /api/authoring/jobs/{id}/cancel` | F4.1 |
-| `job-log-tail` | 로그 끝부분 | 실패 박스 | 마지막 로그 줄(기본 40줄) 표시. 경고 노랑, 오류 빨강 | — | 소스 본문·토큰은 로그에 쓰지 않음 | `GET /api/authoring/jobs/{id}/log?tail=40` | F4.6 |
+| `gen-submit` | 초안 생성 | 생성 패널 | 클릭 → 작업 생성, 진행 표시. 옆 도움말 "소스 2개 · 약 18,400자 · 예상 2분" | 수집 성공 소스 0개면 disabled / loading(작업 중) / 다른 작업이 돌고 있으면 disabled + "다른 생성 작업이 진행 중입니다" | 한 번에 1건(F4.1). 실패 후에는 "다시 생성"으로 바뀜 | `POST /api/tc-library/{suite}/jobs` `{suite, sheet, path, profile, source_ids[], example_case_ids[]}` → `{job_id}` (진행 중이면 409) | F4.1, F4.2 |
+| `job-panel` | 작업 패널 | 생성 버튼 아래 | 작업 ID, 상태 배지, 5단계 진행 막대, 현재 단계 설명 | — | — | `GET /api/tc-library/jobs/{id}` + 1.5초 폴링 (Phase 2 결정 Y3) | F4.4 |
+| `job-progress` | 단계 막대 | 작업 패널 | queued(대기) → fetching(수집) → drafting(초안 작성) → validating(검증) → done(완료). 끝난 단계 초록, 현재 보라, 실패 빨강 | — | 섹션 단위 생성이면 "섹션 3개 중 2번째 작성 중 · 초안 11건" | 1.5초 폴링 (Phase 2 결정 Y3) | F4.4, F4.5 |
+| `job-cancel` | 취소 | 작업 패널 | 클릭 → 프로세스 종료, 패널 숨김, 토스트 | 완료·실패 후 숨김 | 이미 만든 초안 처리 정책은 9장 #11 | `POST /api/tc-library/jobs/{id}/cancel` | F4.1 |
+| `job-log-tail` | 로그 끝부분 | 실패 박스 | 마지막 로그 줄(기본 40줄) 표시. 경고 노랑, 오류 빨강 | — | 소스 본문·토큰은 로그에 쓰지 않음 | `GET /api/tc-library/jobs/{id}` | F4.6 |
 | (실패 박스) | 실패 요약 | 작업 패널 | 무엇이 실패했는지 한 줄(예: "초안 작성 단계에서 시간이 초과됐습니다 (180초)"), 살린 초안 수, invalid 수, 남은 섹션 | error | `claude` CLI 없음 / 타임아웃 / 부분 결과 세 경우를 구분해 문구 작성 | 응답 `{status:"failed", reason, partial, kept, invalid, failed_sections[]}` | F4.6 |
-| `job-retry` | 실패한 섹션만 다시 생성 | 실패 박스 | 클릭 → 실패 섹션만 새 작업으로 | loading | — | `POST /api/authoring/jobs` `{retry_of: job_id, sections:[…]}` | F4.5, F4.6 |
+| `job-retry` | 실패한 섹션만 다시 생성 | 실패 박스 | 클릭 → 실패 섹션만 새 작업으로 | loading | — | `POST /api/tc-library/{suite}/jobs` `{retry_of: job_id, sections:[…]}` | F4.5, F4.6 |
 | `job-open-review-partial` | 살린 초안 n건 검토 | 실패 박스 | 클릭 → 초안 검토 탭(이 작업 초안만) | — | — | — | F4.6 |
-| `job-log-full` | 전체 로그 | 실패 박스 | 클릭 → 전체 로그 뷰어 | — | — | `GET /api/authoring/jobs/{id}/log` | F4.6 |
+| `job-log-full` | 전체 로그 | 실패 박스 | 클릭 → 전체 로그 뷰어 | — | — | `GET /api/tc-library/jobs/{id}` | F4.6 |
 | `job-open-review` | 초안 검토로 이동 | 완료 행 | 클릭 → 초안 검토 탭 | 초록 버튼 | — | — | F4.3 |
 
 ---
@@ -263,16 +263,16 @@
 | `draft-edit` | 편집 | 카드 하단 | 클릭 또는 E → 라이브러리 탭 상세 패널로 이 케이스 열기 | — | — | — | F5.5 |
 | `draft-regen` | 재생성… | 카드 하단 | 클릭 또는 G → 카드 안에 메모 입력칸 펼침 | — | — | — | F5.5 |
 | `draft-regen-note` | 재생성 메모 | 카드 안 | 입력(예: "배너 3개일 때와 5개일 때를 행으로 나눠 주세요") | — | 빈 메모 금지(오류 토스트) | — | F5.5 |
-| `draft-regen-submit` | 이 메모로 재생성 | 메모 아래 | 클릭 → 이 케이스만 다시 생성, 이전 초안은 이력에 남김 | loading("재생성 중…") / 다른 작업 진행 중이면 대기열 표시 | 1건 제한과의 관계는 9장 #11 | `POST /api/authoring/jobs` `{mode:"regenerate", case_ids:[…], note}` | F5.5, F4.1 |
+| `draft-regen-submit` | 이 메모로 재생성 | 메모 아래 | 클릭 → 이 케이스만 다시 생성, 이전 초안은 이력에 남김 | loading("재생성 중…") / 다른 작업 진행 중이면 대기열 표시 | 1건 제한과의 관계는 9장 #11 | `POST /api/tc-library/{suite}/jobs` `{mode:"regenerate", case_ids:[…], note}` | F5.5, F4.1 |
 | `draft-regen-cancel` | 닫기 | 메모 아래 | 메모 칸 접기 | — | — | — | — |
 | `dup-resolution` | 중복 후보 상자 | 중복 카드 안 | "기존 케이스와 비슷합니다 · BEN_0002 (92%)" + 기존/초안 나란히 비교 | 노랑 배경 | 같은 기능 가지 안 Step+Expected 유사도 기준 | 초안 응답의 `duplicate_of:{case_id, similarity}` | F5.6 |
 | `dup-update` | 기존 케이스 갱신 | 중복 상자 세그먼트 | 선택 → 승인 버튼 활성. 승인 시 기존 case_id에 초안 내용을 덮고 초안은 삭제 | 선택 보라 | 기존 케이스의 rev 동봉 | `POST /api/tc-library/{suite}/cases/{draft_id}/resolve-duplicate` `{action:"update", target_case_id, target_rev}` | F5.6 |
 | `dup-skip` | 건너뛰기 | 동일 | 선택 → 초안을 반려 처리 | — | — | 동일 `{action:"skip"}` | F5.6 |
 | `dup-add` | 새로 추가 | 동일 | 선택 → 승인 버튼 활성. 별도 케이스로 승인 | — | — | 동일 `{action:"add"}` | F5.6 |
 | `source-tabs` | Confluence / Figma 원문 탭 | 오른쪽 위 | 클릭 → 원문 종류 전환 | — | 포커스된 카드의 출처 종류로 자동 전환 | — | F5.5 |
-| `source-excerpt` | 원문 발췌 | 오른쪽 | 섹션 제목(§2.1 등)과 본문. 초안 근거 문장은 노랑 하이라이트, 포커스된 카드의 근거는 보라 배경 | loading / error("원문을 불러오지 못했습니다") | 번들의 `NN_{slug}.md`에서 읽음(원본 재요청 안 함) | `GET /api/authoring/sources/excerpt?ref=conf:48213377@v14&anchor=§2.1` → `{markdown, highlights:[{start,end,case_id}]}` | F5.5 |
+| `source-excerpt` | 원문 발췌 | 오른쪽 | 섹션 제목(§2.1 등)과 본문. 초안 근거 문장은 노랑 하이라이트, 포커스된 카드의 근거는 보라 배경 | loading / error("원문을 불러오지 못했습니다") | 번들의 `NN_{slug}.md`에서 읽음(원본 재요청 안 함) | `GET /api/tc-library/sources/{bundle}/excerpt?ref=conf:48213377@v14&anchor=§2.1` → `{markdown, highlights:[{start,end,case_id}]}` | F5.5 |
 | `source-open-original` | 원본 열기 | 발췌 위 | 링크 → 새 탭에서 Confluence 원본 | — | 서버가 조립한 URL만 사용 | — | F1.3 |
-| `source-figma-frame` | Figma 프레임 | Figma 탭 | 프레임 PNG(번들 `assets/`), 아래 프레임 이름·TEXT 수·variant. 좌우 넘김으로 프레임 전환 | 이미지 없음 → 회색 자리 + "프레임 이미지를 받지 못했습니다" | 최대 10장 | `GET /api/authoring/jobs/{id}/assets/{file}.png` | F1.4, F5.5 |
+| `source-figma-frame` | Figma 프레임 | Figma 탭 | 프레임 PNG(번들 `assets/`), 아래 프레임 이름·TEXT 수·variant. 좌우 넘김으로 프레임 전환 | 이미지 없음 → 회색 자리 + "프레임 이미지를 받지 못했습니다" | 최대 10장 | `GET /api/tc-library/sources/{bundle}/assets/{file}.png` | F1.4, F5.5 |
 | `coverage-gap` | 커버리지 갭 | 오른쪽 아래 | 기능마다 프로필 규칙 대비 충족 여부 막대(초록=충족, 빨강=부족)와 부족한 이유 | — | 프로필 규칙: 정상 ≥1, 예외 ≥1, 입력 필드면 유효성 ≥1 | `GET /api/tc-library/{suite}/coverage?path=…&profile=…` | F5.10 |
 | `coverage-generate-more` / `coverage-generate-more-2` | 예외 생성 / 생성 | 갭 항목 오른쪽 | 클릭 → 새로 생성 탭으로 이동, 대상 가지와 메모("예외 케이스: 링크 없음, 만료 링크")를 채워 둠 | — | — | — | F5.10 |
 
@@ -386,19 +386,19 @@
 | POST | `/api/tc-library/{suite}/export/md` | 변환·검증 후 Studio 내부 미리보기 생성 | `{preview_id, count, conflicts}` | `md-preview` | F7.2~F7.4 |
 | GET / POST | `/api/tc-library/md-exports/{preview_id}` 및 `/commit`, `/rollback` | 미리보기 조회·충돌 결정 후 커밋·롤백 | `{rows, summary, snapshot_id?, result?}` | `md-preview-panel`, `md-commit`, `md-rollback` | F7.6 |
 | GET / PUT | `/api/tc-library/import/profiles`, `/api/tc-library/import/profiles/{name}` | 기존 Excel 매핑 프로필 조회·저장 | 프로필 목록·매핑 | `import-mapping-profile` | F2.1, D6 |
-| POST | `/api/authoring/sources` | 소스 1개 수집(file/paste/url/confluence/figma) | manifest 항목 `{source_id, kind, ref, version, chars, images, truncated}` | `src-*-fetch`, `src-file-drop`, `src-paste-add` | F1.1~F1.6 |
-| DELETE | `/api/authoring/sources/{source_id}` | 소스 제거 | 204 | `src-chip-remove` | F1.5 |
-| GET | `/api/authoring/sources/excerpt` | 번들 발췌 + 하이라이트 `?ref&anchor` | `{markdown, highlights}` | `source-excerpt`, 상세 `원문` 탭 | F5.5 |
-| GET | `/api/authoring/sources/diff` | 소스 버전 간 바뀐 문장 `?ref&from&to` | diff 블록 | `banner-diff`, 원문 탭 | F5.9 |
-| GET | `/api/authoring/credentials` | 연결 상태 | `{confluence:{configured, base_url, email_masked}, figma:{configured}}` | `cred-status-*` | §7 |
-| PUT | `/api/authoring/credentials/{kind}` | 자격증명 저장 | 위와 같은 마스킹 응답 | `cred-settings` | §7 |
-| GET / PUT | `/api/authoring/profiles`, `/api/authoring/profiles/{name}` | 작성 프로필 목록·저장 | 프로필 | `gen-profile`, `gen-profile-edit` | F3 |
-| POST | `/api/authoring/jobs` | 생성 작업 시작(신규 / 재시도 / 케이스 재생성) | `{job_id}` / 409 진행 중 | `gen-submit`, `job-retry`, `draft-regen-submit` | F4.1~F4.5 |
-| GET | `/api/authoring/jobs/{id}` | 작업 상태(`status.json`) | `{status, step, sections, kept, invalid, reason}` | `job-panel` | F4.4 |
-| POST | `/api/authoring/jobs/{id}/cancel` | 작업 취소 | 200 | `job-cancel` | F4.1 |
-| GET | `/api/authoring/jobs/{id}/log` | 로그 `?tail=` | 텍스트 | `job-log-tail`, `job-log-full` | F4.6 |
-| GET | `/api/authoring/jobs/{id}/assets/{file}` | Figma 프레임 PNG | image/png | `source-figma-frame` | F1.4 |
-| SSE | 기존 스트림(`_watch_files`)에 `authoring_job`, `tc_library` 이벤트 추가 | 진행률, 소스 변경, 다른 탭의 수정 | — | `job-progress`, 배너, 그리드 새로고침 | F4.4 |
+| POST | `/api/tc-library/sources/{bundle}/{kind}` | 소스 1개 수집(file/paste/url/confluence/figma) | manifest 항목 `{source_id, kind, ref, version, chars, images, truncated}` | `src-*-fetch`, `src-file-drop`, `src-paste-add` | F1.1~F1.6 |
+| DELETE | `/api/tc-library/sources/{bundle}/{source_id}` | 소스 제거 | 204 | `src-chip-remove` | F1.5 |
+| GET | `/api/tc-library/sources/{bundle}/excerpt` | 번들 발췌 + 하이라이트 `?ref&anchor` | `{markdown, highlights}` | `source-excerpt`, 상세 `원문` 탭 | F5.5 |
+| GET | `/api/tc-library/source-diff` | 소스 버전 간 바뀐 문장 `?ref&from&to` | diff 블록 | `banner-diff`, 원문 탭 | F5.9 |
+| GET | `/api/tc-library/credentials` | 연결 상태 | `{confluence:{configured, base_url, email_masked}, figma:{configured}}` | `cred-status-*` | §7 |
+| PUT | `/api/tc-library/credentials/{kind}` | 자격증명 저장 | 위와 같은 마스킹 응답 | `cred-settings` | §7 |
+| GET / PUT | `/api/tc-library/profiles`, `/api/tc-library/profiles/{name}` | 작성 프로필 목록·저장 | 프로필 | `gen-profile`, `gen-profile-edit` | F3 |
+| POST | `/api/tc-library/{suite}/jobs` | 생성 작업 시작(신규 / 재시도 / 케이스 재생성) | `{job_id}` / 409 진행 중 | `gen-submit`, `job-retry`, `draft-regen-submit` | F4.1~F4.5 |
+| GET | `/api/tc-library/jobs/{id}` | 작업 상태(`status.json`) | `{status, step, sections, kept, invalid, reason}` | `job-panel` | F4.4 |
+| POST | `/api/tc-library/jobs/{id}/cancel` | 작업 취소 | 200 | `job-cancel` | F4.1 |
+| GET | `/api/tc-library/jobs/{id}` | 로그 `?tail=` | 텍스트 | `job-log-tail`, `job-log-full` | F4.6 |
+| GET | `/api/tc-library/sources/{bundle}/assets/{file}` | Figma 프레임 PNG | image/png | `source-figma-frame` | F1.4 |
+| 폴링 | 1.5초 폴링 (Phase 2 결정 Y3) | 생성 작업 진행률 | — | `job-progress`, 배너, 그리드 새로고침 | F4.4 |
 
 ---
 
@@ -415,7 +415,7 @@
 7. **`needs_review`를 status 값으로 두면 원래 상태를 잃는다.** approved 케이스가 재검토로 바뀌었다가 해제되면 approved로 돌아가야 하는지 draft로 돌아가야 하는지 알 수 없다. `status`와 별개의 `needs_review` 플래그(+ 바뀐 ref/버전)를 권한다. 해제 조건(내용 수정 없이 "확인"만으로 해제 가능한지)도 정해야 한다. 목업은 별도 플래그 + `변경 확인 완료` 버튼으로 설계했다.
 8. **반려된 케이스의 처리 규칙이 없다.** 라이브러리에 남는지, 엑셀 내보내기 "전체"에 들어가는지, 재생성하면 어떻게 되는지 정해야 한다. 목업은 "남아 있고, 엑셀 전체에서는 제외"를 가정했다.
 9. **중복 "기존 케이스 갱신"의 결과가 정의되지 않았다.** 기존 approved 케이스가 draft로 돌아가는지, case_id와 이력은 유지되는지 적어야 한다.
-10. **F1.6과 F4.4가 수집 시점을 다르게 본다.** F1.6은 생성 전에 수집 결과를 보여 달라고 하는데 F4.4의 작업 단계에는 `fetching`이 들어 있다. 수집을 별도 API(`POST /api/authoring/sources`)로 먼저 하고, 작업의 fetching은 번들 확정·버전 재확인 단계로 두기를 제안한다.
+10. **F1.6과 F4.4가 수집 시점을 다르게 본다.** F1.6은 생성 전에 수집 결과를 보여 달라고 하는데 F4.4의 작업 단계에는 `fetching`이 들어 있다. 수집을 별도 API(`POST /api/tc-library/sources/{bundle}/{kind}`)로 먼저 하고, 작업의 fetching은 번들 확정·버전 재확인 단계로 두기를 제안한다.
 11. **"한 번에 1건"(F4.1)과 카드 단위 재생성(F5.5)의 관계가 없다.** 검토 중 재생성을 여러 번 누르면 큐에 쌓는지 거부하는지 정해야 한다. 작업 취소 시 이미 나온 초안을 살릴지도 빠져 있다.
 12. **삭제와 되돌리기 범위가 모호하다.** F5.11은 필드 단위 되돌리기인데 삭제된 케이스 복원 경로가 없다. 삭제한 case_id가 있는 엑셀을 다시 가져올 때(F6.7) 되살릴지 무시할지도 정해야 한다.
 13. **계층 가지 자체의 편집이 요구사항에 없다.** 새 중분류 추가, 가지 이름 변경, 빈 가지 삭제가 필요하다. 생성 대상 선택(시나리오 2 "혜택 › 상단 배너")에서도 없는 가지를 만들 수 있어야 한다.

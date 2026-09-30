@@ -384,6 +384,12 @@ python scripts/05_execute.py
 | `scripts/_tc_xlsx_import.py` | 엑셀 시트 → 라이브러리 케이스 (병합·빈 칸 이어받기, 기타 칸의 id·src 분리) | ❌ (다른 스크립트가 import) |
 | `scripts/_tc_library.py` | TC 라이브러리 저장소 `state/tc_library/{suite}/`: rev 수정·일괄·생성·삭제·이력·트리·필터 | ❌ (대시보드가 import) |
 | `scripts/_tc_xlsx_export.py` | 라이브러리 → 템플릿 사본 xlsx (병합·드롭다운·요약 수식·History) + 무결성 검사 | ❌ (대시보드가 import) |
+| `scripts/_tc_sources.py` | TC 생성용 소스 묶음: 파일(PDF·DOCX·MD·TXT)·붙여넣기 → markdown 섹션 | ❌ (대시보드가 import) |
+| `scripts/_tc_profiles.py` | TC 작성 프로필 저장소 + 기본 규칙 | ❌ (대시보드가 import) |
+| `scripts/_tc_prompt.py` | TC 생성 프롬프트·출력 JSON 스키마·섹션 묶기 | ❌ (다른 스크립트가 import) |
+| `scripts/_tc_review.py` | TC 초안 중복 후보·중복 처리·커버리지 갭 | ❌ (대시보드가 import) |
+| `scripts/_tc_generate.py` | TC 초안 생성 작업: 제한된 `claude -p` 실행·검증·라이브러리 반영 | ❌ (대시보드가 스레드로 실행) |
+
 | `agents/dashboard/tools/scope_tc_studio_css.py` | 목업 CSS → `static/css/tc-studio.css` 생성 (목업을 고친 뒤 다시 실행) | ✅ (`python agents/dashboard/tools/scope_tc_studio_css.py <목업> <출력>`) |
 
 | `scripts/assert_guard.py` | 힐링 패치 후 assertion 약화 감지. `original_assertions`(최초) vs 현재 파일 비교 → 감소 시 경고 출력 | ✅ (`python scripts/assert_guard.py`) |

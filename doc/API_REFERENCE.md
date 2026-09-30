@@ -144,6 +144,25 @@
 저장 위치: `state/tc_library/{suite}/` (`cases.json`, `history.jsonl`, `template.xlsx`, `template_profile.json`), 작업 공간 `state/tc_library/_uploads/`, `_exports/`.
 
 
+#### 생성·검토 (`routes_tc_authoring.py`)
+
+| 메서드 | 경로 | 설명 |
+|---|---|---|
+| POST | `/api/tc-library/sources` | 소스 묶음 생성 |
+| GET | `/api/tc-library/sources/{bundle}` | 묶음 매니페스트 |
+| POST | `/api/tc-library/sources/{bundle}/file?filename=` | 파일 추가 (.pdf .docx .md .txt, 25MB, PDF 200쪽) |
+| POST | `/api/tc-library/sources/{bundle}/paste` | 붙여넣기 추가 `{text}` (1MB) |
+| DELETE | `/api/tc-library/sources/{bundle}/{source_id}` | 소스 제거 |
+| GET | `/api/tc-library/sources/{bundle}/excerpt?ref=` | 출처 섹션 발췌 |
+| GET · PUT | `/api/tc-library/profiles` · `/api/tc-library/profiles/{name}` | 작성 프로필 |
+| POST | `/api/tc-library/{suite}/jobs` | 생성 작업 시작 (동시 1건, 409 `JOB_RUNNING`, 503 `CLAUDE_NOT_FOUND`) |
+| GET | `/api/tc-library/jobs/{job_id}` | 작업 상태 · 로그 끝 40줄 · 버린 초안 |
+| POST | `/api/tc-library/jobs/{job_id}/cancel` | 작업 취소 |
+| GET | `/api/tc-library/{suite}/coverage?sheet&path&profile` | 기능별 커버리지 갭 |
+| POST | `/api/tc-library/{suite}/cases/{id}/resolve-duplicate` | 중복 처리 `{rev, action: update|skip|add, target_case_id, target_rev}` |
+| GET | `/api/tc-library/import/mapping-profiles` | Import Studio 매핑 프로필 → 열 매핑 |
+
+생성 작업은 `claude -p --restricted --strict-mcp-config --tools "" --permission-mode dontAsk --no-session-persistence --output-format json --json-schema …`로 저장소 밖 임시 폴더에서 실행한다. 환경변수: `TCS_CLAUDE_BIN`(CLI 경로), `TCS_CLAUDE_MODEL`(모델), `TCS_CHUNK_TIMEOUT`(섹션당 초, 기본 300). 작업 기록은 `state/tc_library/_jobs/{job_id}/`.
 ### 원격 모드 위험도 분류
 
 | 분류 | 엔드포인트 | 원격 모드 기본값 |

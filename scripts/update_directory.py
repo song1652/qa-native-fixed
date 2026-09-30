@@ -72,6 +72,12 @@ SCRIPT_DESCRIPTIONS: dict[str, str] = {
     "_tc_xlsx_import.py":     "엑셀 시트 → TC 라이브러리 케이스",
     "_tc_library.py":         "TC 라이브러리 저장소 (rev·이력·트리·필터)",
     "_tc_xlsx_export.py":     "TC 라이브러리 → 템플릿 사본 xlsx + 무결성 검사",
+    "_tc_sources.py":         "TC 생성용 소스 묶음 (PDF·DOCX·MD·TXT·붙여넣기 → markdown)",
+    "_tc_profiles.py":        "TC 작성 프로필 저장소",
+    "_tc_prompt.py":          "TC 생성 프롬프트·출력 스키마",
+    "_tc_review.py":          "TC 초안 중복·커버리지 검토 도우미",
+    "_tc_generate.py":        "TC 초안 생성 작업 (제한된 claude -p)",
+
 
     "_python.py":             ".venv 경로 자동 감지",
     "assert_guard.py":        "힐링 패치 후 assertion 약화 감지 (원본 대비 assertion 수·내용 비교, 경고 출력)",
