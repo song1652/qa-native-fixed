@@ -8,6 +8,7 @@
   let targets = {};         // 중복 후보 case_id → 케이스
   let jobInfo = null;
   let manifest = null;      // 작업 소스 묶음 (Figma 프레임 이미지용, Phase 3)
+  let suiteDrafts = 0;      // 스위트 전체 draft 수 (상단 탭 배지와 같은 기준)
   let focus = 0;
   let filter = 'all';
 
@@ -40,7 +41,7 @@
       <aside class="rv-right" aria-label="원문">
         <div class="row"><b>원문</b><span class="spacer"></span><span class="src-ref" id="rv-ref"></span></div>
         <div class="excerpt" id="rv-excerpt" data-id="source-excerpt"><span class="faint">초안을 고르면 근거가 된 원문을 보여 줍니다</span></div>
-        <div class="panel"><div class="panel-head">커버리지 갭 <span class="faint" style="font-weight:400" id="rv-cov-profile"></span></div>
+        <div class="panel"><div class="panel-head">커버리지 갭 <span class="faint" style="font-weight:400" id="rv-cov-profile"></span><span class="spacer"></span><span class="faint" style="font-weight:400;font-size:10.5px">막대: 정상 · 예외 (빨강 = 없음)</span></div>
           <div class="panel-body"><ul class="gap-list" data-id="coverage-gap" id="rv-gaps"></ul></div></div>
       </aside>
     </div>
@@ -57,6 +58,7 @@
     drafts = (await api.list(state.suite, query)).items;
     jobInfo = state.reviewJob ? await api.job(state.reviewJob).catch(() => null) : null;
     manifest = jobInfo ? await api.bundle(jobInfo.job.bundle_id).catch(() => null) : null;
+    suiteDrafts = jobInfo ? (await api.list(state.suite, { status: 'draft', limit: 1 })).total : 0;
     const ids = [...new Set(drafts.flatMap((d) => (d.draft_meta.duplicates || []).map((h) => h.case_id)))];
     targets = {};
     await Promise.all(ids.map(async (id) => { targets[id] = (await api.getCase(state.suite, id)).case; }));
@@ -104,7 +106,13 @@
     $('#rv-rej', root).textContent = drafts.filter((d) => d.status === 'rejected').length;
     $('#rv-dup', root).textContent = drafts.filter(unresolvedDup).length;
     $('#rv-err', root).textContent = drafts.filter((d) => d.has_error).length;
-    $('#rv-job', root).textContent = jobInfo ? `작업 ${jobInfo.job.job_id} · ${jobInfo.job.status}` : '모든 초안';
+    // 상단 배지는 스위트 전체 초안 수, 이 화면은 작업 초안만 센다. 두 기준을 함께 보여 숫자가 달라 보이지 않게 한다
+    const others = suiteDrafts - drafts.filter(pending).length;
+    $('#rv-job', root).innerHTML = jobInfo
+      ? `작업 ${esc(jobInfo.job.job_id)} · ${esc(jobInfo.job.status)} · 이 작업 초안만 표시${others > 0 ? ` <button class="btn-sm" data-id="review-show-all" id="review-show-all">다른 초안 ${others}건 포함해 보기</button>` : ''}`
+      : '스위트의 모든 초안';
+    const showAll = $('#review-show-all', root);
+    if (showAll) showAll.addEventListener('click', () => { state.reviewJob = null; load(); });
     const invalid = jobInfo ? jobInfo.invalid : [];
     $('#rv-invalid', root).innerHTML = invalid.length ? `<details class="warnbox err"><summary>형식이 맞지 않아 버린 초안 ${invalid.length}건</summary>
       <ul class="checks">${invalid.map((x) => `<li><span class="bad">✕</span>${esc(x.raw.feature || '(이름 없음)')} — ${esc(x.errors.join(', '))}</li>`).join('')}</ul></details>` : '';
@@ -199,7 +207,7 @@
       let text = esc(ex.markdown);
       const quote = d.draft_meta.source_quote && esc(d.draft_meta.source_quote);
       if (quote && text.includes(quote)) text = text.replace(quote, `<mark>${quote}</mark>`);
-      const entry = manifest && manifest.sources.find((s) => ref.startsWith(s.ref));
+      const entry = manifest && [...manifest.sources, ...(manifest.removed || [])].find((s) => ref.startsWith(s.ref));
       const frames = NS.sourceWatch && entry ? NS.sourceWatch.figmaFrames(jobInfo.job.bundle_id, entry) : '';
       box.innerHTML = `<h5>${esc(ex.title)} › ${esc(ex.section)} (${esc(ex.anchor)})</h5>${frames}<div style="white-space:pre-wrap">${text}</div>`;
     } catch (err) {
@@ -214,8 +222,15 @@
     const profile = jobInfo ? jobInfo.job.profile : '기본';
     $('#rv-cov-profile', root).textContent = `${profile} 프로필 기준`;
     const { features } = await api.coverage(state.suite, t.sheet, t.path.filter(Boolean), profile);
-    list.innerHTML = features.map((f) => `<li><div><b>${esc(f.feature)}</b><div class="help">정상 ${f.positive} · 예외 ${f.negative} · 유효성 ${f.has_input ? f.validation : '해당 없음'}${f.missing.length ? ` · 부족: ${f.missing.join(', ')}` : ''}</div></div>
-      <span class="row"><span class="meter"><i class="${f.positive ? 'on' : 'miss'}"></i><i class="${f.negative ? 'on' : 'miss'}"></i></span>${f.missing.length ? '<button class="btn-sm" data-id="coverage-generate-more">더 생성</button>' : ''}</span></li>`).join('')
+    // 이번 초안의 기능을 먼저 보이고, 같은 가지의 나머지 기능은 접어 둔다 (가지 전체가 빨간 막대로 쏟아지지 않게)
+    const mine = new Set(drafts.map((d) => d.feature));
+    const related = features.filter((f) => mine.has(f.feature));
+    const rest = related.length ? features.filter((f) => !mine.has(f.feature)) : features;
+    const item = (f) => `<li><div><b>${esc(f.feature)}</b><div class="help">정상 ${f.positive} · 예외 ${f.negative} · 유효성 ${f.has_input ? f.validation : '해당 없음'}${f.missing.length ? ` · 부족: ${f.missing.join(', ')}` : ''}</div></div>
+      <span class="row"><span class="meter" title="왼쪽 정상 · 오른쪽 예외 (빨강 = 없음)"><i class="${f.positive ? 'on' : 'miss'}"></i><i class="${f.negative ? 'on' : 'miss'}"></i></span>${f.missing.length ? '<button class="btn-sm" data-id="coverage-generate-more">더 생성</button>' : ''}</span></li>`;
+    list.innerHTML = (related.length ? related.map(item).join('') + (rest.length
+      ? `<li class="gap-more"><details data-id="coverage-others"><summary class="faint">같은 가지의 다른 기능 ${rest.length}개</summary><ul class="gap-list">${rest.map(item).join('')}</ul></details></li>` : '')
+      : rest.map(item).join(''))
       || '<li class="faint">이 가지에 케이스가 없습니다</li>';
     $$('[data-id="coverage-generate-more"]', list).forEach((b) => b.addEventListener('click', () => {
       NS.show('generate');

@@ -69,3 +69,24 @@ def test_remove_source_and_invalid_bundle_id(library_dir):
     assert third["source_id"] == "s03"
     with pytest.raises(src.SourceError):
         src.load_bundle("../etc")
+
+
+def test_removed_source_keeps_file_for_existing_drafts(library_dir):
+    """목록에서 뺀 소스도 이미 만든 초안의 원문 발췌가 계속 동작한다 (파일을 지우면 근거가 사라진다)."""
+    bundle = src.new_bundle()
+    entry = src.add_file(bundle, "prd.md", PRD_MD.encode())
+    src.remove_source(bundle, entry["source_id"])
+
+    manifest = src.load_bundle(bundle)
+    assert manifest["sources"] == []
+    assert [r["source_id"] for r in manifest["removed"]] == [entry["source_id"]]
+    assert src.excerpt(bundle, entry["ref"] + "#§3")["markdown"].startswith("배너 선택 시")
+    assert src.find_source(entry["ref"])[0] == bundle
+    with pytest.raises(src.SourceError) as exc:
+        src.remove_source(bundle, entry["source_id"])
+    assert exc.value.code == "SOURCE_NOT_FOUND"
+
+    again = src.add_file(bundle, "prd.md", PRD_MD.encode())       # 같은 문서를 다시 넣을 수 있다
+    manifest = src.load_bundle(bundle)
+    assert [s["source_id"] for s in manifest["sources"]] == [again["source_id"]] != [entry["source_id"]]
+    assert manifest["removed"] == []

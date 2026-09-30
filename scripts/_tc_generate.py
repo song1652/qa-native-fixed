@@ -30,7 +30,7 @@ from _tc_model import PRIORITIES, now_iso, parse_steps
 from _tc_profiles import get_profile
 from _tc_prompt import DRAFTS_SCHEMA, build_prompt, chunk_sections
 from _tc_review import find_duplicates
-from _tc_sources import load_bundle, read_text, split_sections
+from _tc_sources import all_entries, load_bundle, read_text, split_sections
 
 ACTIVE = ("queued", "fetching", "drafting", "validating")
 CHUNK_TIMEOUT = int(os.environ.get("TCS_CHUNK_TIMEOUT", "300"))
@@ -222,8 +222,10 @@ def run_job(job_id: str, *, runner=run_claude) -> dict:
         _update(job_id, status="fetching", started_at=now_iso())
         _log(job_id, f"fetching bundle={job['bundle_id']}")
         manifest = load_bundle(job["bundle_id"])
+        # 재생성은 초안의 출처가 목록에서 빠졌어도 원문으로 다시 쓴다
+        entries = all_entries(manifest) if job["mode"] == "regenerate" else manifest["sources"]
         sources = [{"entry": e, "sections": split_sections(read_text(job["bundle_id"], e["source_id"]))}
-                   for e in manifest["sources"]]
+                   for e in entries]
         chunks = chunk_sections(sources)
         if job.get("only_refs"):
             chunks = [c for c in ([i for i in chunk if i["ref"] in job["only_refs"]] for chunk in chunks) if c]

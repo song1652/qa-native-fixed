@@ -59,6 +59,13 @@
     $('#cnt-lib', root).textContent = cur ? cur.count : 0;
   }
 
+  // 케이스 추가·삭제·복제 뒤 스위트 선택 상자의 "(건수)"를 맞춘다 (선택한 스위트는 바꾸지 않는다)
+  NS.refreshSuiteCounts = async function () {
+    const { suites } = await api.suites();
+    state.suites = suites;
+    renderSuiteSelect();
+  };
+
   NS.refreshCounts = async function () {
     const badge = $('#cnt-review', root);
     if (!badge || !state.suite) return;
@@ -81,7 +88,7 @@
       Object.keys(state.filters).forEach((k) => { state.filters[k] = ['invalid', 'needs_review'].includes(k) ? false : ''; });
       $$('.filterbar select, .filterbar input, #tree-search', root).forEach((el) => { el.value = ''; });
       $$('.filterbar .fchip', root).forEach((el) => el.setAttribute('aria-pressed', 'false'));
-      NS.detail.close();
+      NS.detail.close({ force: true });
       state.reviewJob = null;
     }
     await NS.library.refresh();
@@ -112,7 +119,11 @@
     if (NS.importModal) NS.importModal.mount(root);
     $$('.step-item', root).forEach((b) => b.addEventListener('click', () => show(b.dataset.screen)));
     if (NS.importModal) $('#btn-import-xlsx', root).addEventListener('click', () => NS.importModal.open());
-    $('#suite-select', root).addEventListener('change', (e) => NS.reloadSuites(e.target.value));
+    $('#suite-select', root).addEventListener('change', async (e) => {
+      const next = e.target.value;
+      if (!(await NS.detail.confirmLeave())) { e.target.value = state.suite; return; }
+      await NS.reloadSuites(next);
+    });
     show('library');
     await NS.reloadSuites();
   }

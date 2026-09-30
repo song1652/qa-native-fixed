@@ -82,9 +82,16 @@ function _restoreScrollPos() {
 
 var _confirmOpen = false;
 
+var _lastFullRefresh = 0;
+var TC_STUDIO_REFRESH_MS = 30000;
+
 async function refreshAll() {
   // confirm/prompt 팝업이 열려있으면 리렌더 스킵 (팝업 강제 닫힘 방지)
   if (_confirmOpen || _reportListState.busy) return;
+  // TC 스튜디오는 공통 데이터를 화면에 쓰지 않는다. 사이드바 상태만 30초마다 맞추고 (파이프라인 변화는 SSE가 알린다)
+  // 5초마다 7개 API를 부르지 않는다
+  if (currentView === 'tc_studio' && Date.now() - _lastFullRefresh < TC_STUDIO_REFRESH_MS) return;
+  _lastFullRefresh = Date.now();
 
   await Promise.all([
     fetch('/api/dialogs?' + Date.now()).then(r => r.ok ? r.text() : null).then(t => { if (t) applyDialogData(t); }),

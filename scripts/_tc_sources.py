@@ -1,10 +1,11 @@
 """생성용 소스 번들 — 업로드 파일·붙여넣기를 markdown으로 정리 (PRD F1.1, F1.2, F1.5, F1.6).
 
 state/tc_library/_sources/{bundle_id}/
-  manifest.json   {"bundle_id", "created_at", "sources": [entry…]}
+  manifest.json   {"bundle_id", "created_at", "sources": [entry…], "removed": [entry…]}
   NN_{slug}.md    소스 1개 = 파일 1개 (정규화한 markdown)
 entry: {source_id, kind, title, ref, version, sha256, chars, pages, truncated, warnings, file}
 ref 형식: "file:{sha256 앞 12자}" (파일), "paste:{sha256 앞 12자}" (붙여넣기). 섹션은 ref + "#§N".
+removed: 목록에서 뺀 소스. 이미 끝난 작업의 초안이 원문을 계속 참조하므로 파일은 지우지 않는다.
 """
 from __future__ import annotations
 
@@ -60,8 +61,13 @@ def load_bundle(bundle_id: str) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def all_entries(manifest: dict) -> list[dict]:
+    """목록에 있는 소스 + 목록에서 뺀 소스 (원문 조회용)."""
+    return manifest["sources"] + manifest.get("removed", [])
+
+
 def read_text(bundle_id: str, source_id: str) -> str:
-    entry = next((s for s in load_bundle(bundle_id)["sources"] if s["source_id"] == source_id), None)
+    entry = next((s for s in all_entries(load_bundle(bundle_id)) if s["source_id"] == source_id), None)
     if entry is None:
         raise SourceError("소스가 없습니다", "SOURCE_NOT_FOUND", 404)
     return (_bundle_dir(bundle_id) / entry["file"]).read_text(encoding="utf-8")
@@ -201,6 +207,7 @@ def _add(bundle_id: str, kind: str, title: str, markdown: str, digest: str,
             "added_at": now_iso(),
         })
         manifest["sources"].append(dict(entry))
+        manifest["removed"] = [s for s in manifest.get("removed", []) if s["ref"] != source_ref]
         return manifest
 
     update_state(d / "manifest.json", mutate)
@@ -256,23 +263,22 @@ def find_source(ref: str) -> tuple[str, dict] | None:
         manifest = d / "manifest.json"
         if not manifest.exists():
             continue
-        for entry in json.loads(manifest.read_text(encoding="utf-8"))["sources"]:
+        for entry in all_entries(json.loads(manifest.read_text(encoding="utf-8"))):
             if entry["ref"] == ref:
                 return d.name, entry
     return None
 
 
 def remove_source(bundle_id: str, source_id: str) -> None:
+    """목록에서만 뺀다. 파일은 남겨 이미 만든 초안의 원문 발췌·재생성이 계속 동작하게 한다."""
     d = _bundle_dir(bundle_id)
 
     def mutate(manifest: dict) -> dict:
-        keep = [s for s in manifest["sources"] if s["source_id"] != source_id]
-        if len(keep) == len(manifest["sources"]):
+        gone = [s for s in manifest["sources"] if s["source_id"] == source_id]
+        if not gone:
             raise SourceError("소스가 없습니다", "SOURCE_NOT_FOUND", 404)
-        for s in manifest["sources"]:
-            if s["source_id"] == source_id:
-                (d / s["file"]).unlink(missing_ok=True)
-        manifest["sources"] = keep
+        manifest["sources"] = [s for s in manifest["sources"] if s["source_id"] != source_id]
+        manifest["removed"] = manifest.get("removed", []) + [{**gone[0], "removed_at": now_iso()}]
         return manifest
 
     update_state(d / "manifest.json", mutate)
@@ -282,7 +288,7 @@ def excerpt(bundle_id: str, ref: str) -> dict:
     """ref("file:abc#§2" 또는 "file:abc") → 해당 섹션 본문."""
     base, _, anchor = ref.partition("#")
     manifest = load_bundle(bundle_id)
-    entry = next((s for s in manifest["sources"] if s["ref"] == base), None)
+    entry = next((s for s in all_entries(manifest) if s["ref"] == base), None)
     if entry is None:
         raise SourceError("출처를 이 소스 묶음에서 찾을 수 없습니다", "SOURCE_NOT_FOUND", 404)
     sections = split_sections(read_text(bundle_id, entry["source_id"]))

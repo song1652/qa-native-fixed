@@ -7,7 +7,7 @@
   let current = null;   // 서버에서 받은 케이스 (rev 기준)
   let draft = null;     // 편집 중인 사본
 
-  NS.detail = { html, mount, open, close, refreshIfOpen };
+  NS.detail = { html, mount, open, close, refreshIfOpen, confirmLeave };
 
   const opt = (v, label) => `<option value="${esc(v)}">${esc(label)}</option>`;
 
@@ -69,7 +69,24 @@
       </aside>`;
   }
 
+  // 다른 케이스·스위트로 옮기기 전에 저장하지 않은 변경을 묻는다. true면 진행해도 된다
+  function confirmLeave() {
+    if (!isDirty()) return Promise.resolve(true);
+    const modal = $('#dirty-modal', root);
+    $('#dirty-title', root).textContent = `${current.case_id}에 저장하지 않은 변경이 있습니다`;
+    modal.hidden = false;
+    $('#dirty-save', root).focus();
+    return new Promise((resolve) => {
+      const done = (ok) => { modal.hidden = true; resolve(ok); };
+      $('#dirty-cancel', root).onclick = () => done(false);
+      $('#dirty-discard', root).onclick = () => { draft = JSON.parse(JSON.stringify(current)); fill(); done(true); };
+      $('#dirty-save', root).onclick = async () => { modal.hidden = true; resolve(await saveDetail()); };
+    });
+  }
+
   async function open(caseId, tab = 'edit') {
+    // 같은 케이스를 다시 여는 것(저장 뒤·"최신 값 불러오기")은 묻지 않는다
+    if (current && current.case_id !== caseId && !(await confirmLeave())) return;
     state.activeId = caseId;
     const { case: c } = await api.getCase(state.suite, caseId);
     current = c;
@@ -80,7 +97,8 @@
     selectTab(tab);
   }
 
-  function close() {
+  async function close({ force = false } = {}) {
+    if (!force && !(await confirmLeave())) return;
     state.activeId = '';
     current = draft = null;
     $('#lib', root).classList.add('no-detail');
@@ -225,8 +243,9 @@
     $$('.dpane', root).forEach((d) => d.classList.toggle('active', d.dataset.pane === p));
   }
 
+  // 성공하면 true (저장하고 이동할 때 결과를 본다)
   async function saveDetail() {
-    if (draft.steps.some((s) => !s.trim())) { toast('빈 Step이 있습니다. 내용을 쓰거나 지우고 저장하세요.', 'err'); return; }
+    if (draft.steps.some((s) => !s.trim())) { toast('빈 Step이 있습니다. 내용을 쓰거나 지우고 저장하세요.', 'err'); return false; }
     const changes = {};
     Object.entries(pick(draft)).forEach(([k, v]) => {
       if (JSON.stringify(v) !== JSON.stringify(current[k])) changes[k] = v;
@@ -240,6 +259,7 @@
       current = null;
       await NS.library.refresh();
       await open(saved.case_id, currentTab());
+      return true;
     } catch (err) {
       btn.disabled = false;
       if (err.status === 409) {
@@ -250,6 +270,7 @@
       } else {
         toast(`저장 실패: ${esc(err.message)}`, 'err');
       }
+      return false;
     } finally {
       btn.classList.remove('loading');
     }
@@ -278,7 +299,10 @@
       $$('#d-bullets input', root).at(-1).focus();
     });
     $$('.dtab', root).forEach((t) => t.addEventListener('click', () => selectTab(t.dataset.pane)));
-    $('#detail-close', root).addEventListener('click', close);
+    $('#detail-close', root).addEventListener('click', () => close());
+    window.addEventListener('beforeunload', (e) => {
+      if (root && document.body.contains(root) && isDirty()) { e.preventDefault(); e.returnValue = ''; }
+    });
     $('#detail-revert-edits', root).addEventListener('click', () => { draft = JSON.parse(JSON.stringify(current)); fill(); });
     $('#detail-save', root).addEventListener('click', saveDetail);
     $('#detail-move', root).addEventListener('click', () => NS.library.openMove([state.activeId]));

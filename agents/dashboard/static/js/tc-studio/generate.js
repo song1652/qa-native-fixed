@@ -12,6 +12,8 @@
   let profiles = [];
   let job = null;
   let poll = null;
+  let startedHere = '';       // 이 화면에서 시작한 작업 id. 아니면 "지난 작업"으로 표시한다
+  const DISMISS_KEY = () => `tcs-job-dismissed:${state.suite}`;
 
   NS.generateView = { html, mount, onShow, registerSourceTab, prefill, loadSuite };
 
@@ -95,7 +97,7 @@
         <div class="panel"><div class="panel-body" style="display:grid;gap:12px" id="job-panel" data-id="job-panel">
           <div class="row"><button class="btn btn-primary" data-id="gen-submit" id="gen-submit" disabled>초안 생성</button><span class="help" id="gen-hint">소스를 하나 이상 추가하세요</span></div>
           <div class="job" id="job" hidden>
-            <div class="row"><b id="job-title"></b><span id="job-pill"></span><span class="spacer"></span><button class="btn-sm" data-id="job-cancel" id="job-cancel">취소</button></div>
+            <div class="row"><b id="job-title"></b><span id="job-pill"></span><span class="help" id="job-when" data-id="job-when"></span><span class="spacer"></span><button class="btn-sm" data-id="job-cancel" id="job-cancel">취소</button><button class="icon-btn" data-id="job-dismiss" id="job-dismiss" aria-label="지난 작업 닫기" title="지난 작업 닫기">✕</button></div>
             <div class="jsteps" id="jsteps" data-id="job-progress"></div>
             <div class="help" id="job-detail"></div>
             <div id="job-fail" hidden class="warnbox err">
@@ -167,12 +169,19 @@
       bundle.sources = bundle.sources.filter((s) => s.source_id !== b.dataset.sid);
       renderSources();
     }));
-    const chars = bundle.sources.reduce((n, s) => n + s.chars, 0);
     $('#src-n', root).textContent = bundle.sources.length;
-    $('#gen-submit', root).disabled = !bundle.sources.length || isRunning();
-    $('#gen-hint', root).textContent = bundle.sources.length
-      ? `소스 ${bundle.sources.length}개 · 약 ${chars.toLocaleString()}자 · 섹션마다 수 분 걸릴 수 있습니다`
-      : '소스를 하나 이상 추가하세요';
+    updateSubmit();
+  }
+
+  // 소스와 대상(시트·대분류)이 모두 있어야 누를 수 있다. 빠진 것을 힌트로 알려 준다
+  function updateSubmit() {
+    const t = target();
+    const hasTarget = Boolean(t.sheet && t.path[0]);
+    const chars = bundle.sources.reduce((n, s) => n + s.chars, 0);
+    $('#gen-submit', root).disabled = !bundle.sources.length || !hasTarget || isRunning();
+    $('#gen-hint', root).textContent = !bundle.sources.length ? '소스를 하나 이상 추가하세요'
+      : !hasTarget ? '넣을 시트와 대분류를 고르세요'
+        : `소스 ${bundle.sources.length}개 · 약 ${chars.toLocaleString()}자 · 섹션마다 수 분 걸릴 수 있습니다`;
   }
 
   // ── 대상 가지 ────────────────────────────────────────────────
@@ -214,6 +223,7 @@
       path.push(cur);
     });
     loadExamples();
+    updateSubmit();
   }
   async function loadExamples() {
     const t = target();
@@ -246,6 +256,7 @@
     try {
       const res = await api.startJob(state.suite, { bundle_id: bundle.bundle_id, sheet: t.sheet, path: t.path, profile: profile().name, ...extra });
       job = res.job;
+      startedHere = job.job_id;
       renderJob({ job, log: '', invalid: [] });
       startPolling();
     } catch (err) {
@@ -272,6 +283,10 @@
     const j = body.job;
     $('#job', root).hidden = false;
     $('#job-title', root).textContent = `작업 ${j.job_id}`;
+    // 화면을 다시 열면 스위트의 마지막 작업을 복원한다. 방금 실행한 작업과 헷갈리지 않게 시각을 붙인다
+    const past = j.job_id !== startedHere && !isRunning();
+    $('#job-when', root).textContent = past ? `지난 작업 · ${(j.created_at || '').replace('T', ' ').slice(5, 16)}` : '';
+    $('#job-dismiss', root).hidden = isRunning();
     const failed = ['failed', 'cancelled'].includes(j.status);
     $('#job-pill', root).innerHTML = `<span class="pill ${failed ? 'st-rejected' : j.status === 'done' ? 'st-approved' : 'st-draft'}">${esc(j.status)}</span>`;
     const at = Math.max(STEPS.findIndex(([k]) => k === j.status), 0);
@@ -282,7 +297,7 @@
     const doneSections = j.sections.filter((s) => s.status === 'done').length;
     $('#job-detail', root).textContent = j.sections.length ? `섹션 ${doneSections}/${j.sections.length} · 초안 ${j.kept}건 · 형식 오류 ${j.invalid}건 · $${j.cost_usd}` : '';
     $('#job-cancel', root).hidden = !isRunning();
-    $('#gen-submit', root).disabled = isRunning() || !bundle.sources.length;
+    updateSubmit();
     $('#job-done', root).hidden = j.status !== 'done';
     $('#job-done-tag', root).textContent = `초안 ${j.kept}건 · 형식 오류 ${j.invalid}건`;
     $('#job-fail', root).hidden = !failed;
@@ -325,7 +340,9 @@
     const loaded = id ? await api.bundle(id).catch(() => null) : null;
     if (state.suite !== suite) return;
     bundle = loaded ? { bundle_id: loaded.bundle_id, sources: loaded.sources } : { bundle_id: '', sources: [] };
-    job = savedJob;
+    let dismissed = '';
+    try { dismissed = localStorage.getItem(DISMISS_KEY()) || ''; } catch (e) { /* 저장 불가 환경 */ }
+    job = savedJob && savedJob.job_id === dismissed && !['queued', 'fetching', 'drafting', 'validating'].includes(savedJob.status) ? null : savedJob;
     state.reviewJob = job ? job.job_id : null;
     const selected = target();
     renderTarget(preserveTarget && selected.sheet ? selected : job ? job.target : { sheet: '', path: ['', '', ''] });
@@ -436,6 +453,14 @@
     });
     $('#gen-submit', root).addEventListener('click', () => submit());
     $('#job-cancel', root).addEventListener('click', () => api.cancelJob(job.job_id));
+    $('#job-dismiss', root).addEventListener('click', () => {
+      try { localStorage.setItem(DISMISS_KEY(), job.job_id); } catch (e) { /* 저장 불가 환경 */ }
+      job = null;
+      state.reviewJob = null;
+      $('#job', root).hidden = true;
+      updateSubmit();
+    });
+    ['l1', 'l2', 'l3'].forEach((k) => $(`#gen-new-${k}`, root).addEventListener('input', updateSubmit));
     ['#job-open-review', '#job-open-review-partial'].forEach((s) => $(s, root).addEventListener('click', openReview));
     loadProfiles();
   }

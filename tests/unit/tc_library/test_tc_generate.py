@@ -118,6 +118,18 @@ def test_regenerate_rewrites_one_draft(seeded, fake_claude):
         gen.create_job(SUITE, bundle_id=seeded, target=TARGET, profile="기본", mode="regenerate", case_id="x")
 
 
+
+def test_regenerate_still_works_after_source_removed_from_list(seeded, fake_claude):
+    job = gen.create_job(SUITE, bundle_id=seeded, target=TARGET, profile="기본")
+    gen.run_job(job["job_id"])
+    draft = lib.filter_cases(lib.load_cases(SUITE), {"job": job["job_id"]})[0]
+    src.remove_source(seeded, src.load_bundle(seeded)["sources"][0]["source_id"])
+
+    regen = gen.create_job(SUITE, bundle_id=seeded, target=TARGET, profile="기본", mode="regenerate",
+                           case_id=draft["case_id"], note="다시 써 주세요")
+    final = gen.run_job(regen["job_id"])
+    assert final["status"] == "done" and final["kept"] == 1
+
 def test_retry_only_failed_sections(seeded, fake_claude):
     ref = src.load_bundle(seeded)["sources"][0]["ref"] + "#§3"
     job = gen.create_job(SUITE, bundle_id=seeded, target=TARGET, profile="기본", only_refs=[ref])

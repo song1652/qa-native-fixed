@@ -4,7 +4,13 @@
 
   const { state, api, esc, $, $$, toast } = NS;
   const open = new Set();          // 펼친 트리 가지 (path.join('\u0001'))
+  const FETCH_PAGE = 1000;         // 서버 limit 상한. 넘으면 offset으로 이어 받는다
+  const ROW_CHUNK = 150;           // 한 번에 그리는 행 수. 나머지는 스크롤이 끝에 닿을 때 붙인다
+  const TREE_KEY = 'tcs-tree-hidden';
   let root = null;
+  let listSeq = 0;
+  let shown = 0;
+  let moreObserver = null;
 
   const opt = (v, label, cur) => `<option value="${esc(v)}" ${v === cur ? 'selected' : ''}>${esc(label)}</option>`;
 
@@ -42,6 +48,7 @@
           <button class="btn-sm" data-id="lib-filter-reset" id="lib-filter-reset">초기화</button>
         </div>
         <div class="grid-meta">
+          <button class="btn-sm" data-id="tree-toggle" id="tree-toggle" aria-pressed="false" title="계층 트리를 숨겨 그리드를 넓게 봅니다">트리 숨기기</button>
           <span class="crumbpath" id="grid-crumb"></span>
           <span id="grid-count" class="num"></span>
           <span class="spacer"></span>
@@ -96,6 +103,15 @@
       </div>
     </div>
   </div>
+  <div class="scrim" id="dirty-modal" data-id="dirty-modal" hidden>
+    <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="dirty-title" style="width:min(420px,100%)">
+      <div class="panel-body" style="display:grid;gap:12px">
+        <b id="dirty-title"></b>
+        <span class="muted">저장하지 않으면 상세 패널에서 고친 내용이 사라집니다.</span>
+        <div class="row"><span class="spacer"></span><button class="btn btn-ghost" id="dirty-cancel" data-id="dirty-cancel">계속 편집</button><button class="btn btn-ghost" id="dirty-discard" data-id="dirty-discard">버리기</button><button class="btn btn-primary" id="dirty-save" data-id="dirty-save">저장</button></div>
+      </div>
+    </div>
+  </div>
   <div class="scrim" id="confirm-modal" data-id="confirm-modal" hidden>
     <div class="modal" role="alertdialog" aria-modal="true" style="width:min(400px,100%)">
       <div class="panel-body" style="display:grid;gap:12px">
@@ -119,10 +135,21 @@
     renderTree();
     await reloadList();
     if (NS.sourceWatch) await NS.sourceWatch.renderBanner(root);
+    if (NS.refreshSuiteCounts) await NS.refreshSuiteCounts();
   }
 
   async function reloadList() {
-    const { items, total } = await api.list(state.suite, { ...NS.queryFromFilters(state.filters), limit: 1000 });
+    const seq = ++listSeq;
+    const suite = state.suite;
+    const query = NS.queryFromFilters(state.filters);
+    const { items: first, total } = await api.list(suite, { ...query, limit: FETCH_PAGE });
+    let items = first;
+    while (items.length < total) {
+      const { items: next } = await api.list(suite, { ...query, offset: items.length, limit: FETCH_PAGE });
+      if (!next.length) break;
+      items = items.concat(next);
+    }
+    if (seq !== listSeq || suite !== state.suite) return;   // 늦게 도착한 이전 검색 결과는 버린다
     state.items = items;
     state.total = total;
     state.selected.forEach((id) => { if (!items.some((c) => c.case_id === id)) state.selected.delete(id); });
@@ -189,16 +216,14 @@
     return esc(c.expected) + c.bullets.map((b) =>
       `\n<span class="blt ${b.verified ? '' : 'est'}">- ${esc(b.text)}${b.verified ? '' : ' (추정)'}</span>`).join('');
   }
-  function renderGrid() {
-    let prev = null;
-    $('#grid-body', root).innerHTML = state.items.map((c, i) => {
-      const hier = [0, 1, 2].map((d) => {
-        const rep = prev && prev.sheet === c.sheet && prev.path.slice(0, d + 1).join('/') === c.path.slice(0, d + 1).join('/') && c.path[d];
-        return `<td class="${rep ? 'rep' : ''}"><span>${esc(c.path[d])}</span></td>`;
-      }).join('');
-      const errors = c.issues.filter((x) => x.level === 'error');
-      prev = c;
-      return `<tr data-case="${c.case_id}" class="${state.selected.has(c.case_id) ? 'sel' : ''} ${state.activeId === c.case_id ? 'active' : ''}">
+  function rowHtml(c, i) {
+    const prev = state.items[i - 1];
+    const hier = [0, 1, 2].map((d) => {
+      const rep = prev && prev.sheet === c.sheet && prev.path.slice(0, d + 1).join('/') === c.path.slice(0, d + 1).join('/') && c.path[d];
+      return `<td class="${rep ? 'rep' : ''}"><span>${esc(c.path[d])}</span></td>`;
+    }).join('');
+    const errors = c.issues.filter((x) => x.level === 'error');
+    return `<tr data-case="${c.case_id}" class="${state.selected.has(c.case_id) ? 'sel' : ''} ${state.activeId === c.case_id ? 'active' : ''}">
         <td><input type="checkbox" data-id="grid-row-check" aria-label="${c.case_id} 선택" ${state.selected.has(c.case_id) ? 'checked' : ''}></td>
         <td><span class="drag" draggable="true" data-id="grid-row-drag" title="트리로 끌어 계층 이동">⋮⋮</span></td>
         <td class="no">${i + 1}</td>
@@ -211,16 +236,58 @@
         <td>${resultSelect(c)}</td>
         <td><div class="etc"><span>id:${c.case_id}</span>${c.status !== 'approved' ? `<span class="pill st-${c.status}" data-id="grid-status-chip">${NS.STATUS_LABEL[c.status]}</span>` : ''}${c.note ? `<span>${esc(c.note)}</span>` : ''}</div></td>
       </tr>`;
-    }).join('') || `<tr><td colspan="13" style="text-align:center;padding:40px;color:var(--text3)" data-id="grid-empty-filter">조건에 맞는 케이스가 없습니다.</td></tr>`;
+  }
+  const moreHtml = () => (shown < state.items.length
+    ? `<tr class="grid-more" id="grid-more" data-id="grid-more"><td colspan="13">${shown.toLocaleString()} / ${state.items.length.toLocaleString()}건 표시 · 스크롤하면 더 불러옵니다</td></tr>`
+    : '');
+
+  // keep: 저장·선택 뒤 다시 그릴 때 지금까지 펼친 행 수를 유지한다 (스크롤 위치 보존)
+  function renderGrid({ keep = false } = {}) {
+    shown = Math.min(state.items.length, Math.max(ROW_CHUNK, keep ? shown : 0));
+    $('#grid-body', root).innerHTML = (state.items.slice(0, shown).map(rowHtml).join('') + moreHtml())
+      || `<tr><td colspan="13" style="text-align:center;padding:40px;color:var(--text3)" data-id="grid-empty-filter">조건에 맞는 케이스가 없습니다.</td></tr>`;
     $('#grid-crumb', root).textContent = state.filters.path.replaceAll('/', ' › ') || state.suite;
     $('#grid-count', root).textContent = `${state.total}건`;
     $('#n-invalid', root).textContent = state.items.filter((c) => c.has_error).length;
-    bindGrid();
+    bindRows($$('#grid-body tr[data-case]', root));
+    watchMore();
     updateBulk();
   }
 
-  function bindGrid() {
-    $$('#grid-body tr[data-case]', root).forEach((tr) => {
+  function appendRows() {
+    const from = shown;
+    shown = Math.min(state.items.length, shown + ROW_CHUNK);
+    if (shown === from) return;
+    const body = $('#grid-body', root);
+    const more = $('#grid-more', body);
+    if (more) more.remove();
+    body.insertAdjacentHTML('beforeend', state.items.slice(from, shown).map((c, j) => rowHtml(c, from + j)).join('') + moreHtml());
+    bindRows($$('#grid-body tr[data-case]', root).slice(from));
+    watchMore();
+  }
+
+  function watchMore() {
+    if (!moreObserver) moreObserver = new IntersectionObserver((entries) => {
+      if (entries.some((e) => e.isIntersecting)) appendRows();
+    }, { rootMargin: '400px' });
+    moreObserver.disconnect();
+    const more = $('#grid-more', root);
+    if (more) moreObserver.observe(more);
+  }
+
+  // 저장 실패 시 그 행만 서버 값으로 다시 그린다
+  function rerenderRow(id) {
+    const i = state.items.findIndex((c) => c.case_id === id);
+    const tr = $(`#grid-body tr[data-case="${CSS.escape(id)}"]`, root);
+    if (i < 0 || !tr) return;
+    tr.insertAdjacentHTML('afterend', rowHtml(state.items[i], i));
+    const fresh = tr.nextElementSibling;
+    tr.remove();
+    bindRows([fresh]);
+  }
+
+  function bindRows(trs) {
+    trs.forEach((tr) => {
       const id = tr.dataset.case;
       $('[data-id="grid-row-check"]', tr).addEventListener('change', (e) => {
         if (e.target.checked) state.selected.add(id); else state.selected.delete(id);
@@ -234,22 +301,24 @@
       $('.drag', tr).addEventListener('dragstart', (e) => e.dataTransfer.setData('text/case', id));
       $('[data-id="grid-cell-priority"]', tr).addEventListener('change', (e) => save(id, { priority: e.target.value }));
       $('[data-id="grid-result"]', tr).addEventListener('change', (e) => save(id, { execution_result: e.target.value }));
+      $$('.cell[data-edit]', tr).forEach(bindCell);
     });
-    $$('#grid-body .cell[data-edit]', root).forEach((cell) => {
-      const start = () => {
-        if (cell.isContentEditable) return;
-        cell.dataset.orig = cell.innerText;
-        cell.contentEditable = 'true';
-        cell.focus();
-      };
-      cell.addEventListener('dblclick', start);
-      cell.addEventListener('keydown', (e) => {
-        if (!cell.isContentEditable) { if (e.key === 'Enter') { e.preventDefault(); start(); } return; }
-        if (e.key === 'Escape') { cell.innerText = cell.dataset.orig; cell.contentEditable = 'false'; cell.classList.remove('bad'); }
-        if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); commitCell(cell); }
-      });
-      cell.addEventListener('blur', () => { if (cell.isContentEditable) commitCell(cell); });
+  }
+
+  function bindCell(cell) {
+    const start = () => {
+      if (cell.isContentEditable) return;
+      cell.dataset.orig = cell.innerText;
+      cell.contentEditable = 'true';
+      cell.focus();
+    };
+    cell.addEventListener('dblclick', start);
+    cell.addEventListener('keydown', (e) => {
+      if (!cell.isContentEditable) { if (e.key === 'Enter') { e.preventDefault(); start(); } return; }
+      if (e.key === 'Escape') { cell.innerText = cell.dataset.orig; cell.contentEditable = 'false'; cell.classList.remove('bad'); }
+      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); commitCell(cell); }
     });
+    cell.addEventListener('blur', () => { if (cell.isContentEditable) commitCell(cell); });
   }
 
   function commitCell(cell) {
@@ -289,10 +358,14 @@
       Object.assign(c, updated);
       toast(`${id} 저장됨 · rev ${updated.rev}`, 'ok', [], 1800);
       await refreshTreeOnly();
-      renderGrid();
+      renderGrid({ keep: true });
       NS.detail.refreshIfOpen();
     } catch (err) {
-      if (err.status !== 409) { toast(`${id} 저장 실패: ${esc(err.message)}`, 'err'); return; }
+      if (err.status !== 409) {
+        rerenderRow(id);   // 화면에 바꾼 값이 남아 서버 값과 달라 보이지 않게
+        toast(`${id} 저장 실패: ${esc(err.message)}`, 'err', [{ id: 'toast-save-retry', label: '다시 시도', fn: () => save(id, changes) }], 0);
+        return;
+      }
       toast(`<b>${id}</b>를 저장하지 못했습니다. 다른 곳에서 먼저 바뀌었습니다 (내 rev ${c.rev}, 서버 rev ${err.data.server_case.rev}). 변경 내용은 그대로 남아 있습니다.`, 'err', [
         { id: 'toast-conflict-compare', label: '차이 비교', fn: () => NS.detail.open(id, 'history') },
         { id: 'toast-conflict-reload', label: '최신 값 불러오기', fn: () => reloadList() },
@@ -333,7 +406,7 @@
       const items = state.items.filter((c) => ids.includes(c.case_id)).map((c) => ({ case_id: c.case_id, rev: c.rev }));
       const res = await api.bulk(state.suite, items, 'delete');
       ids.forEach((id) => state.selected.delete(id));
-      if (ids.includes(state.activeId)) NS.detail.close();
+      if (ids.includes(state.activeId)) NS.detail.close({ force: true });
       toast(`${res.deleted.length}건을 삭제했습니다.`, 'ok', [{
         id: 'delete-undo', label: '되돌리기',
         fn: async () => { for (const id of res.deleted) await api.restore(state.suite, id); await refresh(); },
@@ -369,13 +442,31 @@
   }
 
   async function addCase() {
-    const base = byId(state.activeId) || state.items[0];
-    const fields = base
-      ? { sheet: base.sheet, path: base.path, feature: '새 제목', after: base.case_id }
-      : { feature: '새 제목' };
-    const { case: created } = await api.createCase(state.suite, fields);
-    await refresh();
-    NS.detail.open(created.case_id);
+    const btn = $('#btn-add-case', root);
+    if (btn.disabled) return;
+    btn.disabled = true;          // 연타해도 1건만 만든다
+    try {
+      if (!(await NS.detail.confirmLeave())) return;
+      const base = byId(state.activeId) || state.items[0];
+      const fields = base
+        ? { sheet: base.sheet, path: base.path, feature: '새 제목', after: base.case_id }
+        : { feature: '새 제목' };
+      const { case: created } = await api.createCase(state.suite, fields);
+      await refresh();
+      await NS.detail.open(created.case_id);
+    } catch (err) {
+      toast(`케이스를 추가하지 못했습니다: ${esc(err.message)}`, 'err');
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  function setTreeHidden(hidden) {
+    $('#lib', root).classList.toggle('tree-hidden', hidden);
+    const btn = $('#tree-toggle', root);
+    btn.setAttribute('aria-pressed', hidden);
+    btn.textContent = hidden ? '트리 보기' : '트리 숨기기';
+    try { localStorage.setItem(TREE_KEY, hidden ? '1' : ''); } catch (e) { /* 저장 불가 환경 */ }
   }
 
   // ── 이벤트 연결 ──────────────────────────────────────────────
@@ -422,7 +513,7 @@
     $('#tree-collapse-all', root).addEventListener('click', () => { open.clear(); renderTree(); });
     $('#grid-check-all', root).addEventListener('change', (e) => {
       state.items.forEach((c) => (e.target.checked ? state.selected.add(c.case_id) : state.selected.delete(c.case_id)));
-      renderGrid();
+      renderGrid({ keep: true });
     });
     const bulkSelect = (id, field, label, map = (v) => v) => $(id, root).addEventListener('change', async (e) => {
       const v = e.target.value;
@@ -432,7 +523,7 @@
     bulkSelect('#bulk-priority', 'priority', '우선순위');
     bulkSelect('#bulk-result', 'execution_result', '실행 결과', (v) => (v === 'none' ? '' : v));
     bulkSelect('#bulk-status', 'status', '검토 상태');
-    $('#bulk-clear', root).addEventListener('click', () => { state.selected.clear(); renderGrid(); });
+    $('#bulk-clear', root).addEventListener('click', () => { state.selected.clear(); renderGrid({ keep: true }); });
     $('#bulk-move', root).addEventListener('click', () => openMove([...state.selected]));
     $('#bulk-delete', root).addEventListener('click', () => askDelete([...state.selected]));
     $('#bulk-duplicate', root).addEventListener('click', async () => {
@@ -443,9 +534,17 @@
     ['#move-close', '#move-cancel'].forEach((s) => $(s, root).addEventListener('click', () => { $('#move-modal', root).hidden = true; }));
     $('#cf-cancel', root).addEventListener('click', () => { $('#confirm-modal', root).hidden = true; });
     $('#btn-add-case', root).addEventListener('click', addCase);
+    $('#tree-toggle', root).addEventListener('click', () => setTreeHidden(!$('#lib', root).classList.contains('tree-hidden')));
+    let treeHidden = false;
+    try { treeHidden = localStorage.getItem(TREE_KEY) === '1'; } catch (e) { /* 저장 불가 환경 */ }
+    setTreeHidden(treeHidden);
     if (NS.importModal) $('#empty-import-xlsx', root).addEventListener('click', () => NS.importModal.open());
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') $$('.scrim', root).forEach((s) => { if (s.id !== 'import-modal') s.hidden = true; });
+      if (e.key === 'Escape') $$('.scrim', root).forEach((s) => {
+        if (s.hidden || s.id === 'import-modal') return;
+        if (s.id === 'dirty-modal') $('#dirty-cancel', root).click();   // 약속(Promise)을 끝내야 하므로 닫기만 하지 않는다
+        else s.hidden = true;
+      });
       if (e.key === '/' && state.screen === 'library' && !e.target.closest('input,textarea,[contenteditable="true"]')) {
         e.preventDefault();
         $('#lib-search', root).focus();
