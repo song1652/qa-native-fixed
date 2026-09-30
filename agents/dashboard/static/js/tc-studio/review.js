@@ -7,6 +7,7 @@
   let drafts = [];          // 이번 검토 대상 (작업 id가 있으면 그 작업의 초안 전부, 없으면 draft 상태 전부)
   let targets = {};         // 중복 후보 case_id → 케이스
   let jobInfo = null;
+  let manifest = null;      // 작업 소스 묶음 (Figma 프레임 이미지용, Phase 3)
   let focus = 0;
   let filter = 'all';
 
@@ -55,6 +56,7 @@
     const query = state.reviewJob ? { job: state.reviewJob, limit: 1000 } : { status: 'draft', limit: 1000 };
     drafts = (await api.list(state.suite, query)).items;
     jobInfo = state.reviewJob ? await api.job(state.reviewJob).catch(() => null) : null;
+    manifest = jobInfo ? await api.bundle(jobInfo.job.bundle_id).catch(() => null) : null;
     const ids = [...new Set(drafts.flatMap((d) => (d.draft_meta.duplicates || []).map((h) => h.case_id)))];
     targets = {};
     await Promise.all(ids.map(async (id) => { targets[id] = (await api.getCase(state.suite, id)).case; }));
@@ -197,7 +199,9 @@
       let text = esc(ex.markdown);
       const quote = d.draft_meta.source_quote && esc(d.draft_meta.source_quote);
       if (quote && text.includes(quote)) text = text.replace(quote, `<mark>${quote}</mark>`);
-      box.innerHTML = `<h5>${esc(ex.title)} › ${esc(ex.section)} (${esc(ex.anchor)})</h5><div style="white-space:pre-wrap">${text}</div>`;
+      const entry = manifest && manifest.sources.find((s) => ref.startsWith(s.ref));
+      const frames = NS.sourceWatch && entry ? NS.sourceWatch.figmaFrames(jobInfo.job.bundle_id, entry) : '';
+      box.innerHTML = `<h5>${esc(ex.title)} › ${esc(ex.section)} (${esc(ex.anchor)})</h5>${frames}<div style="white-space:pre-wrap">${text}</div>`;
     } catch (err) {
       box.innerHTML = `<span class="faint">원문을 불러오지 못했습니다: ${esc(err.message)}</span>`;
     }

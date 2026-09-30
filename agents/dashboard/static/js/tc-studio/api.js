@@ -67,5 +67,16 @@
       request('GET', `${S(suite)}/coverage?${new URLSearchParams({ sheet, path: path.join('/'), profile })}`),
     resolveDuplicate: (suite, id, payload) => request('POST', `${C(suite, id)}/resolve-duplicate`, payload),
     mappingProfiles: () => request('GET', '/api/tc-library/import/mapping-profiles'),
+    // ── Phase 3: 원격 소스·자격증명·출처 변경 ──
+    addSourceUrl: (bundleId, url) => request('POST', `/api/tc-library/sources/${enc(bundleId)}/url`, { url }),
+    addSourceConfluence: (bundleId, url, children) =>
+      request('POST', `/api/tc-library/sources/${enc(bundleId)}/confluence`, { url, children }),
+    addSourceFigma: (bundleId, url) => request('POST', `/api/tc-library/sources/${enc(bundleId)}/figma`, { url }),
+    credentials: () => request('GET', '/api/tc-library/credentials'),
+    saveCredentials: (kind, fields) => request('PUT', `/api/tc-library/credentials/${enc(kind)}`, fields),
+    sourceChanges: (suite) => request('GET', `${S(suite)}/source-changes`),
+    scanSources: (suite) => request('POST', `${S(suite)}/source-changes/scan`),
+    sourceDiff: (ref) => request('GET', `/api/tc-library/source-diff?ref=${enc(ref)}`),
+    ackSource: (suite, id) => request('POST', `${C(suite, id)}/ack-source`),
   };
 })(window.TCS_NS = window.TCS_NS || {});

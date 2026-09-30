@@ -137,6 +137,8 @@
     }
   }
   NS.generateView.addSource = addSource;
+  NS.generateView.ensureBundle = ensureBundle;
+  NS.generateView.pushSource = (source) => { bundle.sources.push(source); renderSources(); };   // Phase 3 (Confluence 여러 페이지)
 
   function renderSources() {
     $('#srcs', root).innerHTML = bundle.sources.map((s) => `<div class="src-card" data-id="src-chip">
