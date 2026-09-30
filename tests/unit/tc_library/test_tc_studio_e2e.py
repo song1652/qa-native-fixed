@@ -155,3 +155,14 @@ def test_import_modal_previews_and_imports_workbook(tmp_path, page):
         expect(page.locator('tr[data-case="BEN_0001"]')).to_be_visible()
         page.reload()
         expect(rows(page)).to_have_count(6)
+
+# ── W3: 내보내기 화면 ──────────────────────────────────────────────────────────
+def test_export_check_and_download(studio):
+    _, page = studio
+    page.locator('[data-id="nav-tab-export"]').click()
+    page.locator('[data-id="xlsx-run-check"]').click()
+    expect(page.locator('[data-id="xlsx-integrity"] li .ok')).to_have_count(4)
+    expect(page.locator('[data-id="xlsx-download"]')).to_be_enabled()
+    with page.expect_download() as info:
+        page.locator('[data-id="xlsx-download"]').click()
+    assert info.value.suggested_filename.endswith(".xlsx")
