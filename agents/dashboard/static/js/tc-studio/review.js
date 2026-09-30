@@ -64,6 +64,11 @@
     await Promise.all(ids.map(async (id) => { targets[id] = (await api.getCase(state.suite, id)).case; }));
     focus = Math.min(focus, Math.max(drafts.length - 1, 0));
     render();
+    // 이 작업의 초안을 모두 승인·반려했으면 생성 화면을 처음 양식으로 되돌린다
+    if (jobInfo && drafts.length && !drafts.some(pending) && NS.generateView
+      && NS.generateView.finishIfReviewed(jobInfo.job.job_id)) {
+      toast('이 작업의 초안 검토를 마쳤습니다. 생성 화면을 새 양식으로 비웠습니다.', 'ok');
+    }
     await showSource();
     await loadGaps();
   }

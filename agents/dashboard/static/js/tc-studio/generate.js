@@ -15,7 +15,7 @@
   let startedHere = '';       // 이 화면에서 시작한 작업 id. 아니면 "지난 작업"으로 표시한다
   const DISMISS_KEY = () => `tcs-job-dismissed:${state.suite}`;
 
-  NS.generateView = { html, mount, onShow, registerSourceTab, prefill, loadSuite };
+  NS.generateView = { html, mount, onShow, registerSourceTab, prefill, loadSuite, finishIfReviewed };
 
   function registerSourceTab(tab) { tabs.push(tab); }
 
@@ -336,13 +336,25 @@
     const suite = state.suite;
     let saved = '';
     try { saved = sessionStorage.getItem(BUNDLE_KEY()) || ''; } catch (e) { /* 저장 불가 환경 */ }
-    const id = saved || (savedJob && savedJob.bundle_id);
+    let dismissed = '';
+    try { dismissed = localStorage.getItem(DISMISS_KEY()) || ''; } catch (e) { /* 저장 불가 환경 */ }
+    const active = savedJob && ['queued', 'fetching', 'drafting', 'validating'].includes(savedJob.status);
+    job = savedJob && savedJob.job_id === dismissed && !active ? null : savedJob;
+    // 끝난 작업은 검토할 초안이 남아 있을 때만 복원한다. 검토를 마쳤으면 소스·대상까지 비운 처음 양식으로 시작한다
+    let reviewed = false;
+    if (job && !active) {
+      const { total } = await api.list(suite, { job: job.job_id, status: 'draft', limit: 1 }).catch(() => ({ total: 0 }));
+      if (state.suite !== suite) return;
+      if (!total) { reviewed = true; job = null; }
+    }
+    if (reviewed && saved === savedJob.bundle_id) {
+      saved = '';
+      try { sessionStorage.removeItem(BUNDLE_KEY()); } catch (e) { /* 저장 불가 환경 */ }
+    }
+    const id = saved || (job && job.bundle_id);
     const loaded = id ? await api.bundle(id).catch(() => null) : null;
     if (state.suite !== suite) return;
     bundle = loaded ? { bundle_id: loaded.bundle_id, sources: loaded.sources } : { bundle_id: '', sources: [] };
-    let dismissed = '';
-    try { dismissed = localStorage.getItem(DISMISS_KEY()) || ''; } catch (e) { /* 저장 불가 환경 */ }
-    job = savedJob && savedJob.job_id === dismissed && !['queued', 'fetching', 'drafting', 'validating'].includes(savedJob.status) ? null : savedJob;
     state.reviewJob = job ? job.job_id : null;
     const selected = target();
     renderTarget(preserveTarget && selected.sheet ? selected : job ? job.target : { sheet: '', path: ['', '', ''] });
@@ -357,6 +369,26 @@
     } else {
       $('#job', root).hidden = true;
     }
+  }
+
+  // 생성 화면을 처음 양식으로 되돌린다. 옛 소스 묶음은 서버에 남아 이미 만든 초안의 원문 보기에 계속 쓰인다
+  function resetForm() {
+    clearInterval(poll);
+    job = null;
+    startedHere = '';
+    state.reviewJob = null;
+    bundle = { bundle_id: '', sources: [] };
+    try { sessionStorage.removeItem(BUNDLE_KEY()); } catch (e) { /* 저장 불가 환경 */ }
+    $('#job', root).hidden = true;
+    renderTarget({ sheet: '', path: ['', '', ''] });
+    renderSources();
+  }
+
+  // 검토 화면이 작업의 초안을 모두 처리했을 때 부른다
+  function finishIfReviewed(jobId) {
+    if (!job || job.job_id !== jobId || isRunning()) return false;
+    resetForm();
+    return true;
   }
 
   function mount(r) {

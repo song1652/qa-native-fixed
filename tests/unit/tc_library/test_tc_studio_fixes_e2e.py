@@ -194,6 +194,29 @@ def test_restored_job_is_marked_past_and_can_be_dismissed(studio):
     expect(page.locator("#job")).to_be_hidden()
 
 
+def test_reviewed_job_resets_generate_form_to_blank(studio):
+    base, page, tmp_path = studio
+    generate(page, tmp_path)
+    page.locator('[data-id="job-open-review"]').click()
+    expect(page.locator('[data-id="draft-card"]')).to_have_count(2)
+    for _ in range(2):                      # 추정 문구가 있어 일괄 승인 대상이 아니므로 하나씩 승인한다
+        page.locator('article.dcard.draft [data-id="draft-approve"]').first.click()
+        page.wait_for_timeout(300)
+    expect(page.locator("#rv-left")).to_have_text("0")
+    expect(page.locator(".toast.ok").last).to_contain_text("새 양식으로 비웠습니다")
+    page.locator('[data-id="nav-tab-generate"]').click()          # 검토를 마치면 바로 처음 양식
+    expect(page.locator("#job")).to_be_hidden()
+    expect(page.locator('[data-id="src-chip"]')).to_have_count(0)
+    expect(page.locator('[data-id="gen-target-sheet"]')).to_have_value("")
+    expect(page.locator('[data-id="gen-submit"]')).to_be_disabled()
+    page.reload()                                                  # 다시 열어도 처음 양식
+    page.locator('[data-id="nav-tab-generate"]').click()
+    expect(page.locator('[data-id="gen-submit"]')).to_be_visible()
+    expect(page.locator("#job")).to_be_hidden()
+    expect(page.locator('[data-id="src-chip"]')).to_have_count(0)
+    expect(page.locator('[data-id="gen-target-sheet"]')).to_have_value("")
+
+
 def test_removing_source_after_generation_keeps_review_excerpt(studio):
     base, page, tmp_path = studio
     add_case(base, feature="사람이 추가한 초안")        # 작업 밖의 초안 (배지와 검토 화면 기준이 다른 경우)
