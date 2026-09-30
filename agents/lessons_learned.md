@@ -26,3 +26,7 @@
 - **문제**: 힐링 과정에서 `assert any(keyword in msg_text.lower() for keyword in error_keywords)`가 `assert msg_text`로 약화됨. assertion 무결성 경고 발생 (9→7개).
 - **수정**: `assert msg_text` → `assert any(keyword in msg_text.lower() for keyword in error_keywords)` 로 복원. 키워드 목록은 dialog 분기에서 사용하는 동일 리스트 사용.
 - **재발 방지**: 힐링 패치 후 assertion 무결성 경고가 뜨면 반드시 원본 assertion 강도를 복원할 것. `assert <텍스트>` 단순 비어있지않음 체크는 키워드·상태 조건 체크를 대체할 수 없음.
+
+### [수정] 2026-09-30 -- TC Studio 계획의 단계별 import
+- **문제**: B6 테스트가 B7에서 정의할 verify_export를 미리 import해 B6 통과 확인이 불가능했다.
+- **재발 방지**: 검증 함수를 사용하는 작업에서 import를 추가한다. B6/B7 assertion은 그대로 유지한다.
