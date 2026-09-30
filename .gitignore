@@ -28,6 +28,10 @@ test_data/*.json
 # 레거시 위치 (이전 버전 호환)
 config/test_data.json
 config/jira_config.json
+# TC 스튜디오 연결 자격증명 (Phase 3)
+config/confluence_config.json
+config/figma_config.json
+
 
 # macOS
 .DS_Store
