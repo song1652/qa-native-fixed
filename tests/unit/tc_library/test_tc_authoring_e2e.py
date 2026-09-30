@@ -150,3 +150,33 @@ def test_reload_restores_saved_sources_target_and_review_job(studio):
         expect(fresh.locator('[data-id="gen-target-sheet"]')).to_have_value('혜택')
     finally:
         other.close()
+
+
+def test_profile_style_imported_from_excel_and_saved(studio):
+    _, page, tmp_path = studio
+    page.locator('[data-id="nav-tab-generate"]').click()
+    page.locator('[data-id="gen-profile-edit"]').click()
+    page.locator('[data-id="gen-style-file"]').set_input_files(str(tmp_path / "seed.xlsx"))
+    expect(page.locator("#tcs-toasts")).to_contain_text("문체를 읽었습니다")
+    expect(page.locator('[data-id="gen-endings-input"]')).not_to_have_value("")
+    expect(page.locator('[data-id="gen-profile-examples"]')).to_contain_text("기준 예시")
+    expect(page.locator('[data-id="gen-profile-name"]')).to_have_value("seed")
+    page.locator('[data-id="gen-profile-save"]').click()
+    expect(page.locator('[data-id="gen-profile"]')).to_have_value("seed")
+    expect(page.locator("#gen-rules")).to_contain_text("Expected 끝맺음")
+    expect(page.locator("#gen-rules")).to_contain_text("기준 예시")
+
+
+def test_review_marks_drafts_that_break_profile_style_and_bulk_skips_them(studio):
+    base_url, page, tmp_path = studio
+    from tests.unit.import_studio.import_studio_test_support import request_json
+    status, _ = request_json(base_url, "PUT", "/api/tc-library/profiles/%EB%AC%B8%EC%B2%B4",
+                             {"rules": ["규칙"], "expected_endings": ["없는끝."]})
+    assert status == 200
+    page.reload()
+    page.locator('[data-id="nav-tab-generate"]').click()
+    page.locator('[data-id="gen-profile"]').select_option("문체")
+    cards = _open_review(page, tmp_path)
+    expect(cards.first.locator('[data-id="draft-style"]')).to_have_attribute("title", "Expected 끝맺음이 작성 규칙과 다릅니다 (없는끝.)")
+    page.locator('[data-id="review-approve-clean"]').click()
+    expect(page.locator("#rv-left")).to_have_text("2")

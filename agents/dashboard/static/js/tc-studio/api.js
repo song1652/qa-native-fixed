@@ -77,6 +77,7 @@
     removeSource: (bundleId, sourceId) => request('DELETE', `/api/tc-library/sources/${enc(bundleId)}/${enc(sourceId)}`),
     excerpt: (bundleId, ref) => request('GET', `/api/tc-library/sources/${enc(bundleId)}/excerpt?ref=${enc(ref)}`),
     profiles: () => request('GET', '/api/tc-library/profiles'),
+    styleFromXlsx: (file) => request('POST', '/api/tc-library/profiles/style-from-xlsx', file),
     saveProfile: (name, fields) => request('PUT', `/api/tc-library/profiles/${enc(name)}`, fields),
     startJob: (suite, payload) => request('POST', `${S(suite)}/jobs`, payload),
     job: (jobId) => request('GET', `/api/tc-library/jobs/${enc(jobId)}`),

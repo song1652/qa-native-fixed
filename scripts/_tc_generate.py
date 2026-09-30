@@ -237,6 +237,8 @@ def run_job(job_id: str, *, runner=run_claude) -> dict:
         base = [p for p in target["path"] if p]
         examples = [c for c in library if c["sheet"] == target["sheet"] and c["status"] == "approved"
                     and [p for p in c["path"] if p][: len(base)] == base][: profile["examples"]]
+        # 같은 가지 예시가 모자라면 프로필의 기준 예시로 채운다 (새 스위트에서도 문체가 흔들리지 않게)
+        examples += profile.get("style_examples", [])[: max(0, profile["examples"] - len(examples))]
         regenerate = None
         if job["mode"] == "regenerate":
             case = get_case(job["suite"], job["case_id"])
@@ -279,6 +281,7 @@ def run_job(job_id: str, *, runner=run_claude) -> dict:
                     invalid.append({"section": n + 1, "raw": raw, "errors": errors})
                     sections[n]["invalid"] += 1
                 else:
+                    draft["draft_meta"]["profile"] = profile["name"]   # 초안 검토 때 문체를 이 프로필로 검사
                     drafts.append(draft)
             _update(job_id, status="validating")
             for draft in drafts:

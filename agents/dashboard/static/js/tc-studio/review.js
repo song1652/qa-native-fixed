@@ -33,7 +33,7 @@
             <button aria-pressed="true" data-f="all">전체</button><button aria-pressed="false" data-f="pending">미검토</button><button aria-pressed="false" data-f="dup">중복 후보</button><button aria-pressed="false" data-f="invalid">검증 오류</button>
           </div>
           <span class="help" id="rv-job"></span><span class="spacer"></span>
-          <button class="btn btn-ghost" data-id="review-approve-clean" id="review-approve-clean" title="중복·검증 오류·추정 문구가 없는 초안만">문제없는 초안 일괄 승인</button>
+          <button class="btn btn-ghost" data-id="review-approve-clean" id="review-approve-clean" title="중복·검증 오류·추정 문구·문체 경고가 없는 초안만">문제없는 초안 일괄 승인</button>
         </div>
         <div id="rv-invalid" data-id="review-invalid"></div>
         <div id="drafts" data-id="draft-list" style="display:grid;gap:10px"></div>
@@ -51,6 +51,7 @@
   const pending = (d) => d.status === 'draft';
   const unresolvedDup = (d) => (d.draft_meta.duplicates || []).length > 0 && !d.draft_meta.duplicate_checked;
   const estimated = (d) => d.bullets.some((b) => !b.verified);
+  const styleIssues = (d) => d.issues.filter((x) => x.code.startsWith('STYLE_'));
 
   async function load() {
     if (!state.suite) return;
@@ -80,7 +81,7 @@
     const blocked = errors.length ? '검증 오류를 먼저 고치세요' : dup ? '중복 처리 방법을 먼저 고르세요' : '';
     return `<article class="dcard ${i === focus ? 'focus' : ''} ${d.status} ${dup ? 'dup' : ''} ${errors.length ? 'invalid' : ''}" data-id="draft-card" data-case="${d.case_id}" data-i="${i}" tabindex="0">
       <div class="draft-head"><span class="mono faint" style="font-size:11px">${d.case_id}</span><span class="draft-title">${esc(d.feature)}</span>
-        <span class="pill st-${d.status}">${NS.STATUS_LABEL[d.status]}</span>${errors.length ? '<span class="tag err">검증 오류</span>' : ''}${estimated(d) ? '<span class="tag warn">추정 문구</span>' : ''}${d.draft_meta.quote_found === false ? '<span class="tag warn" title="모델이 인용한 문장을 원문에서 찾지 못했습니다">인용 불일치</span>' : ''}
+        <span class="pill st-${d.status}">${NS.STATUS_LABEL[d.status]}</span>${errors.length ? '<span class="tag err">검증 오류</span>' : ''}${estimated(d) ? '<span class="tag warn">추정 문구</span>' : ''}${styleIssues(d).length ? `<span class="tag warn" data-id="draft-style" title="${esc(styleIssues(d).map((x) => x.message).join('\n'))}">문체 확인</span>` : ''}${d.draft_meta.quote_found === false ? '<span class="tag warn" title="모델이 인용한 문장을 원문에서 찾지 못했습니다">인용 불일치</span>' : ''}
         <span class="spacer"></span><button class="src-ref" data-id="draft-source-ref">${esc(d.source_refs[0] || '')}</button></div>
       <dl class="draft-grid"><dt>경로</dt><dd>${esc(d.path.filter(Boolean).join(' › '))}</dd><dt>사전 조건</dt><dd>${esc(d.precondition) || '<span class="faint">없음</span>'}</dd>
         <dt>Test Step</dt><dd>${esc(d.steps.map((s, n) => `${n + 1}. ${s}`).join('\n'))}</dd>
@@ -245,7 +246,7 @@
   }
 
   async function approveClean() {
-    const clean = drafts.filter((d) => pending(d) && !d.has_error && !unresolvedDup(d) && !estimated(d));
+    const clean = drafts.filter((d) => pending(d) && !d.has_error && !unresolvedDup(d) && !estimated(d) && !styleIssues(d).length);
     if (!clean.length) { toast('일괄 승인할 초안이 없습니다.', ''); return; }
     const res = await api.bulk(state.suite, clean.map((d) => ({ case_id: d.case_id, rev: d.rev })), 'set', 'status', 'approved');
     const left = drafts.filter(pending).length - res.updated.length;

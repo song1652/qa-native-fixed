@@ -28,6 +28,7 @@ AUTHORING_ROUTES: list[tuple[str, re.Pattern, str]] = [
         ("DELETE", rf"/api/tc-library/sources/{_BUNDLE}/(?P<source_id>s\d\d)", "_tca_remove_source"),
         ("GET", rf"/api/tc-library/sources/{_BUNDLE}/excerpt", "_tca_excerpt"),
         ("GET", r"/api/tc-library/profiles", "_tca_profiles"),
+        ("POST", r"/api/tc-library/profiles/style-from-xlsx", "_tca_style_from_xlsx"),
         ("PUT", r"/api/tc-library/profiles/(?P<name>[^/]+)", "_tca_save_profile"),
         ("GET", rf"/api/tc-library/jobs/{_JOB}", "_tca_job"),
         ("POST", rf"/api/tc-library/jobs/{_JOB}/cancel", "_tca_cancel_job"),
@@ -77,6 +78,29 @@ class TcAuthoringRoutesMixin(TcImportAdminRoutesMixin):
     def _tca_profiles(self):
         from _tc_profiles import list_profiles
         self._tcl_json({"ok": True, "profiles": list_profiles()})
+
+    def _tca_style_from_xlsx(self):
+        """본문 = xlsx 원본 바이트. 기존 TC의 문체 → 프로필 초안 (저장하지 않는다. 화면에서 고쳐 저장)."""
+        import tempfile
+        from _tc_library import LibraryError
+        from _tc_profiles import style_from_cases
+        from _tc_template import analyze_workbook
+        from _tc_xlsx_import import import_workbook
+        from routes_tc_library import MAX_XLSX_BYTES
+        data = _read_raw_body(self, MAX_XLSX_BYTES)
+        if not data.startswith(b"PK"):
+            raise LibraryError("xlsx 형식이 아닙니다", "UNSUPPORTED_FILE")
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "style.xlsx"
+            path.write_bytes(data)
+            try:
+                profiles = analyze_workbook(path)
+                cases = import_workbook(path, profiles, list(profiles), {}) if profiles else []
+            except Exception as exc:
+                raise LibraryError(f"엑셀을 읽을 수 없습니다: {exc}", "UNREADABLE_XLSX") from exc
+        if not profiles:
+            raise LibraryError("기준 양식 헤더(대분류·기능·Step·Expected Result)를 찾지 못했습니다", "NO_SHEETS")
+        self._tcl_json({"ok": True, **style_from_cases(cases)})
 
     def _tca_save_profile(self, name: str):
         from _tc_profiles import save_profile

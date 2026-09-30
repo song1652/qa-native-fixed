@@ -88,6 +88,8 @@ def build_prompt(*, chunk: list[dict], target: dict, profile: dict, examples: li
     target_path = " › ".join([target["sheet"], *[p for p in target["path"] if p]])
     rules = "\n".join(f"- {r}" for r in profile["rules"])
     banned = ", ".join(f'"{b}"' for b in profile["banned_phrases"])
+    endings = ("\n- expected 결과 문장은 다음 중 하나로 끝낸다: " + ", ".join(f'"{e}"' for e in profile["expected_endings"])
+               if profile.get("expected_endings") else "")
     task = (
         f"아래 소스를 읽고 '{target_path}' 가지에 넣을 테스트케이스를 작성하라."
         if regenerate is None else
@@ -105,14 +107,14 @@ def build_prompt(*, chunk: list[dict], target: dict, profile: dict, examples: li
 - 시트: {target['sheet']}. 대상 분류: {json.dumps(target['path'], ensure_ascii=False)}.
 - path는 [대분류, 중분류, 소분류]이며 path에 시트 이름을 넣지 않는다. 대상 분류 아래에서만 고른다. 새 하위 분류가 근거에 없으면 path는 []로 둔다. 대상 분류는 시스템이 붙인다.
 - steps는 번호 없이 한 동작씩 쓴다. expected는 결과 한 문장, 화면에 보이는 문구는 bullets에 따로 쓴다.
-- 다음 표현은 쓰지 않는다: {banned}. "어떻게 보이는지"를 구체적으로 쓴다.
+- 다음 표현은 쓰지 않는다: {banned}. "어떻게 보이는지"를 구체적으로 쓴다.{endings}
 - 소스에 없는 기능·문구를 지어내지 않는다. 근거가 없으면 케이스를 만들지 않는다.
 - 문서 또는 작성 규칙에 명시된 우선순위를 따른다. 우선순위 정보가 없으면 P2로 둔다.
 
 ## 작성 규칙 (프로필: {profile['name']})
 {rules}
 
-## 같은 가지의 기존 케이스 (문체 예시)
+## 같은 가지의 기존 케이스와 기준 예시 (문체 예시 — 제목·Step·Expected의 말투와 형태를 그대로 따른다)
 {_example_block(examples)}
 
 ## 쓸 수 있는 source_ref

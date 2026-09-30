@@ -85,3 +85,40 @@ def test_prompt_distinguishes_case_title_sheet_and_classification():
 def test_authoring_schema_does_not_expose_auto():
     import _tc_prompt
     assert 'auto' not in str(_tc_prompt.DRAFTS_SCHEMA)
+
+
+def test_style_issues_check_banned_phrases_and_endings_but_not_screen_text():
+    from _tc_profiles import style_issues
+    profile = {"banned_phrases": ["확인한다"], "expected_endings": ["된다.", "는다."]}
+    case = new_case(path=["a"], feature="팝업", steps=["선택"], expected="팝업이 노출된다.",
+                    bullets=[{"text": "확인한다", "verified": True}])
+    assert style_issues(case, profile) == []                     # 화면 문구 속 표현은 검사하지 않음
+    case["expected"] = "팝업을 확인한다"
+    assert [i["code"] for i in style_issues(case, profile)] == ["STYLE_BANNED", "STYLE_ENDING"]
+    assert style_issues(case, {"banned_phrases": [], "expected_endings": []}) == []
+
+
+def test_old_saved_profiles_get_new_fields_and_examples_are_validated(library_dir):
+    from _state import update_state
+    from _tc_profiles import _path
+    update_state(_path(), lambda _: {"profiles": [{"name": "옛날", "rules": ["규칙"], "banned_phrases": [],
+                                                    "coverage": {}, "examples": 8}]})
+    old = get_profile("옛날")
+    assert old["expected_endings"] == [] and old["style_examples"] == []
+    with pytest.raises(LibraryError):
+        save_profile("나쁨", {"style_examples": [{"feature": "제목만"}]})
+    with pytest.raises(LibraryError):
+        save_profile("나쁨", {"expected_endings": [""]})
+
+
+def test_style_from_cases_derives_rules_endings_and_examples():
+    from _tc_profiles import style_from_cases
+    cases = [new_case(sheet=s, path=["대"], feature=f"{s} 팝업", precondition="- 로그인 상태",
+                      steps=["앱 실행", "메뉴 선택"], expected=e, priority="P1")
+             for s in ("홈", "혜택") for e in ["팝업이 노출된다.", "화면이 닫힌다.", "화면으로 이동된다."] * 3]
+    cases.append(new_case(sheet="홈", path=["대"], feature="예외", steps=["선택"], expected="이상한 끝맺음!"))
+    style = style_from_cases(cases)
+    assert style["expected_endings"][0] == "된다." and "음!" not in "".join(style["expected_endings"])
+    assert any("명사형" in r for r in style["rules"]) and any("상태" in r for r in style["rules"])
+    assert all(e["path"] == [] for e in style["style_examples"])           # 다른 스위트 분류는 빼고 말투만
+    assert len({e["feature"] for e in style["style_examples"]}) >= 2      # 시트별로 골고루

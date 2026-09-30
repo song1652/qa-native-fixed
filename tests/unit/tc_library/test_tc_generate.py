@@ -155,3 +155,22 @@ def test_latest_new_job_is_saved_suite_context(seeded, fake_claude):
     assert gen.latest_job(SUITE)['job_id'] == job['job_id']
     # 다른 스위트에는 이 소스 묶음을 노출하지 않는다.
     assert gen.latest_job('다른스위트') is None
+
+
+def test_profile_style_examples_fill_prompt_and_drafts_get_style_warnings(seeded, fake_claude):
+    from _tc_profiles import save_profile
+    example = {"feature": "보물찾기 노출", "precondition": "- 첫 도전 상태", "steps": ["혜택 탭 선택"],
+               "expected": "보물상자 바텀시트가 노출된다.", "bullets": [], "priority": "P1"}
+    save_profile("문체", {"rules": ["Step은 명사형으로 끝낸다"], "banned_phrases": ["혜택 탭"],
+                        "expected_endings": ["절대없는끝."], "style_examples": [example]})
+    prompts = []
+    job = gen.create_job(SUITE, bundle_id=seeded, target=TARGET, profile="문체")
+    gen.run_job(job["job_id"], runner=lambda p, job_id: prompts.append(p) or gen.run_claude(p, job_id=job_id))
+
+    assert '"feature": "보물찾기 노출"' in prompts[0]           # 같은 가지 예시가 모자라 기준 예시로 채움
+    assert '"절대없는끝."' in prompts[0]                         # 끝맺음 규칙이 프롬프트에 들어감
+    drafts = [lib.with_issues(d) for d in lib.filter_cases(lib.load_cases(SUITE), {"job": job["job_id"]})]
+    assert drafts and all(d["draft_meta"]["profile"] == "문체" for d in drafts)
+    codes = {i["code"] for d in drafts for i in d["issues"]}
+    assert {"STYLE_ENDING", "STYLE_BANNED"} <= codes            # Step의 "혜택 탭 선택"이 금지 표현
+    assert all(i["level"] == "warning" for d in drafts for i in d["issues"] if i["code"].startswith("STYLE_"))

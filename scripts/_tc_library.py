@@ -401,7 +401,8 @@ def revert(suite: str, case_id: str, history_id: str, base_rev: int, actor: str)
     return patch_case(suite, case_id, base_rev, {entry["field"]: entry["before"]}, actor)
 
 def with_issues(case: dict) -> dict:
-    issues = validate_case(case)
+    from _tc_profiles import style_issues_for   # _tc_profiles가 이 모듈을 import한다
+    issues = validate_case(case) + style_issues_for(case)
     return {**without_auto(case), "issues": issues, "has_error": any(i["level"] == "error" for i in issues)}
 
 

@@ -89,7 +89,13 @@
             <select class="select" id="gen-profile" data-id="gen-profile"></select>
             <ul class="profile-rules" id="gen-rules"></ul>
             <div id="gen-profile-editor" hidden style="display:grid;gap:8px">
+              <div class="row"><span class="help">규칙 (한 줄에 하나)</span><span class="spacer"></span>
+                <label class="btn-sm" for="gen-style-file" data-id="gen-style-import" title="기존 TC 엑셀의 제목·Step·Expected 말투를 읽어 규칙·끝맺음·기준 예시를 채웁니다">엑셀에서 문체 가져오기</label>
+                <input type="file" id="gen-style-file" data-id="gen-style-file" accept=".xlsx" hidden></div>
               <textarea class="textarea" id="gen-rules-input" data-id="gen-rules-input" rows="6" aria-label="규칙 (한 줄에 하나)"></textarea>
+              <label class="help">금지 표현 (쉼표로 구분)<input class="input" id="gen-banned-input" data-id="gen-banned-input"></label>
+              <label class="help">Expected 끝맺음 (쉼표로 구분 · 비우면 검사하지 않음)<input class="input" id="gen-endings-input" data-id="gen-endings-input" placeholder="예: 된다., 는다."></label>
+              <div class="help" id="gen-profile-examples" data-id="gen-profile-examples"></div>
               <div class="row"><input class="input" id="gen-profile-name" data-id="gen-profile-name" placeholder="저장할 프로필 이름" style="max-width:220px">
                 <button class="btn-sm" data-id="gen-profile-save" id="gen-profile-save">저장</button></div>
             </div>
@@ -229,13 +235,21 @@
     const t = target();
     if (!state.suite || !t.sheet) { $('#gen-examples', root).innerHTML = ''; return; }
     const { items, total } = await api.list(state.suite, { path: [t.sheet, ...t.path.filter(Boolean)].join('/'), status: 'approved', limit: 10 });
-    if (!total) { $('#gen-examples', root).innerHTML = '<span class="faint">기존 TC가 없어 입력한 정보와 작성 규칙으로 생성합니다.</span>'; return; }
+    const fill = (profile().style_examples || []).length;
+    if (!total) { $('#gen-examples', root).innerHTML = `<span class="faint">${fill ? `같은 가지에 기존 TC가 없어 프로필 기준 예시 ${fill}건의 말투로 생성합니다.` : '기존 TC가 없어 입력한 정보와 작성 규칙으로 생성합니다.'}</span>`; return; }
     $('#gen-examples', root).innerHTML = `<span class="faint">같은 가지의 문체 예시 ${Math.min(total, profile().examples || 8)}건을 함께 넣습니다 (권장 5~10건)</span>`
       + (items.length ? `<span>${items.slice(0, 4).map((c) => `· ${esc(c.case_id)} ${esc(c.feature)}`).join(' ')}</span>` : '<span class="faint">이 가지에는 예시가 없습니다</span>');
   }
 
   // ── 작성 프로필 ──────────────────────────────────────────────
-  const profile = () => profiles.find((p) => p.name === $('#gen-profile', root).value) || profiles[0] || { rules: [], examples: 8 };
+  const profile = () => profiles.find((p) => p.name === $('#gen-profile', root).value) || profiles[0] || { rules: [], examples: 8, style_examples: [], expected_endings: [] };
+  let editExamples = [];   // 편집 중인 기준 예시 (엑셀에서 가져오면 바뀐다)
+  const splitList = (v) => v.split(',').map((x) => x.trim()).filter(Boolean);
+  function renderEditExamples() {
+    $('#gen-profile-examples', root).innerHTML = editExamples.length
+      ? `기준 예시 ${editExamples.length}건 — 같은 가지에 승인된 TC가 모자랄 때 이 말투를 따라 씁니다<br>${editExamples.map((e) => `· ${esc(e.feature)} → ${esc(e.expected)}`).join('<br>')}`
+      : '기준 예시 없음 — 엑셀에서 문체를 가져오면 채워집니다';
+  }
   async function loadProfiles(select) {
     profiles = (await api.profiles()).profiles;
     $('#gen-profile', root).innerHTML = profiles.map((p) => `<option ${p.name === select ? 'selected' : ''}>${esc(p.name)}</option>`).join('');
@@ -244,7 +258,9 @@
   function renderRules() {
     const p = profile();
     $('#gen-rules', root).innerHTML = p.rules.map((r) => `<li>${esc(r)}</li>`).join('')
-      + (p.banned_phrases ? `<li>금지: ${p.banned_phrases.map((b) => `"${esc(b)}"`).join(', ')}</li>` : '');
+      + (p.banned_phrases && p.banned_phrases.length ? `<li>금지: ${p.banned_phrases.map((b) => `"${esc(b)}"`).join(', ')}</li>` : '')
+      + ((p.expected_endings || []).length ? `<li>Expected 끝맺음: ${p.expected_endings.map((e) => `"${esc(e)}"`).join(', ')}</li>` : '')
+      + ((p.style_examples || []).length ? `<li>기준 예시 ${p.style_examples.length}건</li>` : '');
   }
 
   // ── 작업 ─────────────────────────────────────────────────────
@@ -471,13 +487,37 @@
       const ed = $('#gen-profile-editor', root);
       ed.hidden = !ed.hidden;
       $('#gen-rules-input', root).value = profile().rules.join('\n');
+      $('#gen-banned-input', root).value = (profile().banned_phrases || []).join(', ');
+      $('#gen-endings-input', root).value = (profile().expected_endings || []).join(', ');
+      editExamples = profile().style_examples || [];
+      renderEditExamples();
       $('#gen-profile-name', root).value = profile().name === '기본' ? '' : profile().name;
+    });
+    $('#gen-style-file', root).addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      e.target.value = '';
+      if (!file) return;
+      const label = $('[data-id="gen-style-import"]', root);
+      label.classList.add('loading');
+      try {
+        const res = await api.styleFromXlsx(file);
+        // 내용 규칙(추측 금지 등)은 두고, 같은 문체 규칙이 없을 때만 덧붙인다
+        const current = $('#gen-rules-input', root).value.split('\n').map((r) => r.trim()).filter(Boolean);
+        $('#gen-rules-input', root).value = [...current, ...res.rules.filter((r) => !current.includes(r))].join('\n');
+        $('#gen-endings-input', root).value = res.expected_endings.join(', ');
+        editExamples = res.style_examples;
+        renderEditExamples();
+        if (!$('#gen-profile-name', root).value.trim()) $('#gen-profile-name', root).value = file.name.replace(/\.xlsx$/i, '').replace(/_?Full$/i, '').slice(0, 40);
+        toast(`TC ${res.stats.cases}건에서 문체를 읽었습니다. 규칙을 확인하고 저장하세요.`, 'ok');
+      } catch (err) { toast(`문체를 읽지 못했습니다: ${esc(err.message)}`, 'err'); }
+      finally { label.classList.remove('loading'); }
     });
     $('#gen-profile-save', root).addEventListener('click', async () => {
       const name = $('#gen-profile-name', root).value.trim();
       const rules = $('#gen-rules-input', root).value.split('\n').map((r) => r.trim()).filter(Boolean);
       try {
-        await api.saveProfile(name, { ...profile(), rules });
+        await api.saveProfile(name, { ...profile(), rules, banned_phrases: splitList($('#gen-banned-input', root).value),
+          expected_endings: splitList($('#gen-endings-input', root).value), style_examples: editExamples });
         await loadProfiles(name);
         $('#gen-profile-editor', root).hidden = true;
         toast(`작성 프로필 "${esc(name)}"을 저장했습니다.`, 'ok');

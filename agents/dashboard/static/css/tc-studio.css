@@ -74,7 +74,9 @@
 .tc-studio .btn-sm { padding:4px 10px; font-size:11px; font-weight:600; border-radius:var(--radius-sm); background:var(--accent-soft); color:var(--accent); border:1px solid var(--line2); cursor:pointer; }
 .tc-studio .btn-sm:hover { background:var(--card3); }
 .tc-studio .btn:disabled, .tc-studio .btn-sm:disabled { opacity:.45; cursor:not-allowed; box-shadow:none; }
-.tc-studio .btn.loading::before { content:""; width:11px; height:11px; border:2px solid currentColor; border-right-color:transparent; border-radius:50%; animation:spin .7s linear infinite; }
+.tc-studio .btn.loading::before, .tc-studio .btn-sm.loading::before { content:""; width:11px; height:11px; border:2px solid currentColor; border-right-color:transparent; border-radius:50%; animation:spin .7s linear infinite; }
+.tc-studio .btn-sm.loading { pointer-events:none; opacity:.7; }
+.tc-studio .btn-sm.loading::before { display:inline-block; vertical-align:-2px; margin-right:6px; }
 @keyframes spin { to { transform:rotate(360deg); } }
 .tc-studio .icon-btn { width:26px; height:26px; display:grid; place-items:center; border-radius:var(--radius-sm); border:1px solid transparent; background:none; color:var(--text3); cursor:pointer; }
 .tc-studio .icon-btn:hover { background:var(--card2); color:var(--text); }
