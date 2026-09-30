@@ -17,7 +17,7 @@
   const available = () => SCREENS.filter((s) => NS[s.module]);
 
   function navHtml() {
-    return available().map((s, i) => `${i ? '<div class="step-line"></div>' : ''}<button class="step-item" role="tab" data-id="nav-tab-${s.id}" data-screen="${s.id}" aria-selected="${i === 0}"><span class="step-circle">${i + 1}</span><span class="step-label">${s.label}</span>${s.count ? `<span class="step-count num" id="${s.count}">0</span>` : ''}</button>`).join('');
+    return available().map((s, i) => `${i ? '<div class="step-line"></div>' : ''}<button class="step-item" role="tab" data-id="nav-tab-${s.id}" data-screen="${s.id}" aria-selected="false"><span class="step-circle">${i + 1}</span><span class="step-label">${s.label}</span>${s.count ? `<span class="step-count num" id="${s.count}">0</span>` : ''}</button>`).join('');
   }
 
   function shellHtml() {
@@ -297,9 +297,11 @@
       if (!(await NS.detail.confirmLeave())) { e.target.value = state.suite; return; }
       await NS.reloadSuites(next);
     });
-    show('library');
-    state.suite = '';   // 다른 메뉴에서 돌아와도 처음 들어온 것처럼 첫 화면(0건이면 기획 정보)을 고른다
-    await NS.reloadSuites();
+    // 첫 화면은 스위트를 읽은 뒤 한 번만 고른다 (먼저 라이브러리를 띄우면 깜빡인다).
+    // 다른 메뉴에서 돌아와도 처음 들어온 것처럼 고르도록 이전 스위트를 비운다
+    state.suite = '';
+    try { await NS.reloadSuites(); }
+    finally { if (!$('.screen.active', root)) show('library'); }   // 스위트가 없거나 불러오기 실패
   }
 
   window.TCS = { init };

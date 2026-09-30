@@ -18,7 +18,7 @@
 
   function html() {
     return `
-  <section class="screen active" id="screen-library" data-screen="library">
+  <section class="screen" id="screen-library" data-screen="library">
     <div class="lib no-detail" id="lib">
       <aside class="tree-pane" aria-label="계층 트리">
         <div class="tree-tools">

@@ -322,6 +322,10 @@ def test_reentering_studio_with_empty_suite_opens_planning_screen(studio):
     page.locator("#suite-select").select_option("빈스위트")
     expect(page.locator('[data-screen="generate"].screen')).to_have_class(re.compile("active"))
     page.evaluate("selectView('reports')")
+    page.evaluate("""() => { window.__screens = [];
+      new MutationObserver(() => window.__screens.push(...[...document.querySelectorAll('.screen.active')].map(s => s.dataset.screen)))
+        .observe(document.body, {subtree: true, childList: true, attributes: true, attributeFilter: ['class']}); }""")
     page.evaluate("selectView('tc_studio')")
     expect(page.locator("#suite-select")).to_have_value("빈스위트")
     expect(page.locator('[data-screen="generate"].screen')).to_have_class(re.compile("active"))
+    assert "library" not in page.evaluate("window.__screens")      # 라이브러리가 잠깐 보였다 바뀌지 않는다
