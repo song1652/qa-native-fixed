@@ -314,3 +314,14 @@ def test_drop_zone_shows_analyzing_state_until_preview_returns(page, tmp_path):
         held[0].continue_()
         expect(analyzing).to_have_count(0)
         expect(page.locator('#import-drop')).to_contain_text('엑셀 파일을 끌어다 놓거나 눌러서 선택')
+
+
+def test_suite_name_from_macos_decomposed_korean_filename_keeps_hangul(page, tmp_path):
+    """macOS는 파일 이름 한글을 자모로 나눠(NFD) 넘긴다. 스위트 이름 기본값에서 한글이 '_'로 바뀌면 안 된다."""
+    import unicodedata
+    with dashboard_server(tmp_path / 'project') as base:
+        page.goto(base + '/tc-studio')
+        page.locator('[data-id="btn-import-xlsx"]').click()
+        name = unicodedata.normalize('NFD', 'LODIS_통합테스트.xlsx')
+        page.locator('#import-file').set_input_files(str(workbook(tmp_path / name)))
+        expect(page.locator('#import-suite')).to_have_value('LODIS_통합테스트')

@@ -507,7 +507,7 @@
         $('#gen-endings-input', root).value = res.expected_endings.join(', ');
         editExamples = res.style_examples;
         renderEditExamples();
-        if (!$('#gen-profile-name', root).value.trim()) $('#gen-profile-name', root).value = file.name.replace(/\.xlsx$/i, '').replace(/_?Full$/i, '').slice(0, 40);
+        if (!$('#gen-profile-name', root).value.trim()) $('#gen-profile-name', root).value = file.name.normalize('NFC').replace(/\.xlsx$/i, '').replace(/_?Full$/i, '').slice(0, 40);
         toast(`TC ${res.stats.cases}건에서 문체를 읽었습니다. 규칙을 확인하고 저장하세요.`, 'ok');
       } catch (err) { toast(`문체를 읽지 못했습니다: ${esc(err.message)}`, 'err'); }
       finally { label.classList.remove('loading'); }
