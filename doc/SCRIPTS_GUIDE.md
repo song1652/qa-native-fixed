@@ -379,6 +379,13 @@ python scripts/05_execute.py
 | `scripts/heal_utils.py` (힐링 배치 병렬화: `build_heal_batches()` + `print_heal_batches()` — 단일/병렬/빠른 공통, HEAL_BATCH_SIZE=6) | 힐링 공용 유틸리티. `classify_error` (7분류: Locator/Assertion/Timeout/URL/JS평가/Python런타임/Playwright일반/기타), `MCP_SNAPSHOT_ERROR_TYPES`, `extract_key_lines`, `find_screenshot_for_test`, `append_lessons` (→ `lessons_learned_auto.md`에 자동 기록), `update_heal_stats` — `06_heal.py`와 `99_merge.py`에서 공유 | ❌ (다른 스크립트가 import) |
 | `scripts/_pipeline_registry.py` | FSM 단일 소스. `Step.*` / `ParallelStatus.*` 상수, `PIPELINE_STEP_DEFS`(메타), `VALID_TRANSITIONS` / `VALID_PARALLEL_TRANSITIONS`, `make_initial_pipeline_state()` 팩토리 | ❌ (다른 스크립트가 import) |
 | `scripts/_validators.py` | 대시보드 `serve.py` 입력 검증 헬퍼. `serve.py`의 백그라운드 스레드 부작용 없이 재사용 가능하도록 분리 | ❌ (serve.py + 테스트가 import) |
+| `scripts/_tc_model.py` | TC 스튜디오 케이스 모델: 허용 값(P0~P3, 실행 결과), Step·Expected 파싱, 결과 병합, id 발급, 검증 규칙 | ❌ (다른 스크립트가 import) |
+| `scripts/_tc_template.py` | 엑셀 TC 템플릿 분석: 헤더·하위 헤더·컬럼·드롭다운·No. 수식 탐지 → `TemplateProfile` | ❌ (다른 스크립트가 import) |
+| `scripts/_tc_xlsx_import.py` | 엑셀 시트 → 라이브러리 케이스 (병합·빈 칸 이어받기, 기타 칸의 id·src 분리) | ❌ (다른 스크립트가 import) |
+| `scripts/_tc_library.py` | TC 라이브러리 저장소 `state/tc_library/{suite}/`: rev 수정·일괄·생성·삭제·이력·트리·필터 | ❌ (대시보드가 import) |
+| `scripts/_tc_xlsx_export.py` | 라이브러리 → 템플릿 사본 xlsx (병합·드롭다운·요약 수식·History) + 무결성 검사 | ❌ (대시보드가 import) |
+| `agents/dashboard/tools/scope_tc_studio_css.py` | 목업 CSS → `static/css/tc-studio.css` 생성 (목업을 고친 뒤 다시 실행) | ✅ (`python agents/dashboard/tools/scope_tc_studio_css.py <목업> <출력>`) |
+
 | `scripts/assert_guard.py` | 힐링 패치 후 assertion 약화 감지. `original_assertions`(최초) vs 현재 파일 비교 → 감소 시 경고 출력 | ✅ (`python scripts/assert_guard.py`) |
 | `scripts/jira_reporter.py` | 테스트 실패 시 Jira 이슈 자동 생성. 스크린샷·영상 첨부 포함. `config/jira_config.json` 또는 환경변수 `JIRA_TOKEN` 설정 필요. `99_merge.py`가 최종 실패 시 자동 호출 | ✅ (`python scripts/jira_reporter.py [--group G] [--dry-run]`) |
 | `scripts/parse_cases.py` | `.md`/`.json` 테스트케이스 파일 파서 (YAML frontmatter 지원). frontmatter 문자열값의 따옴표 자동 제거 (`id: "CL_01"` → `CL_01`). Steps는 번호(`1.`) 형식 권장이나 번호 없는 평문 줄도 파싱 지원 | ❌ (run_qa.py가 import해서 사용) |

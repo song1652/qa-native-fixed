@@ -38,9 +38,9 @@
 | 요소 ID | 요소 | 위치 | 동작(트리거→결과) | 상태 | 검증·제약 | API 호출 | 관련 PRD |
 |---|---|---|---|---|---|---|---|
 | `toasts` (컨테이너) | 토스트 스택 | 화면 오른쪽 아래 | 성공(초록 테두리) 1.8~3.8초 뒤 사라짐. 오류·충돌 토스트는 사용자가 닫을 때까지 유지 | ok / warn / err | 최대 3개 쌓임, 초과 시 가장 오래된 것부터 제거. `aria-live="polite"` | — | — |
-| `toast-conflict-compare` | 충돌 토스트: 차이 비교 | rev 충돌 토스트 | 클릭 → 해당 케이스 상세 패널을 열고 `이력` 탭에 "내 값 / 서버 값" 비교 표시 | — | 내 변경은 버리지 않고 패널에 남김 | `GET /api/tc-library/cases/{case_id}` | F5.2 |
-| `toast-conflict-reload` | 충돌 토스트: 최신 값 불러오기 | rev 충돌 토스트 | 클릭 → 서버 값으로 덮고 rev 갱신. 내 변경은 버림 | — | — | `GET /api/tc-library/cases/{case_id}` | F5.2 |
-| `bulk-undo` / `delete-undo` / `draft-undo` | 되돌리기 | 일괄 편집·삭제·검토 결정 토스트 | 클릭 → 직전 작업 역적용(되돌린 것도 이력에 남음) | 토스트가 사라지면 기회 종료. 이후엔 이력 패널에서 되돌림 | 되돌리는 시점에 rev가 또 바뀌었으면 충돌 토스트 | `POST /api/tc-library/cases/{case_id}/revert` (일괄은 `POST /api/tc-library/{suite}/bulk` 역연산) | F5.11 |
+| `toast-conflict-compare` | 충돌 토스트: 차이 비교 | rev 충돌 토스트 | 클릭 → 해당 케이스 상세 패널을 열고 `이력` 탭에 "내 값 / 서버 값" 비교 표시 | — | 내 변경은 버리지 않고 패널에 남김 | `GET /api/tc-library/{suite}/cases/{case_id}` | F5.2 |
+| `toast-conflict-reload` | 충돌 토스트: 최신 값 불러오기 | rev 충돌 토스트 | 클릭 → 서버 값으로 덮고 rev 갱신. 내 변경은 버림 | — | — | `GET /api/tc-library/{suite}/cases/{case_id}` | F5.2 |
+| `bulk-undo` / `delete-undo` / `draft-undo` | 되돌리기 | 일괄 편집·삭제·검토 결정 토스트 | 클릭 → 직전 작업 역적용(되돌린 것도 이력에 남음) | 토스트가 사라지면 기회 종료. 이후엔 이력 패널에서 되돌림 | 되돌리는 시점에 rev가 또 바뀌었으면 충돌 토스트 | `POST /api/tc-library/{suite}/cases/{case_id}/revert` (일괄은 `POST /api/tc-library/{suite}/bulk` 역연산) | F5.11 |
 | `toast-open-review` | 생성 완료 토스트: 검토하기 | 생성 완료 토스트 | 클릭 → 초안 검토 탭, 해당 job 초안으로 필터 | — | — | — | F4.3 |
 | `toast-open-md-preview` | md 미리보기 토스트: 보기 | md 내보내기 토스트 | 클릭 → 같은 Studio의 내보내기 탭에서 `md-preview-panel`로 이동 | — | — | — | F7.2 |
 
@@ -49,7 +49,7 @@
 | 요소 ID | 요소 | 위치 | 동작(트리거→결과) | 상태 | 검증·제약 | API 호출 | 관련 PRD |
 |---|---|---|---|---|---|---|---|
 | `confirm-modal` | 삭제 확인 모달 | 화면 중앙 | 삭제 요청 시 열림. "삭제한 케이스는 변경 이력에서 복원할 수 있습니다" 안내 | — | `confirm()`을 쓰지 않고 페이지 안 모달로 확인 | — | F5.3 |
-| `confirm-ok` | 삭제 확정 | 모달 하단 | 클릭 → 삭제 요청, 모달 닫힘, 되돌리기 토스트 | loading | 각 케이스의 rev 동봉 | `DELETE /api/tc-library/cases/{case_id}?rev=` (여러 건이면 `POST /api/tc-library/{suite}/bulk` op=delete) | F5.3 |
+| `confirm-ok` | 삭제 확정 | 모달 하단 | 클릭 → 삭제 요청, 모달 닫힘, 되돌리기 토스트 | loading | 각 케이스의 rev 동봉 | `DELETE /api/tc-library/{suite}/cases/{case_id}?rev=` (여러 건이면 `POST /api/tc-library/{suite}/bulk` op=delete) | F5.3 |
 | `confirm-cancel` | 취소 | 모달 하단 | 클릭 또는 Esc → 닫힘 | — | — | — | — |
 | `move-modal` | 계층 이동 모달 | 화면 중앙 | `bulk-move`/`detail-move` 클릭 시 열림 | — | — | `GET /api/tc-library/{suite}/tree` | F5.3 |
 | `move-target` | 대상 가지 선택 | 이동 모달 | 시트 › 대분류 › 중분류 › 소분류 조합 선택 | — | 존재하는 가지만. 새 가지는 9장 피드백 #13 참고 | — | F5.3, F5.8 |
@@ -105,8 +105,8 @@
 | `lib-grid` | 그리드 | 가운데 | 행 클릭(편집 중 셀·입력·칩 제외) → 오른쪽 상세 패널에 그 케이스. 활성 행은 보라 테두리 | loading(행 스켈레톤) / 빈 결과 → `grid-empty-filter` | 가상 스크롤. 한 번에 200행 요청, 스크롤로 이어 받음. 헤더 행 sticky | `GET /api/tc-library/{suite}?path=&…&offset=&limit=200` | F5.1, §7 성능 |
 | `grid-check-all` | 전체 선택 | 헤더 첫 칸 | 체크 → 현재 필터 결과 전체 선택(가상 스크롤 밖 포함, "필터 결과 186건 모두 선택됨" 안내) | 일부 선택 시 indeterminate | — | — | F5.3 |
 | `grid-row-check` | 행 선택 | 각 행 첫 칸 | 체크 → 선택 집합에 추가, `bulk-bar` 표시. Shift+클릭 범위 선택 | — | — | — | F5.3 |
-| `grid-row-drag` | 행 끌기 핸들 | 각 행 둘째 칸 | 끌어서 트리 노드에 놓기 → 계층 이동. 그리드 안에서 위아래로 놓기 → 같은 가지 안 순서 변경(엑셀 행 순서) | 끄는 중 반투명 | 다른 시트로는 이동 불가(경고 토스트) | `POST /api/tc-library/{suite}/move` / 순서: `PATCH /api/tc-library/cases/{case_id}` `{order, rev}` | F5.3, F6.2 |
-| `grid-cell-feature` | 기능 셀 (E) | 그리드 | 더블클릭 또는 Enter → 제자리 편집. ⌘/Ctrl+Enter 또는 포커스 이탈 → 저장. Esc → 취소 | 편집 중(보라 외곽선) / 저장 중(파란 점선) / error(빨강) | 빈 값 금지(필수 컬럼) | `PATCH /api/tc-library/cases/{case_id}` `{rev, feature}` → 200 `{case}` / 409 `{server_case}` | F5.2, F5.8 |
+| `grid-row-drag` | 행 끌기 핸들 | 각 행 둘째 칸 | 끌어서 트리 노드에 놓기 → 계층 이동. 그리드 안에서 위아래로 놓기 → 같은 가지 안 순서 변경(엑셀 행 순서) | 끄는 중 반투명 | 다른 시트로는 이동 불가(경고 토스트) | `POST /api/tc-library/{suite}/move` / 순서: `PATCH /api/tc-library/{suite}/cases/{case_id}` `{order, rev}` | F5.3, F6.2 |
+| `grid-cell-feature` | 기능 셀 (E) | 그리드 | 더블클릭 또는 Enter → 제자리 편집. ⌘/Ctrl+Enter 또는 포커스 이탈 → 저장. Esc → 취소 | 편집 중(보라 외곽선) / 저장 중(파란 점선) / error(빨강) | 빈 값 금지(필수 컬럼) | `PATCH /api/tc-library/{suite}/cases/{case_id}` `{rev, feature}` → 200 `{case}` / 409 `{server_case}` | F5.2, F5.8 |
 | `grid-cell-precondition` | 사전 조건 셀 (F) | 그리드 | 위와 같음. 편집 중 Enter는 줄바꿈 | 동일 | "- " 불릿 줄 권장(경고 아님) | `PATCH …` `{rev, precondition}` | F5.2 |
 | `grid-cell-steps` | Test Step 셀 (G) | 그리드 | 위와 같음. 줄마다 "1. …" 형식으로 편집. 저장 시 줄 단위로 `steps[]` 배열화 | error: 번호 없는 줄이 있으면 저장 거부, 셀 빨강 + 토스트 "Test Step은 줄마다 '1. …' 형식이어야 합니다" | 번호 연속성 검사, 빈 줄 제거 | `PATCH …` `{rev, steps:[…]}` | F5.2, F5.8 |
 | `grid-cell-expected` | Expected Result 셀 (H) | 그리드 | 위와 같음. 첫 줄 = 결과 문장, "- "로 시작하는 줄 = UI 문구 불릿. 추정 문구는 노랑 글자 + "(추정)" | 모호한 표현이 있으면 저장은 하되 경고 토스트 + 셀 아래 `검증 오류` 배지 | 금지 표현 목록은 작성 프로필 값 | `PATCH …` `{rev, expected, expected_bullets}` | F5.2, F5.7, F5.8 |
@@ -137,11 +137,11 @@
 
 | 요소 ID | 요소 | 위치 | 동작(트리거→결과) | 상태 | 검증·제약 | API 호출 | 관련 PRD |
 |---|---|---|---|---|---|---|---|
-| `detail-panel` | 상세 패널 | 오른쪽 | 활성 케이스의 전체 편집기. 헤더에 case_id, 상태 배지, rev, 저장 안 한 변경 점(노랑) | loading / error("케이스를 찾을 수 없습니다. 삭제됐을 수 있습니다") | 저장 안 한 변경이 있는데 다른 행을 누르면 "저장 / 버리기 / 취소" 확인 | `GET /api/tc-library/cases/{case_id}` | F5.1 |
+| `detail-panel` | 상세 패널 | 오른쪽 | 활성 케이스의 전체 편집기. 헤더에 case_id, 상태 배지, rev, 저장 안 한 변경 점(노랑) | loading / error("케이스를 찾을 수 없습니다. 삭제됐을 수 있습니다") | 저장 안 한 변경이 있는데 다른 행을 누르면 "저장 / 버리기 / 취소" 확인 | `GET /api/tc-library/{suite}/cases/{case_id}` | F5.1 |
 | `detail-close` | 닫기 | 패널 헤더 | 클릭 → 패널 닫고 그리드 넓힘 | — | 변경 있으면 확인 | — | — |
 | `detail-feature` | 기능명 입력 | 패널 헤더 | 입력 → 변경 표시 | error: 빈 값 | 필수 | 저장 시 일괄 PATCH | F5.2 |
 | `detail-move` | 경로 이동 | 패널 헤더 경로 옆 | 클릭 → `move-modal` | — | — | — | F5.3 |
-| `detail-tab-edit` / `detail-tab-source` / `detail-tab-history` | 편집 · 원문 · 이력 탭 | 패널 탭 줄 | 클릭 → 해당 탭 | 선택 탭 밑줄 | — | 원문: `GET /api/authoring/sources/excerpt?ref=` / 이력: `GET /api/tc-library/cases/{case_id}/history` | F5.5, F5.11 |
+| `detail-tab-edit` / `detail-tab-source` / `detail-tab-history` | 편집 · 원문 · 이력 탭 | 패널 탭 줄 | 클릭 → 해당 탭 | 선택 탭 밑줄 | — | 원문: `GET /api/authoring/sources/excerpt?ref=` / 이력: `GET /api/tc-library/{suite}/cases/{case_id}/history` | F5.5, F5.11 |
 | `detail-priority` / `detail-auto` / `detail-result` / `detail-status` | 우선순위 · AUTO · 실행 결과 · 검토 상태 | 편집 탭 상단 | 변경 → 변경 표시 | — | 검토 상태를 approved로 바꿀 때 검증 오류가 있으면 저장 거부 | 저장 시 PATCH | F5.2, F5.8 |
 | `detail-precondition` | 사전 조건 | 편집 탭 | 입력 | — | — | 저장 시 PATCH | F5.2 |
 | `detail-steps` | Step 목록 | 편집 탭 | 줄마다 번호 자동 표시(입력칸에는 번호 없이) | — | 빈 Step이 있으면 저장 거부 | 저장 시 PATCH `steps[]` | F5.2 |
@@ -155,14 +155,14 @@
 | `detail-bullet-input` / `detail-bullet-remove` / `detail-bullet-add` | 문구 입력 · 삭제 · 추가 | UI 문구 영역 | 입력 / 삭제 / 새 문구(기본 추정) 추가 | — | 새로 쓴 문구의 기본값은 `추정` | — | F5.7 |
 | `detail-source-ref` | 출처 칩 | 편집 탭 하단 | 클릭 → `원문` 탭. 소스가 바뀌었으면 옆에 "v14 → v15 바뀜" 노랑 태그 | — | — | — | F5.9 |
 | `detail-validation` | 검증 목록 | 편집 탭 맨 아래 | 필수 컬럼 / 허용 우선순위 / Step 번호 / 모호한 표현 / 계층 경로 5개 항목을 ✓·!·✕로 표시 | ✓ 초록 / ! 노랑(미지정 경고) / ✕ 빨강 | 저장 때마다 서버가 다시 계산 | PATCH 응답의 `validation[]` | F5.8 |
-| `detail-mark-reviewed` | 변경 확인 완료 | 원문 탭(소스 버전 변경 시) | 클릭 → 출처를 새 버전(`@v15`)으로 올리고 재검토 표시 해제. 원문 탭에 v14↔v15 바뀐 문장 diff 표시 | loading | 케이스 내용을 고치지 않고 확인만 해도 해제 가능 | `POST /api/tc-library/cases/{case_id}/ack-source` `{ref, to_version, rev}` | F5.9 |
+| `detail-mark-reviewed` | 변경 확인 완료 | 원문 탭(소스 버전 변경 시) | 클릭 → 출처를 새 버전(`@v15`)으로 올리고 재검토 표시 해제. 원문 탭에 v14↔v15 바뀐 문장 diff 표시 | loading | 케이스 내용을 고치지 않고 확인만 해도 해제 가능 | `POST /api/tc-library/{suite}/cases/{case_id}/ack-source` `{ref, to_version, rev}` | F5.9 |
 | `detail-add-source-ref` | 출처 문서 연결 | 원문 탭(엑셀에서 가져온 케이스) | 클릭 → 수집된 소스 목록에서 골라 source_ref 추가 | — | 9장 #7 참고 | `PATCH …` `{rev, source_refs}` | 목표 5 |
-| `detail-history` | 변경 이력 | 이력 탭 | 시간, 사람, 필드, 이전→이후 diff(삭제 빨강 취소선, 추가 초록) | 빈 이력 → "아직 바뀐 적이 없습니다" | `history.jsonl`에서 읽음 | `GET /api/tc-library/cases/{case_id}/history` | F5.11 |
-| `detail-history-revert` | 이 값으로 되돌리기 | 각 이력 항목 오른쪽 | 클릭 → 해당 필드를 이전 값으로. 되돌린 것도 새 이력 행 | loading / 충돌 시 충돌 토스트 | 생성·가져오기 행에는 버튼 없음 | `POST /api/tc-library/cases/{case_id}/revert` `{history_id, rev}` | F5.11 |
-| `detail-save` | 저장 | 패널 하단 | 클릭 또는 ⌘/Ctrl+S → 바뀐 필드만 PATCH. 성공 토스트 "BEN_0009 저장됨 · rev 6" | 변경 없으면 disabled / loading / 409 → 충돌 토스트(내 변경 유지) | rev 필수 | `PATCH /api/tc-library/cases/{case_id}` `{rev, …changed}` | F5.2 |
+| `detail-history` | 변경 이력 | 이력 탭 | 시간, 사람, 필드, 이전→이후 diff(삭제 빨강 취소선, 추가 초록) | 빈 이력 → "아직 바뀐 적이 없습니다" | `history.jsonl`에서 읽음 | `GET /api/tc-library/{suite}/cases/{case_id}/history` | F5.11 |
+| `detail-history-revert` | 이 값으로 되돌리기 | 각 이력 항목 오른쪽 | 클릭 → 해당 필드를 이전 값으로. 되돌린 것도 새 이력 행 | loading / 충돌 시 충돌 토스트 | 생성·가져오기 행에는 버튼 없음 | `POST /api/tc-library/{suite}/cases/{case_id}/revert` `{history_id, rev}` | F5.11 |
+| `detail-save` | 저장 | 패널 하단 | 클릭 또는 ⌘/Ctrl+S → 바뀐 필드만 PATCH. 성공 토스트 "BEN_0009 저장됨 · rev 6" | 변경 없으면 disabled / loading / 409 → 충돌 토스트(내 변경 유지) | rev 필수 | `PATCH /api/tc-library/{suite}/cases/{case_id}` `{rev, …changed}` | F5.2 |
 | `detail-revert-edits` | 변경 취소 | 패널 하단 | 클릭 → 저장 안 한 변경 버리고 서버 값으로 | 변경 없으면 disabled | — | — | — |
-| `detail-duplicate` | 복제 | 패널 하단 오른쪽 | 클릭 → 초안 상태 사본 생성, 사본으로 패널 전환 | loading | — | `POST /api/tc-library/cases/{case_id}/duplicate` | F5.3 |
-| `detail-delete` | 삭제 | 패널 하단 오른쪽 | 클릭 → `confirm-modal` | — | — | `DELETE /api/tc-library/cases/{case_id}?rev=` | F5.3 |
+| `detail-duplicate` | 복제 | 패널 하단 오른쪽 | 클릭 → 초안 상태 사본 생성, 사본으로 패널 전환 | loading | — | `POST /api/tc-library/{suite}/cases/{case_id}/duplicate` | F5.3 |
+| `detail-delete` | 삭제 | 패널 하단 오른쪽 | 클릭 → `confirm-modal` | — | — | `DELETE /api/tc-library/{suite}/cases/{case_id}?rev=` | F5.3 |
 
 ### 2.6 라이브러리의 특수 상태
 
@@ -258,7 +258,7 @@
 | `draft-list` | 초안 카드 목록 | 왼쪽 | — | 비었으면 "검토할 초안이 없습니다. 새로 생성에서 초안을 만드세요" | — | — | F5.5 |
 | `draft-card` | 초안 카드 | 목록 | 클릭 또는 J/K → 포커스(보라 테두리), 오른쪽 원문에서 해당 문장 강조 + 스크롤. 사전 조건 / Test Step / Expected / 우선·AUTO 표시. 결정된 카드는 흐려짐 | 포커스 / 승인(60% 불투명) / 반려(45%) / 중복(노랑 테두리) / invalid(빨강 점선) | — | — | F5.5 |
 | `draft-source-ref` | 출처 칩 | 카드 오른쪽 위 | 클릭 → 카드 포커스와 원문 강조 | — | 케이스마다 source_ref 정확히 1개 | — | F4.5, 목표 5 |
-| `draft-approve` | 승인 | 카드 하단 | 클릭 또는 A → approved, 다음 카드로 포커스, 되돌리기 토스트 | disabled: invalid이거나 중복 처리 미선택(툴팁에 사유) | — | `PATCH /api/tc-library/cases/{case_id}` `{rev, status:"approved"}` | F5.5 |
+| `draft-approve` | 승인 | 카드 하단 | 클릭 또는 A → approved, 다음 카드로 포커스, 되돌리기 토스트 | disabled: invalid이거나 중복 처리 미선택(툴팁에 사유) | — | `PATCH /api/tc-library/{suite}/cases/{case_id}` `{rev, status:"approved"}` | F5.5 |
 | `draft-reject` | 반려 | 카드 하단 | 클릭 또는 R → rejected, 다음 카드 | — | — | `PATCH …` `{rev, status:"rejected"}` | F5.5 |
 | `draft-edit` | 편집 | 카드 하단 | 클릭 또는 E → 라이브러리 탭 상세 패널로 이 케이스 열기 | — | — | — | F5.5 |
 | `draft-regen` | 재생성… | 카드 하단 | 클릭 또는 G → 카드 안에 메모 입력칸 펼침 | — | — | — | F5.5 |
@@ -266,7 +266,7 @@
 | `draft-regen-submit` | 이 메모로 재생성 | 메모 아래 | 클릭 → 이 케이스만 다시 생성, 이전 초안은 이력에 남김 | loading("재생성 중…") / 다른 작업 진행 중이면 대기열 표시 | 1건 제한과의 관계는 9장 #11 | `POST /api/authoring/jobs` `{mode:"regenerate", case_ids:[…], note}` | F5.5, F4.1 |
 | `draft-regen-cancel` | 닫기 | 메모 아래 | 메모 칸 접기 | — | — | — | — |
 | `dup-resolution` | 중복 후보 상자 | 중복 카드 안 | "기존 케이스와 비슷합니다 · BEN_0002 (92%)" + 기존/초안 나란히 비교 | 노랑 배경 | 같은 기능 가지 안 Step+Expected 유사도 기준 | 초안 응답의 `duplicate_of:{case_id, similarity}` | F5.6 |
-| `dup-update` | 기존 케이스 갱신 | 중복 상자 세그먼트 | 선택 → 승인 버튼 활성. 승인 시 기존 case_id에 초안 내용을 덮고 초안은 삭제 | 선택 보라 | 기존 케이스의 rev 동봉 | `POST /api/tc-library/cases/{draft_id}/resolve-duplicate` `{action:"update", target_case_id, target_rev}` | F5.6 |
+| `dup-update` | 기존 케이스 갱신 | 중복 상자 세그먼트 | 선택 → 승인 버튼 활성. 승인 시 기존 case_id에 초안 내용을 덮고 초안은 삭제 | 선택 보라 | 기존 케이스의 rev 동봉 | `POST /api/tc-library/{suite}/cases/{draft_id}/resolve-duplicate` `{action:"update", target_case_id, target_rev}` | F5.6 |
 | `dup-skip` | 건너뛰기 | 동일 | 선택 → 초안을 반려 처리 | — | — | 동일 `{action:"skip"}` | F5.6 |
 | `dup-add` | 새로 추가 | 동일 | 선택 → 승인 버튼 활성. 별도 케이스로 승인 | — | — | 동일 `{action:"add"}` | F5.6 |
 | `source-tabs` | Confluence / Figma 원문 탭 | 오른쪽 위 | 클릭 → 원문 종류 전환 | — | 포커스된 카드의 출처 종류로 자동 전환 | — | F5.5 |
@@ -358,7 +358,7 @@
 
 ## 8. API 엔드포인트 요약
 
-모든 쓰기 요청은 `_check_csrf_origin` 적용, 요청 크기 상한 초과 시 413. 케이스 쓰기는 `rev`가 필수이며 불일치 시 409와 서버의 최신 케이스를 돌려준다. 서버 쓰기는 `update_state` 원자 패턴을 쓰고 변경마다 `{suite}.history.jsonl`에 한 줄을 추가한다.
+모든 쓰기 요청은 `_check_csrf_origin` 적용, 요청 크기 상한 초과 시 413. 케이스 쓰기는 `rev`가 필수이며 불일치 시 409와 서버의 최신 케이스를 돌려준다. 서버 쓰기는 `update_state` 원자 패턴을 쓰고 변경마다 `{suite}.history.jsonl`에 한 줄을 추가한다. 케이스 경로에는 스위트가 들어간다 (로드맵 Z2).
 
 | 메서드 | 경로 | 용도 | 주요 응답 | 요소 | PRD |
 |---|---|---|---|---|---|
@@ -366,17 +366,17 @@
 | GET | `/api/tc-library/{suite}/tree` | 계층 트리 + 상태 집계 | 트리 노드 배열 | `lib-tree`, `gen-target-*`, `move-target` | F2.2, F5.1 |
 | GET | `/api/tc-library/{suite}` | 케이스 목록(필터·검색·페이지) `?sheet&path&status&execution_result&priority&auto&source&needs_review&invalid&q&offset&limit` | `{items, total}` | `lib-grid`, 필터 전부 | F5.1, F5.4 |
 | POST | `/api/tc-library/{suite}/cases` | 케이스 추가 | 새 케이스 | `btn-add-case` | F5.3 |
-| GET | `/api/tc-library/cases/{case_id}` | 케이스 1건 | 케이스 + validation | `detail-panel` | F5.1 |
-| PATCH | `/api/tc-library/cases/{case_id}` | 필드 수정 `{rev, …}` | 200 케이스 / 409 `{server_case}` | 셀 편집, `detail-save`, 검토 승인·반려 | F5.2, F5.5 |
-| DELETE | `/api/tc-library/cases/{case_id}?rev=` | 삭제 | 204 / 409 | `detail-delete` | F5.3 |
-| POST | `/api/tc-library/cases/{case_id}/duplicate` | 복제 | 새 케이스 | `detail-duplicate` | F5.3 |
+| GET | `/api/tc-library/{suite}/cases/{case_id}` | 케이스 1건 | 케이스 + validation | `detail-panel` | F5.1 |
+| PATCH | `/api/tc-library/{suite}/cases/{case_id}` | 필드 수정 `{rev, …}` | 200 케이스 / 409 `{server_case}` | 셀 편집, `detail-save`, 검토 승인·반려 | F5.2, F5.5 |
+| DELETE | `/api/tc-library/{suite}/cases/{case_id}?rev=` | 삭제 | 204 / 409 | `detail-delete` | F5.3 |
+| POST | `/api/tc-library/{suite}/cases/{case_id}/duplicate` | 복제 | 새 케이스 | `detail-duplicate` | F5.3 |
 | POST | `/api/tc-library/{suite}/bulk` | 일괄 set/duplicate/delete `{items:[{case_id,rev}], op, field, value}` | `{updated, conflicts}` | `bulk-*`, `review-approve-clean` | F5.3 |
 | POST | `/api/tc-library/{suite}/move` | 계층 이동 | `{moved, conflicts}` | `move-confirm`, 트리 드롭 | F5.3 |
-| GET | `/api/tc-library/cases/{case_id}/history` | 변경 이력 | 이력 배열 | `detail-history` | F5.11 |
-| POST | `/api/tc-library/cases/{case_id}/revert` | 이전 값으로 되돌리기 `{history_id, rev}` | 케이스 | `detail-history-revert`, 되돌리기 토스트 | F5.11 |
-| POST | `/api/tc-library/cases/{case_id}/resolve-duplicate` | 중복 처리 `{action, target_case_id, target_rev}` | 결과 케이스 | `dup-*` | F5.6 |
+| GET | `/api/tc-library/{suite}/cases/{case_id}/history` | 변경 이력 | 이력 배열 | `detail-history` | F5.11 |
+| POST | `/api/tc-library/{suite}/cases/{case_id}/revert` | 이전 값으로 되돌리기 `{history_id, rev}` | 케이스 | `detail-history-revert`, 되돌리기 토스트 | F5.11 |
+| POST | `/api/tc-library/{suite}/cases/{case_id}/resolve-duplicate` | 중복 처리 `{action, target_case_id, target_rev}` | 결과 케이스 | `dup-*` | F5.6 |
 | GET | `/api/tc-library/{suite}/source-changes` | 소스 버전 변화와 영향 케이스 | `[{ref, from, to, case_ids}]` | `banner-source-changed` | F5.9 |
-| POST | `/api/tc-library/cases/{case_id}/ack-source` | 새 소스 버전 확인 `{ref, to_version, rev}` | 케이스 | `detail-mark-reviewed` | F5.9 |
+| POST | `/api/tc-library/{suite}/cases/{case_id}/ack-source` | 새 소스 버전 확인 `{ref, to_version, rev}` | 케이스 | `detail-mark-reviewed` | F5.9 |
 | GET | `/api/tc-library/{suite}/coverage` | 커버리지 갭 `?path&profile` | 기능별 충족 여부 | `coverage-gap` | F5.10 |
 | POST | `/api/tc-library/import/preview` | xlsx 분석(multipart) | `{preview_id, header_row, sheets, warnings}` | `import-modal` | F2.1~F2.3, F2.6 |
 | POST | `/api/tc-library/import` | 가져오기 확정 `{preview_id, sheets}` | `{created, updated, skipped}` | `import-confirm` | F2.4, F6.7 |

@@ -67,6 +67,12 @@ SCRIPT_DESCRIPTIONS: dict[str, str] = {
     "_constants.py":          "파이프라인 종료코드 + VALID_TRANSITIONS + assert_valid_transition",
     "_pipeline_registry.py":  "FSM 단일 소스: Step·ParallelStatus 상수, PIPELINE_STEP_DEFS, VALID_TRANSITIONS, make_initial_pipeline_state() 팩토리",
     "_validators.py":         "대시보드 serve.py 입력 검증 헬퍼 (부작용 없이 재사용 가능하도록 분리)",
+    "_tc_model.py":           "TC 스튜디오 케이스 모델·허용 값·검증 규칙",
+    "_tc_template.py":        "엑셀 TC 템플릿 분석 (헤더·컬럼·드롭다운·No. 수식)",
+    "_tc_xlsx_import.py":     "엑셀 시트 → TC 라이브러리 케이스",
+    "_tc_library.py":         "TC 라이브러리 저장소 (rev·이력·트리·필터)",
+    "_tc_xlsx_export.py":     "TC 라이브러리 → 템플릿 사본 xlsx + 무결성 검사",
+
     "_python.py":             ".venv 경로 자동 감지",
     "assert_guard.py":        "힐링 패치 후 assertion 약화 감지 (원본 대비 assertion 수·내용 비교, 경고 출력)",
     "jira_reporter.py":       "테스트 실패 시 Jira 이슈 자동 생성 (스크린샷/영상 첨부 포함, config/jira_config.json 설정)",

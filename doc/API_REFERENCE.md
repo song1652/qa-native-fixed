@@ -121,6 +121,28 @@
 `{ "ok": false, "error": "...", "code": "INVALID_REPORT_NAMES" }`를
 반환합니다. 모든 항목을 검증한 뒤 삭제를 시작하므로 잘못된 이름이 하나라도 있으면
 정상 파일도 삭제하지 않습니다. 심볼릭 링크는 링크 자체와 대상 파일을 모두 보존합니다.
+### TC 스튜디오 라이브러리 (`/api/tc-library`)
+
+`routes_tc_library.py`가 처리한다. 쓰기 요청은 모두 CSRF 검사를 받고, 케이스 쓰기는 `rev`가 맞아야 한다 (틀리면 409 + `server_case`). JSON 바디 상한 2MB, xlsx 업로드 25MB (초과 시 413 `PAYLOAD_TOO_LARGE`). 스위트 이름에 경로 문자가 있으면 400 `INVALID_SUITE`.
+
+| 메서드 | 경로 | 설명 |
+|---|---|---|
+| GET | `/api/tc-library` | 스위트 목록 `{suites:[{suite, sheets, count}]}` |
+| POST | `/api/tc-library/import/preview?filename=` | 본문 = xlsx 바이트. 시트별 헤더 행·케이스 수·경고 + `preview_id` |
+| POST | `/api/tc-library/import` | `{preview_id, suite, sheets, prefixes}` → `{created, updated, unchanged}` (case_id가 같으면 갱신) |
+| GET | `/api/tc-library/{suite}/tree` | 시트 › 대분류 › 중분류 › 소분류 › 기능 트리와 가지별 집계 |
+| GET | `/api/tc-library/{suite}` | 케이스 목록. 쿼리: `sheet path status execution_result(빈 값=미실행) priority auto source invalid q offset limit` |
+| POST | `/api/tc-library/{suite}/cases` | 케이스 추가 (`after`로 위치 지정), 201 |
+| GET · PATCH · DELETE | `/api/tc-library/{suite}/cases/{case_id}` | 조회 · 부분 수정 `{rev, …}` · 소프트 삭제 `?rev=` |
+| POST | `/api/tc-library/{suite}/cases/{case_id}/duplicate` · `/restore` · `/revert` | 복제 · 삭제 복원 · 이력 되돌리기 `{history_id, rev}` |
+| GET | `/api/tc-library/{suite}/cases/{case_id}/history` | 변경 이력 (최신 먼저) |
+| POST | `/api/tc-library/{suite}/bulk` | `{items:[{case_id,rev}], op:"set"|"delete", field, value}` → `{updated|deleted, conflicts}` |
+| POST | `/api/tc-library/{suite}/move` | `{items, sheet, path, feature?}` → `{moved, conflicts}` |
+| POST | `/api/tc-library/{suite}/export/xlsx` | `{scope, sheets?, case_ids?, history_note}` → `{export_id, filename, checks, count}` |
+| GET | `/api/tc-library/exports/{export_id}/download` | 내보낸 xlsx 내려받기 |
+
+저장 위치: `state/tc_library/{suite}/` (`cases.json`, `history.jsonl`, `template.xlsx`, `template_profile.json`), 작업 공간 `state/tc_library/_uploads/`, `_exports/`.
+
 
 ### 원격 모드 위험도 분류
 

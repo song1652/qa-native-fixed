@@ -8,7 +8,7 @@
 
 | Phase | 문서 | 작업 | 새 테스트 | 검증 |
 |---|---|---|---|---|
-| 1 라이브러리 + 엑셀 왕복 | [phase1](plans/2026-09-29-tc-authoring-phase1.md) | B1~B10, W1~W4 | 40 | 사본 적용·전체 통과, 실제 야핏무브 926건 왕복 손실 0 |
+| 1 라이브러리 + 엑셀 왕복 | [phase1](plans/2026-09-29-tc-authoring-phase1.md) | B1~B10, W1~W4 | 40 | 사본 적용·전체 통과, 실제 야핏무브 926건 왕복 손실 0 · ✅ 완료 (2026-09-30) |
 | 2 파일 소스 + 생성 + 검토 | [phase2](plans/2026-09-30-tc-authoring-phase2.md) | G1~G7, W5~W8 | 37 | 사본 적용·전체 통과, 실제 `claude` CLI 1회 생성 확인 |
 | 3 Confluence·Figma·URL + 출처 추적 | [phase3](plans/2026-09-30-tc-authoring-phase3.md) | C1~C5, W9~W11 | 22 | 사본 적용·전체 통과 (원격은 녹화 응답, 실제 계정 확인은 W11) |
 | 4 md 내보내기 | [phase4](plans/2026-09-30-tc-authoring-phase4.md) | M1~M3, W12~W13 | 14 | 사본 적용·전체 3회 연속 통과, Import Studio 회귀 없음 |
