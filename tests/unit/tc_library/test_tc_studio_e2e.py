@@ -311,3 +311,17 @@ def test_new_sheet_and_empty_branch_can_be_added(studio):
     expect(page.locator('[data-id="gen-path-l1"]')).to_have_value('이메일 가입')
     _, body = request_json(base_url, 'GET', f'/api/tc-library/{S}')
     assert body['total'] == 6 and not any(c['sheet'] == '회원가입' for c in body['items'])
+
+
+def test_reentering_studio_with_empty_suite_opens_planning_screen(studio):
+    """다른 메뉴에 갔다 돌아와도 0건 스위트면 라이브러리가 아니라 기획 정보 화면이 열린다."""
+    from _tc_library import import_cases
+    base_url, page = studio
+    import_cases("빈스위트", ["테스트케이스"], [], "tester")
+    page.reload()
+    page.locator("#suite-select").select_option("빈스위트")
+    expect(page.locator('[data-screen="generate"].screen')).to_have_class(re.compile("active"))
+    page.evaluate("selectView('reports')")
+    page.evaluate("selectView('tc_studio')")
+    expect(page.locator("#suite-select")).to_have_value("빈스위트")
+    expect(page.locator('[data-screen="generate"].screen')).to_have_class(re.compile("active"))

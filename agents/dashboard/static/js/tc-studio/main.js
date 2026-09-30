@@ -298,6 +298,7 @@
       await NS.reloadSuites(next);
     });
     show('library');
+    state.suite = '';   // 다른 메뉴에서 돌아와도 처음 들어온 것처럼 첫 화면(0건이면 기획 정보)을 고른다
     await NS.reloadSuites();
   }
 
