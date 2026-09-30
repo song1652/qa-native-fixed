@@ -236,6 +236,7 @@ python agents/dashboard/serve.py
 | [`doc/TEAM_DISCUSSION.md`](doc/TEAM_DISCUSSION.md) | 팀 토론 파이프라인 상세 |
 | [`doc/PIPELINE_STATE.md`](doc/PIPELINE_STATE.md) | state/pipeline.json 전체 스키마 |
 | [`doc/DIRECTORY.md`](doc/DIRECTORY.md) | 프로젝트 디렉토리 트리 |
+| [`doc/TC_AUTHORING_USER_GUIDE.md`](doc/TC_AUTHORING_USER_GUIDE.md) | **TC 스튜디오 사용자 설명서** — 처음 시작하기·기획 입력·TC 생성/수정/검토·Excel 및 Markdown 내보내기. 실제 화면·[빈 양식](doc/templates/TC_빈양식.xlsx)·[기획 예시](doc/templates/회원등록_기획예시.md) 포함 |
 | [`doc/TC_AUTHORING_PRD.md`](doc/TC_AUTHORING_PRD.md) | TC Authoring Studio PRD (문서 기반 TC 작성·웹 편집·xlsx/md 내보내기) — Draft |
 | [`doc/TC_AUTHORING_ELEMENT_SPEC.md`](doc/TC_AUTHORING_ELEMENT_SPEC.md) | TC Authoring Studio 화면 요소별 동작 명세 + API 제안 · 목업: [`design-previews/tc-authoring-studio.html`](design-previews/tc-authoring-studio.html) |
 | [`doc/TC_AUTHORING_HANDOFF.md`](doc/TC_AUTHORING_HANDOFF.md) | **TC Authoring Studio 개발 인수인계** — 구현을 맡을 때 가장 먼저 읽는 문서 (읽는 순서·진행 방법·보고 형식) |
