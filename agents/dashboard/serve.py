@@ -111,6 +111,8 @@ from dash_http import (                                          # Phase-3
 )
 from routes_import import ImportRoutesMixin                       # Phase-4
 from routes_get import GetRoutesMixin                             # Phase-5
+from routes_tc_library import TcLibraryRoutesMixin
+from dash_http import BodyTooLarge
 from routes_ops import OpsRoutesMixin                             # Phase-6
 LOGS_DIR.mkdir(exist_ok=True)
 
@@ -144,6 +146,7 @@ REMOTE_API_ALLOWLIST = [
 
 
 class DashboardHandler(                                            # Phase-4/5/6
+    TcLibraryRoutesMixin,
     ImportRoutesMixin,
     GetRoutesMixin,
     OpsRoutesMixin,
@@ -208,9 +211,11 @@ class DashboardHandler(                                            # Phase-4/5/6
     # ── Dispatchers ───────────────────────────────────────────────
     def do_GET(self):
         path = self.path.split("?")[0]
+        if self._tcl_dispatch("GET"):
+            return
 
         # index
-        if path in ("/", "/index.html", "/import-studio"):
+        if path in ("/", "/index.html", "/import-studio", "/tc-studio"):
             self._serve_file(HERE / "index.html", "text/html; charset=utf-8")
             return
 
@@ -336,6 +341,8 @@ class DashboardHandler(                                            # Phase-4/5/6
             self.wfile.write(content)
             return
         try:
+            if self._tcl_dispatch("POST"):
+                return
             if path.startswith("/api/import/runs/") and path.endswith("/rollback"):
                 self._post_import_run_rollback_v2(path)
                 return
@@ -344,6 +351,9 @@ class DashboardHandler(                                            # Phase-4/5/6
             else:
                 self.send_response(404)
                 self.end_headers()
+        except BodyTooLarge:
+            self._serve_bytes(b'{"ok":false,"error":"request too large","code":"PAYLOAD_TOO_LARGE"}',
+                              "application/json; charset=utf-8", status=413)
         except Exception as e:
             import traceback
             traceback.print_exc()
@@ -361,6 +371,8 @@ class DashboardHandler(                                            # Phase-4/5/6
         if not self._check_csrf_origin():
             self.send_response(403)
             self.end_headers()
+            return
+        if self._tcl_dispatch("DELETE"):
             return
         prefix = "/api/import/profiles/"
         if path.startswith(prefix):
@@ -382,6 +394,16 @@ class DashboardHandler(                                            # Phase-4/5/6
             return
         self.send_response(404)
         self.end_headers()
+
+    def do_PATCH(self):
+        """TC 스튜디오 케이스 부분 수정 (rev 필수)."""
+        if not self._check_csrf_origin():
+            self.send_response(403)
+            self.end_headers()
+            return
+        if not self._tcl_dispatch("PATCH"):
+            self.send_response(404)
+            self.end_headers()
 
     # ── Infrastructure helpers ────────────────────────────────────
     def _serve_sse(self):

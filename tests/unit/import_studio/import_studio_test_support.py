@@ -89,6 +89,7 @@ def configure_isolated_project(serve: Any, project_root: Path) -> None:
         "PIPELINE_STATE": project_root / "state" / "pipeline.json",
         "PARALLEL_STATE": project_root / "state" / "parallel.json",
         "QUICK_STATE": project_root / "state" / "quick.json",
+        "TC_LIBRARY_DIR": project_root / "state" / "tc_library",
     }
     for name, value in paths.items():
         if hasattr(serve, name):

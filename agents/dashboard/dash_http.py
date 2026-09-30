@@ -11,10 +11,31 @@ import tempfile
 from pathlib import Path
 
 
-def _read_body(handler) -> dict:
-    """요청 바디를 JSON으로 파싱해 반환. 바디 없으면 빈 dict."""
-    length = int(handler.headers.get("Content-Length", 0))
-    return json.loads(handler.rfile.read(length).decode("utf-8")) if length else {}
+MAX_JSON_BODY_BYTES = 2 * 1024 * 1024
+
+
+class BodyTooLarge(Exception):
+    pass
+
+
+def _content_length(handler) -> int:
+    try:
+        return max(int(handler.headers.get("Content-Length", 0)), 0)
+    except ValueError:
+        return 0
+
+
+def _read_raw_body(handler, limit: int) -> bytes:
+    length = _content_length(handler)
+    if length > limit:
+        raise BodyTooLarge(length)
+    return handler.rfile.read(length) if length else b""
+
+
+def _read_body(handler, limit: int = MAX_JSON_BODY_BYTES) -> dict:
+    """요청 바디를 JSON으로 파싱해 반환. 바디 없으면 빈 dict. 상한 초과는 BodyTooLarge."""
+    raw = _read_raw_body(handler, limit)
+    return json.loads(raw.decode("utf-8")) if raw else {}
 
 
 def _read_profiles_locked(path: Path) -> dict:
