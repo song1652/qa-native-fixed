@@ -2,7 +2,7 @@
 
 > **독자**: 사람 + 구현 에이전트. PRD를 **작고 독립적으로 검증 가능한 작업**으로 쪼갠 전체 지도.
 > 처음 개발을 맡는다면 [개발 인수인계](TC_AUTHORING_HANDOFF.md)부터 읽는다.
-> 기준 문서: [PRD](TC_AUTHORING_PRD.md) · [요소별 동작 명세](TC_AUTHORING_ELEMENT_SPEC.md) · [목업](../../design-previews/tc-authoring-studio.html)
+> 기준 문서: [PRD](../../design/tc-studio/TC_AUTHORING_PRD.md) · [요소별 동작 명세](../../design/tc-studio/TC_AUTHORING_ELEMENT_SPEC.md) · [목업](../../../design-previews/tc-authoring-studio.html)
 
 ## 상세 계획 (작업 단위 · 코드 · 테스트 포함)
 
@@ -68,5 +68,5 @@ Phase 4  md 내보내기 (Phase 1만 있으면 개념상 가능하지만, 계획
 1. [개발 인수인계](TC_AUTHORING_HANDOFF.md)의 절차를 따른다.
 2. 위 표에서 현재 Phase 계획을 열고, 작업 ID 순서대로 진행한다 (앞 작업의 테스트가 통과해야 다음으로).
 3. 테스트 → 구현 → 테스트 통과 → 커밋. 커밋 메시지에 작업 ID를 넣는다 (`feat(tc-studio): B3 …`).
-4. 반복 실수를 찾으면 [lessons_learned.md](../../agents/lessons_learned.md)에 기록한다 (CLAUDE.md 규칙).
+4. 반복 실수를 찾으면 [lessons_learned.md](../../../agents/lessons_learned.md)에 기록한다 (CLAUDE.md 규칙).
 5. Phase의 마지막 문서 작업(W4·W8·W11·W13)에서 이 표의 해당 Phase에 `✅ 완료 (날짜)`를 붙인다.

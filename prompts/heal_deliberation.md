@@ -27,7 +27,7 @@ screenshots: {ctx.screenshots}
 
 ## 힐링 완료 체크리스트 (하나라도 빠지면 미완료)
 
-> 상세 기준: `doc/HEALING_GUIDE.md`
+> 상세 기준: `doc/operations/HEALING_GUIDE.md`
 
 1. 코드 패치 적용
 2. `agents/lessons_learned.md` 교훈 수동 기록 (중복·단순 에러 로그는 생략)

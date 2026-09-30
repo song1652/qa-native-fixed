@@ -5,8 +5,8 @@
 "됐을 것 같다" 방지 — 문서 수정 없이 레지스트리만 바꾸면 CI가 잡아낸다.
 
 대상 문서:
-  doc/PIPELINE_STATE.md — step/status 열거 + 전이 규칙 참조
-  doc/SCRIPTS_GUIDE.md  — 스크립트별 단계 언급
+  doc/reference/PIPELINE_STATE.md — step/status 열거 + 전이 규칙 참조
+  doc/guides/SCRIPTS_GUIDE.md  — 스크립트별 단계 언급
 """
 from __future__ import annotations
 
@@ -27,15 +27,15 @@ from _pipeline_registry import (
 )
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
-PIPELINE_STATE_MD = _REPO_ROOT / "doc" / "PIPELINE_STATE.md"
-SCRIPTS_GUIDE_MD  = _REPO_ROOT / "doc" / "SCRIPTS_GUIDE.md"
+PIPELINE_STATE_MD = _REPO_ROOT / "doc" / "reference" / "PIPELINE_STATE.md"
+SCRIPTS_GUIDE_MD  = _REPO_ROOT / "doc" / "guides" / "SCRIPTS_GUIDE.md"
 
 
 # ── PIPELINE_STATE.md ────────────────────────────────────────────────────────
 
 
 class TestPipelineStateMdSync:
-    """doc/PIPELINE_STATE.md 가 레지스트리의 모든 step/status를 언급하는지 확인."""
+    """doc/reference/PIPELINE_STATE.md 가 레지스트리의 모든 step/status를 언급하는지 확인."""
 
     @pytest.fixture(scope="class")
     def doc_text(self):
@@ -102,7 +102,7 @@ class TestPipelineStateMdSync:
     def test_registry_reference_updated_from_constants(self, doc_text):
         """P35 이후 문서 참조가 _constants.py → _pipeline_registry.py로 갱신됐는지 확인."""
         assert "_pipeline_registry.py" in doc_text, (
-            "doc/PIPELINE_STATE.md가 여전히 _constants.py를 참조하고 있음. "
+            "doc/reference/PIPELINE_STATE.md가 여전히 _constants.py를 참조하고 있음. "
             "_pipeline_registry.py로 갱신하세요 (P35 참조)."
         )
 
@@ -129,7 +129,7 @@ class TestPipelineStateMdSync:
 
 
 class TestScriptsGuideMdSync:
-    """doc/SCRIPTS_GUIDE.md 가 핵심 실행 스크립트 단계를 언급하는지 확인."""
+    """doc/guides/SCRIPTS_GUIDE.md 가 핵심 실행 스크립트 단계를 언급하는지 확인."""
 
     @pytest.fixture(scope="class")
     def doc_text(self):

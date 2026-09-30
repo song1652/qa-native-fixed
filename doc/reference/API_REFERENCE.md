@@ -1,6 +1,8 @@
 # API & CLI 레퍼런스
 
-> **독자**: 사람 — 스크립트 CLI 옵션 및 대시보드 API 엔드포인트 완전 목록.
+> **문서 유형: 개발 레퍼런스** · CLI 인자와 대시보드 API 계약. 사용 순서는 [스크립트 사용 매뉴얼](../guides/SCRIPTS_GUIDE.md)에 있습니다.
+
+> **독자**: 사람 — 스크립트 CLI 옵션 및 대시보드 주요 API 엔드포인트 목록.
 
 ---
 
@@ -16,7 +18,8 @@
 |------|------|
 | `--no-report` | HTML 리포트·스크린샷 생성 건너뜀 (힐링 중간 실행용) |
 | `--only-failed` | 이전 실행에서 실패한 테스트만 재실행 |
-| `-n <int>` | pytest-xdist 워커 수 지정 (기본 8) |
+
+워커 수는 케이스 수와 사이트 설정에 따라 자동 선택하며 최대 4입니다. 이 스크립트의 CLI에는 `-n` 옵션이 없습니다.
 
 ### `parallel/99_merge.py`
 | 옵션 | 설명 |
@@ -130,7 +133,7 @@
 | GET | `/api/tc-library` | 스위트 목록 `{suites:[{suite, sheets, count}]}` |
 | POST | `/api/tc-library/import/preview?filename=` | 본문 = xlsx 바이트. 시트별 헤더 행·케이스 수·경고 + `preview_id` |
 | POST | `/api/tc-library/import` | `{preview_id, suite, sheets, prefixes}` → `{created, updated, unchanged}` (case_id가 같으면 갱신) |
-| GET | `/api/tc-library/{suite}/tree` | 시트 › 대분류 › 중분류 › 소분류 › 기능 트리와 가지별 집계 |
+| GET | `/api/tc-library/{suite}/tree` | 시트 › 대분류 › 중분류 › 소분류 › 제목 트리와 가지별 집계 |
 | GET | `/api/tc-library/{suite}` | 케이스 목록. 쿼리: `sheet path status execution_result(빈 값=미실행) priority auto source invalid q offset limit` |
 | POST | `/api/tc-library/{suite}/cases` | 케이스 추가 (`after`로 위치 지정), 201 |
 | GET · PATCH · DELETE | `/api/tc-library/{suite}/cases/{case_id}` | 조회 · 부분 수정 `{rev, …}` · 소프트 삭제 `?rev=` |
@@ -209,7 +212,7 @@
 # 단일 실행과 모든 reset 엔드포인트만 예외 허용
 REMOTE_MODE=true \
 REMOTE_API_ALLOWLIST='/api/run_qa,/api/reset*,/api/pipeline/reset,/api/parallel/reset,/api/quick/reset,/api/run_history/reset,/api/heal_stats/reset,/api/discuss/reset' \
-python agents/dashboard/serve.py --host 0.0.0.0 --port 8800
+.venv/bin/python agents/dashboard/serve.py --host 0.0.0.0 --port 8800
 ```
 
 ### P0-3 동적 포트 상태

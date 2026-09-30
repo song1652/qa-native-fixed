@@ -1,5 +1,7 @@
 # state/pipeline.json 구조
 
+> **문서 유형: 상태 레퍼런스** · 런타임 상태의 구조와 전이 규칙. 운영 절차는 [힐링 지침](../operations/HEALING_GUIDE.md)을 참고합니다.
+
 > **독자**: Claude Code — pipeline.json / 관련 state 파일 스키마를 확인해야 할 때 on-demand 참조.
 > 헬링 중 실패 구조 파악, 새 필드 추가 시, state 읽기/쓰기 코드 작성 전에 확인.
 

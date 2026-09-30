@@ -1,6 +1,6 @@
 # PRD: TC Authoring Studio (문서 기반 테스트케이스 작성·관리)
 
-> **설계 참고 문서**: 최초 설계와 제안이 포함되어 있으며, 현재 화면과 일부 차이가 있을 수 있습니다. 사용 방법은 [사용자 설명서](TC_AUTHORING_USER_GUIDE.md), 실제 구현과 확인 범위는 [구현 보고](TC_AUTHORING_IMPLEMENTATION_REPORT.md)를 참고하세요.
+> **설계 참고 문서**: 최초 설계와 제안이 포함되어 있으며, 현재 화면과 일부 차이가 있을 수 있습니다. 사용 방법은 [사용자 설명서](../../guides/tc-studio/TC_AUTHORING_USER_GUIDE.md), 실제 구현과 확인 범위는 [구현 보고](../../development/tc-studio/TC_AUTHORING_IMPLEMENTATION_REPORT.md)를 참고하세요.
 
 | 항목 | 내용 |
 |---|---|
@@ -10,8 +10,8 @@
 | 근거 | 에이전트 3명(아키텍트, QA 리드, 연동/보안)의 논의 결과와 사용자 요구사항 |
 | 기준 템플릿 | `야핏무브_Full.xlsx` (모바일 앱 수동 QA용 Full TC) |
 | 요소별 동작 명세 | [TC_AUTHORING_ELEMENT_SPEC.md](TC_AUTHORING_ELEMENT_SPEC.md) (화면 요소 약 170개 · API 제안 · PRD 피드백 19건) |
-| 목업 | [design-previews/tc-authoring-studio.html](../../design-previews/tc-authoring-studio.html) (브라우저로 열기, 클릭 가능) |
-| 구현 계획 | [로드맵](TC_AUTHORING_ROADMAP.md) · [개발 인수인계](TC_AUTHORING_HANDOFF.md) · [Phase별 계획](plans/) |
+| 목업 | [design-previews/tc-authoring-studio.html](../../../design-previews/tc-authoring-studio.html) (브라우저로 열기, 클릭 가능) |
+| 구현 계획 | [로드맵](../../development/tc-studio/TC_AUTHORING_ROADMAP.md) · [개발 인수인계](../../development/tc-studio/TC_AUTHORING_HANDOFF.md) · [Phase별 계획](../../development/tc-studio/plans/) |
 
 ---
 
@@ -207,7 +207,7 @@ PRD는 문서의 역할이며 파일과 URL은 같은 PRD를 전달하는 두 �
 | O4 | AUTO 값 체계(`Y-web`/`Y-app`/`N`)를 팀이 합의해야 한다 | 지금은 모든 시트에서 비어 있다 |
 | O5 | 원본이 Google Sheets에서 온 파일인지 확인해야 한다. 소문자 `average()` 같은 수식이 왕복 후에도 유지되는지가 걸린다 | 엑셀 무결성 |
 | O6 | 라이브러리 저장소를 git으로 관리할지 정해야 한다. git으로 관리하면 팀 공유와 diff가 쉽고, gitignore하면 개인 작업 공간이 된다 | 협업 방식 |
-| O7 | **md 우선순위에 `very_high` 추가.** 지금 파이프라인은 `high`/`medium`/`low`만 안다. `_import_commit._render`(207~209행)는 그 밖의 값을 조용히 `medium`으로 바꾸고, `coverage_matrix.py`는 `low`로 센다. 허용 값을 넓히려면 `_import_commit.py`, `coverage_matrix.py`, `templates/tc-template.md`, `doc/TEST_CASE_GUIDE.md`와 대시보드 커버리지 표시를 함께 고쳐야 한다. | 이걸 고치기 전에 md를 내보내면 P0 케이스가 medium으로 떨어진다 → 해결: Phase 4 M1 (결정 V1) |
+| O7 | **md 우선순위에 `very_high` 추가.** 지금 파이프라인은 `high`/`medium`/`low`만 안다. `_import_commit._render`(207~209행)는 그 밖의 값을 조용히 `medium`으로 바꾸고, `coverage_matrix.py`는 `low`로 센다. 허용 값을 넓히려면 `_import_commit.py`, `coverage_matrix.py`, `templates/tc-template.md`, `doc/guides/TEST_CASE_GUIDE.md`와 대시보드 커버리지 표시를 함께 고쳐야 한다. | 이걸 고치기 전에 md를 내보내면 P0 케이스가 medium으로 떨어진다 → 해결: Phase 4 M1 (결정 V1) |
 | O7 | 목업은 TC당 실행 결과 1개를 표시한다. 기존 Excel은 And/iOS 결과 컬럼이 따로 있으므로 플랫폼별로 저장·가져오기·내보내기를 할지 결정해야 한다. 결정 전에는 K/L 결과를 가져오거나 임의 복제하지 않는다 | 결과 데이터 모델과 Excel 왕복 → 해결: Phase 4 M1 (결정 V1) |
 
 별도 Import Studio 화면 제거 완료 기준: 기존 매핑 프로필을 새 화면에서 사용할 수 있고, 임의 양식 Excel의 미리보기·가져오기와 md 커밋·롤백이 통과해야 한다. 기존 `/api/import/*` 사용처와 북마크의 이동 경로를 확인한 다음 화면·라우트를 정리한다. 공용 엔진과 기존 작업 이력·스냅샷은 화면 제거 대상이 아니다.

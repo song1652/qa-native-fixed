@@ -226,7 +226,7 @@ PARALLEL_HEADLESS_PROMPT = (
     "   (prompts/parallel_subagent.md 지침 참조, shared_context_paths의 파일들 — "
     "   parallel_plan.json 포함 — 각 subagent가 읽도록 지시) "
     "4) 모든 subagent 완료 후 .venv/bin/python parallel/99_merge.py 실행 "
-    "5) 실패 케이스가 있으면 doc/HEALING_GUIDE.md를 참조해서 힐링 루프 진행 (최대 3회). "
+    "5) 실패 케이스가 있으면 doc/operations/HEALING_GUIDE.md를 참조해서 힐링 루프 진행 (최대 3회). "
     "모든 파이썬 명령은 프로젝트 루트의 .venv/bin/python을 사용해서 실행해."
 )
 

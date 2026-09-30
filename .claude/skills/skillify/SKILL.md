@@ -22,7 +22,7 @@ origin: qa-native
 | 오류 유형별 수정 전략 | `.claude/skills/heal-patterns/SKILL.md` |
 | Playwright 셀렉터·대기 전략 | `.claude/skills/playwright-best-practices/SKILL.md` |
 | 사이트별 특화 노하우 | `agents/lessons_learned.md` (사이트별 섹션) |
-| 파이프라인 운영 패턴 | `CLAUDE.md` 또는 `doc/SCRIPTS_GUIDE.md` |
+| 파이프라인 운영 패턴 | `CLAUDE.md` 또는 `doc/guides/SCRIPTS_GUIDE.md` |
 
 ## 등록 워크플로우
 

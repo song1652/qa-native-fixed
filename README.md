@@ -145,7 +145,7 @@ type: structured
 - frontmatter 필수: `id`, `data_key`, `priority`, `tags`, `type`
 - Steps 입력값은 `test_data[{data_key}].{속성}` 형식 (하드코딩 금지)
 
-자세한 작성 규칙: [`doc/TEST_CASE_GUIDE.md`](doc/TEST_CASE_GUIDE.md)
+자세한 작성 규칙: [`doc/guides/TEST_CASE_GUIDE.md`](doc/guides/TEST_CASE_GUIDE.md)
 
 ---
 
@@ -177,7 +177,7 @@ python run_qa_parallel.py --no-auto
 
 ## 파일 구조
 
-> 전체 디렉토리 트리: [`doc/DIRECTORY.md`](doc/DIRECTORY.md)
+> 전체 디렉토리 트리: [`doc/reference/DIRECTORY.md`](doc/reference/DIRECTORY.md)
 
 | 폴더 | 역할 |
 |---|---|
@@ -219,26 +219,14 @@ python agents/dashboard/serve.py
 
 단일/병렬 파이프라인 실행, 빠른 실행, 팀 토론, 리포트 열람, 실행 로그 모니터링 지원.
 
-> 대시보드 기능 상세 · API 엔드포인트: [`doc/SCRIPTS_GUIDE.md`](doc/SCRIPTS_GUIDE.md) 참조
+> 대시보드 기능 상세 · API 엔드포인트: [`doc/guides/SCRIPTS_GUIDE.md`](doc/guides/SCRIPTS_GUIDE.md) 참조
 
 ---
 
 ## 내부 문서 (`doc/`)
 
-> 문서 전체 목록과 읽는 순서는 **[문서 안내](doc/README.md)**를 참고하세요. 사용자 설명서, 개발 참고 문서, 에이전트 운영 지침을 구분해 안내합니다.
+**[문서 전체 안내](doc/README.md)**에서 사용 매뉴얼·설계(PRD)·레퍼런스·운영 지침·개발 기록을 목적별로 찾을 수 있습니다.
 
-| 파일 | 내용 |
-|---|---|
-| [`doc/SCRIPTS_GUIDE.md`](doc/SCRIPTS_GUIDE.md) | **모든 .py 파일 역할·실행 방법 정리** |
-| [`doc/PROJECT_OVERVIEW.md`](doc/PROJECT_OVERVIEW.md) | 아키텍처·설계 의도 상세 |
-| [`doc/TEST_CASE_GUIDE.md`](doc/TEST_CASE_GUIDE.md) | 테스트케이스 작성 규칙 |
-| [`doc/HEALING_GUIDE.md`](doc/HEALING_GUIDE.md) | 힐링 패치 기준·MCP 시각 검증 절차 |
-| [`doc/TEAM_DISCUSSION.md`](doc/TEAM_DISCUSSION.md) | 팀 토론 파이프라인 상세 |
-| [`doc/PIPELINE_STATE.md`](doc/PIPELINE_STATE.md) | state/pipeline.json 전체 스키마 |
-| [`doc/DIRECTORY.md`](doc/DIRECTORY.md) | 프로젝트 디렉토리 트리 |
-| [`doc/tc-studio/TC_AUTHORING_USER_GUIDE.md`](doc/tc-studio/TC_AUTHORING_USER_GUIDE.md) | **TC 스튜디오 사용자 설명서** — 처음 시작하기·기획 입력·TC 생성/수정/검토·Excel 및 Markdown 내보내기. 실제 화면·[빈 양식](doc/tc-studio/templates/TC_빈양식.xlsx)·[기획 예시](doc/tc-studio/templates/회원등록_기획예시.md) 포함 |
-| [`doc/tc-studio/TC_AUTHORING_PRD.md`](doc/tc-studio/TC_AUTHORING_PRD.md) | TC Authoring Studio PRD (문서 기반 TC 작성·웹 편집·xlsx/md 내보내기) — Draft |
-| [`doc/tc-studio/TC_AUTHORING_ELEMENT_SPEC.md`](doc/tc-studio/TC_AUTHORING_ELEMENT_SPEC.md) | TC Authoring Studio 화면 요소별 동작 명세 + API 제안 · 목업: [`design-previews/tc-authoring-studio.html`](design-previews/tc-authoring-studio.html) |
-| [`doc/tc-studio/TC_AUTHORING_HANDOFF.md`](doc/tc-studio/TC_AUTHORING_HANDOFF.md) | **TC Authoring Studio 개발 인수인계** — 구현을 맡을 때 가장 먼저 읽는 문서 (읽는 순서·진행 방법·보고 형식) |
-| [`doc/tc-studio/TC_AUTHORING_ROADMAP.md`](doc/tc-studio/TC_AUTHORING_ROADMAP.md) | TC Authoring Studio 로드맵 — Phase 1~4 작업 ID·결정 사항 모음 |
-| [`doc/tc-studio/plans/`](doc/tc-studio/plans/) | TC Authoring Studio Phase별 상세 구현 계획 (검증된 코드·테스트 포함) |
+- [TC 스튜디오 사용자 설명서](doc/guides/tc-studio/TC_AUTHORING_USER_GUIDE.md): 기획 입력부터 작성·검토·내보내기까지.
+- [스크립트 사용 매뉴얼](doc/guides/SCRIPTS_GUIDE.md): 프로그램 실행 순서와 주요 스크립트 역할.
+- [TC 스튜디오 관련 문서](doc/tc-studio/README.md): PRD·화면 명세·구현 보고·계획 바로가기.

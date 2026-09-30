@@ -35,7 +35,7 @@
 ## Playwright 테스트 작성 체크리스트
 
 > 셀렉터 전략·대기 패턴·Assertion 상세: [`.claude/skills/playwright-best-practices/SKILL.md`](../.claude/skills/playwright-best-practices/SKILL.md)
-> 힐링 시 MCP 시각 검증: [`doc/HEALING_GUIDE.md`](../doc/HEALING_GUIDE.md)
+> 힐링 시 MCP 시각 검증: [`doc/operations/HEALING_GUIDE.md`](../doc/operations/HEALING_GUIDE.md)
 
 - [ ] 셀렉터가 dom_info 기반 (`#id` 우선, 추측 금지)
 - [ ] `to_contain_text()` 사용 (`to_have_text()` 공백 위험)

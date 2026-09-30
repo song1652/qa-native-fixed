@@ -1,6 +1,8 @@
 # 파이썬 파일 실행 가이드
 
-> **독자**: 사람 — 모든 .py 파일의 역할과 실행 방법 정리. 에이전트가 읽지 않음.
+> **문서 유형: 사용 매뉴얼** · 프로젝트 실행 방법과 주요 스크립트 역할. 정확한 인자·API는 [API 레퍼런스](../reference/API_REFERENCE.md)를 참고합니다.
+
+> **독자**: 프로젝트 사용자·개발자 — 주요 Python 파일의 역할과 실행 방법.
 
 ---
 
@@ -55,13 +57,13 @@ Claude가 자동으로 호출하는 파일 (직접 실행 불필요)
 
 ```bash
 # 케이스 폴더 지정 (권장) — 폴더 내 tc_*.md 파일 전체를 자동 읽음
-python run_qa.py --url https://example.com/ --cases testcases/mysite/
+.venv/bin/python run_qa.py --url https://example.com/ --cases testcases/mysite/
 
 # 단일 파일 지정
-python run_qa.py --url https://example.com/ --cases testcases/mysite/tc_01.md
+.venv/bin/python run_qa.py --url https://example.com/ --cases testcases/mysite/tc_01.md
 
 # 자동 실행 없이 안내 메시지만 출력 (기존 방식)
-python run_qa.py --url https://example.com/ --cases testcases/mysite/ --no-auto
+.venv/bin/python run_qa.py --url https://example.com/ --cases testcases/mysite/ --no-auto
 ```
 
 **옵션:**
@@ -86,16 +88,16 @@ DOM 분석 후 headless Claude Code 세션을 백그라운드로 띄워 subagent
 
 ```bash
 # pages.json에 등록된 모든 URL 자동 스캔 (headless 자동 실행)
-python run_qa_parallel.py
+.venv/bin/python run_qa_parallel.py
 
 # 특정 폴더만
-python run_qa_parallel.py --folders login saintcore
+.venv/bin/python run_qa_parallel.py --folders login saintcore
 
 # targets.json 지정
-python run_qa_parallel.py --targets testcases/targets_demo.json
+.venv/bin/python run_qa_parallel.py --targets testcases/targets_demo.json
 
 # 자동 실행 없이 안내 메시지만 출력 (기존 방식)
-python run_qa_parallel.py --no-auto
+.venv/bin/python run_qa_parallel.py --no-auto
 ```
 
 **옵션:**
@@ -137,13 +139,13 @@ object 형식 사용 시 `page_meta`(auth, spa, preconditions, notes)가 subagen
 모든 worker의 코드 생성이 완료된 후 실행합니다. Claude가 지시를 출력하면 그때 실행합니다.
 
 ```bash
-python parallel/99_merge.py
+.venv/bin/python parallel/99_merge.py
 # 특정 그룹만 실행
-python parallel/99_merge.py --group mysite
+.venv/bin/python parallel/99_merge.py --group mysite
 # 빠른 실행 모드 (state/quick.json에 결과 저장, parallel_state 미변경)
-python parallel/99_merge.py --quick --group mysite
+.venv/bin/python parallel/99_merge.py --quick --group mysite
 # 힐링 생략 (실패해도 힐링 없이 바로 리포트 생성)
-python parallel/99_merge.py --quick --group mysite --no-heal
+.venv/bin/python parallel/99_merge.py --quick --group mysite --no-heal
 ```
 
 **옵션:**
@@ -169,11 +171,11 @@ python parallel/99_merge.py --quick --group mysite --no-heal
 사수/부사수 대화를 실시간으로 보고, 팀 토론을 진행·승인할 수 있는 웹 UI 서버입니다.
 
 ```bash
-python agents/dashboard/serve.py
+.venv/bin/python agents/dashboard/serve.py
 # 브라우저에서 http://localhost:8766 자동 열림
 
 # 다른 인터페이스/포트로 실행
-python agents/dashboard/serve.py --host 0.0.0.0 --port 8800
+.venv/bin/python agents/dashboard/serve.py --host 0.0.0.0 --port 8800
 ```
 
 | 옵션/환경 변수 | 기본값 | 설명 |
@@ -188,7 +190,7 @@ python agents/dashboard/serve.py --host 0.0.0.0 --port 8800
 원격 모드는 인증 기능이 아닙니다. 외부 네트워크에 바인딩할 때는 허용 host/origin을
 명시하고 인증 프록시를 별도로 구성하세요. 토론 결론의 승인/반려 API는 게이트 진행을
 막지 않도록 원격 모드에서도 허용됩니다. 상세 위험 엔드포인트와 allowlist 규칙은
-[`API_REFERENCE.md`](API_REFERENCE.md)를 참고하세요.
+[`API_REFERENCE.md`](../reference/API_REFERENCE.md)를 참고하세요.
 
 > **동적 포트(P0-3):** 현재 저장소에는 dashboard job 동시 실행 상한과 workspace
 > 수명주기 계약이 없습니다. `--port`로 명시적 포트를 선택할 수 있지만, job별 자동
@@ -216,20 +218,7 @@ python agents/dashboard/serve.py --host 0.0.0.0 --port 8800
 > **참고**: QA 파이프라인 심의(Plan·코드리뷰·힐링)는 대시보드에 표시되지 않습니다.
 > 결과는 `state/pipeline.json`에 저장되며, 터미널 로그에서 확인할 수 있습니다.
 
-**대시보드 API 엔드포인트:**
-| 엔드포인트 | 메서드 | 설명 |
-|---|---|---|
-| `/api/run_qa` | POST | 단일 파이프라인 실행 (`url`, `cases_dir` 필요) |
-| `/api/run_qa_parallel` | POST | 병렬 파이프라인 실행 |
-| `/api/run_merge` | POST | 99_merge.py 실행 |
-| `/api/run_quick` | POST | 빠른 실행 — 선택 그룹만 pytest 실행 (`groups` 배열 필요, `no_heal` 옵션) |
-| `/api/run_log` | POST | 실행 로그 조회 (`log` 파일명 지정) |
-| `/api/pipeline_state` | GET | 단일 파이프라인 state/pipeline.json 조회 |
-| `/api/batch_state` | GET | 병렬 파이프라인 상태 조회 |
-| `/api/quick_state` | GET | 빠른 실행 상태 조회 (`state/quick.json`) |
-| `/api/generated_groups` | GET | tests/generated/ 하위 그룹별 파일 목록 조회 |
-| `/api/pages` | GET | pages.json + testcases 그룹 목록 조회 |
-| `/api/reports` | GET | 테스트 리포트 목록 조회 |
+**대시보드 API:** 전체 목록과 요청·응답 계약은 [API 레퍼런스](../reference/API_REFERENCE.md)를 참고하세요.
 
 **서버 재시작 방법 (코드 변경 후):**
 ```bash
@@ -238,7 +227,7 @@ lsof -i :8766
 # PID 종료
 kill -9 [PID]
 # 재시작
-python agents/dashboard/serve.py
+.venv/bin/python agents/dashboard/serve.py
 ```
 
 ---
@@ -248,8 +237,8 @@ python agents/dashboard/serve.py
 > **권장:** 대시보드의 "토론 시작" 버튼 사용. `run_team.py`는 대시보드 없이 터미널에서만 쓸 때 사용.
 
 ```bash
-python run_team.py --topic "함수명 영문 번역 기준 정의"
-python run_team.py  # 주제를 대화형으로 입력
+.venv/bin/python run_team.py --topic "함수명 영문 번역 기준 정의"
+.venv/bin/python run_team.py  # 주제를 대화형으로 입력
 ```
 
 **동작:** `state/discuss.json` 생성 후 다음 단계 안내 출력.
@@ -280,7 +269,7 @@ python run_team.py  # 주제를 대화형으로 입력
 
 02a_dialog.py
   → Plan 심의에 필요한 파일들을 병렬로 읽어 JSON으로 출력
-  → Claude가 이 출력을 보고 사수/부사수 심의 진행
+  → Claude가 이 출력을 보고 체크리스트로 plan을 작성
 
 02_generate.py
   → plan 기반으로 tests/generated/{group}/ 디렉토리에 케이스별 scaffold 파일 생성
@@ -293,7 +282,7 @@ python run_team.py  # 주제를 대화형으로 입력
 
 03a_dialog.py
   → 코드 리뷰 심의에 필요한 파일들을 병렬로 읽어 JSON으로 출력
-  → Claude가 lint 결과 + 코드를 보고 리뷰 진행
+  → Claude가 lint 결과 + 코드를 체크리스트로 리뷰
 
 05_execute.py
   → pytest로 테스트 실행 (최대 4 workers 병렬, spa: true 사이트는 세션 충돌 방지를 위해 1 worker 고정)
@@ -331,9 +320,9 @@ python run_team.py  # 주제를 대화형으로 입력
 
 **개별 실행이 필요한 경우 (cwd = 프로젝트 루트):**
 ```bash
-python scripts/01_analyze.py
-python scripts/03_lint.py
-python scripts/05_execute.py
+.venv/bin/python scripts/01_analyze.py
+.venv/bin/python scripts/03_lint.py
+.venv/bin/python scripts/05_execute.py
 # 등...
 ```
 
@@ -372,7 +361,7 @@ python scripts/05_execute.py
 |---|---|---|
 | `scripts/_python.py` | `PROJECT_ROOT`를 `_paths.py`에서 import하여 `.venv` 경로 구성. `PYTHON_EXE` 상수 제공 | ❌ (다른 스크립트가 import) |
 | `scripts/_paths.py` | 중앙 경로 상수 (`STATE_DIR`, `LOGS_DIR`, `DOM_CACHE_DIR`, `RUN_HISTORY` 등) + `DOM_CACHE_TTL_HOURS=168`(7일) / `DOM_DYNAMIC_CACHE_TTL_HOURS=24`(24시간) TTL 상수 + `read_state()` (락 파일 기반 크로스플랫폼 잠금) / `write_state()` (atomic rename + **pipeline.json FSM 전이 자동 검증**) / `append_run_history()` (락 파일로 read-modify-write 보호, Windows 포함 크로스플랫폼) / `get_cached_dom()` (정적·동적 TTL 분리 체크 — 동적 만료 시 `dynamic_elements`/`contextmenu_elements`만 제거) / `save_dom_cache()` (atomic write + `_cached_at` / `_dynamic_cached_at` 분리 저장) / `resolve_sub_doms(state)` (sub_dom_keys → {url:dom} 매핑) 유틸 | ❌ (다른 스크립트가 import) |
-| `scripts/_constants.py` | 파이프라인 종료 코드 상수 (`EXIT_SUCCESS=0`, `EXIT_HEAL_NEEDED=10`, `EXIT_HEAL_EXCEEDED=2`, `EXIT_REJECTED=2`) + `VALID_TRANSITIONS` step 전이 맵 + `assert_valid_transition()` 검증 함수 | ❌ (다른 스크립트가 import) |
+| `scripts/_constants.py` | 파이프라인 종료 코드 상수 (`EXIT_SUCCESS=0`, `EXIT_HEAL_NEEDED=10`, `EXIT_HEAL_EXCEEDED=2`, `EXIT_REJECTED=4`) + `VALID_TRANSITIONS` step 전이 맵 + `assert_valid_transition()` 검증 함수 | ❌ (다른 스크립트가 import) |
 | `scripts/result_parser.py` | pytest JSON 리포트 → `{nodeid: passed}` 매핑 파싱. `05_execute.py`와 `99_merge.py`가 공유 | ❌ (다른 스크립트가 import) |
 | `scripts/hook_utils.py` | 훅 스크립트 공통 유틸. `check_state(path, key, value, extra_check)` + `remaining_steps_hint(from_step)` (레지스트리 기반 잔여 단계 지시문 자동 생성, P44) — 5개 `check_pending_*.py`가 공유 | ❌ (다른 스크립트가 import) |
 | `scripts/structured_log.py` | 구조화된 로그 (JSON Lines). `slog(event, **kwargs)` → `logs/structured.jsonl`에 기록. 05_execute, 06_heal, 99_merge에서 사용. 파이프라인 병목 분석·이벤트 추적용 | ❌ (다른 스크립트가 import) |
@@ -396,15 +385,12 @@ python scripts/05_execute.py
 | `scripts/_tc_source_watch.py` | 출처 버전 변경 확인·차이·확인 완료 | ❌ (대시보드가 import) |
 | `scripts/_tc_md_export.py` | TC 라이브러리 → testcases/{group}/tc_*.md (퍼널·그룹 매핑·tc_id 고정·드리프트, 커밋·롤백은 Import Studio) | ❌ (대시보드가 import) |
 
-
-
-| `agents/dashboard/tools/scope_tc_studio_css.py` | 목업 CSS → `static/css/tc-studio.css` 생성 (목업을 고친 뒤 다시 실행) | ✅ (`python agents/dashboard/tools/scope_tc_studio_css.py <목업> <출력>`) |
-
-| `scripts/assert_guard.py` | 힐링 패치 후 assertion 약화 감지. `original_assertions`(최초) vs 현재 파일 비교 → 감소 시 경고 출력 | ✅ (`python scripts/assert_guard.py`) |
-| `scripts/jira_reporter.py` | 테스트 실패 시 Jira 이슈 자동 생성. 스크린샷·영상 첨부 포함. `config/jira_config.json` 또는 환경변수 `JIRA_TOKEN` 설정 필요. `99_merge.py`가 최종 실패 시 자동 호출 | ✅ (`python scripts/jira_reporter.py [--group G] [--dry-run]`) |
+| `agents/dashboard/tools/scope_tc_studio_css.py` | 목업 CSS → `static/css/tc-studio.css` 생성 (목업을 고친 뒤 다시 실행) | ✅ (`.venv/bin/python agents/dashboard/tools/scope_tc_studio_css.py <목업> <출력>`) |
+| `scripts/assert_guard.py` | 힐링 패치 후 assertion 약화 감지. `original_assertions`(최초) vs 현재 파일 비교 → 감소 시 경고 출력 | ✅ (`.venv/bin/python scripts/assert_guard.py`) |
+| `scripts/jira_reporter.py` | 테스트 실패 시 Jira 이슈 자동 생성. 스크린샷·영상 첨부 포함. `config/jira_config.json` 또는 환경변수 `JIRA_TOKEN` 설정 필요. `99_merge.py`가 최종 실패 시 자동 호출 | ✅ (`.venv/bin/python scripts/jira_reporter.py [--group G] [--dry-run]`) |
 | `scripts/parse_cases.py` | `.md`/`.json` 테스트케이스 파일 파서 (YAML frontmatter 지원). frontmatter 문자열값의 따옴표 자동 제거 (`id: "CL_01"` → `CL_01`). Steps는 번호(`1.`) 형식 권장이나 번호 없는 평문 줄도 파싱 지원 | ❌ (run_qa.py가 import해서 사용) |
 | `tests/unit/` | 저장소 단위 테스트 — `pipeline/` `hooks/` `core/` `dashboard/` `import_studio/` 영역별 폴더 (파서 테스트: `core/test_core_parsers.py`) | ❌ (`pytest`가 자동 실행) |
-| `scripts/sync_test_data.py` | `test_data.json` 동기화 유틸 | ❌ (필요 시 import) |
+| `scripts/sync_test_data.py` | 프로덕트별 테스트 데이터 동기화 유틸 | ❌ (필요 시 import) |
 | `tests/conftest.py` | pytest browser/page fixture + 실패 시 스크린샷 자동 캡처 | ❌ (pytest가 자동 로드) |
 
 ---
@@ -426,12 +412,12 @@ python scripts/05_execute.py
 | 파일 | 역할 | 예시 키 |
 |---|---|---|
 | `config/pages.json` | 페이지명 → URL 매핑. `run_qa_parallel.py`가 자동 참조 | `"mysite": "https://example.com/"` |
-| `config/test_data.json` | 테스트 입력값 중앙 관리. 테스트 코드에서 하드코딩 금지, 이 파일에서 읽어 사용 | `"mysite": { "valid_user": {...}, ... }` |
+| `test_data/{product}.json` | 테스트 입력값 중앙 관리. 테스트 코드에서 하드코딩 금지, 이 파일에서 읽어 사용 | `"valid_user": {...}` |
 
-`test_data.json` 형식: `{ "페이지명": { "data_key": { "username": "...", "password": "..." } } }`
-- 키는 `pages.json`의 페이지명과 일치
+프로덕트별 파일 형식: `{ "data_key": { "username": "...", "password": "..." } }`
+- 파일명은 프로덕트 이름이며 `load_test_data()`가 파일명을 최상위 키로 묶어 읽습니다.
 - 테스트케이스 frontmatter의 `data_key`가 이 파일의 서브키를 참조
-- 실제 내용은 `config/test_data.json` 직접 참조
+- 실제 입력값은 git에서 제외된 `test_data/{product}.json`에 저장합니다.
 
 ---
 
@@ -442,9 +428,9 @@ python scripts/05_execute.py
 | `state/pipeline.json` | 단일 파이프라인 전체 상태 (dom_info, plan, review_summary, heal_context 등) | `run_qa.py` 실행 시 |
 | `state/discuss.json` | 팀 토론 상태 (주제, 결론, 투표 항목) | 대시보드 토론 시작 시 |
 | `agents/dialog.json` | **팀 자유 토론 대화 로그 전용** (QA 파이프라인 심의는 기록 안 함) | 팀 토론 시작 시 |
-| [`agents/team_notes.md`](../agents/team_notes.md) | 승인된 팀 결정사항 (구현 완료 후 초기화) | 토론 항목 전체 투표 완료 시 |
-| [`agents/lessons_learned.md`](../agents/lessons_learned.md) | 큐레이션된 실수 패턴 (수동 관리) | 힐링·코드리뷰 심의 완료 시 |
-| [`agents/lessons_learned_auto.md`](../agents/lessons_learned_auto.md) | 자동 기록 힐링 로그 (heal_utils.py) | 06_heal.py 실행 시 자동 |
+| [`agents/team_notes.md`](../../agents/team_notes.md) | 승인된 팀 결정사항 (구현 완료 후 초기화) | 토론 항목 전체 투표 완료 시 |
+| [`agents/lessons_learned.md`](../../agents/lessons_learned.md) | 큐레이션된 실수 패턴 (수동 관리) | 힐링·코드리뷰 심의 완료 시 |
+| [`agents/lessons_learned_auto.md`](../../agents/lessons_learned_auto.md) | 자동 기록 힐링 로그 (heal_utils.py) | 06_heal.py 실행 시 자동 |
 | `pending_impl.json` | 승인 후 구현 대기 항목 (훅이 감지해 자동 구현) | 대시보드 전체 투표 완료 시 |
 | `state/parallel.json` | 병렬 파이프라인 실행 결과 (targets, 통계) | `99_merge.py` 완료 시 |
 | `state/quick.json` | 빠른 실행 결과 (병렬 상태와 분리) | `99_merge.py --quick` 완료 시 |

@@ -1,7 +1,7 @@
 # QA Automation — Claude Code Native
 
 > **독자**: Claude Code — 파이프라인 전체 실행 지침.
-> 상세: [HEALING_GUIDE](doc/HEALING_GUIDE.md), [TEAM_DISCUSSION](doc/TEAM_DISCUSSION.md), [PIPELINE_STATE](doc/PIPELINE_STATE.md), [DIRECTORY](doc/DIRECTORY.md), [SCRIPTS_GUIDE](doc/SCRIPTS_GUIDE.md)
+> 상세: [HEALING_GUIDE](doc/operations/HEALING_GUIDE.md), [TEAM_DISCUSSION](doc/operations/TEAM_DISCUSSION.md), [PIPELINE_STATE](doc/reference/PIPELINE_STATE.md), [DIRECTORY](doc/reference/DIRECTORY.md), [SCRIPTS_GUIDE](doc/guides/SCRIPTS_GUIDE.md)
 
 ## 행동 원칙
 - 이미 읽은 파일은 재읽기 금지
@@ -35,7 +35,7 @@ API 호출 없이 Claude Code 자체가 LLM 역할을 수행하는 QA 자동화 
 | [test_data/{product}.example.json](test_data/) | 빈 템플릿 (git 추적, 팀 공유) |
 | [run_history.json](state/run_history.json) | 실행 이력 (자동 append) |
 
-테스트케이스: YAML frontmatter + Markdown 본문. 상세 스키마 → [SCRIPTS_GUIDE](doc/SCRIPTS_GUIDE.md)
+테스트케이스: YAML frontmatter + Markdown 본문. 상세 스키마 → [SCRIPTS_GUIDE](doc/guides/SCRIPTS_GUIDE.md)
 
 ## 실행 원칙
 - **병렬 우선**: 독립 작업은 반드시 동시 실행
@@ -61,7 +61,7 @@ API 호출 없이 Claude Code 자체가 LLM 역할을 수행하는 QA 자동화 
 
 ## 스킬 프레임워크 & OMC 적용
 
-[`.claude/skills/`](.claude/skills/)에 정적 베스트프랙티스를 SKILL.md 표준으로 관리. 동적 빈도 데이터는 [heal_stats.json](state/heal_stats.json)에 기록되며, [06a_dialog.py](scripts/06a_dialog.py)가 Top 5 빈출 패턴을 DELIBERATION_CONTEXT에 자동 주입.
+[`.claude/skills/`](.claude/skills/)에 정적 베스트프랙티스를 SKILL.md 표준으로 관리. 동적 빈도 데이터는 `state/heal_stats.json` (실행 중 생성)에 기록되며, [06a_dialog.py](scripts/06a_dialog.py)가 Top 5 빈출 패턴을 DELIBERATION_CONTEXT에 자동 주입.
 
 | 스킬 | 경로 | 용도 |
 |------|------|------|
@@ -88,7 +88,7 @@ API 호출 없이 Claude Code 자체가 LLM 역할을 수행하는 QA 자동화 
 
 힐링 완료 필수: (1) 코드 패치 (2) [lessons_learned.md](agents/lessons_learned.md)에 교훈 기록 (중복 시 생략, 자동 로그는 [_auto.md](agents/lessons_learned_auto.md)에 별도 기록) (3) 재실행 통과 확인.
 lint 수정·코드 생성 시 반복 오류도 동일하게 lessons_learned.md에 즉시 기록.
-오류 유형별 패치 전략 → [Heal Patterns SKILL.md](.claude/skills/heal-patterns/SKILL.md). MCP 시각 검증 → [HEALING_GUIDE](doc/HEALING_GUIDE.md)
+오류 유형별 패치 전략 → [Heal Patterns SKILL.md](.claude/skills/heal-patterns/SKILL.md). MCP 시각 검증 → [HEALING_GUIDE](doc/operations/HEALING_GUIDE.md)
 **힐링 1회차부터 Sequential Thinking 필수**: 오류 유형과 관계없이 힐링 진입 즉시 `mcp__sequential-thinking__sequentialthinking`을 호출해 원인을 단계적으로 추론한 뒤 패치 전략을 결정한다.
 
 **힐링 배치 병렬화**: 06_heal.py / 99_merge.py가 `HEAL_SUBAGENT_CONTEXTS`를 출력하면, 각 배치를 Agent tool로 **동시에** 실행. 배치당 최대 6건 (heal_utils.HEAL_BATCH_SIZE). 단일/병렬/빠른 실행 모두 동일한 출력 형식 사용.
@@ -139,19 +139,19 @@ run_qa_parallel.py → 02a_parallel_dialog → [공통 심의] → subagents × 
 4. `shared_context_paths`의 파일들(`parallel_plan.json` 포함)은 각 subagent가 직접 읽음 (토큰 절감)
 5. `subagents[]` 배열의 각 항목을 Agent tool로 **동시에** 실행 — [parallel_subagent.md](prompts/parallel_subagent.md) 참조
 6. 모든 subagent 완료 후 `python parallel/99_merge.py`
-7. 실패 시 단일과 동일한 힐링 플로우 ([HEALING_GUIDE](doc/HEALING_GUIDE.md) 참조). 최대 3회, 초과 시 수동 수정 요청
+7. 실패 시 단일과 동일한 힐링 플로우 ([HEALING_GUIDE](doc/operations/HEALING_GUIDE.md) 참조). 최대 3회, 초과 시 수동 수정 요청
 8. **슬롭 정리 (선택, 전체 통과 후)**: 여러 subagent가 생성한 파일의 스타일 불일치·중복 정리
    `/oh-my-claudecode:ai-slop-cleaner tests/generated/`
 
 ## 팀 토론
 
 `python run_team.py --topic "주제"` → 사수/부사수 멀티라운드 토론 → 대시보드 승인/반려.
-상세 → [TEAM_DISCUSSION](doc/TEAM_DISCUSSION.md)
+상세 → [TEAM_DISCUSSION](doc/operations/TEAM_DISCUSSION.md)
 
 ## 참조
 
-- state/pipeline.json 스키마 → [PIPELINE_STATE](doc/PIPELINE_STATE.md)
-- 디렉토리 구조 → [DIRECTORY](doc/DIRECTORY.md)
-- 스크립트 인자/옵션 상세 → [SCRIPTS_GUIDE](doc/SCRIPTS_GUIDE.md)
-- CLI 옵션 + API 엔드포인트 → [API_REFERENCE](doc/API_REFERENCE.md)
-- 프롬프트 템플릿 입출력 → [PROMPTS_REFERENCE](doc/PROMPTS_REFERENCE.md)
+- state/pipeline.json 스키마 → [PIPELINE_STATE](doc/reference/PIPELINE_STATE.md)
+- 디렉토리 구조 → [DIRECTORY](doc/reference/DIRECTORY.md)
+- 스크립트 인자/옵션 상세 → [SCRIPTS_GUIDE](doc/guides/SCRIPTS_GUIDE.md)
+- CLI 옵션 + API 엔드포인트 → [API_REFERENCE](doc/reference/API_REFERENCE.md)
+- 프롬프트 템플릿 입출력 → [PROMPTS_REFERENCE](doc/reference/PROMPTS_REFERENCE.md)

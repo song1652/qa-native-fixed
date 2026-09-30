@@ -1,5 +1,7 @@
 # 팀 자유 토론 파이프라인
 
+> **문서 유형: 에이전트 운영 지침** · 대시보드 팀 토론 기능의 저장·승인 절차. 승인에 따른 자동 구현 동작을 포함합니다.
+
 > **독자**: Claude Code — 사용자가 팀 토론을 요청할 때 읽음 (`run_team.py` 실행 후 또는 대시보드 토론 시작 시).
 > QA 파이프라인 심의(Plan·코드리뷰·힐링)와 무관. 팀 토론 전용 플로우.
 
@@ -9,11 +11,11 @@
 ## 실행 순서
 
 ```
-python run_team.py --topic "주제"
+.venv/bin/python run_team.py --topic "주제"
   → state/discuss.json 초기화
 ```
 
-**1.** `python scripts/team_discuss.py` 실행
+**1.** `.venv/bin/python scripts/team_discuss.py` 실행
    출력에서 `DELIBERATION_CONTEXT_START ~ END` 사이의 JSON 추출.
    **[심의 Agent — 멀티라운드 티키타카 진행]** — `prompts/team_discussion.md` 템플릿 참조.
    DELIBERATION_CONTEXT JSON의 각 필드를 템플릿의 `{ctx.*}` 자리에 대입해 agent 실행.

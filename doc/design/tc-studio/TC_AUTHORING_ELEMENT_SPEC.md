@@ -1,13 +1,13 @@
 # TC 스튜디오 요소 동작 명세
 
-> **설계 참고 문서**: 최초 설계와 제안이 포함되어 있으며, 현재 화면과 일부 차이가 있을 수 있습니다. 사용 방법은 [사용자 설명서](TC_AUTHORING_USER_GUIDE.md), 실제 구현과 확인 범위는 [구현 보고](TC_AUTHORING_IMPLEMENTATION_REPORT.md)를 참고하세요.
+> **설계 참고 문서**: 최초 설계와 제안이 포함되어 있으며, 현재 화면과 일부 차이가 있을 수 있습니다. 사용 방법은 [사용자 설명서](../../guides/tc-studio/TC_AUTHORING_USER_GUIDE.md), 실제 구현과 확인 범위는 [구현 보고](../../development/tc-studio/TC_AUTHORING_IMPLEMENTATION_REPORT.md)를 참고하세요.
 
 | 항목 | 내용 |
 |---|---|
 | 기준 문서 | [TC_AUTHORING_PRD.md](TC_AUTHORING_PRD.md) Draft v0.3 |
-| 목업 | [design-previews/tc-authoring-studio.html](../../design-previews/tc-authoring-studio.html) (요소 ID = 목업의 `data-id` 속성) |
+| 목업 | [design-previews/tc-authoring-studio.html](../../../design-previews/tc-authoring-studio.html) (요소 ID = 목업의 `data-id` 속성) |
 | 작성일 | 2026-09-29 |
-| 시각 규칙 | Import Studio([`agents/dashboard/static/css/import-studio.css`](../../agents/dashboard/static/css/import-studio.css))의 토큰, 버튼(`btn-primary`/`btn-ghost`/`btn-sm`/`btn-success`), 스테퍼(`step-circle`/`step-line`), 상태 배지 색(add=초록, update=파랑, conflict=노랑, error=빨강)을 그대로 쓴다. 대시보드가 다크 우선이므로 다크가 기본이고, 목업은 라이트 변형도 포함한다. |
+| 시각 규칙 | Import Studio([`agents/dashboard/static/css/import-studio.css`](../../../agents/dashboard/static/css/import-studio.css))의 토큰, 버튼(`btn-primary`/`btn-ghost`/`btn-sm`/`btn-success`), 스테퍼(`step-circle`/`step-line`), 상태 배지 색(add=초록, update=파랑, conflict=노랑, error=빨강)을 그대로 쓴다. 대시보드가 다크 우선이므로 다크가 기본이고, 목업은 라이트 변형도 포함한다. |
 
 ## 0. 표기 규칙
 

@@ -1,5 +1,7 @@
 # 프롬프트 템플릿 레퍼런스
 
+> **문서 유형: 프롬프트 레퍼런스** · 컨텍스트 입력과 프롬프트 템플릿 참고. 최신 구현은 해당 스크립트와 prompts/ 파일을 기준으로 확인합니다.
+
 > **독자**: 사람 — `prompts/` 폴더 내 템플릿의 입출력 스키마 정의.
 
 ---
@@ -18,7 +20,7 @@
 
 ## DELIBERATION_CONTEXT 주입 변수
 
-`*a_dialog.py`가 파일을 병렬 읽기 후 JSON으로 출력. Claude가 이 JSON을 프롬프트에 직접 포함.
+`*a_dialog.py`가 파일을 병렬 읽기 후 JSON으로 출력. Claude가 이 JSON을 프롬프트에 직접 포함. P64 이후 Plan·코드 리뷰는 페르소나 없이 체크리스트로 수행하며, 사수/부사수 관점은 힐링·팀 토론에 사용합니다.
 
 ### `02a_dialog.py` → `plan_deliberation.md`
 
@@ -26,8 +28,7 @@
 {
   "dom_info": { "inputs": [], "buttons": [], "components": [], ... },
   "test_cases": [{ "id": "tc_01", "title": "...", "steps": [] }],
-  "lessons_learned": "(agents/lessons_learned.md 전체 텍스트)",
-  "team_charter": "(agents/team_charter.md 전체 텍스트)"
+  "lessons_learned": "(agents/lessons_learned.md 전체 텍스트)"
 }
 ```
 

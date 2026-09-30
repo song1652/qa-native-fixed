@@ -1,7 +1,7 @@
 # 디렉토리 구조
 
-> **자동 생성** — `python scripts/update_directory.py` | 마지막 갱신: 2026-09-06 09:53
-> 최근 실행: 2026-09-05 21:22 | quick | customer_login/partner_login | 4/4 | heal:0
+> **자동 생성** — `python scripts/update_directory.py` | 마지막 갱신: 2026-09-30 19:40
+> 최근 실행: 2026-09-30 18:38 | single | tc_studio_demo | 5/5 | heal:0
 
 > 역할 설명 수정: `scripts/update_directory.py` 내 `SCRIPT_DESCRIPTIONS` / `FOLDER_DESCRIPTIONS` 편집.
 
@@ -37,6 +37,23 @@
 | `_paths.py` | 중앙 경로 상수 + read_state/write_state/update_state 원자적 I/O (FSM 전이 검증 내장) |
 | `_pipeline_registry.py` | FSM 단일 소스: Step·ParallelStatus 상수, PIPELINE_STEP_DEFS, VALID_TRANSITIONS, make_initial_pipeline_state() 팩토리 |
 | `_python.py` | .venv 경로 자동 감지 |
+| `_state.py` |  |
+| `_tc_connectors.py` | PRD URL·Confluence·Figma 소스 수집 |
+| `_tc_credentials.py` | Confluence·Figma 자격증명 |
+| `_tc_fetch.py` | 원격 문서 수집용 안전한 GET (SSRF 방어) |
+| `_tc_generate.py` | TC 초안 생성 작업 (제한된 claude -p) |
+| `_tc_html.py` | HTML·Confluence storage → markdown |
+| `_tc_library.py` | TC 라이브러리 저장소 (rev·이력·트리·필터) |
+| `_tc_md_export.py` | TC 라이브러리 → 파이프라인 md 내보내기 |
+| `_tc_model.py` | TC 스튜디오 케이스 모델·허용 값·검증 규칙 |
+| `_tc_profiles.py` | TC 작성 프로필 저장소 |
+| `_tc_prompt.py` | TC 생성 프롬프트·출력 스키마 |
+| `_tc_review.py` | TC 초안 중복·커버리지 검토 도우미 |
+| `_tc_source_watch.py` | 출처 버전 변경 추적 |
+| `_tc_sources.py` | TC 생성용 소스 묶음 (PDF·DOCX·MD·TXT·붙여넣기 → markdown) |
+| `_tc_template.py` | 엑셀 TC 템플릿 분석 (헤더·컬럼·드롭다운·No. 수식) |
+| `_tc_xlsx_export.py` | TC 라이브러리 → 템플릿 사본 xlsx + 무결성 검사 |
+| `_tc_xlsx_import.py` | 엑셀 시트 → TC 라이브러리 케이스 |
 | `_validators.py` | 대시보드 serve.py 입력 검증 헬퍼 (부작용 없이 재사용 가능하도록 분리) |
 | `assert_guard.py` | 힐링 패치 후 assertion 약화 감지 (원본 대비 assertion 수·내용 비교, 경고 출력) |
 | `check_pending_approve.py` | 훅: 승인 대기 상태 확인 (hook_utils.check_state) |
@@ -51,14 +68,14 @@
 | `heal_utils.py` | 힐링 공용 유틸 (classify_error 7분류, append_lessons) |
 | `hook_utils.py` | 훅 스크립트 공통 유틸: check_state() + remaining_steps_hint() — 레지스트리 기반 잔여 단계 지시문 생성 |
 | `jira_reporter.py` | 테스트 실패 시 Jira 이슈 자동 생성 (스크린샷/영상 첨부 포함, config/jira_config.json 설정) |
-| `parse_cases.py` | tc_*.md 파싱 |
+| `parse_cases.py` | tc_*.md 파싱 (data_key: {프로덕트}.{데이터셋}) |
 | `report_html.py` | HTML 리포트 생성 (단일/병렬 공통) |
 | `result_parser.py` | pytest JSON 리포트 파싱 (단일/병렬 공유) |
 | `structured_log.py` | 구조화 로그 (JSON Lines → logs/structured.jsonl) |
-| `sync_test_data.py` | test_data/ 프로덕트 파일 동기화 (누락된 data_key 자동 추가) |
+| `sync_test_data.py` | test_data/{프로덕트}.json 데이터셋 동기화 |
 | `team_approve.py` | 팀 토론 승인 (터미널용) |
 | `team_discuss.py` | 팀 토론 초기화 |
-| `update_directory.py` | doc/DIRECTORY.md 자동 생성 (이 파일) |
+| `update_directory.py` | doc/reference/DIRECTORY.md 자동 생성 (이 파일) |
 
 ## parallel/ — 병렬 파이프라인 스크립트
 
@@ -70,8 +87,10 @@
 
 | 그룹 | TC 수 | 최근 실행 결과 |
 |------|-------|---------------|
-| `customer_login/` | 2개 | 4/4 (100%) |
-| `partner_login/` | 2개 | 4/4 (100%) |
+| `api_demo/` | 1개 | - |
+| `customer_login/` | 2개 | - |
+| `partner_login/` | 2개 | - |
+| `tc_studio_demo/` | 5개 | 5/5 (100%) |
 
 ## tests/ — 테스트 산출물 (생성 코드·리포트·스크린샷)
 
@@ -79,8 +98,10 @@
 
 | 그룹 | 생성 파일 수 | 최근 실행 결과 |
 |------|------------|---------------|
-| `customer_login/` | 2개 | 4/4 (100%) |
-| `partner_login/` | 2개 | 4/4 (100%) |
+| `api_demo/` | 1개 | - |
+| `customer_login/` | 2개 | - |
+| `partner_login/` | 2개 | - |
+| `tc_studio_demo/` | 5개 | 5/5 (100%) |
 
 | 경로 | 역할 |
 |------|------|
@@ -107,57 +128,26 @@
 | `dialog.json` | 팀 토론 대화 로그 |
 | `roles/senior.md` | 사수 행동 지침 (상세) |
 | `roles/junior.md` | 부사수 행동 지침 (상세) |
-| `dashboard/serve.py` | 대시보드 서버 엔트리포인트 (포트 8766, 491줄 — Mixin 분리 후) |
-| `dashboard/dash_excel.py` | Excel 유틸 (Import Studio 파싱·변환) |
-| `dashboard/dash_state.py` | 상태 빌더 (pipeline/batch/registry/reports 등 15개 함수) |
-| `dashboard/dash_procs.py` | 자식 프로세스·SSE·파일감시 스레드 관리 |
-| `dashboard/dash_http.py` | HTTP 요청 파싱·파일락 유틸 |
-| `dashboard/routes_import.py` | ImportRoutesMixin — Import Studio 16개 엔드포인트 |
-| `dashboard/routes_get.py` | GetRoutesMixin — GET API + 파일 서빙 19개 엔드포인트 |
-| `dashboard/routes_ops.py` | OpsRoutesMixin — POST/운영 20개 엔드포인트 |
+| `dashboard/serve.py` | 대시보드 로컬 서버 (포트 8766) |
 | `dashboard/index.html` | 파이프라인 모니터링 대시보드 UI |
 
 ## state/ — 런타임 상태 파일 (파이프라인 실행 중 자동 생성·갱신)
 
 | 파일 | 역할 |
 |------|------|
+| `coverage.json` | 커버리지 매트릭스 (coverage_matrix.py 생성) |
 | `discuss.json` | 팀 토론 상태 |
-| `heal_stats.json` | 힐링 오류 패턴별 빈도 카운터 (06_heal.py 자동 갱신) |
-| `import_profiles.json` | 런타임 생성 |
-| `parallel.json` | 병렬 파이프라인 상태 |
-| `parallel_contexts.json` | 런타임 생성 |
-| `parallel_plan.json` | 런타임 생성 |
 | `pipeline.json` | 단일 파이프라인 상태 (FSM step 전이 검증 포함) |
 | `quick.json` | 빠른 실행 상태 |
 | `run_history.json` | 실행 이력 (매 실행 시 자동 append) |
 | `dom_cache/` | 서브페이지 DOM 스냅샷 캐시 (URL MD5 해시 키) |
 
-## test_data/ — 프로덕트별 테스트 데이터 (gitignored)
-
-프로덕트별로 파일을 분리해 관리. **`*.json`은 gitignored, `*.example.json`만 git 추적.**
-
-| 파일 | 역할 |
-|------|------|
-| `{product}.json` | 실제 자격증명·입력값 (gitignored, 로컬 전용) |
-| `{product}.example.json` | 빈 템플릿 (git 추적, 팀 공유) |
-| `README.md` | 구조 설명 및 셋업 가이드 |
-
-**현재 프로덕트:**
-
-| 파일 | 설명 |
-|------|------|
-| `serveone.json` | ServeOne B2B 쇼핑몰 (고객/협력사 로그인 등) |
-| `saucedemo.json` | Saucedemo (데모 e-commerce 사이트) |
-
-> 새 프로덕트 추가: `cp test_data/serveone.example.json test_data/{product}.json` 후 값 입력.
-> `python scripts/sync_test_data.py`로 누락된 data_key 자동 추가.
-
-## config/ — 설정 파일 (URL 매핑·파이프라인 옵션)
+## config/ — 설정 파일 (URL 매핑·테스트 입력값)
 
 | 파일 | 역할 |
 |------|------|
 | `pages.json` | 페이지명 → URL 매핑 (키 = testcases/ 하위 폴더명) |
-| `pipeline.json` | 파이프라인 옵션 (auto_approve 등) |
+| `test_data.json` | 테스트 입력값 (하드코딩 금지, 키 = 그룹명) |
 
 ## prompts/ — 심의 Agent 프롬프트 템플릿
 
@@ -188,14 +178,30 @@
 
 | 파일 | 역할 |
 |------|------|
-| `DIRECTORY.md` | 디렉토리 구조 (이 파일, 자동 생성) |
-| `PIPELINE_STATE.md` | state/pipeline.json 스키마 상세 |
-| `HEALING_GUIDE.md` | 힐링 완료 체크리스트 + MCP 시각 검증 절차 |
-| `SCRIPTS_GUIDE.md` | 스크립트 CLI 옵션·실행 방법 |
-| `TEAM_DISCUSSION.md` | 팀 토론 파이프라인 상세 |
-| `API_REFERENCE.md` | CLI 옵션 + 대시보드 API 엔드포인트 |
-| `PROMPTS_REFERENCE.md` | prompts/ 템플릿 입출력 스키마 |
-| `PROJECT_OVERVIEW.md` | 아키텍처 설계 문서 |
+| `README.md` | 문서 안내 |
+| `design/PROJECT_OVERVIEW.md` | QA-Native — 아키텍처 문서 |
+| `design/tc-studio/TC_AUTHORING_ELEMENT_SPEC.md` | TC 스튜디오 요소 동작 명세 |
+| `design/tc-studio/TC_AUTHORING_PRD.md` | PRD: TC Authoring Studio (문서 기반 테스트케이스 작성·관리) |
+| `development/DOCUMENTATION_REVIEW.md` | 문서 정리 기록 |
+| `development/tc-studio/IMPORT_STUDIO_INTEGRATION_REVIEW.md` | Import Studio를 TC 스튜디오에 통합하는 방안 |
+| `development/tc-studio/TC_AUTHORING_HANDOFF.md` | TC Authoring Studio 개발 인수인계 |
+| `development/tc-studio/TC_AUTHORING_IMPLEMENTATION_REPORT.md` | TC Authoring Studio 구현 보고 |
+| `development/tc-studio/TC_AUTHORING_ROADMAP.md` | TC Authoring Studio 개발 로드맵 |
+| `development/tc-studio/plans/2026-09-29-tc-authoring-phase1.md` | TC Authoring Studio Phase 1 Implementation Plan — 라이브러리 + 엑셀 왕복 |
+| `development/tc-studio/plans/2026-09-30-tc-authoring-phase2.md` | TC Authoring Studio Phase 2 Implementation Plan — 파일 소스 · 생성 작업 · 초안 검토 |
+| `development/tc-studio/plans/2026-09-30-tc-authoring-phase3.md` | TC Authoring Studio Phase 3 Implementation Plan — Confluence · Figma · PRD URL · 출처 버전 추적 |
+| `development/tc-studio/plans/2026-09-30-tc-authoring-phase4.md` | TC Authoring Studio Phase 4 Implementation Plan — md 내보내기 (파이프라인 연결) |
+| `guides/SCRIPTS_GUIDE.md` | 파이썬 파일 실행 가이드 |
+| `guides/TEST_CASE_GUIDE.md` | QA-Native 테스트 케이스 작성 가이드 |
+| `guides/tc-studio/TC_AUTHORING_USER_GUIDE.md` | TC 스튜디오 사용자 설명서 |
+| `guides/tc-studio/templates/회원등록_기획예시.md` | 회원 등록 기획 예시 |
+| `operations/HEALING_GUIDE.md` | 힐링 가이드 |
+| `operations/TEAM_DISCUSSION.md` | 팀 자유 토론 파이프라인 |
+| `reference/API_REFERENCE.md` | API & CLI 레퍼런스 |
+| `reference/DIRECTORY.md` | 디렉토리 구조 |
+| `reference/PIPELINE_STATE.md` | state/pipeline.json 구조 |
+| `reference/PROMPTS_REFERENCE.md` | 프롬프트 템플릿 레퍼런스 |
+| `tc-studio/README.md` | TC 스튜디오 관련 문서 |
 
 ## 기타
 

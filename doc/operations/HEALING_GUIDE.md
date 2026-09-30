@@ -1,8 +1,10 @@
 # 힐링 가이드
 
+> **문서 유형: 에이전트 운영 지침** · 테스트 실패 진단·수정 절차. TC 작성 사용자 매뉴얼과 별도로 사용합니다.
+
 > **독자**: Claude Code — 힐링 루프 진입 시 읽음 (`06_heal.py` 또는 `99_merge.py` 실패 후).
 > MCP 시각 검증 절차, 힐링 완료 체크리스트, 배치 병렬화 기준을 확인할 때 참조.
-> 스킬: [Heal Patterns](.claude/skills/heal-patterns/SKILL.md) (오류 유형별 패치 전략)
+> 스킬: [Heal Patterns](../../.claude/skills/heal-patterns/SKILL.md) (오류 유형별 패치 전략)
 
 모든 파이프라인(단일/병렬)에서 힐링 시 동일 기준 적용.
 단일(`06_heal.py` + `06_auto_heal.py`)과 병렬(`99_merge.py`)이 동일한 힐링 플로우를 공유:
@@ -16,7 +18,7 @@
 하나라도 빠지면 힐링 미완료:
 
 1. 코드 패치 적용
-2. `python scripts/assert_guard.py` 실행 — assertion 약화 감지 (경고 시 원본 강도로 복원)
+2. `.venv/bin/python scripts/assert_guard.py` 실행 — assertion 약화 감지 (경고 시 원본 강도로 복원)
 3. `agents/lessons_learned.md`에 교훈을 수동 기록 (자동 로그는 `heal_utils.py`가 `lessons_learned_auto.md`에 기록):
    ```
    - **{핵심 키워드}**: {상황 설명}. {해결법/교훈}
@@ -36,7 +38,7 @@
 
 **--only-failed 옵션**: 이전 실행 결과의 실패 테스트만 선택적으로 재실행
 ```bash
-python scripts/05_execute.py --only-failed [--no-report]
+.venv/bin/python scripts/05_execute.py --only-failed [--no-report]
 ```
 - 성공한 테스트는 건너뜀
 - 힐링 중간 재실행 속도 향상 (불필요한 테스트 제외)
@@ -53,7 +55,7 @@ python scripts/05_execute.py --only-failed [--no-report]
 손수 패치하는 대신 `/oh-my-claudecode:ultraqa` 스킬로 자동 힐링 가능:
 
 ```
-python scripts/05_execute.py --no-report
+.venv/bin/python scripts/05_execute.py --no-report
 (실패 발생 시)
 /oh-my-claudecode:ultraqa
   - 목표: 실패 테스트 자동 분석 후 패치 + 재실행

@@ -1,5 +1,5 @@
 """
-doc/DIRECTORY.md 자동 생성 스크립트.
+doc/reference/DIRECTORY.md 자동 생성 스크립트.
 
 파일시스템을 실시간 스캔하여 현재 상태를 반영한 DIRECTORY.md를 덮어씁니다.
 
@@ -26,7 +26,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from _paths import PROJECT_ROOT
 
-DOC_PATH = PROJECT_ROOT / "doc" / "DIRECTORY.md"
+DOC_PATH = PROJECT_ROOT / "doc" / "reference" / "DIRECTORY.md"
 
 # ── 역할 설명 맵 (아키텍처 변경 시만 수정) ────────────────────────
 
@@ -95,7 +95,7 @@ SCRIPT_DESCRIPTIONS: dict[str, str] = {
     "sync_test_data.py":      "test_data/{프로덕트}.json 데이터셋 동기화",
     "coverage_matrix.py":     "커버리지 매트릭스 생성 (→ state/coverage.json)",
     "flaky_detector.py":      "Flaky Test 감지기 (run_history.json 분석 → state/flaky_tests.json)",
-    "update_directory.py":    "doc/DIRECTORY.md 자동 생성 (이 파일)",
+    "update_directory.py":    "doc/reference/DIRECTORY.md 자동 생성 (이 파일)",
     # check_pending_*.py 그룹
     "check_pending_approve.py":   "훅: 승인 대기 상태 확인 (hook_utils.check_state)",
     "check_pending_discuss.py":   "훅: 토론 대기 상태 확인",
@@ -430,16 +430,12 @@ def build_markdown() -> str:
         "",
         "| 파일 | 역할 |",
         "|------|------|",
-        "| `DIRECTORY.md` | 디렉토리 구조 (이 파일, 자동 생성) |",
-        "| `PIPELINE_STATE.md` | state/pipeline.json 스키마 상세 |",
-        "| `HEALING_GUIDE.md` | 힐링 완료 체크리스트 + MCP 시각 검증 절차 |",
-        "| `SCRIPTS_GUIDE.md` | 스크립트 CLI 옵션·실행 방법 |",
-        "| `TEAM_DISCUSSION.md` | 팀 토론 파이프라인 상세 |",
-        "| `API_REFERENCE.md` | CLI 옵션 + 대시보드 API 엔드포인트 |",
-        "| `PROMPTS_REFERENCE.md` | prompts/ 템플릿 입출력 스키마 |",
-        "| `PROJECT_OVERVIEW.md` | 아키텍처 설계 문서 |",
-        "",
     ]
+    for document in sorted((PROJECT_ROOT / "doc").rglob("*.md")):
+        relative = document.relative_to(PROJECT_ROOT / "doc").as_posix()
+        title = document.read_text(encoding="utf-8").splitlines()[0].lstrip("# ")
+        lines.append(f"| `{relative}` | {title} |")
+    lines.append("")
 
     # ── 기타 ──
     lines += [
@@ -463,7 +459,7 @@ def main() -> None:
     md = build_markdown()
     DOC_PATH.parent.mkdir(parents=True, exist_ok=True)
     DOC_PATH.write_text(md, encoding="utf-8")
-    print(f"[update_directory] doc/DIRECTORY.md 갱신 완료 ({len(md.splitlines())}줄)")
+    print(f"[update_directory] doc/reference/DIRECTORY.md 갱신 완료 ({len(md.splitlines())}줄)")
 
 
 if __name__ == "__main__":

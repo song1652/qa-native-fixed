@@ -315,13 +315,13 @@
       "type": "file"
     },
     {
-      "path": "doc/SCRIPTS_GUIDE.md",
+      "path": "doc/guides/SCRIPTS_GUIDE.md",
       "accessCount": 4,
       "lastAccessed": 1775618308229,
       "type": "file"
     },
     {
-      "path": "doc/PROJECT_OVERVIEW.md",
+      "path": "doc/design/PROJECT_OVERVIEW.md",
       "accessCount": 4,
       "lastAccessed": 1775618310555,
       "type": "file"
@@ -405,7 +405,7 @@
       "type": "file"
     },
     {
-      "path": "doc/PIPELINE_STATE.md",
+      "path": "doc/reference/PIPELINE_STATE.md",
       "accessCount": 2,
       "lastAccessed": 1775618271786,
       "type": "file"
@@ -459,7 +459,7 @@
       "type": "file"
     },
     {
-      "path": "doc/DIRECTORY.md",
+      "path": "doc/reference/DIRECTORY.md",
       "accessCount": 1,
       "lastAccessed": 1775618263436,
       "type": "file"

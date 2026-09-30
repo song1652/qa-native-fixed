@@ -1,5 +1,7 @@
 # QA-Native — 아키텍처 문서
 
+> **문서 유형: 설계 문서** · 프로젝트 아키텍처와 설계 의도. 실행 절차는 [스크립트 사용 매뉴얼](../guides/SCRIPTS_GUIDE.md)을 참고합니다.
+
 > **독자**: 사람 — 내부 설계·아키텍처 문서. 에이전트가 읽지 않음.
 > **Claude Code가 LLM 역할을 직접 수행하는 API-Free QA 자동화 파이프라인**
 
@@ -24,7 +26,7 @@
 ### 에이전트 확장 기능 (전통적 하네스에 없는 4가지)
 
 1. **테스트 코드 자동 생성** — DOM 분석 → plan → 코드
-2. **심의 기반 품질 게이트** — 사수/부사수 시뮬레이션 리뷰
+2. **심의 기반 품질 게이트** — Plan·코드 리뷰는 체크리스트, 힐링은 사수/부사수 관점
 3. **자가 치유(self-healing)** — 실패 시 코드 패치 후 재실행 루프
 4. **DOM 기반 동적 전략 수립** — 정적 스크립트가 아닌 런타임 전략
 
@@ -37,7 +39,7 @@ Claude Code가 하네스의 두뇌이면서 자신의 산출물을 검증하는 
 비결정론적: Plan 수립 (Claude)
 결정론적:   코드 파일 생성 → 고정
 결정론적:   Lint 검사 → 고정 규칙
-비결정론적: 코드 리뷰 (Claude 심의)
+비결정론적: 코드 리뷰 (Claude 체크리스트)
 결정론적:   pytest 실행 → 결정론적
 비결정론적: 힐링 패치 (Claude)
 결정론적:   재실행 → 결정론적
@@ -53,7 +55,7 @@ Claude Code가 하네스의 두뇌이면서 자신의 산출물을 검증하는 
 | **Claude Code = 두뇌** | 전략 수립, 코드 작성, 리뷰, 실패 패치를 직접 수행 |
 | **스크립트 = 실행 도구** | 01~06 스크립트는 DOM 추출·lint·pytest·결과 수집만 담당 |
 | **state/pipeline.json 중심** | 모든 단계 결과가 하나의 파일에 누적 → 단계 간 컨텍스트 공유 |
-| **단일 심의 Agent** | 사수/부사수 두 관점을 한 번의 Agent 호출로 내부 시뮬레이션 |
+| **단일 심의 Agent** | 힐링에서 사수/부사수 두 관점을 한 번의 Agent 호출로 내부 시뮬레이션 |
 | **컨텍스트 주입** | `02a/03a/06a_dialog.py`가 파일을 병렬 읽기 후 JSON으로 출력 → Agent가 추가 파일 읽기 불필요 |
 
 ---
@@ -116,11 +118,12 @@ parallel/99_merge.py
 
 ```
 *a_dialog.py 실행
-  └─ team_charter.md, senior.md, junior.md, lessons_learned.md, 코드 병렬 읽기
+  └─ 단계별 컨텍스트·lessons_learned·코드 병렬 읽기
+  └─ Plan·코드 리뷰는 페르소나 제외, 힐링은 해당 관점 사용
   └─ DELIBERATION_CONTEXT_START ... END  JSON 출력
 
 오케스트레이터 Claude가 JSON 추출
-  └─ 심의 Agent 1회 호출 (사수/부사수 내부 시뮬레이션)
+  └─ Plan·코드 리뷰는 체크리스트, 힐링은 사수/부사수 관점 적용
        └─ plan / review / patch 확정
        └─ state/pipeline.json 업데이트 (결과 저장)
        └─ 필요 시 agents/lessons_learned.md 교훈 수동 추가 (자동 로그는 lessons_learned_auto.md)
@@ -147,7 +150,7 @@ Claude가 멀티라운드 티키타카 진행 (최소 3라운드)
 
 ## 스킬 프레임워크 & OMC 통합
 
-`.claude/skills/`에 정적 가이드라인을 공식 SKILL.md 표준으로 관리. 스킬 목록·OMC 적용 단계 상세는 [`CLAUDE.md`](../CLAUDE.md) "스킬 프레임워크 & OMC 적용" 섹션 참조.
+`.claude/skills/`에 정적 가이드라인을 공식 SKILL.md 표준으로 관리. 스킬 목록·OMC 적용 단계 상세는 [`CLAUDE.md`](../../CLAUDE.md) "스킬 프레임워크 & OMC 적용" 섹션 참조.
 
 동적 빈도 데이터는 `state/heal_stats.json`에 기록. `06_heal.py`가 실패 시 자동 업데이트하고, `06a_dialog.py`가 Top 5 빈출 패턴을 DELIBERATION_CONTEXT에 주입.
 
@@ -160,7 +163,7 @@ Claude가 멀티라운드 티키타카 진행 (최소 3라운드)
 스크린샷은 최종 실패 시에만 저장됩니다 (매 실행 전 초기화).
 실패 스크린샷이 heal_context에 자동 연결되며, traceback만으로 원인 불명확 시 Playwright MCP 도구로 실제 페이지의 현재 DOM/텍스트를 확인할 수 있습니다.
 
-> 힐링 완료 체크리스트·MCP 시각 검증 절차는 [`doc/HEALING_GUIDE.md`](HEALING_GUIDE.md) 참조.
+> 힐링 완료 체크리스트·MCP 시각 검증 절차는 [`doc/operations/HEALING_GUIDE.md`](../operations/HEALING_GUIDE.md) 참조.
 > 오류 유형별 패치 전략은 `.claude/skills/heal-patterns/SKILL.md` 참조.
 
 ---
@@ -187,4 +190,4 @@ Python 3.12 / Playwright (Chromium) / pytest / flake8 / Claude Code (API 없음)
 > 대시보드: Python ThreadingHTTPServer + SSE + Vanilla JS (포트 8766, CORS는 localhost만 허용)
 > Overview에 Heal Stats 도넛 차트 + Top 빈출 패턴 시각화 포함
 > 루트 스크립트(run_qa.py 등)는 `_bootstrap.py`로 scripts/ 경로를 자동 설정
-> 상세 API·기능: [`SCRIPTS_GUIDE.md`](SCRIPTS_GUIDE.md) 참조
+> 상세 API·기능: [`SCRIPTS_GUIDE.md`](../guides/SCRIPTS_GUIDE.md) 참조
