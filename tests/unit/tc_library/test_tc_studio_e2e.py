@@ -116,6 +116,16 @@ def test_bulk_add_delete_and_undo(studio):
 
 def test_detail_save_history_and_revert(studio):
     _, page = studio
+    # Phase 3의 배너 응답을 늦춰 저장 중 선택한 이력 탭이 유지되는지 재현한다.
+    page.evaluate("""() => {
+        const watch = window.TCS_NS.sourceWatch;
+        if (!watch) return;
+        const original = watch.renderBanner;
+        watch.renderBanner = async (...args) => {
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+            return original(...args);
+        };
+    }""")
     page.locator('tr[data-case="HOME_0001"] td.no').click()
     expect(page.locator("#d-id")).to_have_text("HOME_0001")
     page.locator('[data-id="detail-expected"]').fill("홈 화면 상단에 D+3 전용 카드가 노출된다.")
@@ -126,6 +136,7 @@ def test_detail_save_history_and_revert(studio):
     page.locator('[data-id="detail-tab-history"]').click()
     history = page.locator('[data-id="detail-history"] li')
     expect(history.first).to_contain_text("expected")
+    expect(page.locator('[data-id="detail-save"]')).not_to_have_class(re.compile("loading"))
     page.locator('[data-id="detail-history-revert"]').first.click()
     expect(page.locator("#d-rev")).to_have_text("rev 3")
 

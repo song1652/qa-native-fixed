@@ -77,3 +77,25 @@ def test_figma_draft_shows_frame_in_review(studio):
     page.locator('[data-id="job-open-review"]').click(timeout=15000)
     expect(page.locator('[data-id="source-figma-frame"] img')).to_have_count(1)
     expect(page.locator('[data-id="draft-card"]').first).not_to_contain_text("추정")
+
+# ── W10: 출처 변경 배너 · 차이 · 확인 ───────────────────────────
+def test_source_change_banner_diff_and_ack(studio):
+    base_url, page, web = studio
+    setup_confluence(web)
+    import _tc_sources as src
+    import _tc_connectors as conn
+    conn.add_confluence(src.new_bundle(), f"{CLOUD}/wiki/spaces/MOVE/pages/{PAGE_ID}")
+    lib.add_source_refs("야핏무브", "BEN_0002", [f"conf:{PAGE_ID}@v14#§2"])
+    setup_confluence(web, version=15, storage=STORAGE_V15)
+    page.reload()
+
+    page.locator('[data-id="btn-check-sources"]').click()
+    expect(page.locator('[data-id="banner-source-changed"]')).to_contain_text("v14 → v15")
+    page.locator('[data-id="banner-review-now"]').click()
+    expect(page.locator("#grid-body tr[data-case]")).to_have_count(1)
+    page.locator('tr[data-case="BEN_0002"] td.no').click()
+    page.locator('[data-id="detail-tab-source"]').click()
+    expect(page.locator('[data-id="detail-source-diff"] ins')).to_contain_text("5초마다")
+    page.locator('[data-id="detail-mark-reviewed"]').click()
+    expect(page.locator('[data-id="banner-source-changed"]')).to_have_count(0)
+    assert f"conf:{PAGE_ID}@v15#§2" in lib.get_case("야핏무브", "BEN_0002")["source_refs"]

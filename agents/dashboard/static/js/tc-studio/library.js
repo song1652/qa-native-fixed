@@ -26,6 +26,7 @@
         <div class="tree-legend"><span><i class="dot d-draft"></i>초안</span><span><i class="dot d-review"></i>재검토</span><span><i class="dot d-err"></i>검증 오류</span></div>
       </aside>
       <div class="center">
+        <div id="lib-banners"></div>
         <div class="filterbar" role="search">
           <div class="search"><input class="input" id="lib-search" data-id="lib-search" placeholder="기능, Step, Expected, UI 문구 검색  ( / )" autocomplete="off"></div>
           <select class="fselect" id="lib-filter-result" data-id="lib-filter-result" aria-label="실행 결과">
@@ -38,6 +39,7 @@
             ${opt('', 'AUTO 전체')}${NS.AUTO_VALUES.map((a) => opt(a, a)).join('')}${opt('-', '미지정')}</select>
           <select class="fselect" id="lib-filter-source" data-id="lib-filter-source" aria-label="출처">
             ${opt('', '출처 전체')}${opt('xlsx', '엑셀 가져오기')}${opt('conf', 'Confluence')}${opt('figma', 'Figma')}${opt('file', '파일·붙여넣기')}</select>
+          ${NS.sourceWatch ? '<button class="fchip" data-id="lib-filter-needs-review" id="lib-filter-needs-review" aria-pressed="false">재검토 필요 <span class="n" id="n-review">0</span></button>' : ''}
           <button class="fchip" data-id="lib-filter-invalid" id="lib-filter-invalid" aria-pressed="false">검증 오류 <span class="n" id="n-invalid">0</span></button>
           <button class="btn-sm" data-id="lib-filter-reset" id="lib-filter-reset">초기화</button>
         </div>
@@ -46,6 +48,7 @@
           <span id="grid-count" class="num"></span>
           <span class="spacer"></span>
           <span class="faint">더블클릭 또는 Enter로 셀 편집 · <span class="kbd">⌘</span><span class="kbd">↵</span> 저장 · <span class="kbd">Esc</span> 취소</span>
+          ${NS.sourceWatch ? '<button class="btn btn-ghost" data-id="btn-check-sources" id="btn-check-sources" title="Confluence·Figma 출처의 새 버전을 확인합니다">출처 변경 확인</button>' : ''}
           <button class="btn btn-primary" data-id="btn-add-case" id="btn-add-case">+ 케이스 추가</button>
         </div>
         <div class="grid-wrap" id="grid-wrap">
@@ -118,6 +121,7 @@
     if (!open.size) tree.forEach((n) => { open.add(key(n.path)); (n.children || []).forEach((c) => open.add(key(c.path))); });
     renderTree();
     await reloadList();
+    if (NS.sourceWatch) await NS.sourceWatch.renderBanner(root);
   }
 
   async function reloadList() {
@@ -393,6 +397,15 @@
       clearTimeout(t);
       t = setTimeout(() => { state.filters.q = e.target.value.trim(); reloadList(); }, 250);
     });
+    if (NS.sourceWatch) {
+      $('#lib-filter-needs-review', root).addEventListener('click', (e) => {
+        const on = e.currentTarget.getAttribute('aria-pressed') !== 'true';
+        e.currentTarget.setAttribute('aria-pressed', on);
+        state.filters.needs_review = on;
+        reloadList();
+      });
+      $('#btn-check-sources', root).addEventListener('click', () => NS.sourceWatch.scan(root));
+    }
     $('#lib-filter-invalid', root).addEventListener('click', (e) => {
       const on = e.currentTarget.getAttribute('aria-pressed') !== 'true';
       e.currentTarget.setAttribute('aria-pressed', on);
@@ -400,7 +413,8 @@
       reloadList();
     });
     $('#lib-filter-reset', root).addEventListener('click', () => {
-      Object.keys(state.filters).forEach((k) => { state.filters[k] = k === 'invalid' ? false : ''; });
+      Object.keys(state.filters).forEach((k) => { state.filters[k] = ['invalid', 'needs_review'].includes(k) ? false : ''; });
+      $$('.fchip', root).forEach((b) => b.setAttribute('aria-pressed', 'false'));
       $$('.filterbar select', root).forEach((s) => { s.value = ''; });
       $('#lib-search', root).value = '';
       $('#lib-filter-invalid', root).setAttribute('aria-pressed', 'false');

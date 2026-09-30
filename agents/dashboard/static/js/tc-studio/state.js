@@ -9,7 +9,7 @@
     items: [],          // 현재 필터 결과 (서버 응답 그대로, issues 포함)
     total: 0,
     filters: { q: '', path: '', status: '', execution_result: '', priority: '', auto: '',
-               source: '', invalid: false },
+               source: '', invalid: false, needs_review: false },
     selected: new Set(),
     activeId: '',
     screen: 'library',
@@ -25,7 +25,7 @@
   NS.queryFromFilters = function (f) {
     const q = {};
     Object.entries(f).forEach(([k, v]) => {
-      if (k === 'invalid') { if (v) q.invalid = '1'; return; }
+      if (k === 'invalid' || k === 'needs_review') { if (v) q[k] = '1'; return; }
       if (k === 'execution_result') {
         if (v === 'none') q.execution_result = '';
         else if (v) q.execution_result = v;

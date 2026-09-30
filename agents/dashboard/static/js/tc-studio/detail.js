@@ -108,7 +108,8 @@
   function fill() {
     const c = draft;
     $('#d-id', root).textContent = c.case_id;
-    $('#d-status', root).innerHTML = `<span class="pill st-${current.status}">${NS.STATUS_LABEL[current.status]}</span>`;
+    $('#d-status', root).innerHTML = `<span class="pill st-${current.status}">${NS.STATUS_LABEL[current.status]}</span>`
+      + ((current.flags || {}).source_change ? ' <span class="pill st-needs_review">재검토 필요</span>' : '');
     $('#d-rev', root).textContent = `rev ${current.rev}`;
     $('#detail-feature', root).value = c.feature;
     $('#d-path', root).textContent = [c.sheet, ...c.path.filter(Boolean)].join(' › ');
@@ -128,7 +129,15 @@
     $('#d-checks', root).innerHTML = (current.issues.length ? current.issues : [{ level: 'ok', message: '문제 없음' }])
       .map((i) => `<li><span class="${i.level === 'error' ? 'bad' : i.level === 'warning' ? 'wr' : 'ok'}">${i.level === 'error' ? '✕' : i.level === 'warning' ? '!' : '✓'}</span>${esc(i.message)}</li>`).join('');
     $('#d-source', root).innerHTML = `<div class="excerpt"><h5>출처</h5>${c.source_refs.map((r) => `<div class="mono" style="font-size:11px">${esc(r)}</div>`).join('')}
-      <p class="faint" style="margin:8px 0 0">문서 원문 하이라이트는 문서 기반 생성(Phase 2)부터 표시됩니다. 엑셀에서 온 케이스는 가져온 파일·시트·행을 보여줍니다.</p></div>`;
+      <p class="faint" style="margin:8px 0 0">문서 원문 하이라이트는 초안 검토 화면에서 봅니다. 엑셀에서 온 케이스는 가져온 파일·시트·행을 보여줍니다.</p></div>`;
+    if (NS.sourceWatch) {
+      NS.sourceWatch.detailSource($('#d-source', root), current, async () => {
+        await api.ackSource(state.suite, current.case_id);
+        toast(`${current.case_id}의 출처를 새 버전으로 올리고 재검토를 해제했습니다.`, 'ok');
+        await NS.library.refresh();
+        await open(current.case_id, 'source');
+      });
+    }
     loadHistory();
     markDirty();
   }
@@ -228,7 +237,7 @@
       toast(`${saved.case_id} 저장됨 · rev ${saved.rev}`, 'ok', [], 1800);
       current = null;
       await NS.library.refresh();
-      await open(saved.case_id);
+      await open(saved.case_id, currentTab());
     } catch (err) {
       btn.disabled = false;
       if (err.status === 409) {
