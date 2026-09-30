@@ -32,6 +32,8 @@ def new_case(**fields) -> dict:
         "priority": "", "auto": "", "execution_result": "", "status": "draft",
         "note": "", "source_refs": [], "rev": 1, "deleted": False,
         "updated_at": now_iso(),
+        # 생성 초안 정보 (Phase 2): job_id, source_quote, duplicates[{case_id, similarity}]
+        "draft_meta": {},
     }
     case.update(fields)
     case["path"] = (list(case["path"]) + ["", "", ""])[:3]

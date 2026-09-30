@@ -33,8 +33,12 @@ class RevConflict(LibraryError):
         self.server_case = server_case
 
 
+# API 경로 조각과 겹치는 이름은 스위트로 쓸 수 없다 (/api/tc-library/{profiles|sources|jobs|…})
+RESERVED_SUITES = {"import", "exports", "sources", "profiles", "jobs"}
+
+
 def suite_dir(suite: str) -> Path:
-    if not suite or suite.startswith("_") or not is_valid_group_name(suite):
+    if not suite or suite.startswith("_") or suite in RESERVED_SUITES or not is_valid_group_name(suite):
         raise LibraryError(f"스위트 이름이 올바르지 않습니다: {suite!r}", "INVALID_SUITE")
     return _paths.TC_LIBRARY_DIR / suite
 
@@ -212,7 +216,8 @@ def create_case(suite: str, fields: dict, actor: str, *, after: str | None = Non
         cases = data.setdefault("cases", [])
         sheet = fields.get("sheet") or (data.get("sheets") or [""])[0]
         case_id = next_case_id(_prefix_for(cases, sheet), {c["case_id"] for c in cases})
-        base = {k: v for k, v in fields.items() if k in EDITABLE_FIELDS or k == "source_refs"}
+        base = {k: v for k, v in fields.items()
+                if k in EDITABLE_FIELDS or k in ("source_refs", "draft_meta")}
         base.update(case_id=case_id, sheet=sheet, status="draft")
         case = new_case(**base)
         index = next((i + 1 for i, c in enumerate(cases) if c["case_id"] == after), len(cases))
@@ -315,6 +320,8 @@ def filter_cases(cases: list[dict], query: dict) -> list[dict]:
             continue
         if query.get("invalid") == "1" and not case["has_error"]:
             continue
+        if query.get("job") and case.get("draft_meta", {}).get("job_id") != query["job"]:
+            continue
         if q:
             haystack = json.dumps([case["feature"], case["precondition"], case["steps"],
                                    case["expected"], case["bullets"]], ensure_ascii=False)
@@ -346,3 +353,71 @@ def build_tree(cases: list[dict]) -> list[dict]:
             node["invalid"] += case["has_error"]
             children = node["children"]
     return roots
+
+
+def _insert_index(cases: list[dict], sheet: str, path: list[str]) -> int:
+    """같은 시트에서 경로가 가장 많이 겹치는 가지의 마지막 케이스 바로 뒤."""
+    best, index = -1, len(cases)
+    for i, case in enumerate(cases):
+        if case["sheet"] != sheet or case.get("deleted"):
+            continue
+        depth = 0
+        while depth < 3 and case["path"][depth] == path[depth] and path[depth]:
+            depth += 1
+        if depth >= best:
+            best, index = depth, i + 1
+    return index
+
+
+def add_drafts(suite: str, drafts: list[dict], actor: str) -> list[dict]:
+    """생성 초안을 한 번에 추가한다 (Phase 2 G6). 대상 가지 끝에 순서대로 넣는다."""
+    from _tc_model import new_case
+
+    created: list[dict] = []
+
+    def mutate(data: dict) -> dict:
+        cases = data.setdefault("cases", [])
+        ids = {c["case_id"] for c in cases}
+        for draft in drafts:
+            sheet = draft["sheet"]
+            case_id = next_case_id(_prefix_for(cases, sheet), ids)
+            ids.add(case_id)
+            fields = {k: v for k, v in draft.items()
+                      if k in EDITABLE_FIELDS or k in ("source_refs", "draft_meta")}
+            fields.update(case_id=case_id, status="draft")
+            case = new_case(**fields)
+            cases.insert(_insert_index(cases, sheet, case["path"]), case)
+            created.append(dict(case))
+        return data
+
+    update_state(_cases_path(suite), mutate)
+    _append_history(suite, [_entry(c["case_id"], "*", None, "generate", actor, "create") for c in created])
+    return created
+
+
+def set_draft_meta(suite: str, case_id: str, changes: dict) -> dict:
+    """초안 메타만 바꾼다 (rev를 올리지 않는 내부용: 중복 표시 해제 등)."""
+    out: dict = {}
+
+    def mutate(data: dict) -> dict:
+        case = _find(data, case_id)
+        case["draft_meta"] = {**case.get("draft_meta", {}), **changes}
+        out["case"] = dict(case)
+        return data
+
+    update_state(_cases_path(suite), mutate)
+    return out["case"]
+
+
+def add_source_refs(suite: str, case_id: str, refs: list[str]) -> dict:
+    """출처만 덧붙인다 (내용 변경이 아니므로 rev를 올리지 않는다)."""
+    out: dict = {}
+
+    def mutate(data: dict) -> dict:
+        case = _find(data, case_id)
+        case["source_refs"] = list(dict.fromkeys(case["source_refs"] + refs))
+        out["case"] = dict(case)
+        return data
+
+    update_state(_cases_path(suite), mutate)
+    return out["case"]
