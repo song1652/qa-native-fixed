@@ -31,6 +31,10 @@ ROUTES: list[tuple[str, re.Pattern, str]] = [
         ("GET", r"/api/tc-library/import/runs/(?P<run_id>libimp_[0-9a-f]{16})", "_tcl_import_run"),
         ("POST", r"/api/tc-library/import/runs/(?P<run_id>libimp_[0-9a-f]{16})/rollback", "_tcl_import_rollback"),
         ("GET", rf"/api/tc-library/exports/{_ID}/download", "_tcl_export_download"),
+        ("GET", r"/api/tc-library/trash", "_tcl_trash_list"),
+        ("POST", r"/api/tc-library/trash/(?P<trash_id>trash_[0-9a-f]{12})/restore", "_tcl_trash_restore"),
+        ("DELETE", r"/api/tc-library/trash/(?P<trash_id>trash_[0-9a-f]{12})", "_tcl_trash_purge"),
+        ("DELETE", rf"/api/tc-library/{_SUITE}", "_tcl_delete_suite"),
 
         ("GET", rf"/api/tc-library/{_SUITE}/tree", "_tcl_tree"),
         ("GET", rf"/api/tc-library/{_SUITE}", "_tcl_list"),
@@ -247,6 +251,25 @@ class TcLibraryRoutesMixin:
                             "server_case": result["conflicts"][0]}, 409)
             return
         self._tcl_json({"ok": True, "deleted": result["deleted"]})
+
+    # ── 스위트 삭제·휴지통 ────────────────────────────────────────
+    def _tcl_delete_suite(self, suite: str):
+        """?confirm=스위트이름 — 화면이 보낸 이름과 경로의 이름이 같아야 지운다."""
+        from _tc_trash import delete_suite
+        self._tcl_json({"ok": True, "trash": delete_suite(suite, self._tcl_query.get("confirm", ""))})
+
+    def _tcl_trash_list(self):
+        from _tc_trash import RETENTION_DAYS, list_trash
+        self._tcl_json({"ok": True, "items": list_trash(), "retention_days": RETENTION_DAYS})
+
+    def _tcl_trash_restore(self, trash_id: str):
+        from _tc_trash import restore_suite
+        self._tcl_json({"ok": True, "restored": restore_suite(trash_id)})
+
+    def _tcl_trash_purge(self, trash_id: str):
+        from _tc_trash import purge
+        purge(trash_id)
+        self._tcl_json({"ok": True})
 
     def _tcl_restore(self, suite: str, case_id: str):
         from _tc_library import restore_case

@@ -254,3 +254,68 @@ def test_suite_list_opens_below_with_studio_style(studio):
     assert first.bounding_box()["y"] >= box["y"] + box["height"]
     page.locator('[data-id="suite-select"] option', has_text="다른스위트").click()
     expect(rows(page)).to_have_count(1)
+
+
+# ── 스위트 삭제·휴지통 ─────────────────────────────────────────
+def open_suite_delete(page: Page):
+    page.locator('[data-id="suite-menu-btn"]').click()
+    page.locator('[data-id="suite-menu-delete"]').click()
+    expect(page.locator('[data-id="suite-delete-modal"]')).to_be_visible()
+
+
+def test_delete_suite_switches_to_next_and_undo_restores(studio):
+    base, page, tmp_path = studio
+    _seed(base, tmp_path, suite="다른스위트", sheets=["홈"])
+    page.reload()
+    page.locator('[data-id="suite-select"]').select_option("야핏무브")
+    expect(rows(page)).to_have_count(6)
+    open_suite_delete(page)
+    expect(page.locator("#sd-title")).to_have_text("'야핏무브' 스위트를 삭제할까요?")
+    expect(page.locator('[data-id="suite-delete-summary"]')).to_have_text(re.compile(r"TC\s*6\s*건\s*시트\s*2\s*개"))
+    page.locator('[data-id="suite-delete-confirm"]').click()
+    expect(page.locator('[data-id="suite-delete-modal"]')).to_be_hidden()
+    expect(page.locator('[data-id="suite-select"] option')).to_have_text(["다른스위트 (1)"])
+    expect(page.locator(".toast.ok").last).to_contain_text("'다른스위트' 스위트로 전환했습니다")
+    status, body = request_json(base, "POST", f"/api/tc-library/{S}/cases", {"sheet": "혜택", "path": ["혜택 탭"], "feature": "늦은 요청"})
+    assert status == 404 and body["code"] == "SUITE_NOT_FOUND"          # 지운 스위트를 되살리지 않는다
+    page.locator('[data-id="suite-delete-undo"]').click()
+    expect(page.locator('[data-id="suite-select"]')).to_have_value("야핏무브")
+    expect(rows(page)).to_have_count(6)
+
+
+def test_deleted_suite_can_be_restored_from_trash_list(studio):
+    base, page, _ = studio
+    open_suite_delete(page)
+    page.locator('[data-id="suite-delete-confirm"]').click()
+    expect(page.locator('[data-id="suite-select"] option')).to_have_text(["스위트 없음"])
+    page.locator('[data-id="suite-menu-btn"]').click()
+    expect(page.locator("#trash-n")).to_have_text("1")
+    page.locator('[data-id="suite-menu-trash"]').click()
+    item = page.locator('[data-id="trash-list"] li')
+    expect(item).to_contain_text("야핏무브")
+    expect(item).to_contain_text("TC 6건 · 시트 2개")
+    expect(item).to_contain_text("30일 남음")
+    item.locator('[data-id="trash-restore"]').click()
+    expect(page.locator('[data-id="trash-modal"]')).to_be_hidden()
+    expect(page.locator('[data-id="suite-select"]')).to_have_value("야핏무브")
+    expect(rows(page)).to_have_count(6)
+
+
+def test_suite_delete_is_blocked_while_generation_runs(studio, monkeypatch):
+    base, page, tmp_path = studio
+    monkeypatch.setenv("FAKE_CLAUDE_MODE", "slow")
+    prd = tmp_path / "prd.md"
+    prd.write_text(PRD_MD, encoding="utf-8")
+    page.locator('[data-id="nav-tab-generate"]').click()
+    page.locator('[data-id="src-file-input"]').set_input_files(str(prd))
+    page.locator('[data-id="gen-target-sheet"]').select_option("혜택")
+    page.locator('[data-id="gen-submit"]').click()
+    expect(page.locator('[data-id="job-cancel"]')).to_be_visible()
+    open_suite_delete(page)
+    expect(page.locator('[data-id="suite-delete-block"]')).to_contain_text("초안 생성이 진행 중입니다")
+    expect(page.locator('[data-id="suite-delete-confirm"]')).to_be_disabled()
+    status, body = request_json(base, "DELETE", f"/api/tc-library/{S}?confirm={S}")
+    assert status == 409 and body["code"] == "JOB_RUNNING"
+    page.locator('[data-id="suite-delete-cancel"]').click()
+    page.locator('[data-id="job-cancel"]').click()
+    expect(page.locator("#job-fail")).to_be_visible(timeout=15000)

@@ -39,7 +39,7 @@ class RevConflict(LibraryError):
 
 
 # API 경로 조각과 겹치는 이름은 스위트로 쓸 수 없다 (/api/tc-library/{profiles|sources|jobs|…})
-RESERVED_SUITES = {"import", "exports", "sources", "profiles", "jobs", "credentials", "source-diff"}
+RESERVED_SUITES = {"import", "exports", "sources", "profiles", "jobs", "credentials", "source-diff", "trash"}
 
 
 def suite_dir(suite: str) -> Path:
@@ -121,6 +121,19 @@ def _locked(function):
     return guarded
 
 
+def _writes(function):
+    """스위트가 있어야 하는 쓰기. update_state가 폴더를 만들어 주므로, 삭제 직후 도착한 요청
+    (생성 작업 완료·다른 탭 편집)이 지운 스위트를 빈 폴더로 되살리지 않게 막는다.
+    새 스위트를 만드는 것은 가져오기(import_cases·save_template)뿐이다."""
+    @wraps(function)
+    def guarded(suite, *args, **kwargs):
+        with suite_lock(suite):
+            if not suite_dir(suite).is_dir():
+                raise LibraryError(f"스위트가 없습니다: {suite}", "SUITE_NOT_FOUND", 404)
+            return without_auto(function(suite, *args, **kwargs))
+    return guarded
+
+
 def _cases_path(suite: str) -> Path:
     return suite_dir(suite) / "cases.json"
 
@@ -170,7 +183,7 @@ def _entry(case_id: str, field: str, before, after, actor: str, kind: str = "edi
             "before": before, "after": after, "actor": actor, "kind": kind, "at": now_iso()}
 
 
-@_locked
+@_writes
 def _append_history(suite: str, entries: list[dict]) -> None:
     if not entries:
         return
@@ -249,7 +262,7 @@ def import_cases(suite: str, sheets: list[str], incoming: list[dict], actor: str
     return summary
 
 
-@_locked
+@_writes
 def patch_case(suite: str, case_id: str, base_rev: int, changes: dict, actor: str) -> dict:
     out: dict = {}
 
@@ -266,7 +279,7 @@ def patch_case(suite: str, case_id: str, base_rev: int, changes: dict, actor: st
     return out["case"]
 
 
-@_locked
+@_writes
 def bulk_patch(suite: str, items: list[dict], changes: dict, actor: str) -> dict:
     """rev가 맞는 케이스만 바꾸고 나머지는 conflicts로 돌려준다 (피드백 #15)."""
     result: dict = {"updated": [], "conflicts": []}
@@ -294,7 +307,7 @@ def _prefix_for(cases: list[dict], sheet: str) -> str:
     return "TC"
 
 
-@_locked
+@_writes
 def create_case(suite: str, fields: dict, actor: str, *, after: str | None = None) -> dict:
     from _tc_model import new_case
 
@@ -318,7 +331,7 @@ def create_case(suite: str, fields: dict, actor: str, *, after: str | None = Non
     return out["case"]
 
 
-@_locked
+@_writes
 def duplicate_case(suite: str, case_id: str, actor: str) -> dict:
     source = get_case(suite, case_id)
     fields = {f: source[f] for f in EDITABLE_FIELDS if f in source}
@@ -328,7 +341,7 @@ def duplicate_case(suite: str, case_id: str, actor: str) -> dict:
     return created
 
 
-@_locked
+@_writes
 def delete_cases(suite: str, items: list[dict], actor: str) -> dict:
     result: dict = {"deleted": [], "conflicts": []}
     history: list[dict] = []
@@ -351,7 +364,7 @@ def delete_cases(suite: str, items: list[dict], actor: str) -> dict:
     return result
 
 
-@_locked
+@_writes
 def restore_case(suite: str, case_id: str, actor: str) -> dict:
     out: dict = {}
 
@@ -377,7 +390,7 @@ def history(suite: str, case_id: str) -> list[dict]:
     return [e for e in reversed(entries) if e["case_id"] == case_id and e.get("field") not in ("auto", "default_auto")]
 
 
-@_locked
+@_writes
 def revert(suite: str, case_id: str, history_id: str, base_rev: int, actor: str) -> dict:
     entry = next((e for e in history(suite, case_id) if e["history_id"] == history_id), None)
     if entry is None or entry["kind"] != "edit":
@@ -478,7 +491,7 @@ def _insert_index(cases: list[dict], sheet: str, path: list[str]) -> int:
     return index
 
 
-@_locked
+@_writes
 def add_drafts(suite: str, drafts: list[dict], actor: str) -> list[dict]:
     """생성 초안을 한 번에 추가한다 (Phase 2 G6). 대상 가지 끝에 순서대로 넣는다."""
     from _tc_model import new_case
@@ -505,7 +518,7 @@ def add_drafts(suite: str, drafts: list[dict], actor: str) -> list[dict]:
     return created
 
 
-@_locked
+@_writes
 def set_draft_meta(suite: str, case_id: str, changes: dict) -> dict:
     """초안 메타만 바꾼다 (rev를 올리지 않는 내부용: 중복 표시 해제 등)."""
     out: dict = {}
@@ -520,7 +533,7 @@ def set_draft_meta(suite: str, case_id: str, changes: dict) -> dict:
     return out["case"]
 
 
-@_locked
+@_writes
 def add_source_refs(suite: str, case_id: str, refs: list[str]) -> dict:
     """출처만 덧붙인다 (내용 변경이 아니므로 rev를 올리지 않는다)."""
     out: dict = {}
@@ -535,7 +548,7 @@ def add_source_refs(suite: str, case_id: str, refs: list[str]) -> dict:
     return out["case"]
 
 
-@_locked
+@_writes
 def set_flag(suite: str, case_id: str, name: str, value) -> dict:
     """검토 표시를 켜고 끈다 (value=None이면 지움). 내용 변경이 아니므로 rev를 올리지 않는다."""
     out: dict = {}
@@ -555,7 +568,7 @@ def set_flag(suite: str, case_id: str, name: str, value) -> dict:
     return out["case"]
 
 
-@_locked
+@_writes
 def replace_source_version(suite: str, case_id: str, old_ref: str, new_ref: str) -> dict:
     """출처의 버전 부분만 바꾼다: "conf:1@v14#§2" → "conf:1@v15#§2" (섹션 앵커는 유지)."""
     out: dict = {}
@@ -571,7 +584,7 @@ def replace_source_version(suite: str, case_id: str, old_ref: str, new_ref: str)
     return out["case"]
 
 
-@_locked
+@_writes
 def rename_sheet(suite: str, old: str, name: str, actor: str) -> None:
     """Rename the worksheet and its cases without changing case IDs."""
     import re
@@ -656,7 +669,7 @@ def load_branches(suite: str) -> list[dict]:
     return read_state(_cases_path(suite)).get('branches', [])
 
 
-@_locked
+@_writes
 def add_branch(suite: str, sheet: str, path: list[str]) -> dict:
     if sheet not in load_profiles(suite):
         raise LibraryError('시트를 선택하세요.', 'SHEET_NOT_FOUND', 404)
@@ -677,7 +690,7 @@ def add_branch(suite: str, sheet: str, path: list[str]) -> dict:
     return branch
 
 
-@_locked
+@_writes
 def add_sheet(suite: str, name: str) -> None:
     """Add an empty worksheet using the existing template's formatting."""
     import re

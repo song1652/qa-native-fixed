@@ -30,6 +30,9 @@
 
   NS.api = {
     suites: () => request('GET', '/api/tc-library'),
+    deleteSuite: (suite) => request('DELETE', `${S(suite)}?confirm=${enc(suite)}`),
+    trash: () => request('GET', '/api/tc-library/trash'),
+    restoreTrash: (id) => request('POST', `/api/tc-library/trash/${enc(id)}/restore`),
     addSheet: (suite, name) => request('POST', `${S(suite)}/sheets`, { name }),
     renameSheet: (suite, sheet, name) => request('POST', `${S(suite)}/sheets/rename`, { sheet, name }),
     addBranch: (suite, sheet, path) => request('POST', `${S(suite)}/branches`, { sheet, path }),

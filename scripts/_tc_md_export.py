@@ -20,7 +20,7 @@ import _paths
 from _import_commit import _atomic_json, _target_for, commit_run, create_preview_from_rows, load_run, rollback_run
 from _import_validator import load_existing_testcases
 from _state import read_state, update_state
-from _tc_library import LibraryError, load_cases, suite_dir, with_issues, _locked
+from _tc_library import LibraryError, load_cases, suite_dir, with_issues, _locked, _writes
 from _tc_model import format_steps, join_expected
 from _tc_review import classify
 
@@ -47,7 +47,7 @@ def _pages() -> dict:
     return {k: v for k, v in data.items() if not k.startswith("_")}
 
 
-@_locked
+@_writes
 def save_group(suite: str, path: list[str], group: str, code: str) -> dict:
     """가지 → 그룹 매핑 추가·교체. 그룹은 pages.json에 있어야 한다 (URL이 없으면 파이프라인이 못 돈다)."""
     path = [p for p in path if p]
@@ -163,7 +163,7 @@ def _allocate_ids(suite: str, cases: list[dict], groups: list[dict]) -> dict[str
     return update_state(_config_path(suite), mutate)["ids"]
 
 
-@_locked
+@_writes
 def build_rows(suite: str) -> list[dict]:
     """대상 케이스 → Import Studio 행 (파일 쓰기 전)."""
     cfg = load_config(suite)
@@ -187,7 +187,7 @@ def build_rows(suite: str) -> list[dict]:
     return rows
 
 
-@_locked
+@_writes
 def preview(suite: str) -> dict:
     rows = build_rows(suite)
     if not rows:
@@ -209,7 +209,7 @@ def preview(suite: str) -> dict:
     return run
 
 
-@_locked
+@_writes
 def commit(suite: str, run_id: str, skip_tc_ids: list[str]) -> dict:
     """충돌 중 skip_tc_ids는 건너뛰고 나머지 충돌은 라이브러리 값으로 덮어쓴다."""
     run = load_run(_paths.IMPORT_SESSIONS_DIR, run_id)
@@ -250,5 +250,7 @@ def rollback(suite: str, run_id: str) -> dict:
         exported = saved.pop(run_id, cfg.get("exported", {}))
         return {**cfg, "exported": exported, "before_commit": saved}
 
-    update_state(_config_path(suite), mutate)
+    # 스위트를 지운 뒤에도 testcases/ 롤백은 되게 하되, 설정 파일을 써서 스위트를 되살리지는 않는다
+    if suite_dir(suite).is_dir():
+        update_state(_config_path(suite), mutate)
     return result
