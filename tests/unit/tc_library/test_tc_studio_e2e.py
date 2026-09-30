@@ -31,6 +31,8 @@ def _seed(base_url: str, tmp_path: Path) -> None:
 
 @pytest.fixture
 def studio(tmp_path: Path, page: Page):
+    import _paths
+    original_paths = {name: getattr(_paths, name) for name in ("PROJECT_ROOT", "TESTCASES_DIR", "TC_LIBRARY_DIR")}
     project = tmp_path / "project"
     (project / "testcases").mkdir(parents=True)
     with dashboard_server(project) as base_url:
@@ -38,6 +40,7 @@ def studio(tmp_path: Path, page: Page):
         page.goto(base_url + "/tc-studio")
         expect(page.locator("#grid-body tr[data-case]")).to_have_count(6)
         yield base_url, page
+    assert {name: getattr(_paths, name) for name in original_paths} == original_paths
 
 
 def rows(page: Page):

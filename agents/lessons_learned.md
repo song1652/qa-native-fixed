@@ -50,3 +50,7 @@
 ### [수정] 2026-09-30 -- 상세 저장 중 사용자가 선택한 탭 유지
 - **문제**: Phase 3 전체 회귀와 단독 반복 2회차에서 상세 저장 후 이력 탭 되돌리기 버튼이 숨겨졌다. 라이브러리 갱신이 먼저 패널을 갱신하고 배너 조회 후 saveDetail의 두 번째 open이 edit 탭으로 되돌리는 경쟁 조건이다.
 - **재발 방지**: 두 번째 open에는 현재 사용자가 선택한 탭을 전달한다. 기존 이력 테스트에 배너 지연·저장 완료 대기를 추가해 RED를 재현하고 기존 되돌리기 assertion을 유지한다.
+
+### [수정] 2026-09-30 -- 대시보드 테스트 격리 경로 복원
+- **문제**: M1 지정 회귀(import_studio→dashboard→core)에서 종료한 dashboard_server의 임시 PROJECT_ROOT가 남아 core 파서 테스트 27개가 scripts/06_heal.py를 찾지 못했다.
+- **재발 방지**: 테스트 서버 context가 끝나면 _paths·serve의 이전 Path 값과 Host/Origin 설정을 복원한다. TC Studio fixture에 context 종료 후 경로 동일 assertion을 추가해 RED→GREEN 확인했다. 기존 테스트 assertion·실행 순서는 유지한다.

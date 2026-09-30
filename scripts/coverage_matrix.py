@@ -42,7 +42,7 @@ def build_coverage() -> dict:
 
             covered_groups.add(group)
             tags_count: dict[str, int] = {}
-            priority_count: dict[str, int] = {"high": 0, "medium": 0, "low": 0}
+            priority_count: dict[str, int] = {"very_high": 0, "high": 0, "medium": 0, "low": 0}
 
             for c in cases:
                 for tag in c.get("tags", []):

@@ -25,6 +25,8 @@ from _import_validator import classify_row, load_existing_testcases
 
 
 STATUSES = ("added", "updated", "conflict", "error", "same")
+# md frontmatter priority 허용 값 (very_high는 TC 스튜디오 P0, PRD O7)
+PRIORITIES = ("very_high", "high", "medium", "low")
 
 
 class ImportRunError(RuntimeError):
@@ -142,35 +144,45 @@ def create_preview(body: dict, import_dir: Path, testcases_dir: Path, runs_dir: 
                 tc_id = str(row.get("tc_id") or "").strip()
                 current_group = existing.get(tc_id, {}).get("group")
                 row["group"] = current_group or str(source["sheet_name"])
-            result = {**row, **classify_row(row, existing)}
-            result["_source_file_id"] = source["file_id"]
-            tc_id = str(row.get("tc_id", "")).strip()
-            if tc_id and tc_id in seen:
-                result.update(status="conflict", reason="선택한 Excel 범위 안에서 tc_id 중복",
-                              reason_code="DUPLICATE_SOURCE_TC_ID")
-                first = seen[tc_id]
-                first.update(status="conflict", reason="선택한 Excel 범위 안에서 tc_id 중복",
-                             reason_code="DUPLICATE_SOURCE_TC_ID",
-                             excluded=body.get("conflict_policy") == "exclude",
-                             decision="exclude" if body.get("conflict_policy") == "exclude" else "pending")
-            elif tc_id:
-                seen[tc_id] = result
-            current = existing.get(tc_id)
-            result["before"] = ({
-                field: current.get(field)
-                for field in ("title", "precondition", "steps", "expected", "priority", "tags", "group", "hash")
-            } | {"file_name": current["path"].name} if current else None)
-            result["after"] = {field: result.get(field) for field in
-                               ("tc_id", "title", "precondition", "steps", "expected", "priority", "tags", "group")}
-            if result.get("status") == "conflict":
-                excluded = body.get("conflict_policy") == "exclude"
-                result["excluded"] = excluded
-                result["decision"] = "exclude" if excluded else "pending"
-            else:
-                result["excluded"] = result.get("status") not in {"added", "updated"}
-                result["decision"] = "automatic"
-            rows.append(result)
+            rows.append(_preview_row(row, existing, seen, body.get("conflict_policy"),
+                                     source_id=source["file_id"]))
+    return _save_run(rows, source_records, testcases_dir, runs_dir)
 
+
+def _preview_row(row: dict, existing: dict, seen: dict, conflict_policy: str | None, *,
+                 source_id: str) -> dict:
+    """행 1개를 분류하고 before/after·결정 기본값을 붙인다 (Excel·TC 스튜디오 공용)."""
+    result = {**row, **classify_row(row, existing)}
+    result["_source_file_id"] = source_id
+    tc_id = str(row.get("tc_id", "")).strip()
+    if tc_id and tc_id in seen:
+        result.update(status="conflict", reason="선택한 Excel 범위 안에서 tc_id 중복",
+                      reason_code="DUPLICATE_SOURCE_TC_ID")
+        first = seen[tc_id]
+        first.update(status="conflict", reason="선택한 Excel 범위 안에서 tc_id 중복",
+                     reason_code="DUPLICATE_SOURCE_TC_ID",
+                     excluded=conflict_policy == "exclude",
+                     decision="exclude" if conflict_policy == "exclude" else "pending")
+    elif tc_id:
+        seen[tc_id] = result
+    current = existing.get(tc_id)
+    result["before"] = ({
+        field: current.get(field)
+        for field in ("title", "precondition", "steps", "expected", "priority", "tags", "group", "hash")
+    } | {"file_name": current["path"].name} if current else None)
+    result["after"] = {field: result.get(field) for field in
+                       ("tc_id", "title", "precondition", "steps", "expected", "priority", "tags", "group")}
+    if result.get("status") == "conflict":
+        excluded = conflict_policy == "exclude"
+        result["excluded"] = excluded
+        result["decision"] = "exclude" if excluded else "pending"
+    else:
+        result["excluded"] = result.get("status") not in {"added", "updated"}
+        result["decision"] = "automatic"
+    return result
+
+
+def _save_run(rows: list[dict], source_records: list[dict], testcases_dir: Path, runs_dir: Path) -> dict:
     summary = {status: sum(row.get("status") == status for row in rows) for status in STATUSES}
     run_id = f"run_{datetime.now().strftime('%Y%m%dT%H%M%S')}_{uuid.uuid4().hex[:8]}"
     run = {
@@ -185,6 +197,20 @@ def create_preview(body: dict, import_dir: Path, testcases_dir: Path, runs_dir: 
     }
     _atomic_json(runs_dir / f"{run_id}.json", run)
     return run
+
+
+def create_preview_from_rows(rows: list[dict], source: dict, testcases_dir: Path, runs_dir: Path,
+                             *, conflict_policy: str | None = None) -> dict:
+    """Excel 없이 이미 만든 행으로 미리보기 run을 만든다 (TC 스튜디오 md 내보내기, Phase 4).
+
+    rows: {tc_id, title, precondition, steps, expected, priority, tags, group, source_ref?}
+    source: {"kind": "tc_library", "suite": …} — commit_run은 kind가 excel이 아닌 출처의 파일 해시를 검사하지 않는다.
+    """
+    existing = load_existing_testcases(testcases_dir)
+    seen: dict[str, dict] = {}
+    preview = [_preview_row(dict(row), existing, seen, conflict_policy, source_id=str(source.get("suite", "")))
+               for row in rows]
+    return _save_run(preview, [source], testcases_dir, runs_dir)
 
 
 def load_run(runs_dir: Path, run_id: str) -> dict:
@@ -205,13 +231,17 @@ def _render(row: dict) -> str:
         raise ImportRunError("tags는 문자열 배열이어야 합니다", "INVALID_TAGS")
     tags_text = json.dumps([str(tag) for tag in tags], ensure_ascii=False)
     priority = str(row.get("priority") or "medium").lower()
-    if priority not in {"high", "medium", "low"}:
+    if priority not in PRIORITIES:
         priority = "medium"
     precondition = str(row.get("precondition") or "").strip()
+    # 한 줄짜리 flat 키만 쓴다 (parse_cases의 frontmatter 파서가 줄 단위라서). "---"가 들어가면 안 된다.
+    source_ref = str(row.get("source_ref") or "").replace("---", "").strip()
+    source_line = f"source_ref: {json.dumps(source_ref, ensure_ascii=False)}\n" if source_ref else ""
     precondition_section = f"## 사전 조건\n{precondition}\n\n" if precondition else ""
     return (
         f"---\nid: {json.dumps(str(row['tc_id']), ensure_ascii=False)}\ndata_key: null\n"
-        f"priority: {json.dumps(priority)}\ntags: {tags_text}\ntype: structured\n---\n"
+        f"priority: {json.dumps(priority)}\ntags: {tags_text}\ntype: structured\n"
+        f"{source_line}---\n"
         f"# {row['title']}\n\n{precondition_section}"
         f"## Steps\n{row['steps']}\n\n"
         f"## Expected\n{row['expected']}\n"
@@ -537,6 +567,8 @@ def commit_run(run_id: str, import_dir: Path, testcases_dir: Path, runs_dir: Pat
         run["request_fingerprint"] = request_fingerprint
         _atomic_json(runs_dir / f"{run_id}.json", run)
         for source in run.get("sources", []):
+            if source.get("kind", "excel") != "excel":   # TC 스튜디오 출처는 Excel 파일이 없다
+                continue
             path = _resolve_file(import_dir, source["file_id"])
             if file_sha256(path) != source["file_sha256"]:
                 raise ImportRunError(f"Preview 이후 원본 Excel 변경: {path.name}", "SOURCE_CHANGED")

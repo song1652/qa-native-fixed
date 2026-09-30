@@ -110,6 +110,8 @@ def parse_md(text: str) -> list:
             case["data_key"] = meta.get("data_key")
             case["priority"] = meta.get("priority")
             case["tags"] = meta.get("tags", [])
+            # TC 스튜디오 출처 (한 줄 flat 키, PRD O3). 없으면 None
+            case["source_ref"] = meta.get("source_ref")
 
         cases.append(case)
 
@@ -150,6 +152,16 @@ def parse_json(text: str) -> list:
     return normalized
 
 
+def split_data_key(data_key: str, group: str) -> tuple[str, str]:
+    """data_key → (프로덕트, 데이터셋). test_data[프로덕트][데이터셋]으로 읽는다 (PRD O1).
+
+    "serveone.login" → ("serveone", "login")   ← 권장 형식
+    "valid_user"     → (group, "valid_user")    ← 점이 없는 옛 형식: 그룹 폴더명을 프로덕트로 본다
+    """
+    product, dot, dataset = str(data_key).partition(".")
+    return (product, dataset) if dot else (group, product)
+
+
 def validate_data_keys(cases: list, group: str, test_data_path: str | Path = None) -> list:
     """
     케이스들의 data_key가 test_data/에 존재하는지 검증.
@@ -170,18 +182,17 @@ def validate_data_keys(cases: list, group: str, test_data_path: str | Path = Non
             return []
         with open(test_data_path, encoding="utf-8") as f:
             all_data = json.load(f)
-        group_data = all_data.get(group, {})
     else:
         from _paths import load_test_data
         all_data = load_test_data()
-        group_data = all_data.get(group, {})
 
     missing = []
     for case in cases:
         dk = case.get("data_key")
         if dk is None:
             continue
-        if dk not in group_data:
+        product, dataset = split_data_key(dk, group)
+        if not isinstance(all_data.get(product), dict) or dataset not in all_data[product]:
             missing.append(dk)
 
     if missing:

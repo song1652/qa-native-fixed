@@ -100,7 +100,12 @@ def configure_isolated_project(serve: Any, project_root: Path) -> None:
 
 @contextmanager
 def dashboard_server(project_root: Path) -> Iterator[str]:
+    import _paths
     serve = load_dashboard_module()
+    # context 밖 테스트가 임시 프로젝트 경로를 이어받지 않도록 복원한다.
+    previous_paths = [(module, {name: value for name, value in vars(module).items()
+                               if isinstance(value, Path)}) for module in (_paths, serve)]
+    previous_hosts, previous_origin = serve.ALLOWED_HOSTS, serve.ALLOWED_ORIGIN
     configure_isolated_project(serve, project_root)
     server = serve.ReusableHTTPServer(("127.0.0.1", 0), serve.DashboardHandler)
     port = server.server_address[1]
@@ -114,6 +119,10 @@ def dashboard_server(project_root: Path) -> Iterator[str]:
         server.shutdown()
         server.server_close()
         thread.join(timeout=5)
+        for module, values in previous_paths:
+            for name, value in values.items():
+                setattr(module, name, value)
+        serve.ALLOWED_HOSTS, serve.ALLOWED_ORIGIN = previous_hosts, previous_origin
 
 
 def request_json(
