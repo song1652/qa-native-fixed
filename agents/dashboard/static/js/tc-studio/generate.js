@@ -185,7 +185,8 @@
     return { sheet, path };
   }
   function renderTarget(keep = target()) {
-    const sheets = state.tree.map((n) => n.name);
+    const sheets = [...new Set([...state.tree.map((n) => n.name),
+      ...(state.suites.find((s) => s.suite === state.suite)?.sheets || [])])];
     const sheet = sheets.includes(keep.sheet) ? keep.sheet : sheets[0];
     $('#gen-target-sheet', root).innerHTML = sheets.map((n) => `<option ${n === sheet ? 'selected' : ''}>${esc(n)}</option>`).join('');
     const path = [];

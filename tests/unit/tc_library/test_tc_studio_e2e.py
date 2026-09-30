@@ -185,3 +185,37 @@ def test_export_check_and_download(studio):
     with page.expect_download() as info:
         page.locator('[data-id="xlsx-download"]').click()
     assert info.value.suggested_filename.endswith(".xlsx")
+
+
+def test_blank_template_can_start_generation(studio, tmp_path):
+    """A template without TC content must still expose its sheets for generation."""
+    import openpyxl
+    base_url, page = studio
+    template = build_template_workbook(tmp_path / 'blank.xlsx')
+    wb = openpyxl.load_workbook(template)
+    for ws in [wb['혜택'], wb['홈']]:
+        for merged in list(ws.merged_cells.ranges):
+            if merged.min_row >= 13:
+                ws.unmerge_cells(str(merged))
+        for cells in ws.iter_rows(min_row=13):
+            for cell in cells:
+                cell.value = None
+    wb.save(template)
+    wb.close()
+    page.locator('[data-id="btn-import-xlsx"]').click()
+    page.locator('[data-id="import-file-input"]').set_input_files(template)
+    expect(page.locator('[data-id="import-confirm"]')).to_have_text('0건 가져오기')
+    page.locator('[data-id="import-suite"]').fill('빈양식')
+    page.locator('[data-id="import-confirm"]').click()
+    expect(page.locator('[data-id="suite-select"]')).to_have_value('빈양식')
+    expect(rows(page)).to_have_count(0)
+    page.locator('[data-id="nav-tab-generate"]').click()
+    expect(page.locator('[data-id="gen-target-sheet"] option')).to_have_text(['혜택', '홈'])
+    page.locator('[data-id="gen-path-l1"]').select_option('__new')
+    page.locator('[data-id="gen-new-l1"]').fill('사용자 기능')
+    page.locator('[data-id="src-tab-paste"]').click()
+    page.locator('[data-id="src-paste"]').fill('초대 링크 복사 버튼을 누르면 링크가 클립보드에 복사된다.')
+    page.locator('[data-id="src-paste-add"]').click()
+    expect(page.locator('[data-id="gen-submit"]')).to_be_enabled()
+    _, data = request_json(base_url, 'GET', '/api/tc-library/' + quote('빈양식'))
+    assert data['total'] == 0

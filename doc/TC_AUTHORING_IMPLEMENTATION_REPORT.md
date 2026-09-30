@@ -45,3 +45,12 @@
 - Phase 3 전체: /tmp/tc-phase3-full-green.log; tc_library 반복: /tmp/tc-phase3-repeat-{1,2,3}.log; 상세 경쟁 조건 재현·검증: /tmp/tc-w10-race-red.log, /tmp/tc-detail-race-green-{1..5}.log.
 - Phase 4 전체 반복: /tmp/tc-phase4-full-{1,2,3}.log; tc_library: /tmp/tc-phase4-unit.log; 지정 회귀: /tmp/tc-m1-regression-green.log; 실제 파이프라인: /tmp/tc-phase4-manual.log; 화면: /tmp/tc-phase4-md.png.
 - 실제 파이프라인 산출물: /private/var/folders/q4/qsd5zshs6mnd052zbpjftxsh0000gn/T/tc-phase4-pipeline-qn3li4x_/ (md, 생성 Python, 상태, claude-pipeline.log, tests/reports/report_20260930_100933.html). 임시 자료는 저장소에 커밋하지 않았다.
+
+## 사용자 후속 확인·수정 (2026-09-30)
+
+- 실제 실행 서버: 구현 worktree에서 http://localhost:8766/tc-studio. 같은 서버의 /api/tc-library API에 연결.
+- 우선순위 바로 다음에 실행 결과 컬럼을 배치. 기존 E2E에 헤더·셀 위치 검증을 추가하여 RED 확인 후 8 passed, 전체 790 passed, 1 skipped.
+- 기본 샘플은 본문이 없는 양식이라는 사용자 요구를 반영. 빈 양식의 시트가 생성 화면에서 사라지는 문제를 발견하고, 저장된 스위트 시트 목록을 함께 사용하도록 수정. 빈 엑셀 가져오기·0건·6시트·대상 분류·소스 입력 흐름 확인. E2E 9 passed, 전체 791 passed, 1 skipped (기존 경고 2개).
+- 실제 로컬 LLM: 빈 양식에 사용자 제공 엑셀의 혜택 탭 버튼 설명을 발췌해 TC 1건 생성. 화면에서 기능명을 수정하고 새로고침 후 저장 유지 확인. 확인용 TC는 UI에서 삭제해 기본양식 0건 유지. 생성 산출물은 /tmp/tc-blank-generated-cases.json, 화면은 /tmp/tc-studio-blank-generated-edit.png. 빈 양식 파일은 ~/Downloads/TC_빈양식.xlsx.
+- 야핏무브 확인용 스위트 및 보관본은 사용자 삭제 요청으로 제거. API에는 기본양식 6시트·0건만 존재.
+- 계획과 다르게 한 것: 사용자 후속 요청에 따른 컬럼 위치 변경 및 빈 양식 생성 흐름 보완. 새 분류에 기존 예시 TC를 채워 넣지 않고 작성 규칙·입력 문서로 생성한다. Push·병합 없음.
