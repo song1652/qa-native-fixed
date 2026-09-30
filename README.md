@@ -229,4 +229,3 @@ python agents/dashboard/serve.py
 
 - [TC 스튜디오 사용자 설명서](doc/guides/tc-studio/TC_AUTHORING_USER_GUIDE.md): 기획 입력부터 작성·검토·내보내기까지.
 - [스크립트 사용 매뉴얼](doc/guides/SCRIPTS_GUIDE.md): 프로그램 실행 순서와 주요 스크립트 역할.
-- [TC 스튜디오 관련 문서](doc/tc-studio/README.md): PRD·화면 명세·구현 보고·계획 바로가기.

@@ -1,6 +1,6 @@
 # 디렉토리 구조
 
-> **자동 생성** — `python scripts/update_directory.py` | 마지막 갱신: 2026-10-01 01:07
+> **자동 생성** — `python scripts/update_directory.py` | 마지막 갱신: 2026-10-01 02:29
 > 최근 실행: 2026-09-29 13:18 | quick | api_demo | 0/1 | heal:0
 
 > 역할 설명 수정: `scripts/update_directory.py` 내 `SCRIPT_DESCRIPTIONS` / `FOLDER_DESCRIPTIONS` 편집.
@@ -209,7 +209,6 @@
 | `reference/DIRECTORY.md` | 디렉토리 구조 |
 | `reference/PIPELINE_STATE.md` | state/pipeline.json 구조 |
 | `reference/PROMPTS_REFERENCE.md` | 프롬프트 템플릿 레퍼런스 |
-| `tc-studio/README.md` | TC 스튜디오 관련 문서 |
 
 ## 기타
 

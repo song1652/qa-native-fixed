@@ -64,8 +64,6 @@
 | [Import Studio 통합 검토](development/tc-studio/IMPORT_STUDIO_INTEGRATION_REVIEW.md) | 에이전트 논의 결과와 TC 스튜디오 통합 선행 조건. 미구현 제안 |
 | [문서 정리 기록](development/DOCUMENTATION_REVIEW.md) | 이번 분류 기준·중복 처리·확인한 오래된 설명 |
 
-TC 스튜디오 관련 자료만 찾으려면 [기능별 안내](tc-studio/README.md)를 사용하세요.
-
 ## 관리 기준
 
 ```text
@@ -75,8 +73,7 @@ doc/
 ├─ design/                   요구사항(PRD)·아키텍처·화면 설계
 ├─ reference/                API·스키마·프롬프트·자동 생성 구조
 ├─ operations/               에이전트 운영 절차
-├─ development/              구현 보고·완료된 계획·검토 기록
-└─ tc-studio/README.md        TC 스튜디오 관련 문서 바로가기
+└─ development/              구현 보고·완료된 계획·검토 기록
 ```
 
 - 사용 방법은 `guides`, 요구사항과 의도는 `design`, 정확한 계약은 `reference`에 작성합니다.
