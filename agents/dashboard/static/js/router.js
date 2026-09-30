@@ -1,14 +1,17 @@
 // ── View Routing ──
 const IMPORT_STUDIO_PATH = '/import-studio';
+const TC_STUDIO_PATH = '/tc-studio';
 
 function _viewToPath(viewId) {
   if (viewId === 'import_studio') return IMPORT_STUDIO_PATH;
+  if (viewId === 'tc_studio') return TC_STUDIO_PATH;
   if (!viewId) return '/';
   return '/?view=' + encodeURIComponent(viewId);
 }
 
 function _pathToView() {
   if (window.location.pathname === IMPORT_STUDIO_PATH) return 'import_studio';
+  if (window.location.pathname === TC_STUDIO_PATH) return 'tc_studio';
   const params = new URLSearchParams(window.location.search);
   return params.get('view') || '';
 }
@@ -54,6 +57,13 @@ function renderCurrentView() {
       window.IS.init('#import-studio-root').catch(console.error);
     } else {
       main.innerHTML = '<div style="padding:40px;color:var(--text-dim);">Import Studio 로딩 실패 — 페이지를 새로고침하세요.</div>';
+    }
+  } else if (currentView === 'tc_studio') {
+    main.innerHTML = '<div id="tc-studio-root"></div>';
+    if (window.TCS) {
+      window.TCS.init('#tc-studio-root').catch(console.error);
+    } else {
+      main.innerHTML = '<div style="padding:40px;color:var(--text-dim);">TC 스튜디오 로딩 실패 — 페이지를 새로고침하세요.</div>';
     }
   } else if (currentView === 'team_new') {
     renderTeamNew(main);
