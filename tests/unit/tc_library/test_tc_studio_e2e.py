@@ -75,6 +75,10 @@ def test_tree_filters_and_search(studio):
 def test_chip_and_cell_edits_persist(studio):
     _, page = studio
     row = page.locator('tr[data-case="BEN_0002"]')
+    headers = page.locator("#grid thead th").all_text_contents()
+    priority_index = next(i for i, text in enumerate(headers) if "우선순위" in text)
+    assert headers[priority_index + 1] == "실행 결과"
+    expect(row.locator("td").nth(priority_index + 1).locator('[data-id="grid-result"]')).to_be_visible()
     row.locator('[data-id="grid-cell-priority"]').select_option("P3")
     expect(page.locator(".toast.ok").first).to_contain_text("BEN_0002 저장됨")
     cell = row.locator('[data-id="grid-cell-feature"]')

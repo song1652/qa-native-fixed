@@ -54,3 +54,7 @@
 ### [수정] 2026-09-30 -- 대시보드 테스트 격리 경로 복원
 - **문제**: M1 지정 회귀(import_studio→dashboard→core)에서 종료한 dashboard_server의 임시 PROJECT_ROOT가 남아 core 파서 테스트 27개가 scripts/06_heal.py를 찾지 못했다.
 - **재발 방지**: 테스트 서버 context가 끝나면 _paths·serve의 이전 Path 값과 Host/Origin 설정을 복원한다. TC Studio fixture에 context 종료 후 경로 동일 assertion을 추가해 RED→GREEN 확인했다. 기존 테스트 assertion·실행 순서는 유지한다.
+
+### [수정] 2026-09-30 -- TC 라이브러리 결과 컬럼 위치
+- **문제**: 실행 결과가 No. 옆에 있어 사용자가 우선순위와 함께 확인하기 어려웠다.
+- **재발 방지**: 헤더·행·colgroup을 함께 이동하고 브라우저에서 우선순위 바로 다음 컬럼과 드롭다운 위치를 검증한다.

@@ -53,13 +53,13 @@
         </div>
         <div class="grid-wrap" id="grid-wrap">
           <table class="grid" id="grid" data-id="lib-grid" aria-label="케이스 그리드">
-            <colgroup><col style="width:34px"><col style="width:20px"><col style="width:44px"><col style="width:110px"><col style="width:88px"><col style="width:120px"><col style="width:80px"><col style="width:130px"><col style="width:170px"><col style="width:200px"><col style="width:260px"><col style="width:74px"><col style="width:150px"></colgroup>
+            <colgroup><col style="width:34px"><col style="width:20px"><col style="width:44px"><col style="width:88px"><col style="width:120px"><col style="width:80px"><col style="width:130px"><col style="width:170px"><col style="width:200px"><col style="width:260px"><col style="width:74px"><col style="width:110px"><col style="width:150px"></colgroup>
             <thead><tr>
               <th><input type="checkbox" id="grid-check-all" data-id="grid-check-all" aria-label="전체 선택"></th>
-              <th></th><th><span class="xl">A</span>No.</th><th>실행 결과</th>
+              <th></th><th><span class="xl">A</span>No.</th>
               <th><span class="xl">B</span>대분류</th><th><span class="xl">C</span>중분류</th><th><span class="xl">D</span>소분류</th>
               <th><span class="xl">E</span>기능</th><th><span class="xl">F</span>사전 조건</th><th><span class="xl">G</span>Test Step</th>
-              <th><span class="xl">H</span>Expected Result</th><th><span class="xl">I</span>우선순위</th><th><span class="xl">M</span>기타 (id · src)</th>
+              <th><span class="xl">H</span>Expected Result</th><th><span class="xl">I</span>우선순위</th><th>실행 결과</th><th><span class="xl">M</span>기타 (id · src)</th>
             </tr></thead>
             <tbody id="grid-body"></tbody>
           </table>
@@ -205,12 +205,13 @@
         <td><input type="checkbox" data-id="grid-row-check" aria-label="${c.case_id} 선택" ${state.selected.has(c.case_id) ? 'checked' : ''}></td>
         <td><span class="drag" draggable="true" data-id="grid-row-drag" title="트리로 끌어 계층 이동">⋮⋮</span></td>
         <td class="no">${i + 1}</td>
-        <td>${resultSelect(c)}</td>${hier}
+        ${hier}
         <td><div class="cell" data-edit="feature" data-id="grid-cell-feature" tabindex="0">${esc(c.feature)}</div></td>
         <td><div class="cell" data-edit="precondition" data-id="grid-cell-precondition" tabindex="0">${esc(c.precondition)}</div></td>
         <td><div class="cell" data-edit="steps" data-id="grid-cell-steps" tabindex="0">${esc(c.steps.map((s, n) => `${n + 1}. ${s}`).join('\n'))}</div></td>
         <td><div class="cell" data-edit="expected" data-id="grid-cell-expected" tabindex="0">${expHtml(c)}</div>${errors.length ? `<span class="vbadge tag err" title="${esc(errors.map((x) => x.message).join(', '))}">검증 오류 ${errors.length}</span>` : ''}${c.bullets.some((b) => !b.verified) ? ' <span class="vbadge tag warn">추정 문구</span>' : ''}</td>
         <td>${prioritySelect(c)}</td>
+        <td>${resultSelect(c)}</td>
         <td><div class="etc"><span>id:${c.case_id}</span>${c.status !== 'approved' ? `<span class="pill st-${c.status}" data-id="grid-status-chip">${NS.STATUS_LABEL[c.status]}</span>` : ''}${c.note ? `<span>${esc(c.note)}</span>` : ''}</div></td>
       </tr>`;
     }).join('') || `<tr><td colspan="13" style="text-align:center;padding:40px;color:var(--text3)" data-id="grid-empty-filter">조건에 맞는 케이스가 없습니다.</td></tr>`;
