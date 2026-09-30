@@ -322,3 +322,20 @@ def test_retired_auto_default_does_not_restrict_import(roots):
     plan = operation.plan_import(body)
     assert plan['rows'][0]['status'] == 'new'
     assert 'auto' not in plan['rows'][0]['after']
+
+
+def test_imported_cases_are_review_locked_and_reimport_keeps_human_review(roots):
+    operation = ops()
+    operation.commit_import({'run_id': operation.plan_import(upload(roots))['run_id']}, 'test')
+    case = load_cases('suite')[0]
+    assert case['review_source'] == 'import' and case['status'] == 'approved'
+    with pytest.raises(LibraryError) as exc:                              # 가져온 케이스는 검토 상태 잠금
+        patch_case('suite', case['case_id'], case['rev'], {'status': 'rejected'}, 'test')
+    assert exc.value.code == 'IMPORTED_REVIEW_LOCKED'
+    patch_case('suite', case['case_id'], case['rev'], {'feature': '편집은 됨'}, 'test')   # 내용 편집은 가능
+    # 사람이 검토한 케이스로 바뀐 뒤 같은 원본 ID로 다시 가져와도 '가져옴'으로 되돌아가지 않는다
+    from _tc_library import set_review_source
+    set_review_source('suite', case['case_id'], 'human')
+    plan = operation.plan_import(upload(roots, feature='엑셀 수정'))
+    operation.commit_import({'run_id': plan['run_id'], 'overwrite': [case['case_id']]}, 'test')
+    assert load_cases('suite')[0]['review_source'] == 'human'

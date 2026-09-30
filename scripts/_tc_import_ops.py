@@ -17,7 +17,9 @@ from pathlib import Path
 
 import _paths
 from _state import read_state, update_state
-from _tc_library import LibraryError, _append_history, _entry, load_cases, suite_dir, suite_lock, without_auto
+from _tc_library import (
+    LibraryError, _append_history, _backfill_review_source, _entry, load_cases, suite_dir, suite_lock, without_auto,
+)
 from _tc_model import EDITABLE_FIELDS, next_case_id, now_iso
 from _tc_template import analyze_with_mapping, analyze_workbook, profile_from_mapping
 from _tc_xlsx_import import import_workbook
@@ -410,10 +412,13 @@ def commit_import(body: dict, actor: str = 'web') -> dict:
                 data['cases'][data['cases'].index(old)] = case
                 result['updated'] += 1
             else:
+                case['review_source'] = 'import'     # 새로 가져온 케이스만. 갱신은 기존 값을 유지한다
                 data['cases'].append(case)
                 result['created'] += 1
             entries.append(_entry(case['case_id'], '*', old, case, actor, 'import'))
         data['sheets'] = list(dict.fromkeys(data.get('sheets', []) + [sheet for source in run['sources'] for sheet in source['sheets']]))
+        if not data.get('review_source_backfilled'):     # 가져온 뒤 목록 조회가 보정하며 파일을 바꾸면 롤백이 막힌다
+            data = _backfill_review_source(run['suite'], data)
         template, profiles = _merge_templates(run, before)
         after = {**before, 'cases.json': base64.b64encode(json.dumps(data, ensure_ascii=False, indent=2).encode()).decode(),
                  'template.xlsx': base64.b64encode(template).decode(),

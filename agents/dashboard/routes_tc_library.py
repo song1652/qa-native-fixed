@@ -283,7 +283,7 @@ class TcLibraryRoutesMixin:
 
     # ── 내보내기 ──────────────────────────────────────────────────
     def _tcl_export_xlsx(self, suite: str):
-        from _tc_library import LibraryError, load_cases, load_profiles, suite_dir
+        from _tc_library import LibraryError, is_imported, load_cases, load_profiles, suite_dir
         from _tc_xlsx_export import export_workbook, verify_export
         body = _read_body(self)
         profiles = load_profiles(suite)
@@ -293,7 +293,7 @@ class TcLibraryRoutesMixin:
         scope = body.get("scope", "all")
         drop: tuple[str, ...] = ()
         if scope == "approved":
-            cases = [c for c in cases if c["status"] == "approved"]
+            cases = [c for c in cases if c["status"] == "approved" and not is_imported(c)]   # 사람이 승인한 것만
         elif scope == "sheets":
             keep = set(body.get("sheets", []))
             cases = [c for c in cases if c["sheet"] in keep]

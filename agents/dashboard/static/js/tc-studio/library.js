@@ -38,7 +38,7 @@
           <select class="fselect" id="lib-filter-result" data-id="lib-filter-result" aria-label="실행 결과">
             ${opt('', '실행 결과 전체')}${opt('none', '미실행')}${opt('pass', 'Pass')}${opt('fail', 'Fail')}${opt('not_test', 'Not Test')}${opt('na', 'N/A')}</select>
           <select class="fselect" id="lib-filter-status" data-id="lib-filter-status" aria-label="검토 상태">
-            ${opt('', '검토 상태 전체')}${Object.entries(NS.STATUS_LABEL).map(([v, l]) => opt(v, l)).join('')}</select>
+            ${opt('', '검토 상태 전체')}${Object.entries(NS.STATUS_LABEL).map(([v, l]) => opt(v, l)).join('')}${opt('imported', '가져옴')}</select>
           <select class="fselect" id="lib-filter-priority" data-id="lib-filter-priority" aria-label="우선순위">
             ${opt('', '우선순위 전체')}${NS.PRIORITIES.map((p) => opt(p, p)).join('')}${opt('-', '미지정')}</select>
           <select class="fselect" id="lib-filter-source" data-id="lib-filter-source" aria-label="출처">
@@ -393,8 +393,10 @@
 
   async function bulkSet(field, value, label) {
     const res = await api.bulk(state.suite, selectedItems(), 'set', field, value);
-    const skipped = res.conflicts.length ? ` · ${res.conflicts.length}건은 다른 곳에서 바뀌어 건너뜀` : '';
-    toast(`${res.updated.length}건의 ${label}을(를) 바꿨습니다${skipped}`, res.conflicts.length ? 'warn' : 'ok');
+    const imported = (res.skipped || []).length;
+    const skipped = (res.conflicts.length ? ` · ${res.conflicts.length}건은 다른 곳에서 바뀌어 건너뜀` : '')
+      + (imported ? ` · ${imported}건은 가져온 케이스라 건너뜀` : '');
+    toast(`${res.updated.length}건의 ${label}을(를) 바꿨습니다${skipped}`, res.conflicts.length || imported ? 'warn' : 'ok');
     await refresh();
   }
 

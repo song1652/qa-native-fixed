@@ -85,6 +85,7 @@
 .tc-studio .pill.nodot::before { display:none; }
 .tc-studio .st-draft { background:var(--accent-soft); color:var(--accent); }
 .tc-studio .st-approved { background:var(--ok-bg); color:var(--ok); }
+.tc-studio .st-imported { background:var(--card3); color:var(--text3); }
 .tc-studio .st-rejected { background:var(--err-bg); color:var(--err); }
 .tc-studio .st-needs_review { background:var(--warn-bg); color:var(--warn); }
 .tc-studio .st-invalid { background:var(--err-bg); color:var(--err); }

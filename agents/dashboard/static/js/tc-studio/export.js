@@ -22,7 +22,7 @@
               <label class="radio"><input type="radio" name="xscope" value="sheets"> 선택한 시트 <span class="n" id="x-sheets-n"></span></label>
               <div class="sheet-picks" id="xlsx-sheets" data-id="xlsx-sheets" role="group" aria-label="내보낼 시트" hidden></div>
               <label class="radio"><input type="radio" name="xscope" value="case_ids"> 현재 필터 결과 <span class="n" id="x-filter-n"></span></label>
-              <label class="radio"><input type="radio" name="xscope" value="approved"> 승인된 케이스만</label>
+              <label class="radio"><input type="radio" name="xscope" value="approved"> 승인된 케이스만 <span class="n" id="x-approved-n" data-id="xlsx-approved-note"></span></label>
             </div></div>
           <div class="warnbox" data-id="xlsx-openpyxl-warning"><b>다시 저장하면 사라질 수 있는 요소</b>
             <span>이미지·차트와 일부 조건부서식은 사본에서 빠질 수 있습니다. 검사 결과를 확인한 뒤 내려받으세요.</span></div>
@@ -135,6 +135,7 @@
     lastExport = null;
     const suite = state.suites.find((s) => s.suite === state.suite);
     $('#x-all-n', root).textContent = suite ? suite.count : 0;
+    $('#x-approved-n', root).textContent = suite && suite.imported ? `가져온 케이스 ${suite.imported}건 제외` : '';
     $('#x-filter-n', root).textContent = state.items.length;
     const counts = Object.fromEntries((state.tree || []).map((n) => [n.name, n.count]));
     $('#xlsx-sheets', root).innerHTML = (suite ? suite.sheets : []).map((s) => `<label class="sheet-pick"><input type="checkbox" value="${esc(s)}" checked>${esc(s)}<span class="n">${counts[s] ?? 0}</span></label>`).join('');

@@ -152,8 +152,11 @@ def list_suites() -> list[dict]:
     for d in sorted(p for p in root.iterdir() if p.is_dir() and not p.name.startswith("_")):
         with suite_lock(d.name):
             data = read_state(d / "cases.json")
+            if data and not data.get("review_source_backfilled"):
+                data = update_state(d / "cases.json", lambda cur: _backfill_review_source(d.name, cur))
         live = [c for c in data.get("cases", []) if not c.get("deleted")]
         suites.append({"suite": d.name, "sheets": data.get("sheets", []), "count": len(live),
+                       "imported": sum(map(is_imported, live)),
                        "protected": d.name == DEFAULT_SUITE})
     return suites
 
@@ -181,6 +184,45 @@ def get_case(suite: str, case_id: str) -> dict:
     raise LibraryError(f"케이스가 없습니다: {case_id}", "CASE_NOT_FOUND", 404)
 
 
+# 누가 승인했는가: "import"(엑셀에서 가져와 자동 승인) / "human"(사람이 검토). 없으면 human으로 본다.
+# 가져온 케이스는 검토 대상이 아니라 검토 상태를 바꿀 수 없다. 재가져오기는 이 값을 덮지 않는다.
+REVIEW_IMPORT = "import"
+
+
+def is_imported(case: dict) -> bool:
+    return case.get("review_source") == REVIEW_IMPORT
+
+
+def _backfill_review_source(suite: str, data: dict) -> dict:
+    """review_source가 생기기 전 데이터를 변경 이력으로 한 번만 채운다. 가져오기로 만들어졌고
+    사람이 검토 상태를 바꾼 기록이 없으면 import. 이력이 없으면 추측하지 않는다(human)."""
+    created_by_import, status_edited = set(), set()
+    path = _history_path(suite)
+    for line in (path.read_text(encoding="utf-8").splitlines() if path.exists() else []):
+        try:
+            e = json.loads(line)
+        except ValueError:
+            continue
+        if (e.get("kind") == "import" and e.get("before") is None) or \
+                (e.get("kind") == "create" and e.get("after") == "import"):
+            created_by_import.add(e["case_id"])
+        elif e.get("field") == "status":
+            status_edited.add(e["case_id"])
+    for case in data.get("cases", []):
+        if "review_source" not in case and case["case_id"] in created_by_import \
+                and case["case_id"] not in status_edited and case["status"] == "approved":
+            case["review_source"] = REVIEW_IMPORT
+    return {**data, "review_source_backfilled": True}
+
+
+@_writes
+def set_review_source(suite: str, case_id: str, source: str) -> None:
+    def mutate(data: dict) -> dict:
+        _find(data, case_id)["review_source"] = source
+        return data
+    update_state(_cases_path(suite), mutate)
+
+
 def _entry(case_id: str, field: str, before, after, actor: str, kind: str = "edit") -> dict:
     return {"history_id": "h_" + secrets.token_hex(6), "case_id": case_id, "field": field,
             "before": before, "after": after, "actor": actor, "kind": kind, "at": now_iso()}
@@ -200,6 +242,8 @@ def _append_history(suite: str, entries: list[dict]) -> None:
 
 def _apply(case: dict, changes: dict, actor: str) -> list[dict]:
     entries = []
+    if "status" in changes and changes["status"] != case["status"] and is_imported(case):
+        raise LibraryError("엑셀에서 가져온 케이스는 검토 상태를 바꿀 수 없습니다", "IMPORTED_REVIEW_LOCKED", 409)
     for field, value in changes.items():
         if field not in EDITABLE_FIELDS:
             raise LibraryError(f"수정할 수 없는 필드입니다: {field}", "FIELD_NOT_EDITABLE")
@@ -244,6 +288,7 @@ def import_cases(suite: str, sheets: list[str], incoming: list[dict], actor: str
         for new in incoming:
             old = by_id.get(new["case_id"])
             if old is None:
+                new = {**new, "review_source": REVIEW_IMPORT}
                 cases.append(new)
                 by_id[new["case_id"]] = new
                 history.append(_entry(new["case_id"], "*", None, "import", actor, "create"))
@@ -285,7 +330,7 @@ def patch_case(suite: str, case_id: str, base_rev: int, changes: dict, actor: st
 @_writes
 def bulk_patch(suite: str, items: list[dict], changes: dict, actor: str) -> dict:
     """rev가 맞는 케이스만 바꾸고 나머지는 conflicts로 돌려준다 (피드백 #15)."""
-    result: dict = {"updated": [], "conflicts": []}
+    result: dict = {"updated": [], "conflicts": [], "skipped": []}
     history: list[dict] = []
 
     def mutate(data: dict) -> dict:
@@ -294,7 +339,13 @@ def bulk_patch(suite: str, items: list[dict], changes: dict, actor: str) -> dict
             if case["rev"] != item["rev"]:
                 result["conflicts"].append(dict(case))
                 continue
-            history.extend(_apply(case, changes, actor))
+            try:
+                history.extend(_apply(case, changes, actor))
+            except LibraryError as exc:
+                if exc.code != "IMPORTED_REVIEW_LOCKED":
+                    raise
+                result["skipped"].append(case["case_id"])     # 가져온 케이스는 검토 상태 일괄 변경에서 건너뜀
+                continue
             result["updated"].append(case["case_id"])
         return data
 
@@ -417,8 +468,11 @@ def filter_cases(cases: list[dict], query: dict) -> list[dict]:
         keys = [case["sheet"], *[p for p in case["path"] if p], case["feature"]]
         if path and keys[: len(path)] != path:
             continue
-        if query.get("status") and case["status"] != query["status"]:
+        status = query.get("status")
+        if status == "imported" and not is_imported(case):
             continue
+        if status and status != "imported" and (case["status"] != status or (status == "approved" and is_imported(case))):
+            continue   # '승인' = 사람이 승인한 것만. 가져온 케이스는 '가져옴'으로 따로 거른다
         if "execution_result" in query and query["execution_result"] != "*" \
                 and case["execution_result"] != query["execution_result"]:
             continue

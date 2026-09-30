@@ -25,7 +25,7 @@ def test_import_is_idempotent_and_updates_by_case_id(seeded):
     changed[0]["priority"] = "P1"
     assert lib.import_cases(SUITE, ["혜택", "홈"], changed, "tester")["updated"] == 1
     assert lib.get_case(SUITE, "BEN_0001")["rev"] == 2
-    assert lib.list_suites() == [{"suite": SUITE, "sheets": ["혜택", "홈"], "count": 6, "protected": False}]
+    assert lib.list_suites() == [{"suite": SUITE, "sheets": ["혜택", "홈"], "count": 6, "imported": 6, "protected": False}]
 
 
 def test_patch_bumps_rev_and_rejects_stale_rev(seeded):
@@ -191,3 +191,30 @@ def test_add_sheet_copies_only_format_without_sample_cases(seeded):
     for name in ['회원가입', 'bad/name', '']:
         with pytest.raises(lib.LibraryError):
             lib.add_sheet(SUITE, name)
+
+
+def test_bulk_status_skips_imported_and_filters_separate_imported_from_approved(seeded):
+    cases = lib.load_cases(SUITE)
+    items = [{"case_id": c["case_id"], "rev": c["rev"]} for c in cases]
+    result = lib.bulk_patch(SUITE, items, {"status": "rejected"}, "tester")
+    assert set(result["skipped"]) >= {c["case_id"] for c in cases if lib.is_imported(c)}
+    assert all(c["status"] == "approved" for c in lib.load_cases(SUITE) if lib.is_imported(c))
+    everything = lib.load_cases(SUITE)
+    assert len(lib.filter_cases(everything, {"status": "imported"})) == 6
+    assert lib.filter_cases(everything, {"status": "approved"}) == []    # '승인' = 사람이 승인한 것만
+
+
+def test_backfill_marks_legacy_imports_from_history_but_not_human_reviewed(seeded):
+    import json
+    path = lib._cases_path(SUITE)
+    data = json.loads(path.read_text(encoding="utf-8"))
+    for c in data["cases"]:
+        c.pop("review_source", None)                                     # 표시가 없던 예전 데이터
+    data.pop("review_source_backfilled", None)
+    path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+    first = data["cases"][0]["case_id"]
+    lib._append_history(SUITE, [lib._entry(first, "status", "approved", "draft", "web")])
+    lib._append_history(SUITE, [lib._entry(first, "status", "draft", "approved", "web")])   # 사람이 검토함
+    assert lib.list_suites()[0]["imported"] == 5
+    marked = {c["case_id"]: c.get("review_source") for c in lib.load_cases(SUITE)}
+    assert marked[first] is None and list(marked.values()).count("import") == 5

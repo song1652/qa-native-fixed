@@ -349,3 +349,13 @@ def test_export_selected_sheets_are_checkbox_chips_with_counts(studio):
     picks.locator("label", has_text="혜택").click()
     page.locator('[data-id="xlsx-run-check"]').click()
     expect(page.locator('[data-id="xlsx-download"]')).to_be_enabled()
+
+
+def test_imported_cases_show_review_as_disabled(studio):
+    _, page = studio
+    rows(page).first.click()
+    expect(page.locator('[data-id="detail-imported"]')).to_have_text("가져옴")
+    expect(page.locator('[data-id="detail-status"]')).to_be_disabled()
+    expect(page.locator('[data-id="detail-status"]')).to_have_attribute("title", re.compile("엑셀에서 가져온"))
+    page.locator('[data-id="nav-tab-export"]').click()
+    expect(page.locator('[data-id="xlsx-approved-note"]')).to_have_text("가져온 케이스 6건 제외")

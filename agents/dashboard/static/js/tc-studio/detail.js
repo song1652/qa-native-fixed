@@ -127,7 +127,10 @@
   function fill() {
     const c = draft;
     $('#d-id', root).textContent = c.case_id;
-    $('#d-status', root).innerHTML = `<span class="pill st-${current.status}">${NS.STATUS_LABEL[current.status]}</span>`
+    const imported = NS.isImported(current);
+    $('#d-status', root).innerHTML = (imported
+      ? `<span class="pill st-imported" data-id="detail-imported" title="${esc(NS.importedTitle(current))}">가져옴</span>`
+      : `<span class="pill st-${current.status}">${NS.STATUS_LABEL[current.status]}</span>`)
       + ((current.flags || {}).source_change ? ' <span class="pill st-needs_review">재검토 필요</span>' : '');
     $('#d-rev', root).textContent = `rev ${current.rev}`;
     $('#detail-feature', root).value = c.feature;
@@ -135,6 +138,8 @@
     $('#detail-priority', root).value = c.priority;
     $('#detail-result', root).value = c.execution_result;
     $('#detail-status', root).value = c.status;
+    $('#detail-status', root).disabled = imported;
+    $('#detail-status', root).title = imported ? NS.importedTitle(current) : '';
     $('#detail-precondition', root).value = c.precondition;
     $('#detail-expected', root).value = c.expected;
     $('#detail-note', root).value = c.note;

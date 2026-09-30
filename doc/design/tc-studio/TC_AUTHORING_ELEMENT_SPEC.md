@@ -142,7 +142,7 @@
 | `detail-feature` | 기능명 입력 | 패널 헤더 | 입력 → 변경 표시 | error: 빈 값 | 필수 | 저장 시 일괄 PATCH | F5.2 |
 | `detail-move` | 경로 이동 | 패널 헤더 경로 옆 | 클릭 → `move-modal` | — | — | — | F5.3 |
 | `detail-tab-edit` / `detail-tab-source` / `detail-tab-history` | 편집 · 원문 · 이력 탭 | 패널 탭 줄 | 클릭 → 해당 탭 | 선택 탭 밑줄 | — | 원문: `GET /api/tc-library/sources/{bundle}/excerpt?ref=` / 이력: `GET /api/tc-library/{suite}/cases/{case_id}/history` | F5.5, F5.11 |
-| `detail-priority` / `detail-result` / `detail-status` | 우선순위 · 실행 결과 · 검토 상태 | 편집 탭 상단 | 변경 → 변경 표시 | — | 검토 상태를 approved로 바꿀 때 검증 오류가 있으면 저장 거부 | 저장 시 PATCH | F5.2, F5.8 |
+| `detail-priority` / `detail-result` / `detail-status` | 우선순위 · 실행 결과 · 검토 상태 | 편집 탭 상단 | 변경 → 변경 표시 | — | 검토 상태를 approved로 바꿀 때 검증 오류가 있으면 저장 거부. 가져옴(`review_source=import`) 케이스는 `detail-status` 비활성 + 출처 툴팁, 헤더 칩 `detail-imported`, 서버도 409 `IMPORTED_REVIEW_LOCKED` | 저장 시 PATCH | F5.2, F5.8 |
 | `detail-precondition` | 사전 조건 | 편집 탭 | 입력 | — | — | 저장 시 PATCH | F5.2 |
 | `detail-steps` | Step 목록 | 편집 탭 | 줄마다 번호 자동 표시(입력칸에는 번호 없이) | — | 빈 Step이 있으면 저장 거부 | 저장 시 PATCH `steps[]` | F5.2 |
 | `detail-step-drag` | Step 끌기 핸들 | 각 Step 왼쪽 | 끌어서 놓기 → 순서 변경, 번호 다시 매김. 키보드: 입력칸에서 Alt+↑/↓ | 끄는 중 반투명, 놓을 곳 보라 테두리 | — | — | F5.2 |
@@ -284,7 +284,7 @@
 
 | 요소 ID | 요소 | 위치 | 동작(트리거→결과) | 상태 | 검증·제약 | API 호출 | 관련 PRD |
 |---|---|---|---|---|---|---|---|
-| `xlsx-scope` | 범위 라디오 | 엑셀 카드 | 전체 / 선택한 시트 / 현재 필터 결과 / 승인된 케이스만. 각 항목 옆 건수. 바꾸면 검사 결과 초기화, 내려받기 disabled | 선택 보라 | "현재 필터 결과"는 라이브러리 필터를 그대로 사용 | — | F6.1 |
+| `xlsx-scope` | 범위 라디오 | 엑셀 카드 | 전체 / 선택한 시트(체크박스 칩 `xlsx-sheets`, 시트별 건수) / 현재 필터 결과 / 승인된 케이스만(가져옴 제외, `xlsx-approved-note`에 제외 건수). 각 항목 옆 건수. 바꾸면 검사 결과 초기화, 내려받기 disabled | 선택 보라 | "현재 필터 결과"는 라이브러리 필터를 그대로 사용 | — | F6.1 |
 | `xlsx-sheets` | 시트 선택 | "선택한 시트" 옆 | 선택 | — | — | — | F6.1 |
 | `xlsx-openpyxl-warning` | 저장 손실 경고 | 엑셀 카드 | 템플릿 분석 때 센 조건부서식·이미지·차트 수와 손실 위험 | 노랑 | — | template_profile 값 | F2.6 |
 | `xlsx-run-check` | 검사 실행 | 무결성 검사 영역 | 클릭 → 서버가 사본에 쓰고 다시 열어 검사. 결과 목록 표시, 성공 시 내려받기 활성 | loading("사본에 쓰고 다시 여는 중…") / error(✕ 항목이 있으면 내려받기 disabled) | 항상 원본이 아닌 사본 | `POST /api/tc-library/{suite}/export/xlsx` `{scope, sheets?, filter?, history_note, dry_run:true}` → `{export_id, checks:[{ok, level, text}]}` | F6.2, F6.3, F6.6 |

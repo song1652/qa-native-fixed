@@ -17,6 +17,9 @@
   };
 
   NS.STATUS_LABEL = { draft: '초안', approved: '승인', rejected: '반려', needs_review: '재검토 필요' };
+  // 엑셀에서 가져와 자동 승인된 케이스 — 검토 대상이 아니라 검토 상태를 바꿀 수 없다
+  NS.isImported = (c) => c.review_source === 'import';
+  NS.importedTitle = (c) => `엑셀에서 가져온 케이스는 검토 상태를 바꿀 수 없습니다${c.import_origin && c.import_origin.filename ? ` (출처: ${c.import_origin.filename.replace(/^xlsx:/, '')})` : ''}`;
   NS.RESULT_LABEL = { '': '미실행', pass: 'Pass', fail: 'Fail', not_test: 'Not Test', na: 'N/A' };
   NS.PRIORITIES = ['P0', 'P1', 'P2', 'P3'];
 

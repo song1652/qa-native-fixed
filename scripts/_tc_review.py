@@ -6,7 +6,7 @@ from difflib import SequenceMatcher
 
 from _tc_library import (
     LibraryError, RevConflict, add_source_refs, delete_cases, get_case, load_cases, patch_case,
-    set_draft_meta,
+    set_draft_meta, set_review_source,
 )
 
 DUPLICATE_THRESHOLD = 0.7
@@ -61,6 +61,7 @@ def resolve_duplicate(suite: str, draft_id: str, draft_rev: int, action: str, ac
     fields = ("feature", "precondition", "steps", "expected", "bullets", "priority")
     changes = {f: draft[f] for f in fields if draft[f] != target[f] and (draft[f] or f == "precondition")}
     patch_case(suite, target_id, target_rev, {**changes, "status": "approved"}, actor)
+    set_review_source(suite, target_id, "human")     # 초안 검토에서 사람이 합쳐 승인했다
     updated = add_source_refs(suite, target_id, draft["source_refs"])
     delete_cases(suite, [{"case_id": draft_id, "rev": draft_rev}], actor)
     return {"target": updated, "deleted_draft": draft_id}
