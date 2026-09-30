@@ -33,6 +33,22 @@
 .tc-studio .page-title { font-size:20px; font-weight:700; letter-spacing:-.02em; margin:0; }
 .tc-studio .crumb { font-size:12px; color:var(--text3); }
 .tc-studio .suite-select { background:var(--card); border:1px solid var(--line); border-radius:var(--radius-sm); padding:5px 8px; font-weight:600; }
+/* 스위트 목록: 브라우저 기본 목록(macOS는 선택 항목 기준으로 위로 펼쳐짐) 대신 디자인에 맞춘 목록을 항상 아래로 연다.
+   지원하지 않는 브라우저는 기본 목록을 그대로 쓴다 */
+@supports (appearance: base-select) {
+  .tc-studio .suite-select, .tc-studio .suite-select::picker(select) { appearance:base-select; }
+  .tc-studio .suite-select { display:inline-flex; align-items:center; gap:10px; min-width:240px; padding:6px 10px; color:var(--text); cursor:pointer; transition:border-color .15s; }
+  .tc-studio .suite-select:hover, .tc-studio .suite-select:open { border-color:var(--accent); }
+  .tc-studio .suite-select::picker-icon { margin-left:auto; color:var(--text3); transition:rotate .15s; }
+  .tc-studio .suite-select:open::picker-icon { rotate:180deg; }
+  .tc-studio .suite-select::picker(select) { position-area:block-end span-inline-end; position-try-fallbacks:none; margin-top:6px;
+    min-width:anchor-size(width); max-height:min(360px, 60vh); overflow-y:auto; padding:6px;
+    background:var(--card2); border:1px solid var(--line2); border-radius:var(--radius); box-shadow:var(--shadow); color:var(--text); }
+  .tc-studio .suite-select option { display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:var(--radius-sm); font-weight:500; font-size:13px; color:var(--text2); cursor:pointer; }
+  .tc-studio .suite-select option:hover, .tc-studio .suite-select option:focus-visible { background:var(--accent-soft); color:var(--text); outline:none; }
+  .tc-studio .suite-select option:checked { color:var(--text); font-weight:600; background:rgba(139,92,246,.22); }
+  .tc-studio .suite-select option::checkmark { order:1; margin-left:auto; color:var(--accent); }
+}
 .tc-studio .demo-box { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text3); border:1px dashed var(--line2); border-radius:var(--radius-sm); padding:3px 6px; }
 .tc-studio .demo-box select { background:transparent; border:none; font-size:11px; color:var(--text2); }
 .tc-studio .wizard { display:flex; align-items:center; overflow-x:auto; scrollbar-width:none; }

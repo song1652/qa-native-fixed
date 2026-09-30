@@ -238,3 +238,19 @@ def test_studio_does_not_poll_dashboard_apis_every_five_seconds(studio):
     page.on("request", lambda r: calls.append(r.url) if "/api/dialogs" in r.url else None)
     page.wait_for_timeout(12000)          # time.sleep은 sync API의 이벤트 전달을 막는다
     assert len(calls) <= 1, calls
+
+
+# ── 스위트 목록: 디자인 목록을 항상 아래로 연다 ────────────────
+def test_suite_list_opens_below_with_studio_style(studio):
+    base, page, tmp_path = studio
+    _seed(base, tmp_path, suite="다른스위트", sheets=["홈"])
+    page.reload()
+    select = page.locator('[data-id="suite-select"]')
+    assert select.evaluate("e => getComputedStyle(e).appearance") == "base-select"
+    select.click()
+    first = page.locator('[data-id="suite-select"] option').first
+    expect(first).to_be_visible()
+    box = select.bounding_box()
+    assert first.bounding_box()["y"] >= box["y"] + box["height"]
+    page.locator('[data-id="suite-select"] option', has_text="다른스위트").click()
+    expect(rows(page)).to_have_count(1)
