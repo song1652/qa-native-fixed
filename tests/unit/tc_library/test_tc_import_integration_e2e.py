@@ -1,6 +1,7 @@
 """통합 가져오기 기능을 사용자가 클릭하는 흐름으로 확인한다."""
 from pathlib import Path
 import json
+import re
 import urllib.request
 
 import openpyxl
@@ -56,8 +57,14 @@ def test_import_preview_commit_history_and_rollback(page, tmp_path):
             page.locator(f'[data-map="{key}"]').fill(col)
         page.locator('#import-file').set_input_files(str(workbook(tmp_path/'practice.xlsx')))
         page.locator('#import-suite').fill('통합확인')
+        # 미리보기 전: 다음 단계인 '변경 미리보기'가 강조되고, 가져오기는 이유를 알려 준다
+        expect(page.locator('#import-plan')).to_have_class(re.compile('btn-primary'))
+        expect(page.locator('#import-confirm')).to_be_disabled()
+        expect(page.locator('#import-confirm')).to_have_attribute('title', re.compile('변경 미리보기'))
         page.locator('[data-id="import-plan"]').click()
         expect(page.locator('[data-id="import-plan-rows"]')).to_contain_text('이름 오류 표시')
+        expect(page.locator('#import-confirm')).to_have_class(re.compile('btn-primary'))
+        expect(page.locator('#import-plan')).not_to_have_class(re.compile('btn-primary'))
         page.locator('#import-confirm').click()
         expect(page.locator('#suite-select')).to_have_value('통합확인')
         expect(page.locator('#grid-body tr[data-case]')).to_have_count(1)

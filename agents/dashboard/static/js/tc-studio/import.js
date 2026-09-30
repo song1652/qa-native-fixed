@@ -115,8 +115,9 @@
     const valid=!mappingDirty&&previews.length&&payload.sources.length&&/^[\w가-힣-]+$/.test(payload.suite)&&!payload.suite.startsWith('_')&&payload.sources.every(s=>s.sheets.every(x=>/^[A-Z][A-Z0-9]{0,7}$/.test(s.prefixes[x])));
     $('#import-plan',root).disabled=!valid||busy;
     const noSheets=previews.length&&previews.every(p=>!p.sheets.length);
-    $('#import-summary',root).textContent=valid?`${count}건 · 변경 미리보기를 확인하세요`:noSheets?'인식된 시트가 없습니다. 헤더(대분류·기능·Step·Expected Result)를 찾지 못했습니다. 양식 인식에서 직접 매핑을 선택하세요':'스위트·시트·접두어를 확인하세요';
+    $('#import-summary',root).textContent=valid?(plan?`${count}건 · 변경 내용을 확인한 뒤 가져오기를 누르세요`:`${count}건 · 변경 미리보기를 눌러 바뀌는 내용을 먼저 확인하세요`):noSheets?'인식된 시트가 없습니다. 헤더(대분류·기능·Step·Expected Result)를 찾지 못했습니다. 양식 인식에서 직접 매핑을 선택하세요':'스위트·시트·접두어를 확인하세요';
     $('#import-confirm',root).textContent=`${count}건 가져오기`;
+    nextStep();
   }
   function caseText(c){
     if(!c)return '없음';if(typeof c==='string')return c;
@@ -134,11 +135,18 @@
   }
   async function makePlan(){
     busy=true;const version=planVersion;$('#import-plan',root).disabled=true;$('#import-confirm',root).disabled=true;
-    try{const result=await api.importPlan(selection());if(version!==planVersion)return;plan=result;$('#import-plan-rows',root).innerHTML=rowsHtml(plan.rows,true);$('#import-plan-panel',root).hidden=false;updateCommit();}
+    try{const result=await api.importPlan(selection());if(version!==planVersion)return;plan=result;$('#import-plan-rows',root).innerHTML=rowsHtml(plan.rows,true);$('#import-plan-panel',root).hidden=false;$('#import-plan-panel',root).scrollIntoView({block:'start',behavior:'smooth'});updateCommit();}
     catch(err){toast(`미리보기 실패: ${esc(err.message)}`,'err');}
     finally{busy=false;updateSummary(true);}
   }
-  function updateCommit(){ $('#import-confirm',root).disabled=!plan||$$('[data-decision]',root).some(s=>!s.value); }
+  function updateCommit(){ $('#import-confirm',root).disabled=!plan||$$('[data-decision]',root).some(s=>!s.value); nextStep(); }
+  // 다음에 누를 버튼을 강조한다: 미리보기 전엔 '변경 미리보기', 미리보기 후엔 '가져오기'
+  function nextStep(){
+    const planBtn=$('#import-plan',root),confirmBtn=$('#import-confirm',root);
+    planBtn.classList.toggle('btn-primary',!plan);planBtn.classList.toggle('btn-ghost',!!plan);
+    confirmBtn.classList.toggle('btn-primary',!!plan);confirmBtn.classList.toggle('btn-ghost',!plan);
+    confirmBtn.title=confirmBtn.disabled?(plan?'충돌 행마다 덮어쓰기 또는 제외를 선택하세요':'먼저 변경 미리보기로 바뀌는 내용을 확인하세요'):'';
+  }
   async function confirm(){
     if(!plan||busy)return;busy=true;$('#import-confirm',root).disabled=true;
     try{
