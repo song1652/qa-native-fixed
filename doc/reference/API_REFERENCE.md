@@ -130,7 +130,11 @@
 
 | 메서드 | 경로 | 설명 |
 |---|---|---|
-| GET | `/api/tc-library` | 스위트 목록 `{suites:[{suite, sheets, count}]}` |
+| GET | `/api/tc-library` | 스위트 목록 `{suites:[{suite, sheets, count, imported, protected}]}`. `imported`=가져옴 케이스 수, `protected`=기본양식(삭제 불가) |
+| DELETE | `/api/tc-library/{suite}?confirm={suite}` | 스위트를 휴지통으로 이동. 기본양식은 409 `DEFAULT_SUITE` |
+| GET | `/api/tc-library/trash` | 휴지통 `{items, retention_days}`. 보관 기간이 지난 항목은 이때 영구 삭제 |
+| POST | `/api/tc-library/trash/{trash_id}/restore` | 복원 `{restored}`. 같은 이름이 있으면 409 `SUITE_EXISTS` |
+| DELETE | `/api/tc-library/trash/{trash_id}?confirm={suite}` | 영구 삭제 `{purged}`. 이름 불일치 400 `CONFIRM_MISMATCH` |
 | POST | `/api/tc-library/import/preview?filename=&mapping=` | 본문 = xlsx 바이트. `mapping`은 URL 인코딩 JSON. 시트별 헤더 행·케이스 수·경고 + `preview_id` |
 | POST | `/api/tc-library/import/plan` | `{suite, sources:[{preview_id,sheets,prefixes,sheet_mappings?}]}` → `{run_id,status,rows,summary}`. 단일 `{preview_id,suite,sheets,prefixes}`도 지원 |
 | POST | `/api/tc-library/import` | `{run_id,skip:[case_id],overwrite:[case_id]}` → `{run_id,suite,status,created,updated,unchanged,skipped}`. 기존 단일 파일 본문 호환 지원 |
@@ -138,14 +142,14 @@
 | GET | `/api/tc-library/import/runs/{run_id}` | 작업 상세·행별 변경·결정. 내부 스냅샷/저널 제외 |
 | POST | `/api/tc-library/import/runs/{run_id}/rollback` | 케이스·템플릿·분류·md 설정 복구. 이후 편집 시 409 `SUITE_CHANGED` |
 | GET | `/api/tc-library/{suite}/tree` | 시트 › 대분류 › 중분류 › 소분류 › 제목 트리와 가지별 집계 |
-| GET | `/api/tc-library/{suite}` | 케이스 목록. 쿼리: `sheet path status execution_result(빈 값=미실행) priority source invalid q offset limit` |
+| GET | `/api/tc-library/{suite}` | 케이스 목록. 쿼리: `sheet path status execution_result(빈 값=미실행) priority source invalid q offset limit`. `status=approved`는 사람이 승인한 것만, `status=imported`는 엑셀에서 가져온 케이스(`review_source=import`). 초안의 `issues`에 생성 프로필 기준 문체 경고 `STYLE_BANNED`·`STYLE_ENDING`(warning) 포함 |
 | POST | `/api/tc-library/{suite}/cases` | 케이스 추가 (`after`로 위치 지정), 201 |
-| GET · PATCH · DELETE | `/api/tc-library/{suite}/cases/{case_id}` | 조회 · 부분 수정 `{rev, …}` · 소프트 삭제 `?rev=` |
+| GET · PATCH · DELETE | `/api/tc-library/{suite}/cases/{case_id}` | 조회 · 부분 수정 `{rev, …}` · 소프트 삭제 `?rev=`. 가져옴 케이스의 `status` 변경은 409 `IMPORTED_REVIEW_LOCKED` (일괄 변경은 `skipped`로 돌려줌) |
 | POST | `/api/tc-library/{suite}/cases/{case_id}/duplicate` · `/restore` · `/revert` | 복제 · 삭제 복원 · 이력 되돌리기 `{history_id, rev}` |
 | GET | `/api/tc-library/{suite}/cases/{case_id}/history` | 변경 이력 (최신 먼저) |
 | POST | `/api/tc-library/{suite}/bulk` | `{items:[{case_id,rev}], op:"set"|"delete", field, value}` → `{updated|deleted, conflicts}` |
 | POST | `/api/tc-library/{suite}/move` | `{items, sheet, path, feature?}` → `{moved, conflicts}` |
-| POST | `/api/tc-library/{suite}/export/xlsx` | `{scope, sheets?, case_ids?, history_note}` → `{export_id, filename, checks, count}` |
+| POST | `/api/tc-library/{suite}/export/xlsx` | `{scope, sheets?, case_ids?, history_note}` → `{export_id, filename, checks, count}`. `scope=approved`는 가져옴 케이스 제외 |
 | GET | `/api/tc-library/exports/{export_id}/download` | 내보낸 xlsx 내려받기 |
 
 저장 위치: `state/tc_library/{suite}/` (`cases.json`, `history.jsonl`, `template.xlsx`, `template_profile.json`), 작업 공간 `state/tc_library/_uploads/`, `_exports/`.
@@ -168,7 +172,8 @@ md 이력은 기존 `state/import_sessions`·`import_snapshots`를 사용한다.
 | POST | `/api/tc-library/sources/{bundle}/paste` | 붙여넣기 추가 `{text}` (1MB) |
 | DELETE | `/api/tc-library/sources/{bundle}/{source_id}` | 소스 제거 |
 | GET | `/api/tc-library/sources/{bundle}/excerpt?ref=` | 출처 섹션 발췌 |
-| GET · PUT | `/api/tc-library/profiles` · `/api/tc-library/profiles/{name}` | 작성 프로필 |
+| GET · PUT | `/api/tc-library/profiles` · `/api/tc-library/profiles/{name}` | 작성 프로필 `{rules, banned_phrases, examples, expected_endings, style_examples(≤10), coverage}` |
+| POST | `/api/tc-library/profiles/style-from-xlsx` | 본문=xlsx. 기존 TC의 문체 → `{rules, expected_endings, style_examples, stats}` (저장하지 않음) |
 | POST | `/api/tc-library/{suite}/jobs` | 생성 작업 시작 (동시 1건, 409 `JOB_RUNNING`, 503 `CLAUDE_NOT_FOUND`) |
 | GET | `/api/tc-library/jobs/{job_id}` | 작업 상태 · 로그 끝 40줄 · 버린 초안 |
 | POST | `/api/tc-library/jobs/{job_id}/cancel` | 작업 취소 |

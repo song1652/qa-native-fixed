@@ -1,7 +1,7 @@
 # 디렉토리 구조
 
-> **자동 생성** — `python scripts/update_directory.py` | 마지막 갱신: 2026-09-30 22:36
-> 최근 실행: 2026-09-30 18:38 | single | tc_studio_demo | 5/5 | heal:0
+> **자동 생성** — `python scripts/update_directory.py` | 마지막 갱신: 2026-10-01 01:07
+> 최근 실행: 2026-09-29 13:18 | quick | api_demo | 0/1 | heal:0
 
 > 역할 설명 수정: `scripts/update_directory.py` 내 `SCRIPT_DESCRIPTIONS` / `FOLDER_DESCRIPTIONS` 편집.
 
@@ -53,6 +53,7 @@
 | `_tc_source_watch.py` | 출처 버전 변경 추적 |
 | `_tc_sources.py` | TC 생성용 소스 묶음 (PDF·DOCX·MD·TXT·붙여넣기 → markdown) |
 | `_tc_template.py` | 엑셀 TC 템플릿 분석 (헤더·컬럼·드롭다운·No. 수식) |
+| `_tc_trash.py` |  |
 | `_tc_xlsx_export.py` | TC 라이브러리 → 템플릿 사본 xlsx + 무결성 검사 |
 | `_tc_xlsx_import.py` | 엑셀 시트 → TC 라이브러리 케이스 |
 | `_validators.py` | 대시보드 serve.py 입력 검증 헬퍼 (부작용 없이 재사용 가능하도록 분리) |
@@ -88,10 +89,10 @@
 
 | 그룹 | TC 수 | 최근 실행 결과 |
 |------|-------|---------------|
-| `api_demo/` | 1개 | - |
-| `customer_login/` | 2개 | - |
-| `partner_login/` | 2개 | - |
-| `tc_studio_demo/` | 8개 | 5/5 (100%) |
+| `api_demo/` | 1개 | 0/1 (0%) |
+| `customer_login/` | 2개 | 4/4 (100%) |
+| `partner_login/` | 2개 | 4/4 (100%) |
+| `tc_studio_demo/` | 8개 | - |
 
 ## tests/ — 테스트 산출물 (생성 코드·리포트·스크린샷)
 
@@ -99,10 +100,10 @@
 
 | 그룹 | 생성 파일 수 | 최근 실행 결과 |
 |------|------------|---------------|
-| `api_demo/` | 1개 | - |
-| `customer_login/` | 2개 | - |
-| `partner_login/` | 2개 | - |
-| `tc_studio_demo/` | 5개 | 5/5 (100%) |
+| `api_demo/` | 1개 | 0/1 (0%) |
+| `customer_login/` | 2개 | 4/4 (100%) |
+| `partner_login/` | 2개 | 4/4 (100%) |
+| `tc_studio_demo/` | 5개 | - |
 
 | 경로 | 역할 |
 |------|------|
@@ -138,7 +139,11 @@
 |------|------|
 | `coverage.json` | 커버리지 매트릭스 (coverage_matrix.py 생성) |
 | `discuss.json` | 팀 토론 상태 |
+| `heal_stats.json` | 힐링 오류 패턴별 빈도 카운터 (06_heal.py 자동 갱신) |
 | `import_profiles.json` | 런타임 생성 |
+| `parallel.json` | 병렬 파이프라인 상태 |
+| `parallel_contexts.json` | 런타임 생성 |
+| `parallel_plan.json` | 런타임 생성 |
 | `pipeline.json` | 단일 파이프라인 상태 (FSM step 전이 검증 포함) |
 | `quick.json` | 빠른 실행 상태 |
 | `run_history.json` | 실행 이력 (매 실행 시 자동 append) |

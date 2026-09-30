@@ -108,7 +108,7 @@ _opener = urllib.request.build_opener(_NoRedirect)
 
 
 def _urlopen(url: str, headers: dict[str, str], max_bytes: int) -> Response:
-    request = urllib.request.Request(url, headers={"User-Agent": "qa-native-tc-studio/1", **headers})
+    request = urllib.request.Request(url, headers={"User-Agent": "qa-native/1", **headers})
     try:
         resp = _opener.open(request, timeout=TIMEOUT)
     except urllib.error.HTTPError as err:          # 3xx·4xx·5xx도 응답으로 돌려준다
