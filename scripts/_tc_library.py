@@ -284,3 +284,65 @@ def revert(suite: str, case_id: str, history_id: str, base_rev: int, actor: str)
     if entry is None or entry["kind"] != "edit":
         raise LibraryError("되돌릴 수 없는 이력입니다", "HISTORY_NOT_REVERTIBLE")
     return patch_case(suite, case_id, base_rev, {entry["field"]: entry["before"]}, actor)
+
+def with_issues(case: dict) -> dict:
+    issues = validate_case(case)
+    return {**case, "issues": issues, "has_error": any(i["level"] == "error" for i in issues)}
+
+
+def filter_cases(cases: list[dict], query: dict) -> list[dict]:
+    """GET /api/tc-library/{suite} 필터 (F5.4). query 값은 문자열."""
+    q = (query.get("q") or "").strip()
+    path = [p for p in (query.get("path") or "").split("/") if p]
+    out = []
+    for case in map(with_issues, cases):
+        if query.get("sheet") and case["sheet"] != query["sheet"]:
+            continue
+        keys = [case["sheet"], *[p for p in case["path"] if p], case["feature"]]
+        if path and keys[: len(path)] != path:
+            continue
+        if query.get("status") and case["status"] != query["status"]:
+            continue
+        if "execution_result" in query and query["execution_result"] != "*" \
+                and case["execution_result"] != query["execution_result"]:
+            continue
+        if query.get("priority") and (case["priority"] or "-") != query["priority"]:
+            continue
+        if query.get("auto") and (case["auto"] or "-") != query["auto"]:
+            continue
+        if query.get("source") and not any(r.startswith(query["source"] + ":")
+                                           for r in case["source_refs"]):
+            continue
+        if query.get("invalid") == "1" and not case["has_error"]:
+            continue
+        if q:
+            haystack = json.dumps([case["feature"], case["precondition"], case["steps"],
+                                   case["expected"], case["bullets"]], ensure_ascii=False)
+            if q not in haystack:
+                continue
+        out.append(case)
+    return out
+
+
+def build_tree(cases: list[dict]) -> list[dict]:
+    """시트 › 대분류 › 중분류 › 소분류 › 기능 트리 + 가지별 집계 (F2.2, F5.1)."""
+    roots: list[dict] = []
+    index: dict[tuple, dict] = {}
+    for case in map(with_issues, cases):
+        keys = [case["sheet"], *[p for p in case["path"] if p], case["feature"]]
+        children = roots
+        for depth, name in enumerate(keys):
+            key = tuple(keys[: depth + 1])
+            node = index.get(key)
+            if node is None:
+                level = "sheet" if depth == 0 else "feature" if depth == len(keys) - 1 else f"l{depth}"
+                node = {"name": name, "level": level, "path": list(key), "count": 0,
+                        "draft": 0, "needs_review": 0, "invalid": 0, "children": []}
+                index[key] = node
+                children.append(node)
+            node["count"] += 1
+            node["draft"] += case["status"] == "draft"
+            node["needs_review"] += case["status"] == "needs_review"
+            node["invalid"] += case["has_error"]
+            children = node["children"]
+    return roots

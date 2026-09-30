@@ -73,6 +73,24 @@ def test_create_duplicate_delete_restore(seeded):
     assert lib.restore_case(SUITE, "BEN_0001", "t")["rev"] == 3
 
 
+def test_tree_counts_and_filters(seeded):
+    lib.create_case(SUITE, {"sheet": "혜택", "feature": "새 기능",
+                            "path": ["혜택 탭", "상단 배너", ""]}, "t")
+    tree = lib.build_tree(lib.load_cases(SUITE))
+    benefit = tree[0]
+    assert (benefit["name"], benefit["level"], benefit["count"], benefit["draft"]) == ("혜택", "sheet", 6, 1)
+    banner = benefit["children"][0]["children"][1]
+    assert (banner["name"], banner["level"], banner["count"], banner["invalid"]) == ("상단 배너", "l2", 3, 1)
+
+    cases = lib.load_cases(SUITE)
+    ids = lambda q: [c["case_id"] for c in lib.filter_cases(cases, q)]
+    assert ids({"path": "혜택/혜택 탭/상단 배너"}) == ["BEN_0002", "BEN_0003", "BEN_0006"]
+    assert ids({"q": "돈불리기"}) == ["BEN_0004", "BEN_0005"]
+    assert ids({"invalid": "1"}) == ["BEN_0006"]
+    assert ids({"execution_result": "fail"}) == ["BEN_0003"]
+    assert ids({"priority": "-", "sheet": "홈"}) == []
+
+
 def test_suite_name_cannot_escape_library_dir(library_dir):
     for bad in ("../etc", "_uploads", ""):
         with pytest.raises(lib.LibraryError):
