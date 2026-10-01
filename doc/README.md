@@ -62,6 +62,7 @@
 | [Phase 3](development/tc-studio/plans/2026-09-30-tc-authoring-phase3.md) | 완료된 원격 소스·출처 추적 구현 계획 |
 | [Phase 4](development/tc-studio/plans/2026-09-30-tc-authoring-phase4.md) | 완료된 Markdown 내보내기 구현 계획 |
 | [Import Studio 통합 검토](development/tc-studio/IMPORT_STUDIO_INTEGRATION_REVIEW.md) | 에이전트 논의 결과와 TC 스튜디오 통합 선행 조건. 미구현 제안 |
+| [웹 대시보드 디자인 교체 인수인계](development/design-refresh/HANDOFF.md) | 밝은 테마로 전 화면 교체 — 목업 47장(`mockups/`), 토큰(`tokens.css`), 화면↔코드 대응, 작업 순서·검증. 다른 LLM에 넘길 때 이 문서부터 |
 | [문서 정리 기록](development/DOCUMENTATION_REVIEW.md) | 이번 분류 기준·중복 처리·확인한 오래된 설명 |
 
 ## 관리 기준

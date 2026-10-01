@@ -1,7 +1,7 @@
 # 디렉토리 구조
 
-> **자동 생성** — `python scripts/update_directory.py` | 마지막 갱신: 2026-10-01 02:29
-> 최근 실행: 2026-09-29 13:18 | quick | api_demo | 0/1 | heal:0
+> **자동 생성** — `python scripts/update_directory.py` | 마지막 갱신: 2026-10-02 07:53
+> 최근 실행: 2026-10-01 09:43 | quick | partner_login/customer_login | 4/4 | heal:0
 
 > 역할 설명 수정: `scripts/update_directory.py` 내 `SCRIPT_DESCRIPTIONS` / `FOLDER_DESCRIPTIONS` 편집.
 
@@ -89,7 +89,7 @@
 
 | 그룹 | TC 수 | 최근 실행 결과 |
 |------|-------|---------------|
-| `api_demo/` | 1개 | 0/1 (0%) |
+| `api_demo/` | 1개 | - |
 | `customer_login/` | 2개 | 4/4 (100%) |
 | `partner_login/` | 2개 | 4/4 (100%) |
 | `tc_studio_demo/` | 8개 | - |
@@ -100,7 +100,7 @@
 
 | 그룹 | 생성 파일 수 | 최근 실행 결과 |
 |------|------------|---------------|
-| `api_demo/` | 1개 | 0/1 (0%) |
+| `api_demo/` | 1개 | - |
 | `customer_login/` | 2개 | 4/4 (100%) |
 | `partner_login/` | 2개 | 4/4 (100%) |
 | `tc_studio_demo/` | 5개 | - |
@@ -190,6 +190,7 @@
 | `design/tc-studio/TC_AUTHORING_ELEMENT_SPEC.md` | TC 스튜디오 요소 동작 명세 |
 | `design/tc-studio/TC_AUTHORING_PRD.md` | PRD: TC Authoring Studio (문서 기반 테스트케이스 작성·관리) |
 | `development/DOCUMENTATION_REVIEW.md` | 문서 정리 기록 |
+| `development/design-refresh/HANDOFF.md` | 웹 대시보드 디자인 교체 — 인수인계 |
 | `development/tc-studio/IMPORT_STUDIO_INTEGRATION_REVIEW.md` | Import Studio를 TC 스튜디오에 통합하는 방안 |
 | `development/tc-studio/TC_AUTHORING_HANDOFF.md` | TC Authoring Studio 개발 인수인계 |
 | `development/tc-studio/TC_AUTHORING_IMPLEMENTATION_REPORT.md` | TC Authoring Studio 구현 보고 |
