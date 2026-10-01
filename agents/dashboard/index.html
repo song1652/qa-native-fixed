@@ -29,13 +29,10 @@
 
   <div class="toast-container" id="toast-container"></div>
   <div class="header">
-    <div class="live-indicator">
-      <div class="live-dot"></div>
-      LIVE
-    </div>
-    <div class="header-title" onclick="selectView('')" style="cursor:pointer;">QA CONTROL CENTER</div>
+    <div class="header-title" onclick="selectView('')" style="cursor:pointer;">QA 컨트롤 센터</div>
     <div style="flex:1"></div>
     <div class="header-meta" id="header-meta"></div>
+    <button type="button" class="header-quick-run" onclick="selectView('quick_run')">빠른 실행</button>
   </div>
 
   <div class="body-wrap">
@@ -48,7 +45,15 @@
           <div class="sidebar-label">개요</div>
           <div class="sidebar-item" id="tab-" onclick="selectView('')">
             <div class="sidebar-dot-spacer"></div>
-            <span class="sidebar-name">Dashboard</span>
+            <span class="sidebar-name">대시보드</span>
+          </div>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-label">TC 작성</div>
+          <div class="sidebar-item" id="tab-tc_studio" onclick="selectView('tc_studio')">
+            <div class="sidebar-dot-spacer"></div>
+            <span class="sidebar-name">TC 스튜디오</span>
           </div>
         </div>
 
@@ -74,11 +79,11 @@
           <div class="sidebar-label">테스트 리포트</div>
           <div class="sidebar-item" id="tab-reports" onclick="selectView('reports')">
             <div class="sidebar-dot-spacer"></div>
-            <span class="sidebar-name">리포트 목록</span>
+            <span class="sidebar-name">리포트</span>
           </div>
           <div class="sidebar-item" id="tab-history" onclick="selectView('history')">
             <div class="sidebar-dot-spacer"></div>
-            <span class="sidebar-name">실행 히스토리</span>
+            <span class="sidebar-name">실행 기록</span>
           </div>
         </div>
 
@@ -102,11 +107,6 @@
             <div class="sidebar-dot-spacer"></div>
             <span class="sidebar-name">페이지 URL 관리</span>
           </div>
-          <div class="sidebar-item" id="tab-tc_studio" onclick="selectView('tc_studio')">
-            <div class="sidebar-dot-spacer"></div>
-            <span class="sidebar-name">TC 스튜디오</span>
-          </div>
-
         </div>
       </div>
     </div>
