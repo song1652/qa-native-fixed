@@ -255,7 +255,7 @@ async function renderDashboardOverview(main) {
 
   main.innerHTML = `
     <div class="ov-wrap">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;">
         <h2 class="ov-heading" style="margin-bottom:0;">Dashboard</h2>
         <button class="action-btn action-btn-danger" onclick="resetDashboard()" style="font-size:11px;padding:5px 12px;">대시보드 초기화</button>
       </div>

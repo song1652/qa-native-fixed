@@ -8,6 +8,8 @@ import os
 import re
 import sys
 import threading
+import types
+import urllib.request
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Iterator
@@ -116,15 +118,21 @@ def report_dashboard(
         _write_report(reports_dir / name, heading, 1_700_000_000 + index)
 
     serve = _load_dashboard_module()
-    monkeypatch.setattr(serve, "REPORTS_DIR", reports_dir)
     # Dashboard route/state modules import the path constant independently.
-    # Patch those references too so this E2E server remains isolated from the
-    # repository's real tests/reports directory.
-    for module_name in ("_paths", "dash_state", "routes_get"):
-        module = sys.modules.get(module_name)
-        if module is not None and hasattr(module, "REPORTS_DIR"):
+    # 이름으로 몇 개만 고치면 실행 순서에 따라 다른 _paths 객체를 보는 모듈이 남아, '전체 선택 → 삭제'가
+    # 저장소의 실제 tests/reports를 지운 적이 있다(2026-10-01). REPORTS_DIR을 가진 모든 모듈과 그 모듈이 참조하는
+    # _paths 객체까지 바꾼다.
+    for module in list(sys.modules.values()):
+        if getattr(module, "REPORTS_DIR", None) is not None:
             monkeypatch.setattr(module, "REPORTS_DIR", reports_dir)
+        paths = getattr(module, "_paths", None)
+        if isinstance(paths, types.ModuleType) and hasattr(paths, "REPORTS_DIR"):
+            monkeypatch.setattr(paths, "REPORTS_DIR", reports_dir)
     with _dashboard_server(serve) as base_url:
+        # 삭제 테스트 전에 서버가 임시 폴더만 보는지 확인한다. 다르면 아무것도 지우기 전에 멈춘다.
+        with urllib.request.urlopen(base_url + "/api/reports") as response:
+            listed = {item["name"] for item in json.loads(response.read())}
+        assert listed == set(headings), f"리포트 서버가 임시 폴더가 아닌 곳을 봅니다: {sorted(listed - set(headings))[:5]}"
         yield base_url, reports_dir, headings
 
 

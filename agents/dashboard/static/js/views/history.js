@@ -100,7 +100,7 @@ async function renderHistory(main) {
 
   main.innerHTML = `
     <div class="hist-wrap">
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+      <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:20px;">
         <h2 class="hist-heading" style="margin-bottom:0;">실행 히스토리</h2>
         <button onclick="_histReset()" style="margin-left:auto;font-size:11px;padding:4px 10px;background:transparent;border:1px solid rgba(220,100,100,0.4);border-radius:5px;color:rgba(220,100,100,0.8);cursor:pointer;line-height:1.4;" title="실행 이력 전체 삭제">🗑 이력 초기화</button>
       </div>

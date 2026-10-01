@@ -1,19 +1,14 @@
 /* ── History View ── */
+/* 모든 화면 공통 배치(.pipeline-view / .pipeline-title)와 같게: 여백 24px, 제목 Outfit 20px */
 .hist-wrap {
-  max-width: 920px;
-  margin: 0 auto;
+  padding: 24px;
 }
 
 .hist-heading {
-  font-family: 'Inter', sans-serif;
-  font-size: 28px;
-  font-weight: 800;
-  letter-spacing: -0.5px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 20px;
+  font-weight: 700;
   margin-bottom: 20px;
-  background: linear-gradient(135deg, #fff 0%, #d8ccf8 60%, #a78bfa 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
 }
 
 /* ── 요약 통계 행 ── */

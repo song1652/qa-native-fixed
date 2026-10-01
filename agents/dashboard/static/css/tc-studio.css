@@ -416,7 +416,8 @@
 .tc-studio { padding:24px; background:transparent; }
 .tc-studio .studio { max-width:none; background:transparent; border:0; border-radius:0; overflow:visible; }
 .tc-studio .page-header { padding:0 0 14px; }
-.tc-studio .page-title { font-family:'Outfit', var(--sans); }
+.tc-studio .page-title { font-family:'Outfit', var(--sans); line-height:normal; }
+.tc-studio .ph-top { align-items:flex-start; }
 .tc-studio .grid-wrap { max-height:max(360px, calc(100vh - 330px)); }
 .tc-studio .chip-select.is-unset { color:var(--text3); font-style:italic; }
 .tc-studio .chip-select.result-none { color:var(--text3); }
