@@ -54,6 +54,24 @@
   --font-sans: 'IBM Plex Sans KR', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, Menlo, monospace;
 
+  --fs-h1: 22px;
+  --fs-h2: 17px;
+  --fs-h3: 15px;
+  --fs-body: 14px;
+  --fs-sub: 13px;
+  --fs-label: 12px;
+  --radius-badge: 4px;
+  --radius-ctrl: 6px;
+  --radius-card: 8px;
+  --radius-modal: 10px;
+  --ctrl-h: 34px;
+  --ctrl-h-lg: 44px;
+  --header-h: 56px;
+  --sidebar-w: 232px;
+  --page-pad: 28px 32px;
+  --card-pad: 16px;
+  --gap-section: 20px;
+
   /* 기존 크기 변수 유지 */
   --radius: 8px;
   --radius-md: 6px;
@@ -80,8 +98,8 @@
   --hl: var(--warn-bg);
   --shadow: var(--shadow-modal);
 
-  --radius-sm: 4px;
-  --radius-lg: 10px;
+  --radius-sm: var(--radius-badge);
+  --radius-lg: var(--radius-modal);
   --shadow-modal: 0 12px 32px rgb(17 24 39 / .18);
   --scrim: rgb(17 24 39 / .45);
 }

@@ -159,8 +159,8 @@ function reportConfirmDelete(names) {
     dialog.className = 'report-delete-dialog';
     dialog.setAttribute('aria-labelledby', 'report-delete-title');
     dialog.setAttribute('aria-describedby', 'report-delete-description');
-    dialog.innerHTML = `<form method="dialog"><h2 id="report-delete-title">리포트 삭제</h2>
-      <p id="report-delete-description">${names.length === 1 ? esc(names[0]) : `${names.length}개 리포트`}를 삭제하시겠습니까?<br>삭제한 리포트는 복구할 수 없습니다.</p>
+    dialog.innerHTML = `<form method="dialog"><div class="report-dialog-head"><h2 id="report-delete-title">리포트 삭제</h2></div>
+      <div class="report-dialog-body"><p id="report-delete-description">${names.length === 1 ? esc(names[0]) : `${names.length}개 리포트`}를 삭제하시겠습니까?<br>삭제한 리포트는 복구할 수 없습니다.</p></div>
       <div class="report-dialog-actions"><button value="cancel" autofocus>취소</button><button value="delete" class="report-danger">삭제</button></div></form>`;
     dialog.addEventListener('close', () => {
       _confirmOpen = false;

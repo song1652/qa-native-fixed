@@ -224,7 +224,7 @@ function renderSinglePipeline(main) {
       <div class="pipeline-view">
         <div class="pipeline-title">단일 파이프라인</div>
         ${buildRunPanel('single')}
-        <div class="empty"><div class="empty-icon">&#x1F50D;</div><h2>파이프라인 비활성</h2><p>위에서 URL과 케이스를 선택해 실행하거나, 터미널에서 run_qa.py를 실행하세요</p></div>
+        <div class="empty"><div class="empty-icon" aria-hidden="true"><svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="8" y="6" width="24" height="28" rx="3"></rect><line x1="13" y1="14" x2="27" y2="14"></line><line x1="13" y1="20" x2="27" y2="20"></line><line x1="13" y1="26" x2="21" y2="26"></line></svg></div><h2>파이프라인 비활성</h2><p>위에서 URL과 케이스를 선택해 실행하거나, 터미널에서 run_qa.py를 실행하세요</p></div>
       </div>`;
   } else {
     // 이미 실행 중이어도 상단에 실행 패널 추가

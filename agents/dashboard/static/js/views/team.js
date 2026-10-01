@@ -63,7 +63,7 @@ function renderTeamView(main) {
     sessions = ts[idx] ? [ts[idx]] : [];
   }
   if (!sessions.length) {
-    main.innerHTML = '<div class="empty"><div class="empty-icon">&#x1F4AC;</div><h2>토론 대기 중</h2><p>사이드바의 <strong>새 토론 시작</strong>을 클릭해 주제를 입력하세요</p></div>';
+    main.innerHTML = '<div class="empty"><div class="empty-icon" aria-hidden="true"><svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="8" y="6" width="24" height="28" rx="3"></rect><line x1="13" y1="14" x2="27" y2="14"></line><line x1="13" y1="20" x2="27" y2="20"></line><line x1="13" y1="26" x2="21" y2="26"></line></svg></div><h2>토론 대기 중</h2><p>사이드바의 <strong>새 토론 시작</strong>을 클릭해 주제를 입력하세요</p></div>';
     return;
   }
   main.innerHTML = sessions.map((s, i) => renderSession(s, currentView, i)).join('');

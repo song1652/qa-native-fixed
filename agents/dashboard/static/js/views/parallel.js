@@ -147,7 +147,7 @@ function renderParallelPipeline(main) {
       ${files.length ? `<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;">
         <div style="font-size:13px;font-weight:600;margin-bottom:8px;">tests/generated/ 파일 목록</div>
         ${filesHtml}
-      </div>` : `<div class="empty"><div class="empty-icon">&#x2699;&#xFE0F;</div><h2>생성된 테스트 없음</h2><p>run_qa_parallel.py를 실행하고 subagent로 코드를 생성하세요</p></div>`}
+      </div>` : `<div class="empty"><div class="empty-icon" aria-hidden="true"><svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="8" y="6" width="24" height="28" rx="3"></rect><line x1="13" y1="14" x2="27" y2="14"></line><line x1="13" y1="20" x2="27" y2="20"></line><line x1="13" y1="26" x2="21" y2="26"></line></svg></div><h2>생성된 테스트 없음</h2><p>run_qa_parallel.py를 실행하고 subagent로 코드를 생성하세요</p></div>`}
     </div>`;
 
   // 로그 스크롤 복원
