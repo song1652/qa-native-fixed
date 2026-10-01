@@ -26,7 +26,7 @@
  <div class="studio" id="studio">
   <header class="page-header">
     <div class="ph-top">
-      <div><div class="crumb">QA CONTROL CENTER › 테스트케이스</div><h1 class="page-title">TC 스튜디오</h1></div>
+      <h1 class="page-title">TC 스튜디오</h1>
       <select class="suite-select" id="suite-select" data-id="suite-select" aria-label="스위트 선택"></select>
       <div class="suite-menu-wrap">
         <button class="icon-btn suite-menu-btn" type="button" id="suite-menu-btn" data-id="suite-menu-btn" aria-label="스위트 관리" aria-haspopup="menu" aria-expanded="false">⋯</button>
