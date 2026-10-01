@@ -58,10 +58,10 @@
         </div>
         <div class="grid-wrap" id="grid-wrap">
           <table class="grid" id="grid" data-id="lib-grid" aria-label="케이스 그리드">
-            <colgroup><col style="width:34px"><col style="width:20px"><col style="width:44px"><col style="width:88px"><col style="width:120px"><col style="width:80px"><col style="width:130px"><col style="width:170px"><col style="width:200px"><col style="width:260px"><col style="width:74px"><col style="width:110px"><col style="width:150px"></colgroup>
+            <colgroup><col style="width:34px"><col style="width:20px"><col style="width:44px"><col style="width:96px"><col class="c-l2" style="width:96px"><col class="c-l3" style="width:96px"><col style="width:200px"><col style="width:150px"><col style="width:200px"><col style="width:240px"><col style="width:74px"><col style="width:100px"><col style="width:130px"></colgroup>
             <thead><tr>
               <th><input type="checkbox" id="grid-check-all" data-id="grid-check-all" aria-label="전체 선택"></th>
-              <th></th><th><span class="xl">A</span>No.</th>
+              <th></th><th class="no"><span class="xl">A</span>No.</th>
               <th><span class="xl">B</span>대분류</th><th><span class="xl">C</span>중분류</th><th><span class="xl">D</span>소분류</th>
               <th><span class="xl">E</span>제목</th><th><span class="xl">F</span>사전 조건</th><th><span class="xl">G</span>Test Step</th>
               <th><span class="xl">H</span>Expected Result</th><th><span class="xl">I</span>우선순위</th><th>실행 결과</th><th><span class="xl">M</span>기타 (id · src)</th>
@@ -244,6 +244,9 @@
   // keep: 저장·선택 뒤 다시 그릴 때 지금까지 펼친 행 수를 유지한다 (스크롤 위치 보존)
   function renderGrid({ keep = false } = {}) {
     shown = Math.min(state.items.length, Math.max(ROW_CHUNK, keep ? shown : 0));
+    // 아무 케이스도 쓰지 않는 중·소분류 열은 접어 제목·Step 자리를 넓힌다
+    $('#grid', root).classList.toggle('no-l2', !state.items.some((c) => c.path[1]));
+    $('#grid', root).classList.toggle('no-l3', !state.items.some((c) => c.path[2]));
     $('#grid-body', root).innerHTML = (state.items.slice(0, shown).map(rowHtml).join('') + moreHtml())
       || `<tr><td colspan="13" style="text-align:center;padding:40px;color:var(--text3)" data-id="grid-empty-filter">조건에 맞는 케이스가 없습니다.</td></tr>`;
     $('#grid-crumb', root).textContent = state.filters.path.replaceAll('/', ' › ') || state.suite;
