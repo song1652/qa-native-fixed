@@ -463,6 +463,8 @@ class DashboardHandler(                                            # Phase-4/5/6
             self.send_response(200)
             self.send_header("Content-Type", content_type)
             self.send_header("Content-Length", str(len(content)))
+            # JS·CSS 버전 꼬리표를 매번 바꾸지 않으므로, 브라우저가 매 요청 최신본인지 확인하게 한다
+            self.send_header("Cache-Control", "no-cache")
             if "html" in content_type:
                 self.send_header("X-XSS-Protection", "0")
             self.end_headers()
