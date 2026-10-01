@@ -10,9 +10,9 @@
     }
 
     body {
-      background: var(--bg-gradient);
+      background: var(--bg);
       color: var(--text);
-      font-family: 'Inter', -apple-system, sans-serif;
+      font-family: var(--font-sans);
       font-size: 14px;
       display: flex;
       flex-direction: column;
