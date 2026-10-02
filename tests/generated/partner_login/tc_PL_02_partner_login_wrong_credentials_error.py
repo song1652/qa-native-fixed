@@ -11,7 +11,7 @@ from pathlib import Path
 from playwright.sync_api import Page, expect
 
 BASE_URL = "https://mall.serveone.co.kr/M3/cmm/login.dev"
-TEST_DATA_PATH = Path(__file__).resolve().parent.parent.parent.parent / "config" / "test_data.json"
+TEST_DATA_PATH = Path(__file__).resolve().parent.parent.parent.parent / "test_data" / "serveone.json"
 
 
 def test_partner_login_wrong_credentials_error(page: Page):
@@ -20,8 +20,8 @@ def test_partner_login_wrong_credentials_error(page: Page):
     with open(TEST_DATA_PATH, encoding="utf-8") as f:
         test_data = json.load(f)
 
-    invalid_partner_id = test_data["serveone"]["login"]["invalid_partner_id"]
-    invalid_password = test_data["serveone"]["login"]["invalid_password"]
+    invalid_partner_id = test_data["login"]["invalid_partner_id"]
+    invalid_password = test_data["login"]["invalid_password"]
 
     # 페이지 이동
     page.goto(BASE_URL)

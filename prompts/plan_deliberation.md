@@ -47,6 +47,6 @@ bad plan 예시: `prompts/examples/plan_bad.json` — 셀렉터 추측, 하드�
 
 - 테스트 함수명: 반드시 영문 snake_case `test_{english_snake_case}` (한글 제목도 영어 번역)
 - tc_*.md 1개 = 테스트 파일 1개 = 테스트 함수 1개
-- 테스트 데이터 하드코딩 금지 → config/test_data.json 참조
+- 테스트 데이터 하드코딩 금지 → test_data/{프로덕트}.json 참조
 - lessons_learned에서 동일 패턴 발견 시 반드시 plan에 주의사항 반영
 - Playwright 코드 규칙: `.claude/skills/playwright-best-practices/SKILL.md` 참조

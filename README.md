@@ -62,13 +62,14 @@ claude mcp list
 
 ### 3. 테스트 데이터
 
-`config/test_data.json`은 `.gitignore` 대상이라 새로 클론하면 없습니다. 템플릿을 복사해서 만드세요:
+실제 입력값 `test_data/{프로덕트}.json`은 `.gitignore` 대상이라 새로 클론하면 없습니다. 사용할 프로덕트의 템플릿을 복사해서 만드세요:
 
 ```bash
-cp config/test_data.example.json config/test_data.json
+cp test_data/serveone.example.json test_data/serveone.json
+cp test_data/saucedemo.example.json test_data/saucedemo.json
 ```
 
-`tests/generated/`의 생성 테스트가 이 파일의 `data_key`(예: `data["saucedemo"]["valid_user"]`)를 읽으므로, 없으면 생성 테스트가 전부 실패합니다. 새 테스트케이스에 새 `data_key`를 추가했다면 `python scripts/sync_test_data.py`로 빈 템플릿을 자동으로 채울 수 있습니다.
+`tests/generated/`의 생성 테스트가 케이스의 `data_key`(예: `saucedemo.valid_user` → `test_data/saucedemo.json`의 `valid_user`)를 읽으므로, 없으면 생성 테스트가 전부 실패합니다. 새 테스트케이스에 새 `data_key`를 추가했다면 `python scripts/sync_test_data.py`로 빈 템플릿을 자동으로 채울 수 있습니다.
 
 ### 4. Jira 연동 (선택)
 
@@ -185,7 +186,8 @@ python run_qa_parallel.py --no-auto
 | `agents/` | 사수-부사수 역할, 팀 토론 로그, lessons_learned |
 | `prompts/` | 심의 Agent 프롬프트 템플릿 |
 | `state/` | 런타임 상태 파일 (pipeline.json, run_history.json 등) |
-| `config/` | 설정 (`pages.json`, `test_data.json`, `jira_config.json`(선택)) |
+| `config/` | 설정 (`pages.json`, `pipeline.json`, `jira_config.json`(선택)) |
+| `test_data/` | 프로덕트별 테스트 입력값 (`{프로덕트}.json`은 git 제외, `*.example.json`은 템플릿) |
 | `testcases/` | 테스트 케이스 `.md` 파일 (그룹별 서브폴더) |
 | `tests/` | 생성된 테스트 코드, 리포트, 스크린샷 · `tests/unit/`에 저장소 단위 테스트 |
 | `.claude/skills/` | 스킬 프레임워크 (SKILL.md 표준) |
@@ -197,7 +199,7 @@ python run_qa_parallel.py --no-auto
 | 증상 | 원인 | 해결 |
 |---|---|---|
 | `state/pipeline.json 없음` | 파이프라인 초기화 미실행 | `run_qa.py` 또는 `run_qa_parallel.py` 재실행 |
-| 생성 테스트 전부 실패 (`KeyError`/`FileNotFoundError`) | `config/test_data.json` 없음 (새 클론) | `cp config/test_data.example.json config/test_data.json` |
+| 생성 테스트 전부 실패 (`KeyError`/`FileNotFoundError`) | `test_data/{프로덕트}.json` 없음 (새 클론) | `cp test_data/{프로덕트}.example.json test_data/{프로덕트}.json` |
 | `tests/generated/` 파일 없음 | subagent 코드 생성 미완료 | Claude Code에 subagent 재실행 요청 |
 | 특정 케이스 FAIL | assertion / locator 오류 | 해당 `.py` 파일 직접 확인 후 수정, 또는 Healer 재실행 |
 | 스크린샷 미생성 | conftest.py 중복 로드 | `tests/generated/` 하위에 conftest.py 없어야 함 |

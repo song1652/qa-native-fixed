@@ -11,7 +11,7 @@ from pathlib import Path
 from playwright.sync_api import Page, expect
 
 BASE_URL = "https://mall.serveone.co.kr/M3/cmm/login.dev"
-TEST_DATA_PATH = Path(__file__).resolve().parent.parent.parent.parent / "config" / "test_data.json"
+TEST_DATA_PATH = Path(__file__).resolve().parent.parent.parent.parent / "test_data" / "serveone.json"
 
 
 def test_partner_login_empty_fields_validation(page: Page):

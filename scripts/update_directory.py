@@ -40,7 +40,7 @@ FOLDER_DESCRIPTIONS: dict[str, str] = {
     "parallel":      "병렬 파이프라인 스크립트",
     "tests":         "테스트 산출물 (생성 코드·리포트·스크린샷)",
     "testcases":     "케이스 파일 (tc_*.md) — 그룹별 서브폴더",
-    "config":        "설정 파일 (URL 매핑·테스트 입력값)",
+    "config":        "설정 파일 (URL 매핑·파이프라인 옵션)",
     "doc":           "문서 (사람용·에이전트 on-demand 참조)",
     "knowledge":     "QA 지식 베이스 (체크리스트·팀 내규)",
     "templates":     "문서 템플릿 (TC·리포트·이슈)",
@@ -396,7 +396,10 @@ def build_markdown() -> str:
         "| 파일 | 역할 |",
         "|------|------|",
         "| `pages.json` | 페이지명 → URL 매핑 (키 = testcases/ 하위 폴더명) |",
-        "| `test_data.json` | 테스트 입력값 (하드코딩 금지, 키 = 그룹명) |",
+        "| `pipeline.json` | 파이프라인 옵션 (auto_approve 등) |",
+        "| `jira_config.json` | Jira 연동 설정 (선택, git 제외) |",
+        "",
+        "테스트 입력값은 `config/`가 아니라 `test_data/{프로덕트}.json`에 둡니다 (git 제외, 템플릿은 `*.example.json`). `_paths.load_test_data()`가 파일명을 최상위 키로 묶어 읽습니다.",
         "",
     ]
 

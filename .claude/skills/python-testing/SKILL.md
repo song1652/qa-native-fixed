@@ -175,4 +175,4 @@ def cleanup_screenshots(request):
 - `time.sleep()` / `page.wait_for_timeout()` 절대 금지
 - 공유 헬퍼 파일 생성 금지 (각 파일 자체 완결)
 - 외부 LLM SDK import 금지
-- 하드코딩된 URL/자격증명 금지 (test_data.json 사용)
+- 하드코딩된 URL/자격증명 금지 (test_data/{프로덕트}.json 사용)

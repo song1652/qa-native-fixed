@@ -69,12 +69,15 @@ Claude가 자동으로 호출하는 파일 (직접 실행 불필요)
     ├── 02_generate.py             파이프라인 3단계: 코드 뼈대 생성
     ├── 03_lint.py                 파이프라인 4단계: lint 검사
     ├── 03a_dialog.py              파이프라인 5단계: 코드 리뷰 심의 준비
+    ├── 04_approve.py              승인 게이트 (auto_approve 기본 → 즉시 승인)
     ├── 05_execute.py              파이프라인 6단계: pytest 실행 (report_html 사용)
     ├── 06_heal.py                 파이프라인 7단계: 실패 분석
+    ├── 06_auto_heal.py            힐링: 결정적 패턴 자동 패치 (Agent 호출 전)
     ├── 06a_dialog.py              파이프라인 8단계: 힐링 심의 준비
+    ├── report_html.py             라이브러리: HTML 리포트 생성 (05_execute, 99_merge 공유)
     ├── team_discuss.py            팀 토론: 심의 컨텍스트 준비
     ├── team_approve.py            팀 토론: 결론 승인 (터미널용, 대시보드 권장)
-    ├── check_pending_*.py         훅 5개 (hook_utils.check_state() 공통 사용)
+    ├── check_pending_*.py         훅 6개 (hook_utils.check_state() 공통 사용)
     ├── coverage_matrix.py         커버리지 매트릭스 생성 (tc_*.md → state/coverage.json)
     ├── flaky_detector.py          Flaky Test 감지 (run_history.json → state/flaky_tests.json)
     ├── _python.py                 라이브러리: .venv Python 경로
@@ -87,7 +90,9 @@ Claude가 자동으로 호출하는 파일 (직접 실행 불필요)
     ├── result_parser.py           라이브러리: pytest JSON 리포트 파싱 (05_execute, 99_merge 공유)
     ├── hook_utils.py              라이브러리: 훅 스크립트 공통 유틸 (check_state + remaining_steps_hint)
     ├── __init__.py                패키지 초기화
-    ├── sync_test_data.py          test_data.json 동기화
+    ├── sync_test_data.py          test_data/{프로덕트}.json 동기화
+    ├── build_user_guides.py       문서: guides/*.md → HTML 가이드 생성 (--check)
+    ├── update_directory.py        문서: doc/reference/DIRECTORY.md 재생성
     ├── dom_helpers.js             JS 공통 유틸 (isVisible·esc·getSelectorsSimple) — 01_analyze.py의 _js()가 자동 주입
     └── parse_cases.py             라이브러리: 테스트케이스 파일 파서
 ```
@@ -178,6 +183,14 @@ object 형식 사용 시 `page_meta`(auth, spa, preconditions, notes)가 subagen
 5. 로그: `logs/run_qa_parallel_headless.txt`
 
 ---
+
+### `parallel/02a_parallel_dialog.py` — 병렬 공통 심의 컨텍스트
+
+`run_qa_parallel.py` 다음, subagent 실행 전에 Claude가 호출합니다. `state/parallel_contexts.json`을 읽어 `DELIBERATION_CONTEXT_START ~ END` JSON을 출력합니다. Claude는 이를 보고 전체 그룹 공통 전략을 `state/parallel_plan.json`에 저장하고, 각 subagent는 `shared_context_paths.parallel_plan`으로 읽습니다. 옵션은 없습니다.
+
+```bash
+.venv/bin/python parallel/02a_parallel_dialog.py
+```
 
 ### `parallel/99_merge.py` — 병렬 실행 결과 통합
 
@@ -331,6 +344,11 @@ kill -9 [PID]
   → 코드 리뷰 심의에 필요한 파일들을 병렬로 읽어 JSON으로 출력
   → Claude가 lint 결과 + 코드를 체크리스트로 리뷰
 
+04_approve.py
+  → QA 리드 승인 게이트. review_summary 출력 후 y/n
+  → config/pipeline.json의 auto_approve=true(기본) 또는 `--yes`면 즉시 승인
+  → 종료코드 0: 승인 / 4: 반려(재작성) / 1: stdin 없음(비대화형인데 auto_approve 꺼짐) / 2: 3회 반려 초과
+
 05_execute.py
   → pytest로 테스트 실행 (최대 4 workers 병렬, spa: true 사이트는 세션 충돌 방지를 위해 1 worker 고정)
   → report_html.build_report()로 HTML 리포트 생성 (병렬과 동일 형식)
@@ -357,7 +375,10 @@ kill -9 [PID]
      모달 wait_for timeout 10000 → 20000
   + heal_stats 빈출 패턴 Top 5 보고
   → 수정 파일만 재실행하여 검증. 전부 통과 시 Agent 불필요 (종료코드 0)
-  → 잔여 실패 시 heal_context 업데이트 후 Agent에 위임 (종료코드 1)
+  → 잔여 실패 시 heal_context 업데이트 후 Agent에 위임 (종료코드 1). heal_needed가 아니면 스킵 (종료코드 3)
+  → `--state-path`: 상태 파일 (기본 state/pipeline.json, 병렬은 state/parallel.json)
+  → `--state-key`: heal_needed 판정 키 (기본 step, 병렬은 status)
+  → `--heal-context-path`: heal_context를 상태 파일 대신 이 JSON에서 읽음 (병렬 heal_context.json)
 
 06a_dialog.py
   → 힐링 심의에 필요한 파일들을 병렬로 읽어 JSON으로 출력
@@ -434,7 +455,7 @@ kill -9 [PID]
 
 | `agents/dashboard/tools/scope_tc_studio_css.py` | 목업 CSS → `static/css/tc-studio.css` 생성 (목업을 고친 뒤 다시 실행) | ✅ (`.venv/bin/python agents/dashboard/tools/scope_tc_studio_css.py <목업> <출력>`) |
 | `scripts/assert_guard.py` | 힐링 패치 후 assertion 약화 감지. `original_assertions`(최초) vs 현재 파일 비교 → 감소 시 경고 출력 | ✅ (`.venv/bin/python scripts/assert_guard.py`) |
-| `scripts/jira_reporter.py` | 테스트 실패 시 Jira 이슈 자동 생성. 스크린샷·영상 첨부 포함. `config/jira_config.json` 또는 환경변수 `JIRA_TOKEN` 설정 필요. `99_merge.py`가 최종 실패 시 자동 호출 | ✅ (`.venv/bin/python scripts/jira_reporter.py [--group G] [--dry-run]`) |
+| `scripts/jira_reporter.py` | 테스트 실패 시 Jira 이슈 자동 생성. 스크린샷·영상 첨부 포함. `config/jira_config.json` 또는 환경변수 `JIRA_TOKEN` 설정 필요. `99_merge.py`가 최종 실패 시 자동 호출 | ✅ (`.venv/bin/python scripts/jira_reporter.py [--group G] [--dry-run] [--all]`, `--all`은 이미 만든 이슈도 다시 생성) |
 | `scripts/parse_cases.py` | `.md`/`.json` 테스트케이스 파일 파서 (YAML frontmatter 지원). frontmatter 문자열값의 따옴표 자동 제거 (`id: "CL_01"` → `CL_01`). Steps는 번호(`1.`) 형식 권장이나 번호 없는 평문 줄도 파싱 지원 | ❌ (run_qa.py가 import해서 사용) |
 | `tests/unit/` | 저장소 단위 테스트 — `pipeline/` `hooks/` `core/` `dashboard/` `import_studio/` 영역별 폴더 (파서 테스트: `core/test_core_parsers.py`) | ❌ (`pytest`가 자동 실행) |
 | `scripts/sync_test_data.py` | 프로덕트별 테스트 데이터 동기화 유틸 | ❌ (필요 시 import) |

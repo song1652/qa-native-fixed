@@ -80,7 +80,7 @@ skill_playwright_summary: {ctx.skill_playwright_summary}
 
 - 테스트 함수명: 반드시 영문 snake_case `test_{english_snake_case}`
 - `tc_*.md` 1개 = 테스트 파일 1개 = 테스트 함수 1개
-- 테스트 데이터 하드코딩 금지 → `config/test_data.json` 참조
+- 테스트 데이터 하드코딩 금지 → `test_data/{프로덕트}.json` 참조
 - `lessons_learned`를 반드시 먼저 확인하고 같은 실수 반복 금지
 
 ---

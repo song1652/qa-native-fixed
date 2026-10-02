@@ -39,13 +39,13 @@ batch_files: {ctx.batch_files}
 ## MUST NOT (절대 금지 -- 위반 시 런타임 에러)
 - 공유 헬퍼 파일(helpers.py 등) **생성/import 금지** -> 각 파일이 자체 완결
 - conftest.py **재정의 금지** (page fixture 이미 있음)
-- 입력값 **하드코딩 금지** -> 반드시 test_data.json에서 읽기
+- 입력값 **하드코딩 금지** -> 반드시 test_data/{프로덕트}.json에서 읽기
 - `ENV:` 프리픽스 데이터는 **리터럴 사용 금지** -> `os.environ.get()` 처리, 미설정 시 `pytest.skip()`
 
 ## MUST (필수 준수)
 - import: `pytest`, `from playwright.sync_api import expect`, `json`, `re`, `from pathlib import Path`
 - `BASE_URL = "{url}"` (모듈 상단 선언)
-- `TEST_DATA_PATH = Path(__file__).resolve().parent.parent.parent.parent / "config" / "test_data.json"`
+- `TEST_DATA_PATH = Path(__file__).resolve().parent.parent.parent.parent / "test_data" / "{프로덕트}.json"` — data_key `{프로덕트}.{데이터셋}`이면 이 파일의 `{데이터셋}` 키를 읽는다
 - 함수명: `test_{english_snake_case}` (한글 제목도 영어로 번역)
 - 파일당 테스트 함수 1개 (tc_*.md 1:1 매핑)
 - `page.goto(BASE_URL)`로 시작

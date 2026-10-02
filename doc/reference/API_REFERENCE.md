@@ -78,12 +78,18 @@
 | `/api/run_merge` | `{ group?, quick?, no_heal?, no_report? }` | 99_merge.py 실행 |
 | `/api/run_quick` | `{ groups: [], no_heal? }` | 빠른 실행 |
 | `/api/run_log` | `{ log: "파일명" }` | 실행 로그 조회 |
+| `/api/merge_log` | `{}` | `logs/merge.txt` 내용 `{ ok, log }` |
 
 ### 상태 조회 (GET)
 
 | 엔드포인트 | 반환 | 설명 |
 |---|---|---|
 | `/api/pipeline_state` | pipeline.json 전체 | 단일 파이프라인 상태 |
+| `/api/state` | pipeline.json 전체 | 이전 이름 (`/api/pipeline_state`와 같음) |
+| `/api/dialogs` | 팀 토론 세션 + 토론 상태 | 팀 토론 화면용 (결론 항목은 메모리에서만 파싱, 파일 미기록) |
+| `/api/dialog` | dialog.json 원본 | 팀 토론 대화 원본 |
+| `/api/testcase?nodeid=` | `{ ok, content, file }` | 테스트 nodeid에 연결된 `tc_*.md` 원문 |
+| `/api/testcase/failure_detail?nodeid=` | 실패 요약·스크린샷·콘솔·네트워크 실패·trace | `meta.json`과 실행 결과에서 읽음. 데이터가 없어도 200 + 빈 필드 |
 | `/api/batch_state` | `{ parallel_state, generated_files }` | 병렬 파이프라인 상태 |
 | `/api/quick_state` | quick.json 전체 | 빠른 실행 상태 |
 | `/api/generated_groups` | `{ groups: [{name, files}] }` | tests/generated/ 그룹 목록 |
@@ -95,6 +101,9 @@
 | `/api/coverage` | coverage.json (없으면 실시간 생성) | 테스트 커버리지 매트릭스 |
 | `/api/flaky_tests` | flaky_tests.json | Flaky 테스트 목록 |
 | `/api/import/files` | Excel 파일 목록 | import/ 폴더 파일 |
+| `/api/import/sheets?file=` | `{ ok, sheets }` | import/ 폴더 Excel의 시트 목록 |
+| `/api/import/profiles` | 매핑 프로필 목록 | Excel→md 매핑 프로필 |
+| `/api/import/preview/csv?session_id=` | CSV | 미리보기 결과 내려받기 |
 
 ### 상태 변경 (POST)
 
@@ -108,6 +117,14 @@
 | `/api/discuss/reject` | 토론 반려 |
 | `/api/reports/delete` | HTML 리포트 삭제 (`{ names: ["report.html"] }`) |
 | `/api/import/convert` | Excel → 테스트케이스 변환 (`{ file, sheets }`) |
+| `/api/import/preview` | Excel→md 변경 미리보기 생성 → `run_id` |
+| `/api/import/commit` | 미리보기 반영 (`{ run_id, decisions, idempotency_key? }`) |
+| `/api/import/rollback` | 반영 되돌리기 (`{ run_id }`, 이전 클라이언트는 `snapshot_id`) |
+| `/api/import/profiles` | 매핑 프로필 저장 |
+| `/api/import/profiles/update` | 프로필 이름·매핑 수정 (`{ id, name?, mappings? }`) |
+| `/api/import/profiles/delete` | 프로필 삭제 (`{ id }`, DELETE 대안) |
+
+`/api/import/*`는 예전 Import Studio(Excel→`testcases/` md 직접 변환) 경로다. 화면은 TC 스튜디오로 통합됐고, TC 스튜디오의 md 내보내기가 같은 커밋 엔진을 쓴다.
 
 #### 리포트 삭제
 
@@ -149,6 +166,9 @@
 | GET | `/api/tc-library/{suite}/cases/{case_id}/history` | 변경 이력 (최신 먼저) |
 | POST | `/api/tc-library/{suite}/bulk` | `{items:[{case_id,rev}], op:"set"|"delete", field, value}` → `{updated|deleted, conflicts}` |
 | POST | `/api/tc-library/{suite}/move` | `{items, sheet, path, feature?}` → `{moved, conflicts}` |
+| POST | `/api/tc-library/{suite}/sheets` | 시트 추가 `{name}`. 템플릿 서식을 복사한 빈 시트 |
+| POST | `/api/tc-library/{suite}/sheets/rename` | 시트 이름 변경 `{sheet, name}`. 케이스 id는 유지 |
+| POST | `/api/tc-library/{suite}/branches` | 빈 분류 추가 `{sheet, path:[대,중?,소?]}` → `{branch}`. 없는 시트 404 `SHEET_NOT_FOUND` |
 | POST | `/api/tc-library/{suite}/export/xlsx` | `{scope, sheets?, case_ids?, history_note}` → `{export_id, filename, checks, count}`. `scope=approved`는 가져옴 케이스 제외 |
 | GET | `/api/tc-library/exports/{export_id}/download` | 내보낸 xlsx 내려받기 |
 
@@ -174,6 +194,7 @@ md 이력은 기존 `state/import_sessions`·`import_snapshots`를 사용한다.
 | GET | `/api/tc-library/sources/{bundle}/excerpt?ref=` | 출처 섹션 발췌 |
 | GET · PUT | `/api/tc-library/profiles` · `/api/tc-library/profiles/{name}` | 작성 프로필 `{rules, banned_phrases, examples, expected_endings, style_examples(≤10), coverage}` |
 | POST | `/api/tc-library/profiles/style-from-xlsx` | 본문=xlsx. 기존 TC의 문체 → `{rules, expected_endings, style_examples, stats}` (저장하지 않음) |
+| GET | `/api/tc-library/{suite}/authoring-context` | 스위트의 최근 생성 작업 `{job}` (생성 화면 이어 보기) |
 | POST | `/api/tc-library/{suite}/jobs` | 생성 작업 시작 (동시 1건, 409 `JOB_RUNNING`, 503 `CLAUDE_NOT_FOUND`) |
 | GET | `/api/tc-library/jobs/{job_id}` | 작업 상태 · 로그 끝 40줄 · 버린 초안 |
 | POST | `/api/tc-library/jobs/{job_id}/cancel` | 작업 취소 |

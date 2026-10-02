@@ -1,6 +1,6 @@
 # 디렉토리 구조
 
-> **자동 생성** — `python scripts/update_directory.py` | 마지막 갱신: 2026-10-02 12:13
+> **자동 생성** — `python scripts/update_directory.py` | 마지막 갱신: 2026-10-02 12:37
 > 최근 실행: 2026-10-01 09:43 | quick | partner_login/customer_login | 4/4 | heal:0
 
 > 역할 설명 수정: `scripts/update_directory.py` 내 `SCRIPT_DESCRIPTIONS` / `FOLDER_DESCRIPTIONS` 편집.
@@ -150,12 +150,15 @@
 | `run_history.json` | 실행 이력 (매 실행 시 자동 append) |
 | `dom_cache/` | 서브페이지 DOM 스냅샷 캐시 (URL MD5 해시 키) |
 
-## config/ — 설정 파일 (URL 매핑·테스트 입력값)
+## config/ — 설정 파일 (URL 매핑·파이프라인 옵션)
 
 | 파일 | 역할 |
 |------|------|
 | `pages.json` | 페이지명 → URL 매핑 (키 = testcases/ 하위 폴더명) |
-| `test_data.json` | 테스트 입력값 (하드코딩 금지, 키 = 그룹명) |
+| `pipeline.json` | 파이프라인 옵션 (auto_approve 등) |
+| `jira_config.json` | Jira 연동 설정 (선택, git 제외) |
+
+테스트 입력값은 `config/`가 아니라 `test_data/{프로덕트}.json`에 둡니다 (git 제외, 템플릿은 `*.example.json`). `_paths.load_test_data()`가 파일명을 최상위 키로 묶어 읽습니다.
 
 ## prompts/ — 심의 Agent 프롬프트 템플릿
 
