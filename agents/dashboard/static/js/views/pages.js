@@ -40,7 +40,7 @@ async function addPage() {
     status.textContent = '서버 연결 오류';
     status.className = 'pages-form-status err';
   }
-  btn.disabled = false; btn.textContent = '+ 추가';
+  btn.disabled = false; btn.textContent = '추가';
 }
 
 async function deletePage(group) {
@@ -69,7 +69,7 @@ async function deletePage(group) {
 function enterEditRow(tr, grp, c) {
   tr.classList.add('editing');
   tr.innerHTML = `
-    <td colspan="5">
+    <td colspan="6">
       <div class="pages-edit-row">
         <span class="pages-group-badge pages-edit-group">${esc(grp)}</span>
         <div class="pages-edit-fields">
@@ -187,12 +187,12 @@ function renderPages(main) {
         const tcHtml  = tcCount > 0
           ? `<span class="pages-tc-count has-cases">${tcCount}개</span>`
           : `<span class="pages-tc-count">0개</span>`;
-        const spaHtml = c.spa ? `<span class="pages-spa-badge">SPA</span>` : '';
+        const spaHtml = c.spa ? '예' : '아니오';
         return `<tr data-group="${esc(grp)}">
-          <td><span class="pages-group-badge">${esc(grp)}</span> ${spaHtml}</td>
+          <td><span class="pages-group-badge">${esc(grp)}</span></td>
           <td><span class="pages-url-text">${esc(c.url || '')}</span></td>
           <td><span class="pages-notes-text">${esc(c.notes || '')}</span></td>
-          <td>${tcHtml}</td>
+          <td>${tcHtml}</td><td>${spaHtml}</td>
           <td class="pages-row-actions">
             <button class="pages-edit-btn" data-group="${esc(grp)}">수정</button>
             <button class="pages-del-btn"  data-group="${esc(grp)}">삭제</button>
@@ -209,7 +209,7 @@ function renderPages(main) {
           </div>
           <table class="pages-table">
             <thead><tr>
-              <th>그룹명</th><th>URL</th><th>메모</th><th>케이스</th><th></th>
+              <th>그룹명</th><th>URL</th><th>메모</th><th>케이스</th><th>SPA</th><th></th>
             </tr></thead>
             <tbody>${rows}</tbody>
           </table>
@@ -220,6 +220,7 @@ function renderPages(main) {
   main.innerHTML = `
     <div class="pipeline-view pages-view">
       <div class="pipeline-title">페이지 URL 관리</div>
+      <p class="pipeline-subtitle">테스트할 페이지와 testcases/ 폴더(그룹)를 연결합니다.</p>
 
       <div class="pages-form-card">
         <div class="pages-form-title">새 페이지 등록</div>
@@ -248,7 +249,7 @@ function renderPages(main) {
           <label class="pages-spa-label">
             <input id="pg-spa" type="checkbox"> SPA 모드 (단일 세션 순차 실행)
           </label>
-          <button id="pg-add-btn" class="pages-add-btn" onclick="addPage()" disabled>+ 추가</button>
+          <button id="pg-add-btn" class="pages-add-btn" onclick="addPage()" disabled title="그룹명과 URL을 입력하세요">추가</button>
         </div>
         <div id="pg-status" class="pages-form-status"></div>
       </div>
