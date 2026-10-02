@@ -39,39 +39,33 @@ function showHookAlert(type, detail) {
 
   const configs = {
     discuss: {
-      icon: '&#x1F4AC;',
       title: '토론이 예약되었습니다',
-      desc: `<strong style="color:#89b4fa;">"${esc(detail)}"</strong>`,
+      desc: `<strong style="color:var(--accent);">"${esc(detail)}"</strong>`,
       action: 'Claude Code에서 <strong>아무 메시지</strong>를 보내주세요.<br>훅이 자동으로 토론을 시작합니다.'
     },
     parallel: {
-      icon: '&#x1F680;',
       title: '병렬 실행 준비 완료',
-      desc: `<strong style="color:#89b4fa;">${detail}</strong>`,
-      action: 'Claude Code에서 <strong>아무 메시지</strong>를 보내주세요.<br>자동으로 subagent 실행이 시작됩니다.'
+      desc: `<strong style="color:var(--accent);">${detail}</strong>`,
+      action: 'Claude Code에서 <strong>아무 메시지</strong>를 보내주세요.<br>자동으로 병렬 작업이 시작됩니다.'
     },
     single_init: {
-      icon: '&#x2699;&#xFE0F;',
       title: '단일 파이프라인 준비 완료',
-      desc: `<strong style="color:#89b4fa;">${detail}</strong>`,
+      desc: `<strong style="color:var(--accent);">${detail}</strong>`,
       action: 'Claude Code에서 <strong>아무 메시지</strong>를 보내주세요.<br>훅이 자동으로 파이프라인을 시작합니다.'
     },
     single_approved: {
-      icon: '&#x2705;',
       title: '파이프라인 승인 완료',
-      desc: `<strong style="color:#89b4fa;">${detail}</strong>`,
+      desc: `<strong style="color:var(--accent);">${detail}</strong>`,
       action: 'Claude Code에서 <strong>아무 메시지</strong>를 보내주세요.<br>훅이 자동으로 테스트를 실행합니다.'
     },
     discuss_approved: {
-      icon: '&#x1F4DD;',
       title: '팀 토론 승인 완료',
-      desc: `<strong style="color:#89b4fa;">${detail}</strong>`,
+      desc: `<strong style="color:var(--accent);">${detail}</strong>`,
       action: 'Claude Code에서 <strong>아무 메시지</strong>를 보내주세요.<br>훅이 승인된 항목을 자동으로 구현합니다.'
     },
     quick_heal: {
-      icon: '&#x1FA79;',
       title: '힐링이 필요합니다',
-      desc: `<strong style="color:#f38ba8;">${detail}</strong>`,
+      desc: `<strong style="color:var(--fail);">${detail}</strong>`,
       action: 'Claude Code에서 <strong>아무 메시지</strong>를 보내주세요.<br>훅이 자동으로 힐링을 시작합니다.'
     }
   };
@@ -79,23 +73,19 @@ function showHookAlert(type, detail) {
 
   const overlay = document.createElement('div');
   overlay.id = 'hook-alert';
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;z-index:9999;animation:fadeIn 0.2s ease;';
+  overlay.className = 'dashboard-confirm-scrim';
 
   const box = document.createElement('div');
-  box.style.cssText = 'background:#1e1e2e;border:2px solid #f9e2af;border-radius:16px;padding:32px 40px;max-width:500px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.5);';
+  box.className = 'dashboard-confirm-dialog';
   box.innerHTML = `
-    <div style="font-size:48px;margin-bottom:16px;">${cfg.icon}</div>
-    <h2 style="color:#cdd6f4;margin:0 0 12px;">${cfg.title}</h2>
-    <p style="color:#a6adc8;font-size:14px;line-height:1.6;margin:0 0 8px;">${cfg.desc}</p>
-    <div style="background:#313244;border-radius:10px;padding:16px 20px;margin:16px 0 24px;">
-      <p style="color:#f9e2af;font-size:14px;line-height:1.7;margin:0;">
-        ${cfg.action}
-      </p>
+    <h2 class="dashboard-confirm-head" style="margin:0;">${cfg.title}</h2>
+    <div class="dashboard-confirm-body">
+      <p style="margin:0 0 12px;">${cfg.desc}</p>
+      <p style="margin:0;color:var(--text-2);">${cfg.action}</p>
     </div>
-    <button onclick="this.closest('#hook-alert').remove()"
-      style="background:#f9e2af;color:#1e1e2e;border:none;border-radius:8px;padding:10px 28px;font-size:14px;font-weight:600;cursor:pointer;">
-      확인
-    </button>
+    <div class="dashboard-confirm-actions">
+      <button class="action-btn action-btn-primary" onclick="this.closest('#hook-alert').remove()">확인</button>
+    </div>
   `;
   overlay.appendChild(box);
   overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });

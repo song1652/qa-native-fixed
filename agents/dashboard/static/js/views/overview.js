@@ -335,6 +335,7 @@ function _buildTrendChart(history) {
   return `
     <div class="oax-trend">
       <svg viewBox="0 0 ${w} ${h}" class="oax-trend-svg">
+        <defs><g id="areaGrad"></g></defs>
         ${gridLines}
         <polyline points="${points}" fill="none" stroke="var(--approved-color)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
         ${dots}
