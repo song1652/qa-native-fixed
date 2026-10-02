@@ -64,7 +64,7 @@
  </div>
  <div class="scrim" id="trash-modal" data-id="trash-modal" hidden>
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="tr-title" style="width:min(560px,100%)">
-   <div class="panel-head"><span id="tr-title">삭제한 스위트</span><span class="faint" style="font-weight:400;font-size:11.5px" id="tr-help"></span><span class="spacer"></span><button class="icon-btn" type="button" id="tr-close" data-id="trash-close" aria-label="닫기">✕</button></div>
+   <div class="panel-head"><span id="tr-title">삭제한 스위트</span><span class="faint" style="font-weight:400;font-size:12px" id="tr-help"></span><span class="spacer"></span><button class="icon-btn" type="button" id="tr-close" data-id="trash-close" aria-label="닫기">✕</button></div>
    <div class="panel-body"><ul class="trash-list" id="trash-list" data-id="trash-list"></ul></div>
   </div>
  </div>

@@ -80,7 +80,7 @@
     const drift = $('#md-drift', root);
     drift.hidden = !el.drifted.length;
     drift.innerHTML = el.drifted.length ? `<b>testcases/에서 직접 바뀐 파일 ${el.drifted.length}개</b>
-      <span class="mono" style="font-size:11px">${el.drifted.map((d) => esc(d.file)).join(' · ')}</span>
+      <span class="mono" style="font-size:12px">${el.drifted.map((d) => esc(d.file)).join(' · ')}</span>
       <span>라이브러리가 원본입니다. 미리보기에서 파일마다 건너뛰기 또는 덮어쓰기를 고릅니다.</span>` : '';
     $('#md-excluded', root).innerHTML = `<summary class="muted" style="cursor:pointer;font-size:12px">제외된 ${el.excluded.length}건 보기</summary>
       <ul class="checks" style="margin-top:8px">${el.excluded.map((x) => `<li><span class="wr">!</span>${esc(x.case_id)} ${esc(x.feature)} · ${esc(x.reason)}</li>`).join('')}</ul>`;

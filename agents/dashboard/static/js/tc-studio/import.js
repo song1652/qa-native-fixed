@@ -8,7 +8,7 @@
   NS.importModal = { html, mount, open };
   function html() {
     return `<div class="scrim" id="import-modal" data-id="import-modal" hidden>
-      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="im-title" style="width:min(1040px,96vw)">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="im-title" style="width:min(820px,96vw)">
       <div class="panel-head"><span id="im-title">엑셀을 라이브러리로 가져오기</span><span class="spacer"></span><button class="icon-btn" id="import-close" data-id="import-close" aria-label="닫기">✕</button></div>
       <div class="panel-body" style="display:grid;gap:12px;max-height:82vh;overflow:auto">
         <div class="row"><span class="help">파일 선택 → 열 매핑 → 변경 확인 → 가져오기</span><span class="spacer"></span><button class="btn-sm" data-id="import-history-open" id="import-history-open">가져오기 이력</button></div>

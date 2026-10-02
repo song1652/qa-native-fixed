@@ -26,7 +26,7 @@
           <span class="tag warn">중복 후보 <span id="rv-dup" class="num">0</span></span>
           <span class="tag err">검증 오류 <span id="rv-err" class="num">0</span></span>
           <span class="spacer"></span>
-          <span class="faint" style="font-size:11px"><span class="kbd">J</span><span class="kbd">K</span> 이동 <span class="kbd">A</span> 승인 <span class="kbd">R</span> 반려 <span class="kbd">G</span> 재생성 <span class="kbd">E</span> 편집</span>
+          <span class="faint" style="font-size:12px"><span class="kbd">J</span><span class="kbd">K</span> 이동 <span class="kbd">A</span> 승인 <span class="kbd">R</span> 반려 <span class="kbd">G</span> 재생성 <span class="kbd">E</span> 편집</span>
         </div>
         <div class="row">
           <div class="seg" role="group" aria-label="검토 필터" data-id="review-filter">
@@ -41,7 +41,7 @@
       <aside class="rv-right" aria-label="원문">
         <div class="row"><b>원문</b><span class="spacer"></span><span class="src-ref" id="rv-ref"></span></div>
         <div class="excerpt" id="rv-excerpt" data-id="source-excerpt"><span class="faint">초안을 고르면 근거가 된 원문을 보여 줍니다</span></div>
-        <div class="panel"><div class="panel-head">커버리지 갭 <span class="faint" style="font-weight:400" id="rv-cov-profile"></span><span class="spacer"></span><span class="faint" style="font-weight:400;font-size:10.5px">막대: 정상 · 예외 (빨강 = 없음)</span></div>
+        <div class="panel"><div class="panel-head">커버리지 갭 <span class="faint" style="font-weight:400" id="rv-cov-profile"></span><span class="spacer"></span><span class="faint" style="font-weight:400;font-size:12px">막대: 정상 · 예외 (빨강 = 없음)</span></div>
           <div class="panel-body"><ul class="gap-list" data-id="coverage-gap" id="rv-gaps"></ul></div></div>
       </aside>
     </div>
@@ -80,7 +80,7 @@
     const errors = d.issues.filter((x) => x.level === 'error');
     const blocked = errors.length ? '검증 오류를 먼저 고치세요' : dup ? '중복 처리 방법을 먼저 고르세요' : '';
     return `<article class="dcard ${i === focus ? 'focus' : ''} ${d.status} ${dup ? 'dup' : ''} ${errors.length ? 'invalid' : ''}" data-id="draft-card" data-case="${d.case_id}" data-i="${i}" tabindex="0">
-      <div class="draft-head"><span class="mono faint" style="font-size:11px">${d.case_id}</span><span class="draft-title">${esc(d.feature)}</span>
+      <div class="draft-head"><span class="mono faint" style="font-size:12px">${d.case_id}</span><span class="draft-title">${esc(d.feature)}</span>
         <span class="pill st-${d.status}">${NS.STATUS_LABEL[d.status]}</span>${errors.length ? '<span class="tag err">검증 오류</span>' : ''}${estimated(d) ? '<span class="tag warn">추정 문구</span>' : ''}${styleIssues(d).length ? `<span class="tag warn" data-id="draft-style" title="${esc(styleIssues(d).map((x) => x.message).join('\n'))}">문체 확인</span>` : ''}${d.draft_meta.quote_found === false ? '<span class="tag warn" title="모델이 인용한 문장을 원문에서 찾지 못했습니다">인용 불일치</span>' : ''}
         <span class="spacer"></span><button class="src-ref" data-id="draft-source-ref">${esc(d.source_refs[0] || '')}</button></div>
       <dl class="draft-grid"><dt>경로</dt><dd>${esc(d.path.filter(Boolean).join(' › '))}</dd><dt>사전 조건</dt><dd>${esc(d.precondition) || '<span class="faint">없음</span>'}</dd>

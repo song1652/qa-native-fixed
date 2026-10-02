@@ -62,18 +62,18 @@
   <section class="screen" id="screen-generate" data-screen="generate">
     <div class="wrap"><div class="gen">
       <div class="panel">
-        <div class="panel-head">1. 기획 정보 입력</div>
+        <div class="panel-head">기획 정보</div>
         <div class="panel-body" style="display:grid;gap:12px">
           <p class="help" style="margin:0">PRD 파일을 올리거나 텍스트·URL·Confluence·Figma 탭에서 기획 정보를 추가하세요. 입력한 내용을 바탕으로 LLM이 TC 초안을 작성합니다.</p>
           <div class="src-tabs" role="tablist">${tabs.map((t, i) => `<button class="src-tab" role="tab" data-id="src-tab-${t.id}" data-src="${t.id}" aria-selected="${i === 0}">${esc(t.label)}</button>`).join('')}</div>
           ${tabs.map((t, i) => `<div data-srcpane="${t.id}" ${i ? 'hidden' : ''}>${t.html()}</div>`).join('')}
           <div id="src-extra"></div>
-          <div class="label" style="margin-top:4px">수집한 소스 <span id="src-n" class="num">0</span></div>
+          <div class="label" style="margin-top:4px">수집한 기획 정보 <span id="src-n" class="num">0</span></div>
           <div class="srcs" id="srcs" data-id="src-list"></div>
         </div>
       </div>
       <div style="display:grid;gap:16px">
-        <div class="panel"><div class="panel-head">2. 작성할 시트·분류</div>
+        <div class="panel"><div class="panel-head">작성 위치</div>
           <div class="panel-body" style="display:grid;gap:10px">
             <div class="field"><span class="label">시트</span><div class="row" style="flex-wrap:nowrap"><select class="select" id="gen-target-sheet" data-id="gen-target-sheet" style="min-width:0"></select><button class="btn-sm" type="button" data-id="gen-add-sheet" id="gen-add-sheet" style="white-space:nowrap;flex-shrink:0">시트 추가</button><button class="btn-sm" type="button" data-id="gen-rename-sheet" id="gen-rename-sheet" style="white-space:nowrap;flex-shrink:0" disabled>이름 변경</button></div></div>
             <div class="picker" data-id="gen-target-path">

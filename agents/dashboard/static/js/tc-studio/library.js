@@ -24,7 +24,7 @@
         <div class="tree-tools">
           <input class="input" id="tree-search" data-id="tree-search" placeholder="가지 이름 검색" autocomplete="off">
           <div class="row" style="justify-content:space-between">
-            <span class="faint" style="font-size:11px">시트 › 대분류 › 중분류 › 소분류 › 제목</span>
+            <span class="faint" style="font-size:12px">시트 › 대분류 › 중분류 › 소분류 › 제목</span>
             <button class="icon-btn" data-id="tree-collapse-all" id="tree-collapse-all" title="모두 접기" aria-label="모두 접기">⊟</button>
           </div>
         </div>
@@ -76,7 +76,7 @@
           <select class="chip-select" data-id="bulk-status" id="bulk-status">${opt('', '검토 상태…')}${opt('approved', '승인')}${opt('draft', '초안으로')}${opt('rejected', '반려')}</select>
           <button class="btn-sm" data-id="bulk-move" id="bulk-move">계층 이동…</button>
           <button class="btn-sm" data-id="bulk-duplicate" id="bulk-duplicate">복제</button>
-          <button class="btn btn-danger" data-id="bulk-delete" id="bulk-delete" style="padding:4px 10px;font-size:11px">삭제</button>
+          <button class="btn btn-danger" data-id="bulk-delete" id="bulk-delete" style="padding:4px 10px;font-size:12px">삭제</button>
           <span class="spacer"></span>
           <button class="icon-btn" data-id="bulk-clear" id="bulk-clear" aria-label="선택 해제">✕</button>
         </div>
@@ -86,7 +86,7 @@
             <h3>라이브러리가 비어 있습니다</h3>
             <p>기존 Full TC 엑셀을 가져오면 시트별 계층 트리와 케이스가 한 번에 들어옵니다. 가져온 케이스는 모두 승인 상태로 시작합니다.</p>
             ${NS.importModal ? '<div class="row" style="justify-content:center"><button class="btn btn-primary" data-id="empty-import-xlsx" id="empty-import-xlsx">엑셀 가져오기</button></div>' : ''}
-            <p class="faint" style="font-size:11px">.xlsx · 헤더 행은 자동으로 찾습니다 · 원본 파일은 수정하지 않습니다</p>
+            <p class="faint" style="font-size:12px">.xlsx · 헤더 행은 자동으로 찾습니다 · 원본 파일은 수정하지 않습니다</p>
           </div>
         </div>
       </div>
@@ -117,7 +117,7 @@
       <div class="panel-body" style="display:grid;gap:12px">
         <b id="cf-title"></b>
         <span class="muted">삭제한 케이스는 되돌리기로 복원할 수 있습니다. 엑셀 다음 내보내기부터 빠집니다.</span>
-        <div class="row"><span class="spacer"></span><button class="btn btn-ghost" id="cf-cancel" data-id="confirm-cancel">취소</button><button class="btn btn-danger" id="cf-ok" data-id="confirm-ok" style="background:var(--err);color:#fff">삭제</button></div>
+        <div class="row"><span class="spacer"></span><button class="btn btn-ghost" id="cf-cancel" data-id="confirm-cancel">취소</button><button class="btn btn-danger" id="cf-ok" data-id="confirm-ok" style="background:var(--err);color:var(--on-accent)">삭제</button></div>
       </div>
     </div>
   </div>`;

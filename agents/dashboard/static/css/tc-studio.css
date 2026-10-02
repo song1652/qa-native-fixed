@@ -454,3 +454,63 @@
 .tc-studio .detail-head,.tc-studio .detail-body,.tc-studio .detail-foot { padding:16px; }
 .tc-studio .dtab { font-size:var(--fs-sub); }
 .tc-studio .chip-select { padding:2px 6px; border-radius:var(--radius-badge); }
+
+/* 기획 정보·초안 검토·내보내기 — TcGenerate / TcReview / TcExport */
+.tc-studio .wrap { padding:0; gap:20px; }
+.tc-studio .gen { grid-template-columns:minmax(0,1fr) 420px; gap:20px; }
+.tc-studio .src-tabs { gap:0; border:1px solid var(--line); border-radius:var(--radius-sm); overflow:hidden; width:fit-content; }
+.tc-studio .src-tab { border:0; border-radius:0; padding:8px 12px; font-size:var(--fs-sub); font-weight:500; }
+.tc-studio .src-tab + .src-tab { border-left:1px solid var(--line); }
+.tc-studio .src-tab[aria-selected="true"] { background:var(--text); color:var(--on-accent); }
+.tc-studio .drop { border:1px dashed var(--border-input); padding:32px 16px; font-size:var(--fs-sub); background:var(--card); }
+.tc-studio .src-card { background:var(--card); padding:12px; }
+.tc-studio .src-title { font-size:var(--fs-body); font-weight:600; }
+.tc-studio .src-ico { background:var(--card2); color:var(--text2); border-radius:var(--radius-sm); }
+.tc-studio .src-ico:is(.conf,.figma,.file,.paste,.url) { background:var(--card2); color:var(--text2); }
+.tc-studio .profile-rules,.tc-studio .examples { font-size:var(--fs-sub); line-height:1.7; }
+.tc-studio #gen-submit { min-height:44px; padding-inline:24px; }
+.tc-studio .job { gap:16px; }
+.tc-studio .jstep { font-size:var(--fs-label); }
+.tc-studio .log { background:var(--log-bg); font-size:var(--fs-sub); }
+.tc-studio .review { grid-template-columns:minmax(0,1fr) 360px; gap:20px; min-height:640px; }
+.tc-studio .rv-left { padding:0; border:0; gap:16px; }
+.tc-studio .rv-right { padding:16px; border:1px solid var(--line); border-radius:var(--radius); background:var(--card); }
+.tc-studio .rv-summary { font-size:var(--fs-sub); }
+.tc-studio .dcard { padding:16px; border-color:var(--line); background:var(--card); }
+.tc-studio .dcard.focus { border-color:var(--accent); }
+.tc-studio .draft-title { font-size:var(--fs-body); }
+.tc-studio .draft-grid { font-size:var(--fs-sub); grid-template-columns:90px 1fr; gap:8px 12px; }
+.tc-studio .draft-grid dt { font-size:var(--fs-label); color:var(--text2); }
+.tc-studio .seg button { min-height:34px; font-size:var(--fs-sub); padding:0 12px; }
+.tc-studio .seg button[aria-pressed="true"] { background:var(--text); color:var(--on-accent); }
+.tc-studio .btn-success { background:var(--accent); border-color:var(--accent); color:var(--on-accent); }
+.tc-studio .excerpt,.tc-studio .gap-list li,.tc-studio .dupbox { font-size:var(--fs-sub); }
+.tc-studio .exp { gap:20px; }
+.tc-studio .exp-card { gap:16px; }
+.tc-studio .exp-card .head { padding-bottom:14px; border-bottom:1px solid var(--line); }
+.tc-studio .fmt { border-radius:var(--radius-sm); font-size:var(--fs-sub); font-weight:600; }
+.tc-studio .radio { padding:10px 12px; font-size:var(--fs-body); }
+.tc-studio .sheet-pick { border-radius:var(--radius-sm); font-size:var(--fs-sub); }
+.tc-studio .funnel .f { font-size:var(--fs-sub); }
+.tc-studio .warnbox { padding:12px 14px; font-size:var(--fs-sub); line-height:1.6; }
+.tc-studio .md-preview { border-color:var(--line); background:var(--card); padding:16px; }
+.tc-studio .md-preview table { font-size:var(--fs-sub); }
+.tc-studio .md-preview th { background:var(--card2); color:var(--text2); }
+/* 기존 모달의 크기·가시성·이벤트는 유지하고 목업의 머리·본문·입력을 적용한다. */
+.tc-studio .modal { border-radius:var(--radius-modal); background:var(--surface); border-color:var(--border); }
+.tc-studio .modal .panel-head { font-size:var(--fs-h2); padding:16px 20px; font-weight:600; }
+.tc-studio .modal .panel-body { padding:20px; }
+.tc-studio .modal table { width:100%; border-collapse:collapse; font-size:var(--fs-sub); }
+.tc-studio .modal th { padding:9px 12px; background:var(--card2); color:var(--text2); font-size:var(--fs-label); font-weight:500; text-align:left; }
+.tc-studio .modal td { padding:11px 12px; border-bottom:1px solid var(--line); vertical-align:top; }
+.tc-studio .modal pre { font:var(--fs-sub) / 1.6 var(--mono); }
+.tc-studio .modal .icon-btn { width:34px; height:34px; border:1px solid var(--line); }
+.tc-studio .toast { background:var(--surface); font-size:var(--fs-sub); box-shadow:var(--shadow-toast); }
+.tc-studio .suite-menu { background:var(--surface); }
+.tc-studio .sd-summary,.tc-studio .sd-notes,.tc-studio .trash-list li { font-size:var(--fs-sub); }
+@media (max-width:1100px) { .tc-studio .gen,.tc-studio .review,.tc-studio .exp { grid-template-columns:minmax(0,1fr); } }
+
+.tc-studio #import-modal .panel-body > .row:last-child { margin:8px -20px -20px; padding:14px 20px; border-top:1px solid var(--line); background:var(--bg); }
+.tc-studio #import-sheets .row .select { width:180px; }
+.tc-studio #import-modal:has(#import-confirm:disabled) #import-plan:not(:disabled) { background:var(--accent); border-color:var(--accent); color:var(--on-accent); }
+.tc-studio .dcard:not(.focus) .btn-success { background:var(--card); border-color:var(--line); color:var(--text); }

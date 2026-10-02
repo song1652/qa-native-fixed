@@ -17,12 +17,12 @@
         <div class="detail-head">
           <div class="row">
             <span class="mono faint" id="d-id"></span><span id="d-status"></span>
-            <span id="d-rev" class="mono faint" style="font-size:10.5px"></span><span class="spacer"></span>
+            <span id="d-rev" class="mono faint" style="font-size:12px"></span><span class="spacer"></span>
             <span id="d-dirty" hidden title="저장하지 않은 변경"><i class="dirty-dot"></i></span>
             <button class="icon-btn" data-id="detail-close" id="detail-close" aria-label="패널 닫기">✕</button>
           </div>
           <input class="input" id="detail-feature" data-id="detail-feature" style="font-weight:600;font-size:14px" aria-label="제목">
-          <div class="row" style="font-size:11.5px"><span class="faint">경로</span><span id="d-path" class="crumbpath"></span>
+          <div class="row" style="font-size:12px"><span class="faint">경로</span><span id="d-path" class="crumbpath"></span>
             <button class="btn-sm" data-id="detail-move" id="detail-move">이동…</button></div>
         </div>
         <div class="detail-tabs" role="tablist">
@@ -41,14 +41,14 @@
             <div class="field"><label class="label" for="detail-tags">태그</label><input class="input" id="detail-tags" data-id="detail-tags" placeholder="쉼표로 구분"><span class="help">태그를 쉼표로 구분해 입력하세요.</span></div>
             <div class="field"><label class="label" for="detail-precondition">사전 조건</label><textarea class="textarea" id="detail-precondition" data-id="detail-precondition" rows="2"></textarea></div>
             <div class="field">
-              <div class="row"><span class="label">Test Step</span><span class="spacer"></span><span class="faint" style="font-size:10.5px">끌어서 순서 변경 · <span class="kbd">Alt</span><span class="kbd">↑↓</span></span></div>
+              <div class="row"><span class="label">Test Step</span><span class="spacer"></span><span class="faint" style="font-size:12px">끌어서 순서 변경 · <span class="kbd">Alt</span><span class="kbd">↑↓</span></span></div>
               <ol class="steps" id="d-steps" data-id="detail-steps"></ol>
               <button class="btn-sm" data-id="detail-step-add" id="detail-step-add" style="justify-self:start">+ Step 추가</button>
             </div>
             <div class="field"><label class="label" for="detail-expected">Expected Result</label>
               <textarea class="textarea" id="detail-expected" data-id="detail-expected" rows="2"></textarea><span class="help" id="d-exp-help"></span></div>
             <div class="field">
-              <div class="row"><span class="label">UI 문구</span><span class="spacer"></span><span class="faint" style="font-size:10.5px">배지를 눌러 확인/추정 전환</span></div>
+              <div class="row"><span class="label">UI 문구</span><span class="spacer"></span><span class="faint" style="font-size:12px">배지를 눌러 확인/추정 전환</span></div>
               <div class="bullets" id="d-bullets" data-id="detail-bullets"></div>
               <button class="btn-sm" data-id="detail-bullet-add" id="detail-bullet-add" style="justify-self:start">+ 문구 추가</button>
             </div>
@@ -64,7 +64,7 @@
           <button class="btn btn-ghost" data-id="detail-revert-edits" id="detail-revert-edits" disabled>변경 취소</button>
           <span class="spacer"></span>
           <button class="btn-sm" data-id="detail-duplicate" id="detail-duplicate">복제</button>
-          <button class="btn btn-danger" data-id="detail-delete" id="detail-delete" style="padding:4px 10px;font-size:11px">삭제</button>
+          <button class="btn btn-danger" data-id="detail-delete" id="detail-delete" style="padding:4px 10px;font-size:12px">삭제</button>
         </div>
       </aside>`;
   }
@@ -153,7 +153,7 @@
     $('#d-refs', root).innerHTML = c.source_refs.map((r) => `<span class="src-ref">${esc(r)}</span>`).join('');
     $('#d-checks', root).innerHTML = (current.issues.length ? current.issues : [{ level: 'ok', message: '문제 없음' }])
       .map((i) => `<li><span class="${i.level === 'error' ? 'bad' : i.level === 'warning' ? 'wr' : 'ok'}">${i.level === 'error' ? '✕' : i.level === 'warning' ? '!' : '✓'}</span>${esc(i.message)}</li>`).join('');
-    $('#d-source', root).innerHTML = `<div class="excerpt"><h5>출처</h5>${c.source_refs.map((r) => `<div class="mono" style="font-size:11px">${esc(r)}</div>`).join('')}
+    $('#d-source', root).innerHTML = `<div class="excerpt"><h5>출처</h5>${c.source_refs.map((r) => `<div class="mono" style="font-size:12px">${esc(r)}</div>`).join('')}
       <p class="faint" style="margin:8px 0 0">문서 원문 하이라이트는 초안 검토 화면에서 봅니다. 엑셀에서 온 케이스는 가져온 파일·시트·행을 보여줍니다.</p></div>`;
     if (NS.sourceWatch) {
       NS.sourceWatch.detailSource($('#d-source', root), current, async () => {
