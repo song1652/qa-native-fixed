@@ -62,7 +62,7 @@ function renderReports(main) {
   const disabled = state.busy ? 'disabled' : '';
   main.innerHTML = `
     <div class="pipeline-view reports-view">
-      <div class="pipeline-title">테스트 리포트</div>
+      <div class="pipeline-title">리포트</div>
       <p class="report-subtitle">생성된 실행 결과를 확인하고 필요한 리포트만 관리하세요.</p>
       <div class="report-controls">
         <input class="report-search" id="report-search-input" type="text" placeholder="리포트 이름 검색" aria-label="리포트 검색" value="${esc(state.search)}">
