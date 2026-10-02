@@ -157,11 +157,11 @@ def _build_artifact_panel(uid: str, duration: dict | None, artifacts: dict) -> s
             trace_btn = (
                 f'<a class="trace-link" '
                 f'data-trace-path="{_esc(trace_path)}" '
-                f'href="javascript:void(0)">&#128203; trace</a>'
+                f'href="javascript:void(0)">trace 명령 복사</a>'
             )
         parts.append(
             f'<div class="artifact-sub">'
-            f'<div class="artifact-sub-title">Screenshots</div>'
+            f'<div class="artifact-sub-title">스크린샷</div>'
             f'<div class="screenshot-wrap">'
             f'<img src="{_esc(ss_src)}" class="screenshot-thumb" alt="screenshot">'
             f'</div>'
@@ -174,9 +174,9 @@ def _build_artifact_panel(uid: str, duration: dict | None, artifacts: dict) -> s
         vid_src = _artifact_http_path(video_path, "videos")
         parts.append(
             f'<div class="artifact-sub">'
-            f'<div class="artifact-sub-title">Videos</div>'
+            f'<div class="artifact-sub-title">영상</div>'
             f'<video src="{_esc(vid_src)}" controls class="artifact-video"></video>'
-            f'<a href="{_esc(vid_src)}" class="artifact-dl" download>&#8659; video</a>'
+            f'<a href="{_esc(vid_src)}" class="artifact-dl" download>영상 다운로드</a>'
             f'</div>'
         )
 
@@ -197,11 +197,11 @@ def case_row(case: dict, uid: str, outcome,
     if isinstance(outcome, bool):
         outcome = "passed" if outcome else "failed"
     _cls_map = {"passed": "pass", "failed": "fail", "skipped": "skip"}
-    _txt_map = {"passed": "PASS", "failed": "FAIL", "skipped": "SKIP"}
+    _txt_map = {"passed": "통과", "failed": "실패", "skipped": "건너뜀"}
     status_cls = _cls_map.get(outcome, "fail")
-    badge_txt = _txt_map.get(outcome, "FAIL")
+    badge_txt = _txt_map.get(outcome, "실패")
 
-    title = case.get("title", "untitled")
+    title = case.get("title", "제목 없음")
     precondition = case.get("precondition", "")
     steps = case.get("steps", [])
     expected = case.get("expected", "")
@@ -214,7 +214,7 @@ def case_row(case: dict, uid: str, outcome,
     pre_content = "<br>".join(pre_lines)
     pre_html = (
         f'<div class="detail-row">'
-        f'<span class="detail-label">Precondition</span>'
+        f'<span class="detail-label">사전 조건</span>'
         f'<span class="detail-val">{pre_content}</span>'
         f'</div>'
         if pre_content else ""
@@ -226,7 +226,7 @@ def case_row(case: dict, uid: str, outcome,
 
     skip_reason_html = (
         f'<div class="detail-row">'
-        f'<span class="detail-label">Skip Reason</span>'
+        f'<span class="detail-label">건너뛴 이유</span>'
         f'<span class="detail-val" style="color:var(--skip);">{_esc(skip_reason)}</span>'
         f'</div>'
         if skip_reason else ""
@@ -259,11 +259,11 @@ def case_row(case: dict, uid: str, outcome,
         f'    {skip_reason_html}'
         f'    {pre_html}'
         f'    <div class="detail-row">'
-        f'      <span class="detail-label">Steps</span>'
+        f'      <span class="detail-label">실행 절차</span>'
         f'      <span class="detail-val"><ol class="steps-list">{steps_html}</ol></span>'
         f'    </div>'
         f'    <div class="detail-row">'
-        f'      <span class="detail-label">Expected</span>'
+        f'      <span class="detail-label">기대 결과</span>'
         f'      <span class="detail-val">{exp_content}</span>'
         f'    </div>'
         f'    {artifact_html}'
@@ -279,13 +279,13 @@ def build_group_section(label: str, rows_html: str,
     """그룹 카드 HTML 생성. 접기/펼치기 + 필터 + 페이지네이션."""
     status_cls = "pass" if g_passed else ("fail" if has_tests else "warn")
     g_fail_cnt = g_total_cnt - g_pass_cnt - g_skip_cnt
-    status_txt = "PASS" if g_passed else ("FAIL" if has_tests else "N/A")
+    status_txt = "통과" if g_passed else ("실패" if has_tests else "미실행")
     if g_passed and g_skip_cnt > 0:
-        status_txt = f"PASS · {g_skip_cnt} skipped"
-    display_label = label.replace("_", " ").upper()
+        status_txt = f"통과 · {g_skip_cnt}건 건너뜀"
+    display_label = _esc(label)
     skip_btn = (
         f'<button class="fbtn skip" data-filter="{label}" data-filter-val="skip">'
-        f'Skip ({g_skip_cnt})</button>'
+        f'건너뜀 ({g_skip_cnt})</button>'
         if g_skip_cnt > 0 else ""
     )
 
@@ -296,7 +296,7 @@ def build_group_section(label: str, rows_html: str,
       <span class="group-chevron" id="gchv_{label}">&#9654;</span>
       <span class="group-dot {status_cls}"></span>
       <span class="group-title">{display_label}</span>
-      <span class="group-sub">{g_pass_cnt} / {g_total_cnt - g_skip_cnt} passed{f" · {g_skip_cnt} skipped" if g_skip_cnt else ""}</span>
+      <span class="group-sub">{g_pass_cnt} / {g_total_cnt - g_skip_cnt} 통과{f" · {g_skip_cnt}건 건너뜀" if g_skip_cnt else ""}</span>
     </div>
     <div class="group-right">
       <span class="badge {status_cls}">{status_txt}</span>
@@ -304,9 +304,9 @@ def build_group_section(label: str, rows_html: str,
   </div>
   <div class="group-body" id="gbody_{label}" style="display:none">
     <div class="filter-bar" id="fbar_{label}">
-      <button class="fbtn active" data-filter="{label}" data-filter-val="all">All ({g_total_cnt})</button>
-      <button class="fbtn pass" data-filter="{label}" data-filter-val="pass">Pass ({g_pass_cnt})</button>
-      <button class="fbtn fail" data-filter="{label}" data-filter-val="fail">Fail ({g_fail_cnt})</button>
+      <button class="fbtn active" data-filter="{label}" data-filter-val="all">전체 ({g_total_cnt})</button>
+      <button class="fbtn pass" data-filter="{label}" data-filter-val="pass">통과 ({g_pass_cnt})</button>
+      <button class="fbtn fail" data-filter="{label}" data-filter-val="fail">실패 ({g_fail_cnt})</button>
       {skip_btn}
       <span class="pager" id="pager_{label}"></span>
     </div>
@@ -317,137 +317,105 @@ def build_group_section(label: str, rows_html: str,
 
 def report_css() -> str:
     return """
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;600;800&family=JetBrains+Mono:wght@400;500&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
   :root {
-    --bg:#0d1117;
-    --bg-gradient:radial-gradient(circle at 0% 0%, #1e1b4b 0%, #0d1117 100%);
-    --surface:rgba(30,41,59,0.4);
-    --surface2:rgba(30,41,59,0.65);
-    --border:rgba(255,255,255,0.1);
-    --text:#f8fafc;--text2:#94a3b8;--text3:#64748b;
-    --pass:#10b981;--pass-bg:rgba(16,185,129,.1);
-    --fail:#f43f5e;--fail-bg:rgba(244,63,94,.1);
-    --warn:#f59e0b;--warn-bg:rgba(245,158,11,.1);
-    --skip:#a855f7;--skip-bg:rgba(168,85,247,.1);
-    --accent:#6366f1;--accent-glow:rgba(99,102,241,.4);
-    --radius:16px;--radius-sm:12px;--radius-lg:24px;
-    --shadow:0 20px 60px -15px rgba(0,0,0,.6);
+    color-scheme:light;
+    --bg:#F5F6F8;--surface:#FFFFFF;--surface2:#F0F2F5;--log-bg:#F8F9FB;
+    --border:#E2E5EA;--border-input:#8B93A1;
+    --text:#111827;--text2:#4B5563;--text3:#6B7280;
+    --pass:#15803D;--pass-bg:#E6F4EA;--fail:#B91C1C;--fail-bg:#FDECEC;
+    --warn:#92400E;--warn-bg:#FEF3C7;--skip:var(--text3);--skip-bg:var(--surface2);
+    --accent:#1F4FD1;--accent-hover:#163A9C;--accent-bg:#E8EEFC;--on-accent:#FFFFFF;
+    --radius:8px;--radius-sm:6px;--radius-badge:4px;
+    --sans:'IBM Plex Sans KR',system-ui,sans-serif;--mono:'JetBrains Mono',ui-monospace,monospace;
+    --scrim:rgb(17 24 39 / .45);--shadow:0 12px 32px rgb(17 24 39 / .18);
   }
   *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:'Inter',-apple-system,sans-serif;background:var(--bg-gradient);background-attachment:fixed;color:var(--text);min-height:100vh}
-  ::-webkit-scrollbar{width:6px;height:6px}
-  ::-webkit-scrollbar-track{background:transparent}
-  ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:10px}
-  ::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.18)}
-  .layout{display:grid;grid-template-columns:220px 1fr;min-height:100vh}
-  .sidebar{background:rgba(13,17,23,0.7);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-right:1px solid var(--border);padding:28px 0;position:sticky;top:0;height:100vh;overflow-y:auto}
-  .sidebar-logo{padding:0 20px 24px;border-bottom:1px solid var(--border);margin-bottom:16px}
-  .logo-text{font-size:17px;font-weight:800;font-family:'Outfit',-apple-system,sans-serif;letter-spacing:-.5px}
-  .logo-sub{font-size:12px;color:var(--text3);margin-top:4px}
-  .nav-section{padding:0 12px}
-  .nav-label{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1.2px;padding:0 8px;margin-bottom:8px}
-  .nav-item{font-size:14px;color:var(--text2);padding:10px 12px;border-radius:var(--radius-sm);cursor:pointer;transition:all .15s;list-style:none;font-weight:500;display:flex;align-items:center;gap:10px}
-  .nav-item:hover{background:var(--surface2);color:var(--text);backdrop-filter:blur(20px)}
-  .nav-item.active{background:var(--surface2);color:var(--text);border-left:2px solid var(--accent);backdrop-filter:blur(20px)}
+  body{font-family:var(--sans);font-size:14px;background:var(--bg);color:var(--text);min-height:100vh}
+  button,a{font:inherit}
+  button:focus-visible,a:focus-visible,[data-toggle]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  a{color:var(--accent)}a:hover{color:var(--accent-hover)}
+  .report-header{background:var(--surface);border-bottom:1px solid var(--border)}
+  .topbar{max-width:1240px;margin:auto;padding:20px 32px;display:flex;align-items:center;gap:16px}
+  .topbar h1{font-size:22px;font-weight:600;line-height:1.4}
+  .report-title{display:flex;align-items:center;gap:10px}
+  .meta{font-size:13px;color:var(--text2);margin-top:6px}
+  .layout{max-width:1240px;margin:auto;padding:24px 32px;display:grid;grid-template-columns:220px minmax(0,1fr);gap:24px;align-items:start}
+  .sidebar{position:sticky;top:24px;max-height:calc(100vh - 48px);overflow:auto}
+  .sidebar-logo{padding:0 12px 16px}
+  .logo-text{font-size:15px;font-weight:600}.logo-sub{font-size:12px;color:var(--text3);margin-top:4px}
+  .nav-label{font-size:12px;color:var(--text3);padding:0 12px 6px}
+  .nav-item{font-size:13px;color:var(--text);padding:8px 12px;border-radius:var(--radius-sm);cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px}
+  .nav-item:hover{background:var(--surface2)}
+  .nav-item.active{background:var(--accent-bg);color:var(--accent);font-weight:600}
   .nav-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
   .nav-dot.pass{background:var(--pass)}.nav-dot.fail{background:var(--fail)}.nav-dot.warn{background:var(--warn)}
-  .nav-count{margin-left:auto;font-size:12px;color:var(--text3);font-weight:600}
-  .main{padding:36px 40px;max-width:900px}
-  .topbar{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:32px}
-  .topbar h1{font-size:26px;font-weight:800;letter-spacing:-.5px;font-family:'Outfit',-apple-system,sans-serif}
-  .meta{font-size:12px;color:var(--text3);margin-top:5px;font-family:'JetBrains Mono',monospace}
-  .overall-badge{display:flex;align-items:center;gap:8px;padding:10px 18px;border-radius:var(--radius);font-size:13px;font-weight:700;letter-spacing:.3px;backdrop-filter:blur(20px)}
-  .overall-badge.pass{background:var(--pass-bg);color:var(--pass);border:1px solid rgba(16,185,129,.25)}
-  .overall-badge.fail{background:var(--fail-bg);color:var(--fail);border:1px solid rgba(244,63,94,.25)}
-  .stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:14px;margin-bottom:32px}
-  .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px 22px;transition:transform .2s,box-shadow .2s,border-color .2s;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);box-shadow:var(--shadow);position:relative;overflow:hidden}
-  .stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--accent),transparent);opacity:.6}
-  .stat-card:hover{transform:translateY(-3px);box-shadow:0 24px 64px -12px rgba(0,0,0,.7),0 0 0 1px var(--accent-glow)}
-  .stat-num{font-size:32px;font-weight:800;letter-spacing:-1px;line-height:1;margin-bottom:6px;font-family:'Outfit',-apple-system,sans-serif}
-  .stat-lbl{font-size:12px;color:var(--text3);font-weight:500;text-transform:uppercase;letter-spacing:.5px}
-  .group-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:16px;overflow:hidden;transition:transform .2s,box-shadow .2s,border-color .2s;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);box-shadow:var(--shadow)}
-  .group-card:hover{transform:translateY(-3px);box-shadow:0 24px 64px -12px rgba(0,0,0,.7),0 0 0 1px rgba(255,255,255,.12)}
-  .group-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border)}
-  .group-header.pass{border-left:3px solid var(--pass)}
-  .group-header.fail{border-left:3px solid var(--fail)}
-  .group-header.warn{border-left:3px solid var(--warn)}
-  .group-title-wrap{display:flex;align-items:center;gap:10px}
-  .group-chevron{color:var(--text3);font-size:12px;transition:transform .2s;display:inline-block}
+  .nav-count{margin-left:auto;font-size:12px;color:var(--text3);font-family:var(--mono);white-space:nowrap}
+  .main{min-width:0}
+  .overall-badge,.badge{display:inline-block;font-size:12px;font-weight:600;padding:2px 8px;border-radius:var(--radius-badge);white-space:nowrap}
+  .overall-badge.pass,.badge.pass{background:var(--pass-bg);color:var(--pass)}
+  .overall-badge.fail,.badge.fail{background:var(--fail-bg);color:var(--fail)}
+  .badge.warn{background:var(--warn-bg);color:var(--warn)}
+  .stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));margin-bottom:20px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);overflow:hidden}
+  .stat-card{padding:16px 20px;display:flex;flex-direction:column;gap:6px}
+  .stat-card+.stat-card{border-left:1px solid var(--border)}
+  .stat-num{font-size:24px;font-weight:600;line-height:1.4;font-family:var(--mono);order:1}
+  .stat-lbl{font-size:13px;color:var(--text2)}
+  .group-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:20px;overflow:hidden}
+  .group-header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px}
+  .group-title-wrap{display:flex;align-items:center;gap:10px;min-width:0;flex-wrap:wrap}
+  .group-chevron{color:var(--text3);font-size:12px;display:inline-block;transition:transform .15s}
   .group-chevron.open{transform:rotate(90deg)}
   .group-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
-  .group-dot.pass{background:var(--pass);box-shadow:0 0 8px var(--pass)}
-  .group-dot.fail{background:var(--fail);box-shadow:0 0 8px var(--fail)}
-  .group-dot.warn{background:var(--warn);box-shadow:0 0 8px var(--warn)}
-  .group-title{font-size:14px;font-weight:700;letter-spacing:.3px;font-family:'Outfit',-apple-system,sans-serif}
-  .group-sub{font-size:12px;color:var(--text3)}
-  .group-right{display:flex;align-items:center;gap:8px}
-  .badge{font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;letter-spacing:.5px;white-space:nowrap}
-  .badge.pass{background:var(--pass-bg);color:var(--pass);border:1px solid rgba(16,185,129,.3)}
-  .badge.fail{background:var(--fail-bg);color:var(--fail);border:1px solid rgba(244,63,94,.3)}
-  .badge.warn{background:var(--warn-bg);color:var(--warn);border:1px solid rgba(245,158,11,.3)}
-  .filter-bar{display:flex;align-items:center;gap:8px;padding:10px 20px;border-bottom:1px solid var(--border)}
-  .fbtn{font-size:11px;padding:4px 12px;border-radius:16px;border:1px solid var(--border);background:transparent;color:var(--text3);cursor:pointer;font-family:inherit;transition:all .15s}
-  .fbtn:hover{border-color:rgba(255,255,255,.2);color:var(--text2)}
-  .fbtn.active{background:var(--surface2);color:var(--text);border-color:rgba(255,255,255,.2);backdrop-filter:blur(20px)}
-  .fbtn.pass.active{background:var(--pass-bg);color:var(--pass);border-color:rgba(16,185,129,.4)}
-  .fbtn.fail.active{background:var(--fail-bg);color:var(--fail);border-color:rgba(244,63,94,.4)}
-  .fbtn.skip.active{background:var(--skip-bg);color:var(--skip);border-color:rgba(168,85,247,.4)}
-  .pager{margin-left:auto;display:flex;align-items:center;gap:10px;font-size:14px;font-weight:600;color:var(--text2)}
-  .pager button{padding:6px 14px;border-radius:8px;border:1px solid var(--border);background:rgba(255,255,255,.04);color:var(--text2);cursor:pointer;font-size:14px;font-weight:600;transition:all .15s}
-  .pager button:disabled{opacity:.3;cursor:default}
-  .pager button:not(:disabled):hover{border-color:var(--accent);color:var(--text);background:rgba(99,102,241,.1)}
-  .case-list{padding:8px 0}
-  .case-item{border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s}
-  .case-item.pass{cursor:pointer}
-  .case-item:last-child{border-bottom:none}
-  .case-item:hover{background:rgba(255,255,255,.04)}
-  .case-header{display:flex;align-items:center;gap:12px;padding:10px 20px}
+  .group-dot.pass{background:var(--pass)}.group-dot.fail{background:var(--fail)}.group-dot.warn{background:var(--warn)}
+  .group-title{font-size:15px;font-weight:600;font-family:var(--mono)}
+  .group-sub{font-size:13px;color:var(--text2)}.group-right{display:flex;align-items:center;gap:8px}
+  .filter-bar{display:flex;align-items:center;padding:10px 16px;border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+  .fbtn{height:32px;padding:0 14px;border:1px solid var(--border);border-right:0;background:var(--surface);color:var(--text2);cursor:pointer;font-size:13px}
+  .fbtn:first-child{border-radius:var(--radius-sm) 0 0 var(--radius-sm)}
+  .fbtn:last-of-type{border-right:1px solid var(--border);border-radius:0 var(--radius-sm) var(--radius-sm) 0}
+  .fbtn:hover{background:var(--surface2)}.fbtn.active{background:var(--text);color:var(--on-accent)}
+  .pager{margin-left:auto;display:flex;align-items:center;gap:10px;font-size:13px;color:var(--text2);font-family:var(--mono)}
+  .pager button{height:32px;padding:0 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);cursor:pointer}
+  .pager button:disabled{color:var(--text3);background:var(--surface2);cursor:default}
+  .pager button:not(:disabled):hover{background:var(--accent-bg);color:var(--accent)}
+  .case-item{border-bottom:1px solid var(--border);cursor:pointer}.case-item:last-child{border-bottom:none}
+  .case-item:hover{background:var(--log-bg)}
+  .case-header{display:flex;align-items:center;gap:12px;padding:14px 16px}
   .case-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
   .case-dot.pass{background:var(--pass)}.case-dot.fail{background:var(--fail)}.case-dot.skip{background:var(--skip)}
-  .case-title{flex:1;font-size:13px;font-weight:500;color:var(--text);line-height:1.4}
-  .case-right{display:flex;align-items:center;gap:10px;flex-shrink:0}
-  .case-status-txt{font-size:11px;font-weight:700;letter-spacing:.5px}
-  .case-status-txt.pass{color:var(--pass)}
-  .case-status-txt.fail{color:var(--fail)}
-  .case-status-txt.skip{color:var(--skip)}
-  .chevron{color:var(--text3);font-size:18px;transition:transform .2s;display:inline-block}
-  .chevron.open{transform:rotate(90deg)}
-  .case-detail{display:none;padding:0 20px 16px 38px;animation:fadeIn .15s ease}
-  @keyframes fadeIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
-  .detail-row{display:flex;gap:16px;margin-top:10px;font-size:12px;line-height:1.6}
-  .detail-label{min-width:90px;font-weight:600;color:var(--text3);text-transform:uppercase;font-size:10px;letter-spacing:.5px;padding-top:2px;flex-shrink:0}
-  .detail-val{color:var(--text2)}
-  .steps-list{padding-left:16px;margin:0}
-  .steps-list li{margin:3px 0}
-  .empty-msg{padding:16px 20px;font-size:13px;color:var(--text3)}
-  /* Duration badge */
-  .dur-badge{font-size:10px;font-weight:600;color:var(--text3);background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:8px;padding:2px 7px;font-family:'JetBrains Mono',monospace}
-  /* Artifact panel */
-  .artifact-panel{margin-top:16px;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden}
-  .artifact-sub{padding:14px 16px;border-bottom:1px solid var(--border)}
-  .artifact-sub:last-child{border-bottom:none}
-  .artifact-sub-title{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px}
-  /* Timing rows */
+  .case-title{flex:1;min-width:0;font-size:14px;font-weight:600;line-height:1.5}
+  .case-right{display:flex;align-items:center;gap:12px;flex-shrink:0}
+  .case-status-txt{font-size:12px;font-weight:600;padding:2px 8px;border-radius:var(--radius-badge)}
+  .case-status-txt.pass{color:var(--pass);background:var(--pass-bg)}
+  .case-status-txt.fail{color:var(--fail);background:var(--fail-bg)}
+  .case-status-txt.skip{color:var(--skip);background:var(--skip-bg)}
+  .chevron{color:var(--text3);font-size:18px;display:inline-block;transition:transform .15s}.chevron.open{transform:rotate(90deg)}
+  .case-detail{display:none;padding:0 16px 16px 34px}
+  .detail-row{display:flex;gap:16px;margin-top:10px;font-size:13px;line-height:1.6}
+  .detail-label{min-width:90px;font-weight:600;color:var(--text2);flex-shrink:0}
+  .detail-val{color:var(--text2);overflow-wrap:anywhere}
+  .steps-list{padding-left:16px}.steps-list li{margin:3px 0}
+  .empty-msg{padding:16px;font-size:13px;color:var(--text3)}
+  .dur-badge{font-size:12px;color:var(--text3);font-family:var(--mono);white-space:nowrap}
+  .artifact-panel{margin-top:16px;background:var(--log-bg);border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden}
+  .artifact-sub{padding:14px 16px;border-bottom:1px solid var(--border)}.artifact-sub:last-child{border-bottom:none}
+  .artifact-sub-title{font-size:13px;font-weight:600;color:var(--text2);margin-bottom:10px}
   .timing-list{display:flex;flex-direction:column;gap:1px}
-  .timing-row{display:flex;align-items:center;justify-content:space-between;padding:5px 8px;border-radius:6px;transition:background .1s}
-  .timing-row:hover{background:rgba(255,255,255,.04)}
-  .timing-name{color:var(--text2);font-family:'JetBrains Mono',monospace;font-size:11px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-right:12px}
-  .timing-name.hooks{color:var(--text3);font-style:italic}
-  .timing-ms{color:var(--text3);font-family:'JetBrains Mono',monospace;font-size:11px;flex-shrink:0}
-  /* Screenshot */
+  .timing-row{display:flex;align-items:center;justify-content:space-between;padding:5px 8px}.timing-row:hover{background:var(--surface2)}
+  .timing-name,.timing-ms{font:12px var(--mono);color:var(--text2)}
+  .timing-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-right:12px}.timing-name.hooks{color:var(--text3)}
   .screenshot-wrap{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:8px}
-  .screenshot-thumb{max-width:300px;max-height:220px;object-fit:cover;border-radius:8px;border:1px solid var(--border);cursor:zoom-in;transition:opacity .15s,box-shadow .15s}
-  .screenshot-thumb:hover{opacity:.85;box-shadow:0 0 0 2px var(--accent)}
-  .trace-link{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--accent);text-decoration:none;padding:4px 12px;border:1px solid rgba(99,102,241,.3);border-radius:8px;transition:all .15s;cursor:pointer}
-  .trace-link:hover{background:rgba(99,102,241,.12);border-color:var(--accent)}
-  /* Video */
-  .artifact-video{max-width:100%;width:480px;border-radius:8px;border:1px solid var(--border);display:block;margin-bottom:8px;background:#000}
-  .artifact-dl{font-size:11px;color:var(--text3);text-decoration:none;display:inline-flex;align-items:center;gap:4px}
-  .artifact-dl:hover{color:var(--text2)}
-  /* Lightbox */
-  .lb-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:9999;align-items:center;justify-content:center;cursor:zoom-out}
+  .screenshot-thumb{max-width:300px;max-height:220px;object-fit:cover;border-radius:var(--radius-sm);border:1px solid var(--border);cursor:zoom-in}
+  .screenshot-thumb:hover{outline:2px solid var(--accent)}
+  .trace-link{display:inline-flex;align-items:center;font-size:13px;text-decoration:none;padding:6px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);cursor:pointer}
+  .trace-link:hover{background:var(--accent-bg)}
+  .artifact-video{max-width:100%;width:480px;border-radius:var(--radius-sm);border:1px solid var(--border);display:block;margin-bottom:8px;background:var(--text)}
+  .artifact-dl{font-size:13px;text-decoration:none}
+  .lb-overlay{display:none;position:fixed;inset:0;background:var(--scrim);z-index:9999;align-items:center;justify-content:center;cursor:zoom-out}
   .lb-overlay.open{display:flex}
-  .lb-overlay img{max-width:92vw;max-height:92vh;object-fit:contain;border-radius:8px;box-shadow:0 0 80px rgba(0,0,0,.9)}
+  .lb-overlay img{max-width:92vw;max-height:92vh;object-fit:contain;border-radius:var(--radius);box-shadow:var(--shadow)}
+  @media(max-width:800px){.layout{grid-template-columns:1fr;padding:20px}.sidebar{position:static;max-height:none}.topbar{padding:20px}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.stat-card{border-bottom:1px solid var(--border)}.filter-bar{flex-wrap:wrap;gap:6px}.group-title-wrap{gap:6px}.case-header{gap:8px}.case-detail{padding-left:16px}.detail-row{flex-direction:column;gap:4px}}
 """
 
 
@@ -540,10 +508,10 @@ function applyFilter(label) {
   var bar=document.getElementById('fbar_'+label);
   bar.querySelectorAll('.fbtn').forEach(function(btn){btn.classList.remove('active');});
   bar.querySelectorAll('.fbtn').forEach(function(btn){
-    if(st.filter==='all'&&btn.textContent.startsWith('All'))btn.classList.add('active');
-    if(st.filter==='pass'&&btn.textContent.startsWith('Pass'))btn.classList.add('active');
-    if(st.filter==='fail'&&btn.textContent.startsWith('Fail'))btn.classList.add('active');
-    if(st.filter==='skip'&&btn.textContent.startsWith('Skip'))btn.classList.add('active');
+    if(st.filter==='all'&&btn.textContent.startsWith('전체'))btn.classList.add('active');
+    if(st.filter==='pass'&&btn.textContent.startsWith('통과'))btn.classList.add('active');
+    if(st.filter==='fail'&&btn.textContent.startsWith('실패'))btn.classList.add('active');
+    if(st.filter==='skip'&&btn.textContent.startsWith('건너뜀'))btn.classList.add('active');
   });
   var pg=document.getElementById('pager_'+label);
   if(pages>1){
@@ -577,8 +545,8 @@ document.addEventListener('click', function(e) {
     var cmd = 'npx playwright show-trace ' + p;
     if(navigator.clipboard){
       navigator.clipboard.writeText(cmd).then(function(){
-        t.innerHTML = '\\u2713 copied!';
-        setTimeout(function(){t.innerHTML='\\uD83D\\uDCCB trace';},1600);
+        t.innerHTML = '복사 완료';
+        setTimeout(function(){t.innerHTML='trace 명령 복사';},1600);
       }).catch(function(){alert(cmd);});
     } else { alert(cmd); }
     return;
@@ -613,7 +581,7 @@ document.addEventListener('click', function(e) {
 
 
 def build_report(groups_data: list, summary: dict,
-                 created_at: str, subtitle: str = "Test Report") -> str:
+                 created_at: str, subtitle: str = "테스트 리포트") -> str:
     """완성 리포트 HTML 반환.
 
     groups_data: [{"label": str, "rows_html": str,
@@ -621,6 +589,7 @@ def build_report(groups_data: list, summary: dict,
                    "all_pass": bool, "has_tests": bool,
                    "skip_cnt": int (optional)}, ...]
     """
+    subtitle = {"Test Report": "단일 파이프라인", "Parallel Test Report": "병렬 파이프라인"}.get(subtitle, subtitle)
     pass_total = summary.get("passed", 0)
     fail_total = summary.get("failed", 0) + summary.get("error", 0)
     skip_total = summary.get("skipped", 0)
@@ -628,22 +597,22 @@ def build_report(groups_data: list, summary: dict,
     pass_rate = round(pass_total / total * 100, 1) if total else 0
     all_pass = fail_total == 0
     overall_cls = "pass" if all_pass else "fail"
-    overall_txt = "ALL PASS" if all_pass else f"{fail_total} FAILED"
+    overall_txt = "모두 통과" if all_pass else f"{fail_total}건 실패"
 
-    nav_items = f'<li class="nav-item active" id="nav_all" data-nav="all">All ({total})</li>\n'
+    nav_items = f'<li class="nav-item active" id="nav_all" data-nav="all">전체 ({total})</li>\n'
     for g in groups_data:
         lbl = g["label"]
         g_skip_cnt = g.get("skip_cnt", 0)
         g_non_skip = g["total_cnt"] - g_skip_cnt
         dot_cls = "pass" if g["all_pass"] else ("fail" if g["has_tests"] else "warn")
         skip_label = (
-            f'<span style="font-size:10px;color:#a855f7;margin-left:3px;">· {g_skip_cnt} skip</span>'
+            f'<span style="font-size:12px;color:var(--skip);margin-left:3px;">· {g_skip_cnt}건 건너뜀</span>'
             if g_skip_cnt > 0 else ""
         )
         nav_items += (
             f'<li class="nav-item" id="nav_{lbl}" data-nav="{lbl}">'
             f'<span class="nav-dot {dot_cls}"></span>'
-            f'{lbl.replace("_"," ").upper()}'
+            f'{_esc(lbl)}'
             f'<span class="nav-count">{g["pass_cnt"]}/{g_non_skip}{skip_label}</span>'
             f'</li>\n'
         )
@@ -664,10 +633,18 @@ def build_report(groups_data: list, summary: dict,
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>QA Report</title>
+<title>테스트 리포트</title>
 <style>{report_css()}</style>
 </head>
 <body>
+<header class="report-header">
+  <div class="topbar">
+    <div>
+      <div class="report-title"><h1>테스트 리포트</h1><div class="overall-badge {overall_cls}">{overall_txt}</div></div>
+      <div class="meta">{created_at} &middot; {subtitle} &middot; 그룹 {n_groups}개 &middot; {total}건</div>
+    </div>
+  </div>
+</header>
 <div class="layout">
   <aside class="sidebar">
     <div class="sidebar-logo">
@@ -675,24 +652,17 @@ def build_report(groups_data: list, summary: dict,
       <div class="logo-sub">{subtitle}</div>
     </div>
     <nav class="nav-section">
-      <div class="nav-label">Groups</div>
+      <div class="nav-label">그룹</div>
       <ul style="list-style:none;">{nav_items}</ul>
     </nav>
   </aside>
   <div class="main">
-    <div class="topbar">
-      <div>
-        <h1>Test Results</h1>
-        <div class="meta">{created_at} &middot; {n_groups} group{'s' if n_groups != 1 else ''} &middot; {total} cases</div>
-      </div>
-      <div class="overall-badge {overall_cls}">{overall_txt}</div>
-    </div>
     <div class="stats">
-      <div class="stat-card"><div class="stat-num" style="color:var(--text);">{total}</div><div class="stat-lbl">Total</div></div>
-      <div class="stat-card"><div class="stat-num" style="color:var(--pass);">{pass_total}</div><div class="stat-lbl">Passed</div></div>
-      <div class="stat-card"><div class="stat-num" style="color:var(--fail);">{fail_total}</div><div class="stat-lbl">Failed</div></div>
-      <div class="stat-card"><div class="stat-num" style="color:var(--skip);">{skip_total}</div><div class="stat-lbl">Skipped</div></div>
-      <div class="stat-card"><div class="stat-num" style="color:{'var(--pass)' if all_pass else 'var(--fail)'};">{pass_rate}%</div><div class="stat-lbl">Pass Rate</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:var(--text);">{total}</div><div class="stat-lbl">전체</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:var(--pass);">{pass_total}</div><div class="stat-lbl">통과</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:var(--fail);">{fail_total}</div><div class="stat-lbl">실패</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:var(--skip);">{skip_total}</div><div class="stat-lbl">건너뜀</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:{'var(--pass)' if all_pass else 'var(--fail)'};">{pass_rate}%</div><div class="stat-lbl">통과율</div></div>
     </div>
     {group_sections}
   </div>

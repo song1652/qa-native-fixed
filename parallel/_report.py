@@ -188,4 +188,4 @@ def build_parallel_html(
             "skip_cnt": g_skip_cnt,
         })
 
-    return build_report(groups_data, summary, created_at, "Parallel Test Report")
+    return build_report(groups_data, summary, created_at, "병렬 파이프라인")
