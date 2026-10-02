@@ -345,9 +345,9 @@ function _buildTrendChart(history) {
       <div class="oax-trend-footer">
         <span>${lastDur} · ${firstPass}</span>
         <span class="oax-trend-legend">
-          <span class="oax-legend-item"><span class="oax-legend-dot" style="background:var(--approved-color)"></span>통과</span>
-          <span class="oax-legend-item"><span class="oax-legend-dot" style="background:var(--pending-color)"></span>주의</span>
-          <span class="oax-legend-item"><span class="oax-legend-dot" style="background:var(--revision-color)"></span>실패</span>
+          <span class="oax-legend-item ov-result pass"><span class="oax-legend-dot" style="background:var(--approved-color)"></span>통과</span>
+          <span class="oax-legend-item ov-result warn"><span class="oax-legend-dot" style="background:var(--pending-color)"></span>주의</span>
+          <span class="oax-legend-item ov-result fail"><span class="oax-legend-dot" style="background:var(--revision-color)"></span>실패</span>
         </span>
       </div>
     </div>`;
