@@ -170,7 +170,7 @@
     // 초안 생성이 진행 중이면 서버도 거절한다. 미리 막고 이유를 보여 준다
     const { job } = await api.authoringContext(suite).catch(() => ({ job: null }));
     if (state.suite === suite && job && ACTIVE_JOB.includes(job.status)) {
-      block.textContent = '초안 생성이 진행 중입니다. 기획 정보 · TC 생성 화면에서 작업을 취소하거나 끝난 뒤 삭제하세요.';
+      block.textContent = '초안 생성이 진행 중입니다. 기획 정보 · 생성 화면에서 작업을 취소하거나 끝난 뒤 삭제하세요.';
       block.hidden = false;
       ok.disabled = true;
     }
