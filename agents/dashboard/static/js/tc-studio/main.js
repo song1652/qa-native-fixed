@@ -6,8 +6,8 @@
   const { state, api, esc, $, $$ } = NS;
   const SUITE_KEY = 'tcs-suite';
   const SCREENS = [
-    { id: 'generate', label: '기획 정보 · TC 생성', module: 'generateView' },
-    { id: 'library', label: 'TC 라이브러리', module: 'library', count: 'cnt-lib' },
+    { id: 'generate', label: '기획 정보 · 생성', module: 'generateView' },
+    { id: 'library', label: '라이브러리', module: 'library', count: 'cnt-lib' },
     { id: 'review', label: '초안 검토', module: 'reviewView', count: 'cnt-review' },
     { id: 'export', label: '내보내기', module: 'exportView' },
   ];
@@ -17,7 +17,7 @@
   const available = () => SCREENS.filter((s) => NS[s.module]);
 
   function navHtml() {
-    return available().map((s, i) => `${i ? '<div class="step-line"></div>' : ''}<button class="step-item" role="tab" data-id="nav-tab-${s.id}" data-screen="${s.id}" aria-selected="false"><span class="step-circle">${i + 1}</span><span class="step-label">${s.label}</span>${s.count ? `<span class="step-count num" id="${s.count}">0</span>` : ''}</button>`).join('');
+    return available().map((s) => `<button class="step-item" role="tab" data-id="nav-tab-${s.id}" data-screen="${s.id}" aria-selected="false"><span class="step-label">${s.label}</span>${s.count ? `<span class="step-count num" id="${s.count}">0</span>` : ''}</button>`).join('');
   }
 
   function shellHtml() {
