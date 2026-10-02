@@ -116,14 +116,15 @@ function safeConfirm(msg) {
     _confirmOpen = true;
     const overlay = document.createElement('div');
     overlay.id = 'confirm-modal';
-    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:99999;';
+    overlay.className = 'dashboard-confirm-scrim';
     const box = document.createElement('div');
-    box.style.cssText = 'background:rgba(18,16,42,0.95);backdrop-filter:blur(20px);border:1px solid rgba(140,120,220,0.2);border-radius:12px;padding:28px 32px;max-width:400px;text-align:center;box-shadow:0 16px 48px rgba(0,0,0,0.5);';
+    box.className = 'dashboard-confirm-dialog';
     box.innerHTML = `
-      <p style="color:var(--text);font-size:14px;margin:0 0 24px;line-height:1.6;">${msg}</p>
-      <div style="display:flex;gap:10px;justify-content:center;">
-        <button id="confirm-yes" style="background:var(--accent);color:#fff;border:none;border-radius:8px;padding:9px 24px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">확인</button>
-        <button id="confirm-no" style="background:transparent;color:var(--text-dim);border:1px solid var(--border);border-radius:8px;padding:9px 24px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">취소</button>
+      <div class="dashboard-confirm-head">작업 확인</div>
+      <p class="dashboard-confirm-body">${msg}</p>
+      <div class="dashboard-confirm-actions">
+        <button id="confirm-no" class="action-btn">취소</button>
+        <button id="confirm-yes" class="action-btn action-btn-primary">확인</button>
       </div>`;
     overlay.appendChild(box);
     document.body.appendChild(overlay);

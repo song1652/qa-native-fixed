@@ -1,260 +1,29 @@
-/* ── History View ── */
-/* 모든 화면 공통 배치(.pipeline-view / .pipeline-title)와 같게: 여백 24px, 제목 Outfit 20px */
-.hist-wrap {
-  padding: 24px;
-}
-
-.hist-heading {
-  font-family: 'Outfit', sans-serif;
-  font-size: 20px;
-  font-weight: 700;
-  margin-bottom: 20px;
-}
-
-/* ── 요약 통계 행 ── */
-.hist-stat-row {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 20px;
-  flex-wrap: wrap;
-}
-
-.hist-stat {
-  flex: 1;
-  min-width: 120px;
-  background: var(--surface-glass);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: 14px 16px;
-  position: relative;
-  overflow: hidden;
-}
-
-.hist-stat::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.15), transparent);
-}
-
-.hist-stat-label {
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--text-dim);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 4px;
-}
-
-.hist-stat-val {
-  font-size: 22px;
-  font-weight: 800;
-  font-family: 'Inter', sans-serif;
-  letter-spacing: -0.5px;
-}
-
-/* ── 필터 바 ── */
-.hist-filter {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 16px;
-  flex-wrap: wrap;
-  align-items: center;
-}
-
-.hist-filter-label {
-  font-size: 11px;
-  color: var(--text-dim);
-  font-weight: 600;
-}
-
-.hist-filter-btn {
-  background: rgba(139, 92, 246, 0.04);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 4px 12px;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text-dim);
-  cursor: pointer;
-  transition: all 0.15s;
-  font-family: inherit;
-}
-
-.hist-filter-btn:hover {
-  background: rgba(139, 92, 246, 0.1);
-  border-color: rgba(139, 92, 246, 0.25);
-  color: var(--text);
-}
-
-.hist-filter-btn.active {
-  background: rgba(139, 92, 246, 0.15);
-  border-color: rgba(139, 92, 246, 0.35);
-  color: var(--text);
-}
-
-/* ── 실행 이력 카드 (6-컬럼 그리드) ── */
-.hist-card {
-  background: var(--surface-glass);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: 12px 18px;
-  margin-bottom: 8px;
-  display: grid;
-  grid-template-columns: 100px 90px 100px 80px 1fr 90px;
-  gap: 0;
-  align-items: center;
-  position: relative;
-  overflow: hidden;
-  transition: border-color 0.15s;
-}
-
-.hist-card::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.1), transparent);
-}
-
-.hist-card:hover { border-color: rgba(139, 92, 246, 0.2); }
-
-/* 각 컬럼 공통 */
-.hist-col {
-  padding: 0 10px;
-  border-right: 1px solid rgba(140, 120, 220, 0.07);
-}
-.hist-col:first-child { padding-left: 0; }
-.hist-col:last-child { border-right: none; padding-right: 0; }
-
-.hist-cell-label {
-  font-size: 9px;
-  font-weight: 600;
-  color: var(--text-dim);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 4px;
-  opacity: 0.6;
-}
-
-.hist-cell-val {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text);
-}
-
-.hist-cell-sub {
-  font-size: 10px;
-  color: var(--text-dim);
-  font-family: 'JetBrains Mono', monospace;
-  margin-top: 2px;
-}
-
-/* 날짜 컬럼 */
-.hist-card-time-date {
-  font-size: 10px;
-  color: var(--text-dim);
-  font-family: 'JetBrains Mono', monospace;
-  margin-bottom: 2px;
-}
-
-.hist-card-time-clock {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text);
-  font-family: 'JetBrains Mono', monospace;
-}
-
-/* Pass Rate 컬럼 */
-.hist-card-rate {
-  font-size: 18px;
-  font-weight: 800;
-  font-family: 'Inter', sans-serif;
-  letter-spacing: -0.5px;
-  line-height: 1;
-}
-
-/* ── 배지 ── */
-.hist-badge {
-  display: inline-block;
-  font-size: 10px;
-  font-weight: 600;
-  padding: 2px 8px;
-  border-radius: 6px;
-  white-space: nowrap;
-}
-
-.hist-badge--first {
-  background: rgba(52, 211, 153, 0.1);
-  color: var(--approved-color);
-  border: 1px solid rgba(52, 211, 153, 0.2);
-}
-
-.hist-badge--heal {
-  background: rgba(139, 92, 246, 0.1);
-  color: var(--accent);
-  border: 1px solid rgba(139, 92, 246, 0.2);
-}
-
-.hist-badge--fail {
-  background: rgba(251, 113, 133, 0.1);
-  color: var(--revision-color);
-  border: 1px solid rgba(251, 113, 133, 0.2);
-}
-
-.hist-badge--type {
-  background: rgba(140, 120, 220, 0.06);
-  color: var(--text-dim);
-  border: 1px solid var(--border);
-}
-
-/* ── mini pass bar ── */
-.hist-mini-bar {
-  width: 80px;
-  height: 4px;
-  background: rgba(140, 120, 220, 0.08);
-  border-radius: 10px;
-  overflow: hidden;
-}
-
-.hist-mini-bar-fill {
-  height: 100%;
-  border-radius: 10px;
-  transition: width 0.4s;
-}
-
-/* ── 그룹 태그 ── */
-.hist-group-tag {
-  display: inline-block;
-  font-size: 9px;
-  font-weight: 600;
-  padding: 1px 6px;
-  border-radius: 4px;
-  background: rgba(139, 92, 246, 0.08);
-  color: var(--accent);
-  font-family: 'JetBrains Mono', monospace;
-}
-
-/* ── 빈 상태 ── */
-.hist-empty {
-  text-align: center;
-  padding: 60px 24px;
-  color: var(--text-dim);
-}
-
-.hist-empty-icon {
-  font-size: 36px;
-  margin-bottom: 12px;
-  opacity: 0.4;
-}
-
-.hist-empty-text {
-  font-size: 13px;
-  opacity: 0.6;
-}
+/* 실행 기록 — History */
+.hist-wrap { padding: 0; }
+.hist-heading { color: var(--text); font: 600 var(--fs-h1) / 1.35 var(--font-sans); margin-bottom: 4px; }
+.hist-stat-row { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 0; margin-bottom: 20px; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface); }
+.hist-stat { padding: 16px 20px; }
+.hist-stat + .hist-stat { border-left: 1px solid var(--border); }
+.hist-stat-label { font-size: var(--fs-sub); color: var(--text-2); margin-bottom: 6px; }
+.hist-stat-val { font-size: 24px; font-weight: 600; font-family: var(--font-mono); }
+.hist-filter { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; }
+.hist-filter-label { font-size: var(--fs-label); color: var(--text-3); }
+.hist-filter-btn { min-height: 34px; padding: 0 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-ctrl); font: var(--fs-sub) var(--font-sans); color: var(--text-2); cursor: pointer; }
+.hist-filter-btn:hover { background: var(--surface-sub); }
+.hist-filter-btn.active { background: var(--text); border-color: var(--text); color: var(--on-accent); }
+.hist-table-wrap { overflow: auto; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface); }
+.hist-table { width: 100%; border-collapse: collapse; font-size: var(--fs-body); }
+.hist-table th { padding: 9px 16px; background: var(--surface-sub); color: var(--text-2); font-size: var(--fs-label); font-weight: 500; text-align: left; white-space: nowrap; }
+.hist-table td { padding: 11px 16px; border-top: 1px solid var(--border); vertical-align: top; }
+.hist-time,.hist-number { font: var(--fs-sub) / 1.6 var(--font-mono); white-space: nowrap; }
+.hist-table .hist-number { text-align: right; }
+.hist-badge { display: inline-block; padding: 2px 8px; border-radius: var(--radius-badge); font-size: var(--fs-label); font-weight: 600; white-space: nowrap; }
+.hist-badge--first { background: var(--pass-bg); color: var(--pass); }
+.hist-badge--heal { background: var(--warn-bg); color: var(--warn); }
+.hist-badge--fail { background: var(--fail-bg); color: var(--fail); }
+.hist-badge--type { background: var(--surface-sub); color: var(--text-2); }
+.hist-group-tag { display: inline-block; margin-right: 6px; font: var(--fs-sub) var(--font-mono); color: var(--text); }
+.hist-empty { text-align: center; padding: 60px 24px; color: var(--text-3); }
+.hist-empty-icon { width: 40px; height: 40px; margin: 0 auto 12px; }
+.hist-empty-text { font-size: var(--fs-sub); }
+@media (max-width: 900px) { .hist-stat-row { grid-template-columns: repeat(2,minmax(0,1fr)); } .hist-stat { border-bottom: 1px solid var(--border); } }

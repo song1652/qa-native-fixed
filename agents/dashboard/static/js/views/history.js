@@ -8,9 +8,9 @@ async function renderHistory(main) {
   if (history.length === 0) {
     main.innerHTML = `
       <div class="hist-wrap">
-        <h2 class="hist-heading">실행 히스토리</h2>
+        <h2 class="hist-heading">실행 기록</h2>
         <div class="hist-empty">
-          <div class="hist-empty-icon">📋</div>
+          <div class="hist-empty-icon" aria-hidden="true"><svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="8" y="6" width="24" height="28" rx="3"></rect><path d="M13 14h14M13 20h14M13 26h8"></path></svg></div>
           <div class="hist-empty-text">실행 이력이 없습니다. 파이프라인을 실행하면 이력이 쌓입니다.</div>
         </div>
       </div>`;
@@ -59,11 +59,11 @@ async function renderHistory(main) {
         <div class="hist-stat-val">${total}</div>
       </div>
       <div class="hist-stat">
-        <div class="hist-stat-label">평균 Pass Rate</div>
+        <div class="hist-stat-label">평균 통과율</div>
         <div class="hist-stat-val" style="color:${rateColor}">${avgRate}%</div>
       </div>
       <div class="hist-stat">
-        <div class="hist-stat-label">First Pass</div>
+        <div class="hist-stat-label">첫 실행 통과</div>
         <div class="hist-stat-val" style="color:${fpColor}">${fpCount}<span style="font-size:14px;opacity:0.5">/${total}</span></div>
       </div>
       <div class="hist-stat">
@@ -95,18 +95,19 @@ async function renderHistory(main) {
 
   // ── 이력 카드 목록 ──
   const cardsHtml = filtered.length === 0
-    ? `<div class="hist-empty"><div class="hist-empty-icon" style="font-size:24px">🔍</div><div class="hist-empty-text">필터 조건에 맞는 이력이 없습니다.</div></div>`
+    ? `<div class="hist-empty"><div class="hist-empty-text">필터 조건에 맞는 이력이 없습니다.</div></div>`
     : filtered.map(r => _buildHistCard(r)).join('');
 
   main.innerHTML = `
     <div class="hist-wrap">
-      <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:20px;">
-        <h2 class="hist-heading" style="margin-bottom:0;">실행 히스토리</h2>
-        <button onclick="_histReset()" style="margin-left:auto;font-size:11px;padding:4px 10px;background:transparent;border:1px solid rgba(220,100,100,0.4);border-radius:5px;color:rgba(220,100,100,0.8);cursor:pointer;line-height:1.4;" title="실행 이력 전체 삭제">🗑 이력 초기화</button>
+      <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:4px;">
+        <h2 class="hist-heading" style="margin-bottom:0;">실행 기록</h2>
+        <button class="action-btn" onclick="_histReset()" style="margin-left:auto;" title="실행 이력 전체 삭제">기록 초기화</button>
       </div>
-      ${statsHtml}
+      <p class="pipeline-subtitle">모든 실행의 결과와 힐링 횟수를 시간순으로 봅니다.</p>
       ${filterHtml}
-      <div id="hist-cards">${cardsHtml}</div>
+      ${statsHtml}
+      ${filtered.length ? `<div class="hist-table-wrap"><table class="hist-table"><thead><tr><th>시작</th><th>종류</th><th>대상</th><th>결과</th><th>통과 / 전체</th><th>통과율</th><th>힐링</th><th>소요</th></tr></thead><tbody id="hist-cards">${cardsHtml}</tbody></table></div>` : `<div id="hist-cards">${cardsHtml}</div>`}
     </div>`;
 }
 
@@ -121,7 +122,7 @@ function _buildHistCard(r) {
   // 배지
   let badge = '';
   if (r.first_pass) {
-    badge = `<span class="hist-badge hist-badge--first">First Pass</span>`;
+    badge = `<span class="hist-badge hist-badge--first">첫 실행 통과</span>`;
   } else if (r.heal_count > 0) {
     badge = `<span class="hist-badge hist-badge--heal">힐링 ${r.heal_count}회</span>`;
   } else {
@@ -133,38 +134,18 @@ function _buildHistCard(r) {
   const typeLabel = { parallel: '병렬', quick: '빠른 실행', single: '단일' }[r.pipeline] || r.pipeline || '-';
   const groups = r.group ? [r.group] : (r.groups || []);
   const groupTags = groups.map(g => `<span class="hist-group-tag">${esc(g)}</span>`).join(' ');
-  const dur = r.duration_sec ? Math.round(r.duration_sec) + 's' : '-';
-  const barW = Math.round(rate);
+  const dur = r.duration_sec ? Math.round(r.duration_sec) + '초' : '-';
 
-  return `<div class="hist-card">
-    <div class="hist-col hist-col--time">
-      <div class="hist-cell-label">날짜</div>
-      <div class="hist-card-time-date">${datePart}</div>
-      <div class="hist-card-time-clock">${timePart}</div>
-    </div>
-    <div class="hist-col hist-col--rate">
-      <div class="hist-cell-label">Pass Rate</div>
-      <div class="hist-card-rate" style="color:${rateColor}">${rate}%</div>
-      <div class="hist-mini-bar" style="margin-top:5px;"><div class="hist-mini-bar-fill" style="width:${barW}%;background:${rateColor}"></div></div>
-    </div>
-    <div class="hist-col hist-col--count">
-      <div class="hist-cell-label">통과 / 전체</div>
-      <div class="hist-cell-val">${r.passed || 0} / ${r.total || 0}</div>
-      <div class="hist-cell-sub">${dur}</div>
-    </div>
-    <div class="hist-col hist-col--type">
-      <div class="hist-cell-label">유형</div>
-      <span class="hist-badge hist-badge--type">${typeLabel}</span>
-    </div>
-    <div class="hist-col hist-col--group">
-      <div class="hist-cell-label">그룹</div>
-      <div style="display:flex;flex-wrap:wrap;gap:3px;">${groupTags || '<span style="color:var(--text-dim);font-size:10px;">-</span>'}</div>
-    </div>
-    <div class="hist-col hist-col--badge">
-      <div class="hist-cell-label">결과</div>
-      <div style="display:flex;flex-direction:column;gap:3px;">${badge}${failBadge}</div>
-    </div>
-  </div>`;
+  return `<tr class="hist-card">
+    <td class="hist-time">${esc(datePart)}<br><span class="muted">${esc(timePart)}</span></td>
+    <td>${typeLabel}</td>
+    <td>${groupTags || '—'}</td>
+    <td><span class="hist-badge ${r.failed > 0 ? 'hist-badge--fail' : 'hist-badge--first'}">${r.failed > 0 ? '실패' : '통과'}</span> ${badge}${failBadge}</td>
+    <td class="hist-number">${r.passed || 0} / ${r.total || 0}</td>
+    <td class="hist-number" style="color:${rateColor}">${rate}%</td>
+    <td class="hist-number">${r.heal_count || 0}</td>
+    <td class="hist-number">${dur}</td>
+  </tr>`;
 }
 
 function _histSetFilter(key, val) {

@@ -359,3 +359,10 @@ input, select, textarea, button {
 .group-result-name { flex: 1; font-size: 14px; font-weight: 600; }
 .group-result-count { color: var(--text-2); font-size: 13px; }
 .group-result-body { padding: 0 14px 10px; }
+
+/* DashDialogs — 기존 확인 대화창의 동작과 id를 유지한다. */
+.dashboard-confirm-scrim { position: fixed; inset: 0; background: var(--scrim); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 99999; }
+.dashboard-confirm-dialog { width: min(480px,100%); overflow: hidden; border: 1px solid var(--border); border-radius: var(--radius-modal); background: var(--surface); box-shadow: var(--shadow-modal); }
+.dashboard-confirm-head { padding: 16px 20px; border-bottom: 1px solid var(--border); font-size: var(--fs-h2); font-weight: 600; }
+.dashboard-confirm-body { padding: 20px; color: var(--text); font-size: var(--fs-body); line-height: 1.6; overflow-wrap: anywhere; }
+.dashboard-confirm-actions { display: flex; justify-content: flex-end; gap: 8px; padding: 14px 20px; border-top: 1px solid var(--border); }
