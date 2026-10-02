@@ -219,9 +219,9 @@ python agents/dashboard/serve.py
 
 단일/병렬 파이프라인 실행, 빠른 실행, 팀 토론, 리포트 열람, 실행 로그 모니터링 지원.
 
-> 최신 화면과 메뉴별 사용법: [웹 QA 대시보드 사용자 가이드](doc/guides/DASHBOARD_USER_GUIDE.md)
+> 최신 화면과 메뉴별 사용법: [웹 QA 대시보드 사용자 가이드](doc/guides/USER_GUIDE.html)
 
-> 대시보드 기능 상세 · API 엔드포인트: [`doc/guides/SCRIPTS_GUIDE.md`](doc/guides/SCRIPTS_GUIDE.md) 참조
+> 대시보드 기능 상세 · API 엔드포인트: [`doc/guides/SCRIPTS_GUIDE.md`](doc/guides/SCRIPTS_GUIDE.html) 참조
 
 ---
 
@@ -229,5 +229,5 @@ python agents/dashboard/serve.py
 
 **[문서 전체 안내](doc/README.md)**에서 사용 매뉴얼·설계(PRD)·레퍼런스·운영 지침·개발 기록을 목적별로 찾을 수 있습니다.
 
-- [TC 스튜디오 사용자 설명서](doc/guides/tc-studio/TC_AUTHORING_USER_GUIDE.md): 기획 입력부터 작성·검토·내보내기까지.
-- [스크립트 사용 매뉴얼](doc/guides/SCRIPTS_GUIDE.md): 프로그램 실행 순서와 주요 스크립트 역할.
+- [TC 스튜디오 사용자 설명서](doc/guides/tc-studio/TC_AUTHORING_USER_GUIDE.html): 기획 입력부터 작성·검토·내보내기까지.
+- [스크립트 사용 매뉴얼](doc/guides/SCRIPTS_GUIDE.html): 프로그램 실행 순서와 주요 스크립트 역할.

@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<!-- 자동 생성: scripts/build_user_guides.py. 수정 원본: doc/guides/SCRIPTS_GUIDE.md -->
+<html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light"><title>파이썬 파일 실행 가이드</title>
+<link rel="stylesheet" href="guide.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+</head><body><a class="skip-link" href="#content">본문으로 이동</a>
+<header class="topbar"><div class="brand">QA 컨트롤 센터</div><span>사용 가이드</span><span class="updated">최신 밝은 테마</span></header>
+<div class="layout"><nav class="sidebar" aria-label="가이드 목차"><div class="nav-label">사용 가이드</div><a href="USER_GUIDE.html">대시보드</a>
+<a href="tc-studio/TC_AUTHORING_USER_GUIDE.html">TC 스튜디오</a>
+<a href="SCRIPTS_GUIDE.html">스크립트</a>
+<a href="TEST_CASE_GUIDE.html">TC 작성</a><div class="nav-label">이 문서의 목차</div><div class="toc">
+<ul>
+<li><a href="#한눈에-보기">한눈에 보기</a></li>
+<li><a href="#직접-실행하는-파일">직접 실행하는 파일</a></li>
+<li><a href="#claude가-자동으로-호출하는-파일-scripts">Claude가 자동으로 호출하는 파일 (scripts/)</a></li>
+<li><a href="#omc-스킬-활용-oh-my-claudecode">OMC 스킬 활용 (oh-my-claudecode)</a></li>
+<li><a href="#설정-파일-config">설정 파일 (config/)</a></li>
+<li><a href="#상태-파일-실행-결과가-저장되는-곳">상태 파일 (실행 결과가 저장되는 곳)</a></li>
+</ul>
+</div>
+</nav>
+<main class="main" id="content"><details class="mobile-toc"><summary>목차 열기</summary><a href="USER_GUIDE.html">대시보드</a>
+<a href="tc-studio/TC_AUTHORING_USER_GUIDE.html">TC 스튜디오</a>
+<a href="SCRIPTS_GUIDE.html">스크립트</a>
+<a href="TEST_CASE_GUIDE.html">TC 작성</a><div class="toc">
+<ul>
+<li><a href="#한눈에-보기">한눈에 보기</a></li>
+<li><a href="#직접-실행하는-파일">직접 실행하는 파일</a></li>
+<li><a href="#claude가-자동으로-호출하는-파일-scripts">Claude가 자동으로 호출하는 파일 (scripts/)</a></li>
+<li><a href="#omc-스킬-활용-oh-my-claudecode">OMC 스킬 활용 (oh-my-claudecode)</a></li>
+<li><a href="#설정-파일-config">설정 파일 (config/)</a></li>
+<li><a href="#상태-파일-실행-결과가-저장되는-곳">상태 파일 (실행 결과가 저장되는 곳)</a></li>
+</ul>
+</div>
+</details>
+<h1 id="파이썬-파일-실행-가이드">파이썬 파일 실행 가이드</h1>
+<blockquote>
+<p><strong>문서 유형: 사용 매뉴얼</strong> · 프로젝트 실행 방법과 주요 스크립트 역할. 정확한 인자·API는 <a href="../reference/API_REFERENCE.md">API 레퍼런스</a>를 참고합니다.</p>
+<p><strong>독자</strong>: 프로젝트 사용자·개발자 — 주요 Python 파일의 역할과 실행 방법.</p>
+</blockquote>
+<hr />
+<h2 id="한눈에-보기">한눈에 보기</h2>
+<pre><code>직접 실행하는 파일 (진입점)
+├── run_qa.py                  ← QA 자동화 시작 (단일 URL)
+├── run_qa_parallel.py         ← QA 자동화 시작 (여러 URL 동시)
+├── run_team.py                ← 팀 토론 시작 (터미널용, 대시보드 권장)
+├── agents/dashboard/serve.py  ← 모니터링 대시보드 서버
+├── parallel/99_merge.py       ← 병렬 실행 완료 후 결과 통합
+└── _bootstrap.py              ← 루트 진입점 공통 경로 설정 (scripts/ → sys.path)
+
+Claude가 자동으로 호출하는 파일 (직접 실행 불필요)
+└── scripts/                       ← 패키지 (__init__.py 포함)
+    ├── 01_analyze.py              파이프라인 1단계: DOM 분석
+    ├── 02a_dialog.py              파이프라인 2단계: Plan 심의 준비
+    ├── 02_generate.py             파이프라인 3단계: 코드 뼈대 생성
+    ├── 03_lint.py                 파이프라인 4단계: lint 검사
+    ├── 03a_dialog.py              파이프라인 5단계: 코드 리뷰 심의 준비
+    ├── 05_execute.py              파이프라인 6단계: pytest 실행 (report_html 사용)
+    ├── 06_heal.py                 파이프라인 7단계: 실패 분석
+    ├── 06a_dialog.py              파이프라인 8단계: 힐링 심의 준비
+    ├── team_discuss.py            팀 토론: 심의 컨텍스트 준비
+    ├── team_approve.py            팀 토론: 결론 승인 (터미널용, 대시보드 권장)
+    ├── check_pending_*.py         훅 5개 (hook_utils.check_state() 공통 사용)
+    ├── coverage_matrix.py         커버리지 매트릭스 생성 (tc_*.md → state/coverage.json)
+    ├── flaky_detector.py          Flaky Test 감지 (run_history.json → state/flaky_tests.json)
+    ├── _python.py                 라이브러리: .venv Python 경로
+    ├── _paths.py                  라이브러리: 중앙 경로 상수 + read_state/write_state/update_state
+    ├── _constants.py              라이브러리: 종료 코드 + VALID_TRANSITIONS 전이 맵
+    ├── _pipeline_registry.py      라이브러리: FSM 단일 소스 (Step·ParallelStatus 상수 + 전이 규칙)
+    ├── _validators.py             라이브러리: 대시보드 입력 검증 헬퍼 (serve.py에서 분리)
+    ├── assert_guard.py            힐링 후 assertion 약화 감지
+    ├── jira_reporter.py           Jira 이슈 자동 생성 (실패 시 99_merge.py가 자동 호출)
+    ├── result_parser.py           라이브러리: pytest JSON 리포트 파싱 (05_execute, 99_merge 공유)
+    ├── hook_utils.py              라이브러리: 훅 스크립트 공통 유틸 (check_state + remaining_steps_hint)
+    ├── __init__.py                패키지 초기화
+    ├── sync_test_data.py          test_data.json 동기화
+    ├── dom_helpers.js             JS 공통 유틸 (isVisible·esc·getSelectorsSimple) — 01_analyze.py의 _js()가 자동 주입
+    └── parse_cases.py             라이브러리: 테스트케이스 파일 파서
+</code></pre>
+<hr />
+<h2 id="직접-실행하는-파일">직접 실행하는 파일</h2>
+<h3 id="run_qapy-qa-자동화-시작-단일-url"><code>run_qa.py</code> — QA 자동화 시작 (단일 URL)</h3>
+<p>테스트할 URL과 케이스 폴더를 지정하면 headless Claude Code 세션을 백그라운드로 띄워 파이프라인 전체를 자동 완주합니다.</p>
+<pre><code class="language-bash"># 케이스 폴더 지정 (권장) — 폴더 내 tc_*.md 파일 전체를 자동 읽음
+.venv/bin/python run_qa.py --url https://example.com/ --cases testcases/mysite/
+
+# 단일 파일 지정
+.venv/bin/python run_qa.py --url https://example.com/ --cases testcases/mysite/tc_01.md
+
+# 자동 실행 없이 안내 메시지만 출력 (기존 방식)
+.venv/bin/python run_qa.py --url https://example.com/ --cases testcases/mysite/ --no-auto
+</code></pre>
+<p><strong>옵션:</strong>
+| 옵션 | 설명 |
+|---|---|
+| <code>--url</code> | 테스트 대상 URL (필수) |
+| <code>--cases</code> | 케이스 파일 또는 폴더 경로 (필수) |
+| <code>--no-auto</code> | headless Claude 자동 실행 생략. 안내 메시지만 출력 (기존 동작) |</p>
+<p><strong>동작 순서 (<code>--auto</code> 기본):</strong>
+1. <code>testcases/</code> 폴더에서 케이스 파일 읽기
+2. <code>state/pipeline.json</code> 생성 (URL + 케이스 목록)
+3. <code>claude -p</code> headless 세션 백그라운드 실행 → <code>01_analyze → 코드작성 → lint → 승인 → 실행 → 힐링</code> 자동 완주
+4. 로그: <code>logs/run_qa_headless.txt</code></p>
+<hr />
+<h3 id="run_qa_parallelpy-qa-자동화-시작-여러-url-동시"><code>run_qa_parallel.py</code> — QA 자동화 시작 (여러 URL 동시)</h3>
+<p><code>config/pages.json</code>에 등록된 URL을 기반으로 여러 URL을 동시에 테스트합니다.<br />
+DOM 분석 후 headless Claude Code 세션을 백그라운드로 띄워 subagent 병렬 실행 + 99_merge + 힐링까지 자동 완주합니다.</p>
+<pre><code class="language-bash"># pages.json에 등록된 모든 URL 자동 스캔 (headless 자동 실행)
+.venv/bin/python run_qa_parallel.py
+
+# 특정 폴더만
+.venv/bin/python run_qa_parallel.py --folders login saintcore
+
+# targets.json 지정
+.venv/bin/python run_qa_parallel.py --targets testcases/targets_demo.json
+
+# 자동 실행 없이 안내 메시지만 출력 (기존 방식)
+.venv/bin/python run_qa_parallel.py --no-auto
+</code></pre>
+<p><strong>옵션:</strong>
+| 옵션 | 설명 |
+|---|---|
+| <code>--targets</code> | targets.json 경로. 생략 시 <code>testcases/</code> 폴더 자동 스캔 |
+| <code>--folders</code> | 특정 폴더만 실행 (예: <code>login saintcore</code>) |
+| <code>--no-auto</code> | headless Claude 자동 실행 생략. <code>PARALLEL_SUBAGENT_CONTEXTS</code> 출력 + 안내 메시지만 출력 (기존 동작) |</p>
+<p><strong><code>config/pages.json</code> 형식 (string/object 혼용 가능):</strong></p>
+<pre><code class="language-json">{
+  &quot;mysite&quot;: &quot;https://example.com/&quot;,
+  &quot;login&quot;: {
+    &quot;url&quot;: &quot;https://example.com/login&quot;,
+    &quot;auth&quot;: null,
+    &quot;spa&quot;: true,
+    &quot;preconditions&quot;: [],
+    &quot;notes&quot;: &quot;SPA 로그인 페이지&quot;
+  }
+}
+</code></pre>
+<p>키 이름 = <code>testcases/</code> 하위 폴더명과 일치해야 합니다. 해당 폴더가 없는 키는 자동 건너뜁니다.
+object 형식 사용 시 <code>page_meta</code>(auth, spa, preconditions, notes)가 subagent 컨텍스트에 자동 포함됩니다.</p>
+<p><strong>동작 순서 (<code>--auto</code> 기본):</strong>
+1. <code>config/pages.json</code> 읽기 + <code>testcases/</code> 폴더 자동 스캔
+2. URL별 DOM 분석 (동일 URL 1회만, 캐시)
+3. <code>state/parallel_contexts.json</code> 저장 → 구조: <code>{ shared_context_paths: {...}, subagents: [...] }</code>
+   - <code>shared_context_paths</code>: 공통 참조 파일 경로 (lessons_learned, team_charter, SKILL.md) — 각 subagent가 직접 읽음
+   - <code>subagents[]</code>: 배치별 고유 데이터 (dom_info, test_cases, test_data 등)
+4. <code>claude -p</code> headless 세션 백그라운드 실행 → <code>subagents[]</code> Agent tool 동시 실행 → <code>99_merge.py</code> → 힐링 자동 완주
+5. 로그: <code>logs/run_qa_parallel_headless.txt</code></p>
+<hr />
+<h3 id="parallel99_mergepy-병렬-실행-결과-통합"><code>parallel/99_merge.py</code> — 병렬 실행 결과 통합</h3>
+<p>모든 worker의 코드 생성이 완료된 후 실행합니다. Claude가 지시를 출력하면 그때 실행합니다.</p>
+<pre><code class="language-bash">.venv/bin/python parallel/99_merge.py
+# 특정 그룹만 실행
+.venv/bin/python parallel/99_merge.py --group mysite
+# 빠른 실행 모드 (state/quick.json에 결과 저장, parallel_state 미변경)
+.venv/bin/python parallel/99_merge.py --quick --group mysite
+# 힐링 생략 (실패해도 힐링 없이 바로 리포트 생성)
+.venv/bin/python parallel/99_merge.py --quick --group mysite --no-heal
+</code></pre>
+<p><strong>옵션:</strong>
+| 옵션 | 설명 |
+|---|---|
+| <code>--group</code>, <code>-g</code> | 실행할 폴더명 (예: <code>mysite</code>). 생략 시 전체 실행 |
+| <code>--quick</code> | 빠른 실행 모드. 결과를 <code>state/quick.json</code>에 저장 (<code>state/parallel.json</code> 미변경) |
+| <code>--no-heal</code> | 힐링 생략. 실패해도 <code>heal_context.json</code>을 생성하지 않고 바로 리포트 생성. 상태는 <code>done</code>으로 설정 |
+| <code>--no-report</code> | 리포트 생성 생략. 힐링 중 중간 실행 시 사용. Jira 이슈 생성도 건너뜀 |</p>
+<p><strong>동작:</strong>
+1. <code>tests/generated/</code> 폴더 pytest 일괄 실행 (병렬 최대 4 workers, timeout=900s)
+2. <strong>실패 시</strong>: 단일 파이프라인과 동일한 힐링 플로우 실행 — 에러 분류(7종) → 사이트 사전 접근 체크 → 반복 실패 감지(2회 스킵) → <code>06_auto_heal.py</code> (deterministic 패치) → <code>state/heal_context.json</code> 생성 → Claude Code 패치 → 재실행 (최대 3회). <code>--no-heal</code> 시 이 단계를 건너뜀
+3. 전체 통과 시: <code>tests/reports/parallel_index_{날짜시간}.html</code> 리포트 생성
+4. <code>--group</code> 지정 시 리포트에 해당 그룹만 포함 (미선택 그룹 제외)</p>
+<blockquote>
+<p>리포트는 같은 <code>group_dir</code>(폴더명)의 케이스를 하나의 그룹 카드로 묶어 표시합니다.</p>
+</blockquote>
+<hr />
+<h3 id="agentsdashboardservepy-모니터링-대시보드"><code>agents/dashboard/serve.py</code> — 모니터링 대시보드</h3>
+<p>TC 작성·내보내기, 파이프라인 실행·모니터링, 리포트 열람과 팀 토론을 지원하는 웹 UI 서버입니다.</p>
+<p>최신 밝은 테마 화면과 메뉴별 사용 방법은 <a href="USER_GUIDE.html">웹 QA 대시보드 사용자 가이드</a>를 참고하세요. TC 작성부터 내보내기까지는 <a href="tc-studio/TC_AUTHORING_USER_GUIDE.html">TC 스튜디오 사용자 설명서</a>에 있습니다.</p>
+<pre><code class="language-bash">.venv/bin/python agents/dashboard/serve.py
+# 브라우저에서 http://localhost:8766 자동 열림
+
+# 다른 인터페이스/포트로 실행
+.venv/bin/python agents/dashboard/serve.py --host 0.0.0.0 --port 8800
+</code></pre>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>옵션/환경 변수</th>
+<th>기본값</th>
+<th>설명</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--host</code></td>
+<td><code>127.0.0.1</code></td>
+<td>서버 바인딩 주소</td>
+</tr>
+<tr>
+<td><code>--port</code></td>
+<td><code>8766</code></td>
+<td>서버 바인딩 포트</td>
+</tr>
+<tr>
+<td><code>ALLOWED_HOSTS</code></td>
+<td><code>localhost:8766 127.0.0.1:8766</code></td>
+<td>허용 <code>Host</code> 값. 쉼표 또는 공백 구분</td>
+</tr>
+<tr>
+<td><code>ALLOWED_ORIGIN</code></td>
+<td><code>http://localhost:8766</code></td>
+<td>허용 브라우저 origin</td>
+</tr>
+<tr>
+<td><code>REMOTE_MODE</code></td>
+<td>비활성</td>
+<td>활성화 시 실행/reset API를 기본 403 차단</td>
+</tr>
+<tr>
+<td><code>REMOTE_API_ALLOWLIST</code></td>
+<td>빈 값</td>
+<td>예외 허용 경로. exact match 또는 끝 <code>*</code> prefix match, 쉼표 구분</td>
+</tr>
+</tbody>
+</table></div>
+<p>원격 모드는 인증 기능이 아닙니다. 외부 네트워크에 바인딩할 때는 허용 host/origin을
+명시하고 인증 프록시를 별도로 구성하세요. 토론 결론의 승인/반려 API는 게이트 진행을
+막지 않도록 원격 모드에서도 허용됩니다. 상세 위험 엔드포인트와 allowlist 규칙은
+<a href="../reference/API_REFERENCE.md"><code>API_REFERENCE.md</code></a>를 참고하세요.</p>
+<blockquote>
+<p><strong>동적 포트(P0-3):</strong> 현재 저장소에는 dashboard job 동시 실행 상한과 workspace
+수명주기 계약이 없습니다. <code>--port</code>로 명시적 포트를 선택할 수 있지만, job별 자동
+할당/해제는 해당 결정이 생길 때까지 보류합니다.</p>
+</blockquote>
+<p><strong>대시보드에서 할 수 있는 것:</strong>
+| 기능 | 방법 |
+|---|---|
+| <strong>단일 파이프라인 실행</strong> | 단일 파이프라인 탭 → 페이지 선택 → URL 자동 표시 → 케이스 폴더 선택 → "파이프라인 실행" 버튼 |
+| <strong>병렬 파이프라인 실행</strong> | 병렬 파이프라인 탭 → "병렬 실행" 버튼 (pages.json + testcases/ 자동 스캔) |
+| <strong>빠른 실행</strong> | 빠른 실행 탭 → tests/generated/ 폴더 체크박스 선택 → "힐링 생략" 체크(선택) → "테스트 실행" 버튼 (전체 파이프라인 불필요) |
+| <strong>99_merge.py 실행</strong> | 병렬 파이프라인 탭 → 워커 완료 후 "99_merge.py 실행" 버튼 |
+| 단일 파이프라인 진행 상태 | 리뷰 완료 후 자동 실행 (승인 단계 없음) |
+| 실행 로그 실시간 확인 | 실행 버튼 클릭 후 하단 로그 박스에 3초 간격 폴링 표시 |
+| 파이프라인 진행 상태 모니터링 | 단일: 6단계 프로그레스 바 / 병렬: 워커 카드 그리드 |
+| 테스트 결과 필터·페이지네이션 | 전체/통과/실패/건너뜀 필터 버튼 + 20개 단위 페이지 (단일·병렬·빠른 실행 공통) |
+| <strong>힐링 통계 시각화</strong> | 대시보드의 힐링 통계: 오류 유형별 도넛 차트 + Top 5 빈출 패턴 목록 |
+| 팀 토론 실시간 모니터링 | 사수/부사수 티키타카 대화가 발언마다 실시간 표시 (SSE) |
+| 팀 토론 시작 | 팀 토론 섹션 주제 입력 → 토론 시작 버튼 |
+| 토론 결론 항목별 승인 | 각 항목 ✓/✗ 버튼 클릭 |
+| 승인 후 자동 구현 | 전체 투표 완료 시 스케줄러(2분 내)가 자동으로 Claude에게 구현 지시 |
+| 테스트 리포트 열람 | 리포트 목록 탭 → 리포트 클릭 (인라인 iframe 또는 새 탭) |
+| <strong>TC 작성·내보내기</strong> | TC 스튜디오 → 기획 정보 · 생성/라이브러리/초안 검토/내보내기 |</p>
+<blockquote>
+<p><strong>참고</strong>: QA 파이프라인 심의(Plan·코드리뷰·힐링)는 대시보드에 표시되지 않습니다.
+결과는 <code>state/pipeline.json</code>에 저장되며, 터미널 로그에서 확인할 수 있습니다.</p>
+</blockquote>
+<p><strong>대시보드 API:</strong> 전체 목록과 요청·응답 계약은 <a href="../reference/API_REFERENCE.md">API 레퍼런스</a>를 참고하세요.</p>
+<p><strong>서버 재시작 방법 (코드 변경 후):</strong></p>
+<pre><code class="language-bash"># 포트 확인 (macOS)
+lsof -i :8766
+# PID 종료
+kill -9 [PID]
+# 재시작
+.venv/bin/python agents/dashboard/serve.py
+</code></pre>
+<hr />
+<h3 id="run_teampy-팀-토론-시작-터미널용"><code>run_team.py</code> — 팀 토론 시작 (터미널용)</h3>
+<blockquote>
+<p><strong>권장:</strong> 대시보드의 "토론 시작" 버튼 사용. <code>run_team.py</code>는 대시보드 없이 터미널에서만 쓸 때 사용.</p>
+</blockquote>
+<pre><code class="language-bash">.venv/bin/python run_team.py --topic &quot;함수명 영문 번역 기준 정의&quot;
+.venv/bin/python run_team.py  # 주제를 대화형으로 입력
+</code></pre>
+<p><strong>동작:</strong> <code>state/discuss.json</code> 생성 후 다음 단계 안내 출력.
+이후 Claude에게 직접 "팀 토론 진행해줘"라고 요청하면 됩니다.</p>
+<hr />
+<h2 id="claude가-자동으로-호출하는-파일-scripts">Claude가 자동으로 호출하는 파일 (scripts/)</h2>
+<blockquote>
+<p>아래 파일들은 <strong>직접 실행하지 않습니다.</strong> <code>run_qa.py</code> 실행 후 Claude가 순서대로 자동 호출합니다.
+문제 해결 목적으로 개별 실행이 필요할 때만 참고하세요.</p>
+</blockquote>
+<h3 id="단일-파이프라인-순서">단일 파이프라인 순서</h3>
+<pre><code>01_analyze.py
+  → 메인 URL + 서브페이지 DOM을 단일 브라우저에서 분석 (메인: networkidle+30s, 서브: load+500ms, Semaphore(8))
+  → 9가지 다중 셀렉터 전략 (id &gt; testid &gt; aria-label &gt; role &gt; placeholder &gt; name &gt; text &gt; css &gt; xpath) 추출
+  → inputs/buttons: visible + hidden 모두 포함 (visible 플래그 구분)
+  → navItems: 사이드바·메뉴 li 항목 추출 (nav li, aside li, [role=&quot;treeitem&quot;] 등 최대 50개)
+  → hidden_elements: 모달·드롭다운 컨테이너 + 내부 자식 버튼·링크 텍스트
+  → testidElements: data-testid/data-test/data-cy/data-qa 속성명과 값을 실제 속성명 기준으로 추출
+  → analyze_dynamic(): hover·click 트리거 순회 → 노출 요소 캡처 (30초 상한, 페이지 복원 실패 시 중단)
+  → analyze_contextmenu(): 우클릭 후보 순회 → 컨텍스트 메뉴 캡처 (30초 상한, 중복 시그니처 제거)
+  → 정적 DOM TTL 7일 / 동적 요소 TTL 24시간 분리 관리 (만료 시 동적 분석만 재실행)
+  → --force-refresh 플래그: 캐시를 무시하고 강제 재분석
+  → --skip-dynamic 플래그: 동적 UI 분석 건너뜀 (정적 DOM만 추출)
+
+02a_dialog.py
+  → Plan 심의에 필요한 파일들을 병렬로 읽어 JSON으로 출력
+  → Claude가 이 출력을 보고 체크리스트로 plan을 작성
+
+02_generate.py
+  → plan 기반으로 tests/generated/{group}/ 디렉토리에 케이스별 scaffold 파일 생성
+  → Claude가 각 scaffold를 완성 코드로 채움 (tc_*.md 1개 = 테스트 파일 1개)
+
+03_lint.py
+  → flake8으로 생성된 테스트 코드 품질 검사
+  → state/pipeline.json에 lint_result 저장, step=reviewed 설정
+  → 이후 check_pending_approve.py 훅이 step=reviewed를 감지하여 05_execute.py 트리거
+
+03a_dialog.py
+  → 코드 리뷰 심의에 필요한 파일들을 병렬로 읽어 JSON으로 출력
+  → Claude가 lint 결과 + 코드를 체크리스트로 리뷰
+
+05_execute.py
+  → pytest로 테스트 실행 (최대 4 workers 병렬, spa: true 사이트는 세션 충돌 방지를 위해 1 worker 고정)
+  → report_html.build_report()로 HTML 리포트 생성 (병렬과 동일 형식)
+  → result_parser.parse_results()로 결과 파싱 (99_merge.py와 공유)
+  → state/pipeline.json에 execution_result 저장 (heal_count는 읽기만, 증가 안 함)
+  → `--no-report` 플래그: 리포트·스크린샷 생성 건너뜀 (힐링 중간 실행용)
+  → `--only-failed` 플래그: 이전 실행에서 실패한 테스트만 재실행 (힐링 시 시간 대폭 절감)
+  → 첫 실행 포함 모든 실행은 `--no-report`, 전체 통과 확인 후 마지막 1회만 리포트 생성
+  → 매 실행 전 `tests/screenshots/`, `tests/traces/` 초기화
+
+06_heal.py
+  → 05_execute가 생성한 JSON 리포트(json_report_path)에서 실패 정보를 파싱 (pytest 재실행 없음)
+  → 스크린샷·Trace 경로를 연결해 heal_context 저장 (meta.json의 trace_path 참조). 타임아웃 600s, -n8 병렬
+  → --lf 실행 시 0개 수집이면 --lf 없이 재실행 (fallback)
+
+06_auto_heal.py
+  → 06_heal.py 이후 자동 패치. 7개 정적 패턴:
+     strict mode violation → .first 추가
+     timeout 오류 → timeout 값 증가 (5000→15000, 10000→20000)
+     to_have_class(r&quot;...&quot;) → to_have_class(re.compile(r&quot;...&quot;))
+     triple_click() → click(click_count=3)
+     page.evaluate('return ...') → page.evaluate('() =&gt; ...')
+     UnicodeDecodeError cp949 → open() 에 encoding='utf-8' 추가
+     모달 wait_for timeout 10000 → 20000
+  + heal_stats 빈출 패턴 Top 5 보고
+  → 수정 파일만 재실행하여 검증. 전부 통과 시 Agent 불필요 (종료코드 0)
+  → 잔여 실패 시 heal_context 업데이트 후 Agent에 위임 (종료코드 1)
+
+06a_dialog.py
+  → 힐링 심의에 필요한 파일들을 병렬로 읽어 JSON으로 출력
+  → heal_stats.json에서 Top 5 빈출 패턴을 DELIBERATION_CONTEXT에 자동 주입
+  → Claude가 traceback + 스크린샷 + 빈출 패턴을 분석해 코드 패치 후 05_execute.py 재실행
+</code></pre>
+<p><strong>개별 실행이 필요한 경우 (cwd = 프로젝트 루트):</strong></p>
+<pre><code class="language-bash">.venv/bin/python scripts/01_analyze.py
+.venv/bin/python scripts/03_lint.py
+.venv/bin/python scripts/05_execute.py
+# 등...
+</code></pre>
+<hr />
+<h3 id="팀-토론-관련">팀 토론 관련</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>파일</th>
+<th>역할</th>
+<th>실행 주체</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>scripts/team_discuss.py</code></td>
+<td>토론 컨텍스트 준비 + dialog.json 세션 생성</td>
+<td>대시보드 버튼 클릭 시 자동 실행</td>
+</tr>
+<tr>
+<td><code>scripts/team_approve.py</code></td>
+<td>결론 표시 후 y/n 승인 (터미널용)</td>
+<td>대시보드 승인 버튼으로 대체됨</td>
+</tr>
+</tbody>
+</table></div>
+<hr />
+<h3 id="훅-스크립트-userpromptsubmit-hook">훅 스크립트 (UserPromptSubmit Hook)</h3>
+<blockquote>
+<p><code>.claude/settings.json</code>에 등록되어 사용자 프롬프트 제출 시 자동 실행됩니다.
+모든 훅은 <code>hook_utils.check_state(path, key, value, extra_check)</code> 공통 함수를 사용합니다.
+P44부터 트리거 조건 값은 <code>_pipeline_registry.py</code>의 <code>Step.*</code> / <code>ParallelStatus.*</code> 레지스트리 상수를 사용합니다.
+실행 지시문은 <code>hook_utils.remaining_steps_hint(from_step)</code>이 레지스트리 기반으로 자동 생성합니다.</p>
+</blockquote>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>파일</th>
+<th>감지 대상</th>
+<th>트리거 상수</th>
+<th>동작</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>scripts/check_pending_pipeline.py</code></td>
+<td><code>state/pipeline.json</code></td>
+<td><code>Step.INIT</code></td>
+<td>단일 파이프라인 시작 지시 + 잔여 단계 목록 자동 출력</td>
+</tr>
+<tr>
+<td><code>scripts/check_pending_approve.py</code></td>
+<td><code>state/pipeline.json</code></td>
+<td><code>Step.REVIEWED</code></td>
+<td>테스트 실행 지시 + 잔여 단계 목록 자동 출력</td>
+</tr>
+<tr>
+<td><code>scripts/check_pending_parallel.py</code></td>
+<td><code>state/parallel.json</code></td>
+<td><code>ParallelStatus.READY</code></td>
+<td>병렬 subagent 실행 지시 + PARALLEL_SUBAGENT_CONTEXTS 주입</td>
+</tr>
+<tr>
+<td><code>scripts/check_pending_quick_heal.py</code></td>
+<td><code>state/quick.json</code></td>
+<td><code>ParallelStatus.HEAL_NEEDED</code></td>
+<td>HEAL_SUBAGENT_CONTEXTS 주입해 힐링 자동 시작</td>
+</tr>
+<tr>
+<td><code>scripts/check_pending_discuss.py</code></td>
+<td><code>state/discuss.json</code></td>
+<td><code>step="pending"</code></td>
+<td>Claude에게 팀 토론 진행 지시</td>
+</tr>
+<tr>
+<td><code>scripts/check_pending_impl.py</code></td>
+<td><code>pending_impl.json</code></td>
+<td><code>status="pending"</code></td>
+<td>Claude에게 승인 항목 자동 구현 지시</td>
+</tr>
+</tbody>
+</table></div>
+<hr />
+<h3 id="라이브러리-파일">라이브러리 파일</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>파일</th>
+<th>역할</th>
+<th>직접 실행</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>scripts/_python.py</code></td>
+<td><code>PROJECT_ROOT</code>를 <code>_paths.py</code>에서 import하여 <code>.venv</code> 경로 구성. <code>PYTHON_EXE</code> 상수 제공</td>
+<td>❌ (다른 스크립트가 import)</td>
+</tr>
+<tr>
+<td><code>scripts/_paths.py</code></td>
+<td>중앙 경로 상수 (<code>STATE_DIR</code>, <code>LOGS_DIR</code>, <code>DOM_CACHE_DIR</code>, <code>RUN_HISTORY</code> 등) + <code>DOM_CACHE_TTL_HOURS=168</code>(7일) / <code>DOM_DYNAMIC_CACHE_TTL_HOURS=24</code>(24시간) TTL 상수 + <code>read_state()</code> (락 파일 기반 크로스플랫폼 잠금) / <code>write_state()</code> (atomic rename + <strong>pipeline.json FSM 전이 자동 검증</strong>) / <code>append_run_history()</code> (락 파일로 read-modify-write 보호, Windows 포함 크로스플랫폼) / <code>get_cached_dom()</code> (정적·동적 TTL 분리 체크 — 동적 만료 시 <code>dynamic_elements</code>/<code>contextmenu_elements</code>만 제거) / <code>save_dom_cache()</code> (atomic write + <code>_cached_at</code> / <code>_dynamic_cached_at</code> 분리 저장) / <code>resolve_sub_doms(state)</code> (sub_dom_keys → {url:dom} 매핑) 유틸</td>
+<td>❌ (다른 스크립트가 import)</td>
+</tr>
+<tr>
+<td><code>scripts/_constants.py</code></td>
+<td>파이프라인 종료 코드 상수 (<code>EXIT_SUCCESS=0</code>, <code>EXIT_HEAL_NEEDED=10</code>, <code>EXIT_HEAL_EXCEEDED=2</code>, <code>EXIT_REJECTED=4</code>) + <code>VALID_TRANSITIONS</code> step 전이 맵 + <code>assert_valid_transition()</code> 검증 함수</td>
+<td>❌ (다른 스크립트가 import)</td>
+</tr>
+<tr>
+<td><code>scripts/result_parser.py</code></td>
+<td>pytest JSON 리포트 → <code>{nodeid: passed}</code> 매핑 파싱. <code>05_execute.py</code>와 <code>99_merge.py</code>가 공유</td>
+<td>❌ (다른 스크립트가 import)</td>
+</tr>
+<tr>
+<td><code>scripts/hook_utils.py</code></td>
+<td>훅 스크립트 공통 유틸. <code>check_state(path, key, value, extra_check)</code> + <code>remaining_steps_hint(from_step)</code> (레지스트리 기반 잔여 단계 지시문 자동 생성, P44) — 5개 <code>check_pending_*.py</code>가 공유</td>
+<td>❌ (다른 스크립트가 import)</td>
+</tr>
+<tr>
+<td><code>scripts/structured_log.py</code></td>
+<td>구조화된 로그 (JSON Lines). <code>slog(event, **kwargs)</code> → <code>logs/structured.jsonl</code>에 기록. 05_execute, 06_heal, 99_merge에서 사용. 파이프라인 병목 분석·이벤트 추적용</td>
+<td>❌ (다른 스크립트가 import)</td>
+</tr>
+<tr>
+<td><code>scripts/heal_utils.py</code> (힐링 배치 병렬화: <code>build_heal_batches()</code> + <code>print_heal_batches()</code> — 단일/병렬/빠른 공통, HEAL_BATCH_SIZE=6)</td>
+<td>힐링 공용 유틸리티. <code>classify_error</code> (7분류: Locator/Assertion/Timeout/URL/JS평가/Python런타임/Playwright일반/기타), <code>MCP_SNAPSHOT_ERROR_TYPES</code>, <code>extract_key_lines</code>, <code>find_screenshot_for_test</code>, <code>append_lessons</code> (→ <code>lessons_learned_auto.md</code>에 자동 기록), <code>update_heal_stats</code> — <code>06_heal.py</code>와 <code>99_merge.py</code>에서 공유</td>
+<td>❌ (다른 스크립트가 import)</td>
+</tr>
+<tr>
+<td><code>scripts/_pipeline_registry.py</code></td>
+<td>FSM 단일 소스. <code>Step.*</code> / <code>ParallelStatus.*</code> 상수, <code>PIPELINE_STEP_DEFS</code>(메타), <code>VALID_TRANSITIONS</code> / <code>VALID_PARALLEL_TRANSITIONS</code>, <code>make_initial_pipeline_state()</code> 팩토리</td>
+<td>❌ (다른 스크립트가 import)</td>
+</tr>
+<tr>
+<td><code>scripts/_validators.py</code></td>
+<td>대시보드 <code>serve.py</code> 입력 검증 헬퍼. <code>serve.py</code>의 백그라운드 스레드 부작용 없이 재사용 가능하도록 분리</td>
+<td>❌ (serve.py + 테스트가 import)</td>
+</tr>
+<tr>
+<td><code>scripts/_tc_model.py</code></td>
+<td>TC 스튜디오 케이스 모델: 허용 값(P0~P3, 실행 결과), Step·Expected 파싱, 결과 병합, id 발급, 검증 규칙</td>
+<td>❌ (다른 스크립트가 import)</td>
+</tr>
+<tr>
+<td><code>scripts/_tc_template.py</code></td>
+<td>엑셀 TC 템플릿 분석: 헤더·하위 헤더·컬럼·드롭다운·No. 수식 탐지 → <code>TemplateProfile</code></td>
+<td>❌ (다른 스크립트가 import)</td>
+</tr>
+<tr>
+<td><code>scripts/_tc_xlsx_import.py</code></td>
+<td>엑셀 시트 → 라이브러리 케이스 (병합·빈 칸 이어받기, 기타 칸의 id·src 분리)</td>
+<td>❌ (다른 스크립트가 import)</td>
+</tr>
+<tr>
+<td><code>scripts/_tc_library.py</code></td>
+<td>TC 라이브러리 저장소 <code>state/tc_library/{suite}/</code>: rev 수정·일괄·생성·삭제·이력·트리·필터</td>
+<td>❌ (대시보드가 import)</td>
+</tr>
+<tr>
+<td><code>scripts/_tc_xlsx_export.py</code></td>
+<td>라이브러리 → 템플릿 사본 xlsx (병합·드롭다운·요약 수식·History) + 무결성 검사</td>
+<td>❌ (대시보드가 import)</td>
+</tr>
+<tr>
+<td><code>scripts/_tc_sources.py</code></td>
+<td>TC 생성용 소스 묶음: 파일(PDF·DOCX·MD·TXT)·붙여넣기 → markdown 섹션</td>
+<td>❌ (대시보드가 import)</td>
+</tr>
+<tr>
+<td><code>scripts/_tc_profiles.py</code></td>
+<td>TC 작성 프로필 저장소 + 기본 규칙</td>
+<td>❌ (대시보드가 import)</td>
+</tr>
+<tr>
+<td><code>scripts/_tc_prompt.py</code></td>
+<td>TC 생성 프롬프트·출력 JSON 스키마·섹션 묶기</td>
+<td>❌ (다른 스크립트가 import)</td>
+</tr>
+<tr>
+<td><code>scripts/_tc_review.py</code></td>
+<td>TC 초안 중복 후보·중복 처리·커버리지 갭</td>
+<td>❌ (대시보드가 import)</td>
+</tr>
+<tr>
+<td><code>scripts/_tc_generate.py</code></td>
+<td>TC 초안 생성 작업: 제한된 <code>claude -p</code> 실행·검증·라이브러리 반영</td>
+<td>❌ (대시보드가 스레드로 실행)</td>
+</tr>
+<tr>
+<td><code>scripts/_tc_fetch.py</code></td>
+<td>원격 문서 수집용 안전한 GET (SSRF 방어)</td>
+<td>❌ (다른 스크립트가 import)</td>
+</tr>
+<tr>
+<td><code>scripts/_tc_html.py</code></td>
+<td>HTML·Confluence storage → markdown</td>
+<td>❌ (다른 스크립트가 import)</td>
+</tr>
+<tr>
+<td><code>scripts/_tc_credentials.py</code></td>
+<td>Confluence·Figma 자격증명 (마스킹·환경변수 우선)</td>
+<td>❌ (대시보드가 import)</td>
+</tr>
+<tr>
+<td><code>scripts/_tc_connectors.py</code></td>
+<td>PRD URL·Confluence·Figma 소스 수집</td>
+<td>❌ (대시보드가 import)</td>
+</tr>
+<tr>
+<td><code>scripts/_tc_source_watch.py</code></td>
+<td>출처 버전 변경 확인·차이·확인 완료</td>
+<td>❌ (대시보드가 import)</td>
+</tr>
+<tr>
+<td><code>scripts/_tc_md_export.py</code></td>
+<td>TC 라이브러리 → testcases/{group}/tc_*.md (퍼널·그룹 매핑·tc_id 고정·드리프트, 반영·롤백은 TC 스튜디오)</td>
+<td>❌ (대시보드가 import)</td>
+</tr>
+</tbody>
+</table></div>
+<p>| <code>agents/dashboard/tools/scope_tc_studio_css.py</code> | 목업 CSS → <code>static/css/tc-studio.css</code> 생성 (목업을 고친 뒤 다시 실행) | ✅ (<code>.venv/bin/python agents/dashboard/tools/scope_tc_studio_css.py &lt;목업&gt; &lt;출력&gt;</code>) |
+| <code>scripts/assert_guard.py</code> | 힐링 패치 후 assertion 약화 감지. <code>original_assertions</code>(최초) vs 현재 파일 비교 → 감소 시 경고 출력 | ✅ (<code>.venv/bin/python scripts/assert_guard.py</code>) |
+| <code>scripts/jira_reporter.py</code> | 테스트 실패 시 Jira 이슈 자동 생성. 스크린샷·영상 첨부 포함. <code>config/jira_config.json</code> 또는 환경변수 <code>JIRA_TOKEN</code> 설정 필요. <code>99_merge.py</code>가 최종 실패 시 자동 호출 | ✅ (<code>.venv/bin/python scripts/jira_reporter.py [--group G] [--dry-run]</code>) |
+| <code>scripts/parse_cases.py</code> | <code>.md</code>/<code>.json</code> 테스트케이스 파일 파서 (YAML frontmatter 지원). frontmatter 문자열값의 따옴표 자동 제거 (<code>id: "CL_01"</code> → <code>CL_01</code>). Steps는 번호(<code>1.</code>) 형식 권장이나 번호 없는 평문 줄도 파싱 지원 | ❌ (run_qa.py가 import해서 사용) |
+| <code>tests/unit/</code> | 저장소 단위 테스트 — <code>pipeline/</code> <code>hooks/</code> <code>core/</code> <code>dashboard/</code> <code>import_studio/</code> 영역별 폴더 (파서 테스트: <code>core/test_core_parsers.py</code>) | ❌ (<code>pytest</code>가 자동 실행) |
+| <code>scripts/sync_test_data.py</code> | 프로덕트별 테스트 데이터 동기화 유틸 | ❌ (필요 시 import) |
+| <code>tests/conftest.py</code> | pytest browser/page fixture + 실패 시 스크린샷 자동 캡처 | ❌ (pytest가 자동 로드) |</p>
+<hr />
+<h2 id="omc-스킬-활용-oh-my-claudecode">OMC 스킬 활용 (oh-my-claudecode)</h2>
+<blockquote>
+<p>상세 명령·참조 SKILL.md·적용 방법은 <code>CLAUDE.md</code> "스킬 프레임워크 &amp; OMC 적용" 섹션 참조.</p>
+</blockquote>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>단계</th>
+<th>명령</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>코드 완성</td>
+<td><code>/oh-my-claudecode:ultrapilot</code></td>
+</tr>
+<tr>
+<td>린트 수정</td>
+<td>Agent tool 직접 병렬 호출</td>
+</tr>
+<tr>
+<td>힐링 루프</td>
+<td><code>/oh-my-claudecode:ultraqa</code></td>
+</tr>
+</tbody>
+</table></div>
+<hr />
+<h2 id="설정-파일-config">설정 파일 (config/)</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>파일</th>
+<th>역할</th>
+<th>예시 키</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>config/pages.json</code></td>
+<td>페이지명 → URL 매핑. <code>run_qa_parallel.py</code>가 자동 참조</td>
+<td><code>"mysite": "https://example.com/"</code></td>
+</tr>
+<tr>
+<td><code>test_data/{product}.json</code></td>
+<td>테스트 입력값 중앙 관리. 테스트 코드에서 하드코딩 금지, 이 파일에서 읽어 사용</td>
+<td><code>"valid_user": {...}</code></td>
+</tr>
+</tbody>
+</table></div>
+<p>프로덕트별 파일 형식: <code>{ "data_key": { "username": "...", "password": "..." } }</code>
+- 파일명은 프로덕트 이름이며 <code>load_test_data()</code>가 파일명을 최상위 키로 묶어 읽습니다.
+- 테스트케이스 frontmatter의 <code>data_key</code>가 이 파일의 서브키를 참조
+- 실제 입력값은 git에서 제외된 <code>test_data/{product}.json</code>에 저장합니다.</p>
+<hr />
+<h2 id="상태-파일-실행-결과가-저장되는-곳">상태 파일 (실행 결과가 저장되는 곳)</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>파일</th>
+<th>저장 내용</th>
+<th>생성 시점</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>state/pipeline.json</code></td>
+<td>단일 파이프라인 전체 상태 (dom_info, plan, review_summary, heal_context 등)</td>
+<td><code>run_qa.py</code> 실행 시</td>
+</tr>
+<tr>
+<td><code>state/discuss.json</code></td>
+<td>팀 토론 상태 (주제, 결론, 투표 항목)</td>
+<td>대시보드 토론 시작 시</td>
+</tr>
+<tr>
+<td><code>agents/dialog.json</code></td>
+<td><strong>팀 자유 토론 대화 로그 전용</strong> (QA 파이프라인 심의는 기록 안 함)</td>
+<td>팀 토론 시작 시</td>
+</tr>
+<tr>
+<td><a href="../../agents/team_notes.md"><code>agents/team_notes.md</code></a></td>
+<td>승인된 팀 결정사항 (구현 완료 후 초기화)</td>
+<td>토론 항목 전체 투표 완료 시</td>
+</tr>
+<tr>
+<td><a href="../../agents/lessons_learned.md"><code>agents/lessons_learned.md</code></a></td>
+<td>큐레이션된 실수 패턴 (수동 관리)</td>
+<td>힐링·코드리뷰 심의 완료 시</td>
+</tr>
+<tr>
+<td><a href="../../agents/lessons_learned_auto.md"><code>agents/lessons_learned_auto.md</code></a></td>
+<td>자동 기록 힐링 로그 (heal_utils.py)</td>
+<td>06_heal.py 실행 시 자동</td>
+</tr>
+<tr>
+<td><code>pending_impl.json</code></td>
+<td>승인 후 구현 대기 항목 (훅이 감지해 자동 구현)</td>
+<td>대시보드 전체 투표 완료 시</td>
+</tr>
+<tr>
+<td><code>state/parallel.json</code></td>
+<td>병렬 파이프라인 실행 결과 (targets, 통계)</td>
+<td><code>99_merge.py</code> 완료 시</td>
+</tr>
+<tr>
+<td><code>state/quick.json</code></td>
+<td>빠른 실행 결과 (병렬 상태와 분리)</td>
+<td><code>99_merge.py --quick</code> 완료 시</td>
+</tr>
+<tr>
+<td><code>state/heal_context.json</code></td>
+<td>병렬 파이프라인 힐링 컨텍스트 (에러 분류, failure_groups, skipped_repeated, lessons_snapshot 포함)</td>
+<td><code>99_merge.py</code> 실패 시</td>
+</tr>
+<tr>
+<td><code>state/heal_stats.json</code></td>
+<td>힐링 오류 패턴별 빈도 카운터 (Top 5를 심의 컨텍스트에 주입)</td>
+<td><code>06_heal.py</code> 실패 분석 시</td>
+</tr>
+<tr>
+<td><code>state/run_history.json</code></td>
+<td>실행 이력 배열 (timestamp, passed/failed, heal_count, first_pass, duration_sec)</td>
+<td>매 실행 완료 시 자동 append</td>
+</tr>
+<tr>
+<td><code>logs/merge.txt</code></td>
+<td>99_merge.py 실행 로그</td>
+<td><code>99_merge.py</code> 실행 시</td>
+</tr>
+<tr>
+<td><code>logs/quick_run.txt</code></td>
+<td>빠른 실행 로그</td>
+<td>대시보드 빠른 실행 시</td>
+</tr>
+<tr>
+<td><code>logs/run_parallel.txt</code></td>
+<td>병렬 파이프라인 실행 로그</td>
+<td>대시보드에서 병렬 실행 시</td>
+</tr>
+<tr>
+<td><code>logs/run_qa.txt</code></td>
+<td>단일 파이프라인 실행 로그</td>
+<td>대시보드에서 단일 실행 시</td>
+</tr>
+<tr>
+<td><code>logs/run_qa_headless.txt</code></td>
+<td><code>run_qa.py</code> headless 세션 전체 로그</td>
+<td><code>run_qa.py</code> (--auto) 실행 시</td>
+</tr>
+<tr>
+<td><code>logs/run_qa_parallel_headless.txt</code></td>
+<td><code>run_qa_parallel.py</code> headless 세션 전체 로그</td>
+<td><code>run_qa_parallel.py</code> (--auto) 실행 시</td>
+</tr>
+<tr>
+<td><code>state/parallel_contexts.json</code></td>
+<td>병렬 파이프라인 subagent 컨텍스트 전체 (dom_info + test_cases + shared_paths)</td>
+<td><code>run_qa_parallel.py</code> 실행 시</td>
+</tr>
+</tbody>
+</table></div>
+<footer>QA 컨트롤 센터 · 웹 QA · <a href="http://localhost:8766/">대시보드 열기</a><br>이미지는 누르면 원본 크기로 볼 수 있습니다. 인쇄는 브라우저의 인쇄 기능을 사용하세요.</footer>
+</main></div>
+<script>
+const links=document.querySelectorAll('.sidebar .toc a');
+const observer=new IntersectionObserver(entries=>{entries.forEach(entry=>{if(entry.isIntersecting){
+links.forEach(link=>{if(link.hash==='#'+entry.target.id)link.setAttribute('aria-current','true');else link.removeAttribute('aria-current');});
+}});},{rootMargin:'-15% 0px -70% 0px'});
+document.querySelectorAll('main>h2').forEach(heading=>observer.observe(heading));
+</script></body></html>

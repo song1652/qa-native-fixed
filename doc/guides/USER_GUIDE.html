@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<!-- 자동 생성: scripts/build_user_guides.py. 수정 원본: doc/guides/DASHBOARD_USER_GUIDE.md -->
+<html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light"><title>웹 QA 대시보드 사용자 가이드</title>
+<link rel="stylesheet" href="guide.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+</head><body><a class="skip-link" href="#content">본문으로 이동</a>
+<header class="topbar"><div class="brand">QA 컨트롤 센터</div><span>사용 가이드</span><span class="updated">최신 밝은 테마</span></header>
+<div class="layout"><nav class="sidebar" aria-label="가이드 목차"><div class="nav-label">사용 가이드</div><a href="USER_GUIDE.html">대시보드</a>
+<a href="tc-studio/TC_AUTHORING_USER_GUIDE.html">TC 스튜디오</a>
+<a href="SCRIPTS_GUIDE.html">스크립트</a>
+<a href="TEST_CASE_GUIDE.html">TC 작성</a><div class="nav-label">이 문서의 목차</div><div class="toc">
+<ul>
+<li><a href="#1-접속과-메뉴">1. 접속과 메뉴</a></li>
+<li><a href="#2-대시보드와-상태-표시">2. 대시보드와 상태 표시</a></li>
+<li><a href="#3-tc-스튜디오">3. TC 스튜디오</a></li>
+<li><a href="#4-빠른-실행">4. 빠른 실행</a></li>
+<li><a href="#5-단일-파이프라인">5. 단일 파이프라인</a></li>
+<li><a href="#6-병렬-파이프라인">6. 병렬 파이프라인</a></li>
+<li><a href="#7-리포트-목록과-결과지-열기">7. 리포트 목록과 결과지 열기</a></li>
+<li><a href="#8-실행-기록">8. 실행 기록</a></li>
+<li><a href="#9-팀-토론">9. 팀 토론</a></li>
+<li><a href="#10-페이지-url-관리">10. 페이지 URL 관리</a></li>
+<li><a href="#11-화면이-이전-버전으로-보일-때">11. 화면이 이전 버전으로 보일 때</a></li>
+</ul>
+</div>
+</nav>
+<main class="main" id="content"><details class="mobile-toc"><summary>목차 열기</summary><a href="USER_GUIDE.html">대시보드</a>
+<a href="tc-studio/TC_AUTHORING_USER_GUIDE.html">TC 스튜디오</a>
+<a href="SCRIPTS_GUIDE.html">스크립트</a>
+<a href="TEST_CASE_GUIDE.html">TC 작성</a><div class="toc">
+<ul>
+<li><a href="#1-접속과-메뉴">1. 접속과 메뉴</a></li>
+<li><a href="#2-대시보드와-상태-표시">2. 대시보드와 상태 표시</a></li>
+<li><a href="#3-tc-스튜디오">3. TC 스튜디오</a></li>
+<li><a href="#4-빠른-실행">4. 빠른 실행</a></li>
+<li><a href="#5-단일-파이프라인">5. 단일 파이프라인</a></li>
+<li><a href="#6-병렬-파이프라인">6. 병렬 파이프라인</a></li>
+<li><a href="#7-리포트-목록과-결과지-열기">7. 리포트 목록과 결과지 열기</a></li>
+<li><a href="#8-실행-기록">8. 실행 기록</a></li>
+<li><a href="#9-팀-토론">9. 팀 토론</a></li>
+<li><a href="#10-페이지-url-관리">10. 페이지 URL 관리</a></li>
+<li><a href="#11-화면이-이전-버전으로-보일-때">11. 화면이 이전 버전으로 보일 때</a></li>
+</ul>
+</div>
+</details>
+<h1 id="웹-qa-대시보드-사용자-가이드">웹 QA 대시보드 사용자 가이드</h1>
+<ul>
+<li>화면 기준: <strong>2026-10-02 최신 밝은 테마</strong>. 주의는 노란 배경, 실패는 연한 빨간 배경으로 구분합니다.</li>
+<li>주소: <strong>http://localhost:8766/</strong>. 서버 주소나 포트가 다르면 관리자가 제공한 주소를 사용합니다.</li>
+<li>이미지: 현재 대시보드에서 Playwright로 촬영했습니다. 스위트·그룹 이름, 건수와 시각은 이 PC의 예시 데이터이며 사용자 환경에서는 달라집니다.</li>
+<li>TC 작성부터 내보내기까지는 <a href="tc-studio/TC_AUTHORING_USER_GUIDE.html">TC 스튜디오 사용자 설명서</a>를 읽으세요. 이 문서는 대시보드 메뉴와 리포트를 안내합니다.</li>
+</ul>
+<h2 id="1-접속과-메뉴">1. 접속과 메뉴</h2>
+<p>프로젝트 루트에서 서버를 켭니다. 설치는 <a href="../../README.md#설치">README</a>를 참고하세요.</p>
+<pre><code class="language-sh">python3 agents/dashboard/serve.py --port 8766
+</code></pre>
+<p>브라우저에서 위 주소를 엽니다. 왼쪽 메뉴로 화면을 바꾸고, 상단 <strong>QA 컨트롤 센터</strong>를 누르면 대시보드로 돌아옵니다. 파이프라인 실행·TC 초안 생성에는 로컬 Claude CLI가 설치되고 로그인되어 있어야 합니다.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>메뉴</th>
+<th>목적</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>대시보드</td>
+<td>현재 상태와 최근 실행 추이를 한눈에 확인</td>
+</tr>
+<tr>
+<td>TC 스튜디오</td>
+<td>기획 입력, TC 생성·직접 작성·수정·검토, Excel·Markdown 내보내기</td>
+</tr>
+<tr>
+<td>빠른 실행</td>
+<td>이미 만들어진 테스트 코드 실행</td>
+</tr>
+<tr>
+<td>단일 파이프라인</td>
+<td>한 URL의 TC로 테스트 코드 생성과 실행</td>
+</tr>
+<tr>
+<td>병렬 파이프라인</td>
+<td>여러 그룹의 코드 생성과 실행</td>
+</tr>
+<tr>
+<td>리포트</td>
+<td>저장된 HTML 결과지 검색·열기·관리</td>
+</tr>
+<tr>
+<td>실행 기록</td>
+<td>이전 실행 결과와 통과율 비교</td>
+</tr>
+<tr>
+<td>새 토론 시작</td>
+<td>주제를 등록하고 팀 토론 진행</td>
+</tr>
+<tr>
+<td>페이지 URL 관리</td>
+<td>그룹별 URL 등록·수정</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="2-대시보드와-상태-표시">2. 대시보드와 상태 표시</h2>
+<figure class="shot"><a href="../images/dashboard-user-guide/01-overview.png" target="_blank" rel="noopener"><img loading="lazy" alt="최신 대시보드와 상태 범례" src="../images/dashboard-user-guide/01-overview.png" /></a></figure>
+<p>요약과 최근 실행 추이에서 통과·주의·실패를 확인합니다. <strong>통과는 초록 배경, 주의는 노란 배경, 실패는 연한 빨간 배경</strong>이며 글자로도 상태를 표시합니다. 주의 표시는 상세 확인이 필요한 상태입니다. 구체적인 원인은 해당 실행 화면에서 확인하세요.</p>
+<p>상단에는 서버 주소와 단일·병렬 파이프라인 상태가 표시됩니다. 실행이 끝났는지는 단계 표시와 결과 건수를 함께 확인합니다. 화면에 결과가 없으면 아직 실행 이력이 없는 환경일 수 있습니다.</p>
+<h2 id="3-tc-스튜디오">3. TC 스튜디오</h2>
+<p>왼쪽 <strong>TC 스튜디오</strong>를 누릅니다. 기존 스위트를 선택하면 저장된 TC가 열리므로 Excel을 다시 올릴 필요가 없습니다.</p>
+<p><strong>기획 정보 · 생성 → 초안 검토 → 라이브러리 → 내보내기</strong> 순서로 작업합니다. 직접 작성하거나 Excel로 가져올 수도 있습니다. 시트 추가·이름 변경, 빈 분류 작성, 작성 규칙 편집과 Markdown 반영 조건은 <a href="tc-studio/TC_AUTHORING_USER_GUIDE.html">자세한 설명서</a>에 있습니다. 별도의 Import Studio 메뉴는 TC 스튜디오에 통합되어 있습니다.</p>
+<h2 id="4-빠른-실행">4. 빠른 실행</h2>
+<figure class="shot"><a href="../images/dashboard-user-guide/02-quick-run.png" target="_blank" rel="noopener"><img loading="lazy" alt="빠른 실행의 그룹 선택과 결과" src="../images/dashboard-user-guide/02-quick-run.png" /></a></figure>
+<ol>
+<li><strong>빠른 실행</strong>에서 실행할 그룹을 선택합니다.</li>
+<li>실패한 테스트의 자동 수정을 사용하지 않으려면 <strong>힐링 생략</strong>을 선택합니다.</li>
+<li><strong>테스트 실행</strong>을 누릅니다.</li>
+<li>진행 로그와 결과의 통과·실패·건너뜀 건수를 확인합니다.</li>
+</ol>
+<p>빠른 실행은 <code>tests/generated/</code>에 있는 코드를 실행합니다. 새 기획이나 TC로 코드를 만들려면 단일·병렬 파이프라인을 사용하세요. <strong>건너뜀</strong>은 테스트가 실행되지 않은 결과이며 통과와 다릅니다. 결과 항목의 사유를 읽으세요.</p>
+<h2 id="5-단일-파이프라인">5. 단일 파이프라인</h2>
+<figure class="shot"><a href="../images/dashboard-user-guide/03-single-pipeline.png" target="_blank" rel="noopener"><img loading="lazy" alt="단일 파이프라인의 설정과 단계" src="../images/dashboard-user-guide/03-single-pipeline.png" /></a></figure>
+<ol>
+<li><strong>단일 파이프라인</strong>에서 페이지와 TC 폴더를 선택합니다.</li>
+<li>대상 URL과 케이스 폴더가 맞는지 확인합니다.</li>
+<li><strong>파이프라인 실행</strong>을 누릅니다.</li>
+<li>단계 표시와 로그를 확인합니다. 분석·코드 생성·리뷰·실행·필요한 실패 수정이 이어집니다.</li>
+<li>완료 후 결과를 펼쳐 확인하고 저장된 리포트를 엽니다.</li>
+</ol>
+<p>실행 버튼을 반복해서 누르지 말고 진행 상태를 확인합니다. <strong>파이프라인 초기화</strong>는 실행 시작 버튼이 아닙니다. 현재 결과를 확인한 뒤 상태를 초기화할 때 사용합니다.</p>
+<h2 id="6-병렬-파이프라인">6. 병렬 파이프라인</h2>
+<figure class="shot"><a href="../images/dashboard-user-guide/04-parallel-pipeline.png" target="_blank" rel="noopener"><img loading="lazy" alt="병렬 파이프라인과 그룹별 결과" src="../images/dashboard-user-guide/04-parallel-pipeline.png" /></a></figure>
+<p><strong>병렬 실행</strong>을 누르면 등록된 페이지와 TC 그룹을 기준으로 작업합니다. 그룹별 진행 상태와 로그를 확인하고 완료 후 통합 결과를 봅니다. URL과 그룹 준비는 <a href="#10-페이지-url-관리">페이지 URL 관리</a>를 참고하세요.</p>
+<p>표시되는 통과율만 보지 말고 실패·건너뜀 건수도 함께 확인합니다. 자동 수정 한도에 도달한 항목은 오류 내용을 확인하고 수정해야 합니다.</p>
+<h2 id="7-리포트-목록과-결과지-열기">7. 리포트 목록과 결과지 열기</h2>
+<figure class="shot"><a href="../images/dashboard-user-guide/05-reports.png" target="_blank" rel="noopener"><img loading="lazy" alt="리포트 검색과 목록" src="../images/dashboard-user-guide/05-reports.png" /></a></figure>
+<ol>
+<li><strong>리포트</strong> 메뉴를 엽니다.</li>
+<li>파일 이름으로 검색하거나 <strong>최신순 / 오래된순 / 파일명순</strong>으로 정렬합니다.</li>
+<li>목록의 <strong>열기</strong>를 누르면 오른쪽 영역에서 결과지가 열립니다.</li>
+<li>넓게 보려면 열린 결과지의 <strong>새 탭</strong> 링크를 사용합니다.</li>
+<li>목록이 오래되었으면 <strong>새로고침</strong>을 누릅니다.</li>
+</ol>
+<figure class="shot"><a href="../images/dashboard-user-guide/09-report-open.png" target="_blank" rel="noopener"><img loading="lazy" alt="대시보드 안에서 열린 밝은 테마 결과지" src="../images/dashboard-user-guide/09-report-open.png" /></a></figure>
+<p>결과지는 대시보드와 같은 밝은 테마입니다. 통과·실패·건너뜀과 통과율을 확인한 뒤 그룹을 펼칩니다. <strong>전체 / 통과 / 실패 / 건너뜀</strong> 필터는 해당 결과를 찾는 데 사용합니다. 항목이 많으면 페이지 버튼으로 이동합니다.</p>
+<figure class="shot"><a href="../images/dashboard-user-guide/10-report-detail.png" target="_blank" rel="noopener"><img loading="lazy" alt="그룹과 테스트 상세를 펼친 결과지" src="../images/dashboard-user-guide/10-report-detail.png" /></a></figure>
+<p>TC 제목을 누르면 상세 내용이 펼쳐집니다. 저장된 자료가 있으면 수행 절차, 기대 결과와 실패 정보·스크린샷·영상·Trace를 확인할 수 있습니다. 모든 항목에 영상이나 Trace가 있는 것은 아닙니다.</p>
+<p>과거에 생성된 지원 형식의 결과지도 열 때 최신 테마로 표시합니다. 원본 파일은 덮어쓰지 않습니다. 저장된 파일을 PC에서 직접 여는 것과 대시보드의 <strong>열기</strong>로 보는 것은 다를 수 있습니다.</p>
+<p>삭제하려면 대상 체크박스를 확인하고 <strong>선택 삭제</strong> 또는 해당 행의 삭제 기능을 사용합니다. 삭제한 파일의 열린 링크에서는 삭제 안내가 표시됩니다.</p>
+<h2 id="8-실행-기록">8. 실행 기록</h2>
+<figure class="shot"><a href="../images/dashboard-user-guide/06-history.png" target="_blank" rel="noopener"><img loading="lazy" alt="실행 기록과 통과율" src="../images/dashboard-user-guide/06-history.png" /></a></figure>
+<p><strong>실행 기록</strong>에서 실행 시각, 그룹과 결과를 비교합니다. 필터를 사용한 상태에서 목록이 적게 보이면 필터를 다시 확인하세요. 개별 오류와 저장된 상세 자료는 해당 실행 결과와 리포트에서 봅니다.</p>
+<h2 id="9-팀-토론">9. 팀 토론</h2>
+<figure class="shot"><a href="../images/dashboard-user-guide/07-team.png" target="_blank" rel="noopener"><img loading="lazy" alt="새 토론 시작 화면" src="../images/dashboard-user-guide/07-team.png" /></a></figure>
+<p><strong>새 토론 시작</strong>에서 주제를 입력하고 화면의 시작 버튼을 누릅니다. 생성된 토론은 왼쪽 팀 토론 목록에서 다시 열 수 있습니다. 결론에 대한 승인·반려는 내용을 읽은 뒤 결정합니다. 승인한 항목은 후속 구현 작업으로 이어질 수 있습니다.</p>
+<h2 id="10-페이지-url-관리">10. 페이지 URL 관리</h2>
+<figure class="shot"><a href="../images/dashboard-user-guide/08-pages.png" target="_blank" rel="noopener"><img loading="lazy" alt="페이지 그룹과 URL 등록" src="../images/dashboard-user-guide/08-pages.png" /></a></figure>
+<ol>
+<li><strong>페이지 URL 관리</strong>의 <strong>새 페이지 등록</strong>에서 그룹명과 URL을 입력합니다.</li>
+<li>필요한 프로젝트와 메모를 입력합니다.</li>
+<li><strong>추가</strong>를 누르고 목록에 등록된 내용을 확인합니다.</li>
+<li>기존 항목은 <strong>수정</strong>을 누르고 변경 후 <strong>저장</strong>합니다.</li>
+</ol>
+<p>그룹명은 TC 폴더와 연결되며 TC 스튜디오의 Markdown 내보내기 매핑에서도 사용합니다. Markdown 미리보기와 반영은 <a href="tc-studio/TC_AUTHORING_USER_GUIDE.html#5-같은-tc를-markdown으로-내보내기">TC 스튜디오 설명서 5장</a>을 참고하세요.</p>
+<h2 id="11-화면이-이전-버전으로-보일-때">11. 화면이 이전 버전으로 보일 때</h2>
+<ul>
+<li>새로고침하고 주소·포트가 작업 중인 서버와 같은지 확인합니다.</li>
+<li>리포트는 대시보드의 <strong>리포트 → 열기</strong>로 다시 엽니다.</li>
+<li>Python 서버 코드가 업데이트된 경우 서버를 재시작합니다. 실행 중인 파이프라인이 있다면 담당자와 재시작 시점을 정합니다.</li>
+<li>문제가 계속되면 화면 이름, 누른 버튼, 오류 문구와 시각을 함께 전달합니다.</li>
+</ul>
+<footer>QA 컨트롤 센터 · 웹 QA · <a href="http://localhost:8766/">대시보드 열기</a><br>이미지는 누르면 원본 크기로 볼 수 있습니다. 인쇄는 브라우저의 인쇄 기능을 사용하세요.</footer>
+</main></div>
+<script>
+const links=document.querySelectorAll('.sidebar .toc a');
+const observer=new IntersectionObserver(entries=>{entries.forEach(entry=>{if(entry.isIntersecting){
+links.forEach(link=>{if(link.hash==='#'+entry.target.id)link.setAttribute('aria-current','true');else link.removeAttribute('aria-current');});
+}});},{rootMargin:'-15% 0px -70% 0px'});
+document.querySelectorAll('main>h2').forEach(heading=>observer.observe(heading));
+</script></body></html>

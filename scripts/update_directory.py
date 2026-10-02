@@ -18,6 +18,7 @@ doc/reference/DIRECTORY.md 자동 생성 스크립트.
 """
 
 import json
+import re
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -95,6 +96,7 @@ SCRIPT_DESCRIPTIONS: dict[str, str] = {
     "sync_test_data.py":      "test_data/{프로덕트}.json 데이터셋 동기화",
     "coverage_matrix.py":     "커버리지 매트릭스 생성 (→ state/coverage.json)",
     "flaky_detector.py":      "Flaky Test 감지기 (run_history.json 분석 → state/flaky_tests.json)",
+    "build_user_guides.py":    "Markdown 원본 → 밝은 테마 HTML 가이드 (--check로 동기화 확인)",
     "update_directory.py":    "doc/reference/DIRECTORY.md 자동 생성 (이 파일)",
     # check_pending_*.py 그룹
     "check_pending_approve.py":   "훅: 승인 대기 상태 확인 (hook_utils.check_state)",
@@ -431,9 +433,13 @@ def build_markdown() -> str:
         "| 파일 | 역할 |",
         "|------|------|",
     ]
-    for document in sorted((PROJECT_ROOT / "doc").rglob("*.md")):
+    for document in sorted((PROJECT_ROOT / "doc").rglob("*")):
+        if document.suffix not in {".md", ".html"}:
+            continue
         relative = document.relative_to(PROJECT_ROOT / "doc").as_posix()
-        title = document.read_text(encoding="utf-8").splitlines()[0].lstrip("# ")
+        text = document.read_text(encoding="utf-8")
+        title = (re.search(r"<title>(.*?)</title>", text, re.S).group(1)
+                 if document.suffix == ".html" else text.splitlines()[0].lstrip("# "))
         lines.append(f"| `{relative}` | {title} |")
     lines.append("")
 

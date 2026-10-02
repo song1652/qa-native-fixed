@@ -155,3 +155,12 @@ run_qa_parallel.py → 02a_parallel_dialog → [공통 심의] → subagents × 
 - 스크립트 인자/옵션 상세 → [SCRIPTS_GUIDE](doc/guides/SCRIPTS_GUIDE.md)
 - CLI 옵션 + API 엔드포인트 → [API_REFERENCE](doc/reference/API_REFERENCE.md)
 - 프롬프트 템플릿 입출력 → [PROMPTS_REFERENCE](doc/reference/PROMPTS_REFERENCE.md)
+
+
+## 사용자 문서 관리
+
+- 현재 사용법: [HTML 사용자 가이드](doc/guides/USER_GUIDE.html), [TC 스튜디오 설명서](doc/guides/tc-studio/TC_AUTHORING_USER_GUIDE.html). TC 스튜디오는 작성부터 내보내기까지만 설명한다.
+- UI·버튼·문구 변경 시 해당 `doc/guides/` Markdown 원본과 실제 화면 캡처를 함께 갱신한다. 생성 HTML은 직접 수정하지 않고 `python3 scripts/build_user_guides.py`로 갱신한다.
+- 이미지는 `doc/images/`에 저장하고 [촬영 기준](doc/images/README.md)에 날짜·화면 크기·실제 화면/예시 응답 여부를 기록한다. 성공 결과나 상태를 임의로 넣은 이미지를 실제 실행 증거로 설명하지 않는다.
+- 문서 수정 후 `python3 scripts/build_user_guides.py --check`와 문서 테스트를 확인한다. 설치·갱신 명령은 [문서 안내](doc/README.md#가이드와-이미지-갱신-규칙)를 따른다.
+- API·상태·운영 계약은 Markdown 레퍼런스에서 관리한다. 완료된 PRD·디자인 목업·개발 계획은 다시 만들지 않는다.

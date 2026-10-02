@@ -1,6 +1,6 @@
 # 디렉토리 구조
 
-> **자동 생성** — `python scripts/update_directory.py` | 마지막 갱신: 2026-10-02 12:01
+> **자동 생성** — `python scripts/update_directory.py` | 마지막 갱신: 2026-10-02 12:13
 > 최근 실행: 2026-10-01 09:43 | quick | partner_login/customer_login | 4/4 | heal:0
 
 > 역할 설명 수정: `scripts/update_directory.py` 내 `SCRIPT_DESCRIPTIONS` / `FOLDER_DESCRIPTIONS` 편집.
@@ -58,6 +58,7 @@
 | `_tc_xlsx_import.py` | 엑셀 시트 → TC 라이브러리 케이스 |
 | `_validators.py` | 대시보드 serve.py 입력 검증 헬퍼 (부작용 없이 재사용 가능하도록 분리) |
 | `assert_guard.py` | 힐링 패치 후 assertion 약화 감지 (원본 대비 assertion 수·내용 비교, 경고 출력) |
+| `build_user_guides.py` | Markdown 원본 → 밝은 테마 HTML 가이드 (--check로 동기화 확인) |
 | `check_pending_approve.py` | 훅: 승인 대기 상태 확인 (hook_utils.check_state) |
 | `check_pending_discuss.py` | 훅: 토론 대기 상태 확인 |
 | `check_pending_impl.py` | 훅: 구현 대기 상태 확인 |
@@ -187,10 +188,15 @@
 |------|------|
 | `README.md` | 문서 안내 |
 | `guides/DASHBOARD_USER_GUIDE.md` | 웹 QA 대시보드 사용자 가이드 |
+| `guides/SCRIPTS_GUIDE.html` | 파이썬 파일 실행 가이드 |
 | `guides/SCRIPTS_GUIDE.md` | 파이썬 파일 실행 가이드 |
+| `guides/TEST_CASE_GUIDE.html` | QA-Native 테스트 케이스 작성 가이드 |
 | `guides/TEST_CASE_GUIDE.md` | QA-Native 테스트 케이스 작성 가이드 |
+| `guides/USER_GUIDE.html` | 웹 QA 대시보드 사용자 가이드 |
+| `guides/tc-studio/TC_AUTHORING_USER_GUIDE.html` | TC 스튜디오 사용자 설명서 |
 | `guides/tc-studio/TC_AUTHORING_USER_GUIDE.md` | TC 스튜디오 사용자 설명서 |
 | `guides/tc-studio/templates/회원등록_기획예시.md` | 회원 등록 기획 예시 |
+| `images/README.md` | 현재 제품 화면과 촬영 기준 |
 | `operations/HEALING_GUIDE.md` | 힐링 가이드 |
 | `operations/TEAM_DISCUSSION.md` | 팀 자유 토론 파이프라인 |
 | `reference/API_REFERENCE.md` | API & CLI 레퍼런스 |

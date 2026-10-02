@@ -146,7 +146,7 @@ Excel 가져오기:          엑셀 가져오기 → 라이브러리(승인 상�
 - Excel로 가져온 TC는 라이브러리에 바로 들어가고 **가져옴**으로 표시됩니다. 사람이 승인한 것이 아니므로 검토 상태를 바꿀 수 없고, 초안 검토에도 나타나지 않습니다(6장).
 - 이미 저장된 TC를 고칠 때는 바로 **라이브러리**를 사용합니다.
 
-![기획 정보 입력과 시트·분류 선택 화면](images/tc-studio-user-guide/01-planning.png)
+![기획 정보 입력과 시트·분류 선택 화면](../../images/tc-studio-user-guide/01-planning.png)
 
 *기획 정보 · 생성 화면. 왼쪽은 기획 정보, 오른쪽은 대상 시트·분류와 작성 규칙입니다. 캡처 속 이름과 건수는 예시 데이터입니다.*
 
@@ -439,7 +439,7 @@ Markdown은 Excel처럼 브라우저 다운로드 파일을 만드는 방식이 
 
 ### 6.3 다른 Excel 양식의 열 연결과 프로필
 
-![열 매핑과 프로필 관리](images/tc-studio-user-guide/05-import.png)
+![열 매핑과 프로필 관리](../../images/tc-studio-user-guide/05-import.png)
 
 자동 인식은 `대분류`·`기능`·`Test Step`·`Expected Result` 헤더(영문 `Main Category`·`TC Summary`·`Step`도 인식)를 찾습니다. 시트를 하나도 찾지 못하면 화면에 안내가 나오고, 이때 **다른 양식 직접 매핑**을 선택합니다. 결과 열 아래 칸의 `Test Level`은 우선순위로 가져옵니다(BAT·Level 1→P0, Level 2→P1, Level 3→P2, Level 4→P3).
 
@@ -489,7 +489,7 @@ Markdown은 Excel처럼 브라우저 다운로드 파일을 만드는 방식이 
 
 ### 6.5 가져오기·md 이력과 되돌리기
 
-![작업 이력과 되돌리기](images/tc-studio-user-guide/06-import-history.png)
+![작업 이력과 되돌리기](../../images/tc-studio-user-guide/06-import-history.png)
 
 1. **엑셀 가져오기 → 가져오기 이력**을 누릅니다. 파일을 새로 올리지 않아도 조회할 수 있습니다.
 2. **Excel → 라이브러리**, **기존 Excel → md**, **TC → md** 중 필요한 작업의 **내용 보기**를 누릅니다.
@@ -502,7 +502,7 @@ Excel 가져오기 복구는 케이스·템플릿·템플릿 프로필·분류·
 
 테스트용으로 만든 스위트나 더 쓰지 않는 스위트는 삭제할 수 있습니다. 삭제는 **지금 선택된 스위트**에만 적용됩니다.
 
-![스위트 삭제 확인 창](images/tc-studio-user-guide/07-suite-delete.png)
+![스위트 삭제 확인 창](../../images/tc-studio-user-guide/07-suite-delete.png)
 
 *스위트 삭제 확인 창. 스위트 이름과 TC·시트 개수, 삭제 후 남는 것을 보여 줍니다.*
 
@@ -524,7 +524,7 @@ Excel 가져오기 복구는 케이스·템플릿·템플릿 프로필·분류·
 
 **복원하는 방법**
 
-![삭제한 스위트 목록](images/tc-studio-user-guide/11-suite-trash.png)
+![삭제한 스위트 목록](../../images/tc-studio-user-guide/11-suite-trash.png)
 
 - 삭제 직후 안내의 **되돌리기**를 누르면 바로 복원됩니다. 안내는 약 12초 동안 표시됩니다.
 - 안내가 사라진 뒤에는 **⋯ › 삭제한 스위트**를 엽니다. 목록에서 스위트 이름, TC·시트 개수, 삭제 시각, 남은 보관 일수를 확인하고 **복원**을 누릅니다.
@@ -562,7 +562,7 @@ Excel 가져오기 복구는 케이스·템플릿·템플릿 프로필·분류·
 
 ### 7.2 시트 추가와 이름 변경
 
-![시트 이름 변경 창](images/tc-studio-user-guide/08-sheet-rename.png)
+![시트 이름 변경 창](../../images/tc-studio-user-guide/08-sheet-rename.png)
 
 **기획 정보 · 생성**에서 시트 선택 영역의 **시트 추가**를 누르고 이름을 입력합니다. 새 시트에는 양식이 준비되며 TC 내용은 복사되지 않습니다.
 
@@ -596,7 +596,7 @@ Excel 가져오기 복구는 케이스·템플릿·템플릿 프로필·분류·
 
 첫 번째 탭인 **기획 정보 · 생성**에서 입력합니다. 라이브러리 검색창은 기획 정보를 넣는 곳이 아닙니다.
 
-![기획 정보 입력 화면](images/tc-studio-user-guide/01-planning.png)
+![기획 정보 입력 화면](../../images/tc-studio-user-guide/01-planning.png)
 
 여러 소스를 함께 추가할 수 있습니다. 예를 들어 기획 문서 파일에 변경 사항을 붙여넣고, 디자인 URL을 추가하여 한 번에 참고하게 할 수 있습니다. 서로 충돌하는 요구사항은 어느 것이 최신인지 명시하세요.
 
@@ -659,7 +659,7 @@ Figma는 디자인 파일 또는 프레임 URL을 넣습니다. 특정 프레임
 
 ### 9.1 작성 프로필
 
-![작성 규칙과 문체 설정](images/tc-studio-user-guide/09-writing-profile.png)
+![작성 규칙과 문체 설정](../../images/tc-studio-user-guide/09-writing-profile.png)
 
 작성 프로필은 LLM이 초안을 작성할 때 따를 규칙입니다. 기본 규칙은 제공된 정보에 근거하고, 한 TC가 한 목적을 검증하며, 명시된 조건을 구분하고, 관찰 가능한 Step과 Expected Result를 작성하도록 안내합니다.
 
@@ -716,7 +716,7 @@ LLM은 같은 문장을 매번 똑같이 쓰지 않으므로, 문체는 세 겹�
 
 ## 10. TC 라이브러리에서 작성·수정하기
 
-![TC 라이브러리 화면](images/tc-studio-user-guide/02-library.png)
+![TC 라이브러리 화면](../../images/tc-studio-user-guide/02-library.png)
 
 ### 10.1 표 읽기
 
@@ -757,7 +757,7 @@ Esc는 현재 셀 편집을 취소합니다. 여러 줄 Step은 `1. ...`, `2. ..
 
 ### 10.3 상세 편집하기
 
-![TC 상세 편집 패널](images/tc-studio-user-guide/10-case-detail.png)
+![TC 상세 편집 패널](../../images/tc-studio-user-guide/10-case-detail.png)
 
 행이나 번호를 눌러 상세 패널을 엽니다. **편집**에서 제목·사전 조건·Step·Expected Result·UI 문구·우선순위 등을 수정하고 **저장**을 누릅니다.
 
@@ -797,7 +797,7 @@ LLM을 사용하지 않고 **+ 케이스 추가**로 직접 작성할 수 있습
 
 ## 11. 초안 검토와 재생성
 
-![초안 검토 화면](images/tc-studio-user-guide/03-review.png)
+![초안 검토 화면](../../images/tc-studio-user-guide/03-review.png)
 
 ### 11.1 검토 순서
 
@@ -854,7 +854,7 @@ LLM을 사용하지 않고 **+ 케이스 추가**로 직접 작성할 수 있습
 
 ## 12. Excel 내보내기 상세
 
-![내보내기 화면](images/tc-studio-user-guide/04-export.png)
+![내보내기 화면](../../images/tc-studio-user-guide/04-export.png)
 
 ### 12.1 범위 선택
 
@@ -913,7 +913,7 @@ Markdown 파일이 들어갈 그룹은 대시보드의 페이지 URL 관리에 �
 
 ### 13.3 미리보기 상태와 충돌
 
-![Markdown 변경 미리보기](images/tc-studio-user-guide/12-md-preview.png)
+![Markdown 변경 미리보기](../../images/tc-studio-user-guide/12-md-preview.png)
 
 미리보기만으로 파일이 반영되지는 않습니다. 대상 경로와 건수를 확인한 뒤 **md 반영**을 눌러야 파일이 저장됩니다.
 

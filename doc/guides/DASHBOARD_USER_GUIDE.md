@@ -29,7 +29,7 @@ python3 agents/dashboard/serve.py --port 8766
 
 ## 2. 대시보드와 상태 표시
 
-![최신 대시보드와 상태 범례](images/dashboard-user-guide/01-overview.png)
+![최신 대시보드와 상태 범례](../images/dashboard-user-guide/01-overview.png)
 
 요약과 최근 실행 추이에서 통과·주의·실패를 확인합니다. **통과는 초록 배경, 주의는 노란 배경, 실패는 연한 빨간 배경**이며 글자로도 상태를 표시합니다. 주의 표시는 상세 확인이 필요한 상태입니다. 구체적인 원인은 해당 실행 화면에서 확인하세요.
 
@@ -43,7 +43,7 @@ python3 agents/dashboard/serve.py --port 8766
 
 ## 4. 빠른 실행
 
-![빠른 실행의 그룹 선택과 결과](images/dashboard-user-guide/02-quick-run.png)
+![빠른 실행의 그룹 선택과 결과](../images/dashboard-user-guide/02-quick-run.png)
 
 1. **빠른 실행**에서 실행할 그룹을 선택합니다.
 2. 실패한 테스트의 자동 수정을 사용하지 않으려면 **힐링 생략**을 선택합니다.
@@ -54,7 +54,7 @@ python3 agents/dashboard/serve.py --port 8766
 
 ## 5. 단일 파이프라인
 
-![단일 파이프라인의 설정과 단계](images/dashboard-user-guide/03-single-pipeline.png)
+![단일 파이프라인의 설정과 단계](../images/dashboard-user-guide/03-single-pipeline.png)
 
 1. **단일 파이프라인**에서 페이지와 TC 폴더를 선택합니다.
 2. 대상 URL과 케이스 폴더가 맞는지 확인합니다.
@@ -66,7 +66,7 @@ python3 agents/dashboard/serve.py --port 8766
 
 ## 6. 병렬 파이프라인
 
-![병렬 파이프라인과 그룹별 결과](images/dashboard-user-guide/04-parallel-pipeline.png)
+![병렬 파이프라인과 그룹별 결과](../images/dashboard-user-guide/04-parallel-pipeline.png)
 
 **병렬 실행**을 누르면 등록된 페이지와 TC 그룹을 기준으로 작업합니다. 그룹별 진행 상태와 로그를 확인하고 완료 후 통합 결과를 봅니다. URL과 그룹 준비는 [페이지 URL 관리](#10-페이지-url-관리)를 참고하세요.
 
@@ -74,7 +74,7 @@ python3 agents/dashboard/serve.py --port 8766
 
 ## 7. 리포트 목록과 결과지 열기
 
-![리포트 검색과 목록](images/dashboard-user-guide/05-reports.png)
+![리포트 검색과 목록](../images/dashboard-user-guide/05-reports.png)
 
 1. **리포트** 메뉴를 엽니다.
 2. 파일 이름으로 검색하거나 **최신순 / 오래된순 / 파일명순**으로 정렬합니다.
@@ -82,11 +82,11 @@ python3 agents/dashboard/serve.py --port 8766
 4. 넓게 보려면 열린 결과지의 **새 탭** 링크를 사용합니다.
 5. 목록이 오래되었으면 **새로고침**을 누릅니다.
 
-![대시보드 안에서 열린 밝은 테마 결과지](images/dashboard-user-guide/09-report-open.png)
+![대시보드 안에서 열린 밝은 테마 결과지](../images/dashboard-user-guide/09-report-open.png)
 
 결과지는 대시보드와 같은 밝은 테마입니다. 통과·실패·건너뜀과 통과율을 확인한 뒤 그룹을 펼칩니다. **전체 / 통과 / 실패 / 건너뜀** 필터는 해당 결과를 찾는 데 사용합니다. 항목이 많으면 페이지 버튼으로 이동합니다.
 
-![그룹과 테스트 상세를 펼친 결과지](images/dashboard-user-guide/10-report-detail.png)
+![그룹과 테스트 상세를 펼친 결과지](../images/dashboard-user-guide/10-report-detail.png)
 
 TC 제목을 누르면 상세 내용이 펼쳐집니다. 저장된 자료가 있으면 수행 절차, 기대 결과와 실패 정보·스크린샷·영상·Trace를 확인할 수 있습니다. 모든 항목에 영상이나 Trace가 있는 것은 아닙니다.
 
@@ -96,19 +96,19 @@ TC 제목을 누르면 상세 내용이 펼쳐집니다. 저장된 자료가 있
 
 ## 8. 실행 기록
 
-![실행 기록과 통과율](images/dashboard-user-guide/06-history.png)
+![실행 기록과 통과율](../images/dashboard-user-guide/06-history.png)
 
 **실행 기록**에서 실행 시각, 그룹과 결과를 비교합니다. 필터를 사용한 상태에서 목록이 적게 보이면 필터를 다시 확인하세요. 개별 오류와 저장된 상세 자료는 해당 실행 결과와 리포트에서 봅니다.
 
 ## 9. 팀 토론
 
-![새 토론 시작 화면](images/dashboard-user-guide/07-team.png)
+![새 토론 시작 화면](../images/dashboard-user-guide/07-team.png)
 
 **새 토론 시작**에서 주제를 입력하고 화면의 시작 버튼을 누릅니다. 생성된 토론은 왼쪽 팀 토론 목록에서 다시 열 수 있습니다. 결론에 대한 승인·반려는 내용을 읽은 뒤 결정합니다. 승인한 항목은 후속 구현 작업으로 이어질 수 있습니다.
 
 ## 10. 페이지 URL 관리
 
-![페이지 그룹과 URL 등록](images/dashboard-user-guide/08-pages.png)
+![페이지 그룹과 URL 등록](../images/dashboard-user-guide/08-pages.png)
 
 1. **페이지 URL 관리**의 **새 페이지 등록**에서 그룹명과 URL을 입력합니다.
 2. 필요한 프로젝트와 메모를 입력합니다.
