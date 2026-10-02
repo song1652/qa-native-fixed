@@ -289,15 +289,14 @@ input, select, textarea, button {
 }
 
 .test-filter-btn.active-all,
-.test-filter-btn[aria-pressed="true"] {
-  border-color: var(--accent);
-  background: var(--accent-bg);
-  color: var(--accent);
+.test-filter-btn[aria-pressed="true"],
+.test-filter-btn.active-pass,
+.test-filter-btn.active-fail,
+.test-filter-btn.active-skip {
+  border-color: var(--text);
+  background: var(--text);
+  color: var(--on-accent);
 }
-
-.test-filter-btn.active-pass { border-color: var(--pass); background: var(--pass-bg); color: var(--pass); }
-.test-filter-btn.active-fail { border-color: var(--fail); background: var(--fail-bg); color: var(--fail); }
-.test-filter-btn.active-skip { border-color: var(--border); background: var(--surface-sub); color: var(--text-2); }
 
 .test-list-pager {
   display: flex;

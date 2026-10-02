@@ -41,6 +41,7 @@ window.addEventListener('popstate', () => {
 
 function renderCurrentView() {
   if (_confirmOpen) return;
+  renderHeaderStatus();
   const main = document.getElementById('main');
   if (currentView === 'single_pipeline') {
     renderSinglePipeline(main);

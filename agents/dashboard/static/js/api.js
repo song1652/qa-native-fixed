@@ -158,8 +158,7 @@ function applyDialogData(text) {
   lastJson = text;
   lastData = JSON.parse(text);
   refreshCount++;
-  const now = new Intl.DateTimeFormat(navigator.language || 'ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).format(new Date());
-  document.getElementById('header-meta').textContent = `${now} · ${refreshCount}회`;
+  renderHeaderStatus();
   updateSidebar(lastData);
   if (currentView.startsWith('team_') || currentView === '') renderCurrentView();
 }

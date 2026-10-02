@@ -30,8 +30,8 @@
   <div class="toast-container" id="toast-container"></div>
   <div class="header">
     <div class="header-title" onclick="selectView('')" style="cursor:pointer;">QA 컨트롤 센터</div>
-    <div style="flex:1"></div>
     <div class="header-meta" id="header-meta"></div>
+    <div style="flex:1"></div>
     <button type="button" class="header-quick-run" onclick="selectView('quick_run')">빠른 실행</button>
   </div>
 
@@ -43,7 +43,7 @@
         <!-- 개요 섹션 -->
         <div class="sidebar-section">
           <div class="sidebar-label">개요</div>
-          <div class="sidebar-item" id="tab-" onclick="selectView('')">
+          <div class="sidebar-item active" id="tab-" onclick="selectView('')">
             <div class="sidebar-dot-spacer"></div>
             <span class="sidebar-name">대시보드</span>
           </div>
@@ -59,7 +59,7 @@
 
         <!-- 파이프라인 섹션 -->
         <div class="sidebar-section">
-          <div class="sidebar-label">파이프라인</div>
+          <div class="sidebar-label">실행</div>
           <div class="sidebar-item" id="tab-quick_run" onclick="selectView('quick_run')">
             <div class="sidebar-dot" id="dot-quick"></div>
             <span class="sidebar-name">빠른 실행</span>
@@ -76,7 +76,7 @@
 
         <!-- 테스트 리포트 섹션 -->
         <div class="sidebar-section">
-          <div class="sidebar-label">테스트 리포트</div>
+          <div class="sidebar-label">결과</div>
           <div class="sidebar-item" id="tab-reports" onclick="selectView('reports')">
             <div class="sidebar-dot-spacer"></div>
             <span class="sidebar-name">리포트</span>
@@ -91,7 +91,7 @@
         <div class="sidebar-section" id="team-section">
           <div class="sidebar-label" style="display:flex;align-items:center;justify-content:space-between;">
             팀 토론
-            <button onclick="resetTeamDiscussion()" style="font-size:10px;padding:2px 7px;background:transparent;border:1px solid rgba(200,80,80,0.4);border-radius:4px;color:rgba(220,100,100,0.8);cursor:pointer;line-height:1.4;" title="팀 토론 초기화">리셋</button>
+            <button class="sidebar-reset" onclick="resetTeamDiscussion()" title="팀 토론 초기화">리셋</button>
           </div>
           <div class="sidebar-item" id="tab-team_new" onclick="selectView('team_new')">
             <div class="sidebar-dot-spacer"></div>
@@ -102,7 +102,6 @@
 
         <!-- 설정 섹션 -->
         <div class="sidebar-section">
-          <div class="sidebar-label">설정</div>
           <div class="sidebar-item" id="tab-pages" onclick="selectView('pages')">
             <div class="sidebar-dot-spacer"></div>
             <span class="sidebar-name">페이지 URL 관리</span>

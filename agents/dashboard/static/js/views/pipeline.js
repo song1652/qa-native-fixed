@@ -15,7 +15,8 @@ function buildRunPanel(mode) {
     });
     return `
       <div class="run-pipeline-form">
-        <h3>run_qa.py 실행</h3>
+        <h3>실행 설정</h3>
+        <div class="run-settings-grid">
         <div class="run-form-row">
           <label class="run-form-label" for="run-page-select">페이지</label>
           <select class="run-form-select" id="run-page-select" onchange="onPageSelect()">${pageOpts}</select>
@@ -25,11 +26,13 @@ function buildRunPanel(mode) {
           <div class="run-form-url-display" id="run-url-display">페이지를 선택하세요</div>
         </div>
         <div class="run-form-row">
-          <label class="run-form-label" for="run-case-select">케이스</label>
+          <label class="run-form-label" for="run-case-select">케이스 폴더</label>
           <select class="run-form-select" id="run-case-select">${caseOpts}</select>
         </div>
+        </div>
         <div class="run-form-actions">
-          <button class="action-btn action-btn-primary" id="run-single-btn" onclick="runSingleQA()" ${!groups.length ? 'disabled title="testcases/ 폴더에 케이스가 없습니다"' : ''}>run_qa.py 실행</button>
+          <button class="action-btn action-btn-primary" id="run-single-btn" onclick="runSingleQA()" ${!groups.length ? 'disabled title="testcases/ 폴더에 케이스가 없습니다"' : ''}>파이프라인 실행</button>
+          <span class="run-form-hint">페이지와 케이스 폴더를 선택하세요. 같은 이름의 폴더는 자동으로 선택됩니다.</span>
           ${!groups.length ? '<span style="font-size:11px;color:var(--danger);margin-left:8px;">testcases/ 폴더에 케이스 파일이 없습니다</span>' : ''}
         </div>
         <div style="display:flex;align-items:center;margin-top:8px;">
@@ -97,14 +100,14 @@ async function runSingleQA() {
       if (btn) btn.textContent = '실행됨 (PID: ' + (data.pid || '?') + ')';
       startLogPolling('run-single-log', 'run-single-log-content', 'run_qa.txt');
       waitForSingleInit(url);
-      setTimeout(() => { if (btn) { btn.textContent = 'run_qa.py 실행'; btn.disabled = false; } }, 60000);
+      setTimeout(() => { if (btn) { btn.textContent = '파이프라인 실행'; btn.disabled = false; } }, 60000);
     } else {
       showToast('오류: ' + (data.error || 'unknown'));
-      if (btn) { btn.textContent = 'run_qa.py 실행'; btn.disabled = false; }
+      if (btn) { btn.textContent = '파이프라인 실행'; btn.disabled = false; }
     }
   } catch (e) {
     showToast('서버 연결 오류');
-    if (btn) { btn.textContent = 'run_qa.py 실행'; btn.disabled = false; }
+    if (btn) { btn.textContent = '파이프라인 실행'; btn.disabled = false; }
   }
 }
 
@@ -152,7 +155,9 @@ function renderSinglePipeline(main) {
     const labelCls = cls;
     const num = i + 1;
     const label = (isHeal && i === 5) ? STEP_LABELS[currentStep] : STEP_LABELS[step];
-    stepsHtml += `<div class="step-node"><div class="step-circle ${cls}">${i < stepIdx ? '&#10003;' : num}</div><div class="step-label ${labelCls}">${label}</div></div>`;
+    const failedClass = isHeal && i === 5 && currentStep === 'heal_failed' ? 'failed' : '';
+    const statusText = cls === 'done' || (cls === 'active' && currentStep === 'done') ? '완료' : failedClass ? '실패' : cls === 'active' ? '진행 중' : '대기';
+    stepsHtml += `<div class="step-node"><div class="step-circle ${cls} ${failedClass}">${i < stepIdx ? '&#10003;' : num}</div><div class="step-label ${labelCls}">${label}</div><div class="step-status ${cls} ${failedClass}">${statusText}</div></div>`;
     if (i < PIPELINE_STEPS.length - 1) {
       stepsHtml += `<div class="step-line ${i < stepIdx ? 'done' : ''}"></div>`;
     }
@@ -177,7 +182,7 @@ function renderSinglePipeline(main) {
   if (execResult.total !== undefined && execResult.total > 0) {
     const allPass = execResult.failed === 0;
     const badgeCls = allPass ? 'pass' : 'fail';
-    const badgeTxt = allPass ? 'ALL PASS' : `${execResult.failed} FAILED`;
+    const badgeTxt = allPass ? '모두 통과' : `${execResult.failed}건 실패`;
 
     const groupResultsHtml = buildGroupResultsHtml(execResult.group_results || {}, 'single');
 
@@ -188,11 +193,11 @@ function renderSinglePipeline(main) {
           <span class="exec-result-badge ${badgeCls}">${badgeTxt}</span>
         </div>
         <div class="exec-result-stats">
-          <div class="exec-stat"><div class="exec-stat-num" style="color:var(--text)">${execResult.total}</div><div class="exec-stat-label">Total</div></div>
-          <div class="exec-stat"><div class="exec-stat-num" style="color:var(--approved-color)">${execResult.passed}</div><div class="exec-stat-label">Passed</div></div>
-          <div class="exec-stat"><div class="exec-stat-num" style="color:var(--revision-color)">${execResult.failed}</div><div class="exec-stat-label">Failed</div></div>
-          ${(execResult.skipped || 0) > 0 ? `<div class="exec-stat"><div class="exec-stat-num" style="color:#a855f7">${execResult.skipped}</div><div class="exec-stat-label">Skipped</div></div>` : ''}
-          <div class="exec-stat"><div class="exec-stat-num" style="color:${allPass ? 'var(--approved-color)' : 'var(--revision-color)'}">${execResult.pass_rate}%</div><div class="exec-stat-label">Pass Rate</div></div>
+          <div class="exec-stat"><div class="exec-stat-num" style="color:var(--text)">${execResult.total}</div><div class="exec-stat-label">전체</div></div>
+          <div class="exec-stat"><div class="exec-stat-num" style="color:var(--approved-color)">${execResult.passed}</div><div class="exec-stat-label">통과</div></div>
+          <div class="exec-stat"><div class="exec-stat-num" style="color:var(--revision-color)">${execResult.failed}</div><div class="exec-stat-label">실패</div></div>
+          ${(execResult.skipped || 0) > 0 ? `<div class="exec-stat"><div class="exec-stat-num" style="color:var(--warn)">${execResult.skipped}</div><div class="exec-stat-label">건너뜀</div></div>` : ''}
+          <div class="exec-stat"><div class="exec-stat-num" style="color:${allPass ? 'var(--approved-color)' : 'var(--revision-color)'}">${execResult.pass_rate}%</div><div class="exec-stat-label">통과율</div></div>
         </div>
         ${groupResultsHtml}
         <div style="margin-top:12px;font-size:11px;color:var(--text-dim);">
@@ -209,10 +214,11 @@ function renderSinglePipeline(main) {
   }
 
   main.innerHTML = `
-    <div class="pipeline-view">
+    <div class="pipeline-view single-pipeline-view">
       <div class="pipeline-title">단일 파이프라인</div>
       <div class="step-progress">${stepsHtml}</div>
-      <div class="pipeline-info">${infoRows}</div>
+      <div class="pipeline-info"><h3>상태</h3>${infoRows}</div>
+      ${isHeal ? `<div class="pipeline-heal-notice ${currentStep === 'heal_failed' ? 'failed' : ''}">${currentStep === 'heal_failed' ? '힐링 한도에 도달했습니다. 실패 상세에서 원인을 확인하고 테스트를 수정한 뒤 다시 실행하세요.' : '실패한 테스트를 수정하는 중입니다. 최대 3회 안에 고치지 못하면 수동 수정이 필요합니다.'}</div>` : ''}
       ${actionsHtml}
       ${singleExecResultHtml}
       ${resetBtnHtml}
@@ -221,8 +227,9 @@ function renderSinglePipeline(main) {
   // 상태 없으면 실행 패널 + 안내 표시
   if (!state.step) {
     main.innerHTML = `
-      <div class="pipeline-view">
+      <div class="pipeline-view single-pipeline-view">
         <div class="pipeline-title">단일 파이프라인</div>
+        <p class="pipeline-subtitle">URL 하나를 분석해 TC md로 테스트 코드를 만들고 실행합니다.</p>
         ${buildRunPanel('single')}
         <div class="empty"><div class="empty-icon" aria-hidden="true"><svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="8" y="6" width="24" height="28" rx="3"></rect><line x1="13" y1="14" x2="27" y2="14"></line><line x1="13" y1="20" x2="27" y2="20"></line><line x1="13" y1="26" x2="21" y2="26"></line></svg></div><h2>파이프라인 비활성</h2><p>위에서 URL과 케이스를 선택해 실행하거나, 터미널에서 run_qa.py를 실행하세요</p></div>
       </div>`;
@@ -231,7 +238,7 @@ function renderSinglePipeline(main) {
     const view = main.querySelector('.pipeline-view');
     if (view) {
       const titleEl = view.querySelector('.pipeline-title');
-      if (titleEl) titleEl.insertAdjacentHTML('afterend', buildRunPanel('single'));
+      if (titleEl) titleEl.insertAdjacentHTML('afterend', '<p class="pipeline-subtitle">URL 하나를 분석해 TC md로 테스트 코드를 만들고 실행합니다.</p>' + buildRunPanel('single'));
     }
   }
 

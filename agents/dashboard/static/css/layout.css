@@ -73,12 +73,23 @@
     }
 
     .header-meta {
-      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      min-width: 0;
+      overflow: hidden;
+      font-size: 13px;
       color: var(--text-2);
       white-space: nowrap;
     }
+    .header-meta code { font: var(--fs-sub) var(--font-mono); }
+    .header-server { display: inline-flex; align-items: center; gap: 6px; }
+    .header-server::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--pass); }
 
     .header-quick-run {
+      border: 0;
+      cursor: pointer;
+      font-family: inherit;
       height: 34px;
       padding: 0 16px;
       display: inline-flex;
@@ -115,6 +126,8 @@
 
     .sidebar-scroll {
       flex: 1;
+      display: flex;
+      flex-direction: column;
       overflow-y: auto;
       min-height: 0;
     }
@@ -128,14 +141,18 @@
 
     .sidebar-section {
       padding: 8px 0 0;
+      flex-shrink: 0;
     }
+    .sidebar-section:first-child { padding-top: 16px; }
+    .sidebar-section:last-child { margin-top: auto; padding-bottom: 16px; }
+    .sidebar-reset { padding: 2px 7px; border: 1px solid var(--border); border-radius: var(--radius-badge); background: var(--surface); color: var(--fail); font: var(--fs-label) var(--font-sans); cursor: pointer; }
 
     .sidebar-label {
       font-family: var(--font-sans);
       font-size: 12px;
       font-weight: 400;
       color: var(--text-3);
-      padding: 8px 12px 6px;
+      padding: 8px 24px 6px;
     }
 
     .sidebar-item {
@@ -149,7 +166,7 @@
       color: var(--text);
       border: 0;
       border-radius: 6px;
-      margin: 0 4px;
+      margin: 0 12px;
       transition: background-color 0.15s ease;
     }
 
@@ -174,6 +191,7 @@
 
     /* 상태 없는 순수 내비 항목용 — 닷 대신 동일 크기 투명 공간 */
     .sidebar-dot-spacer {
+      display: none;
       width: 7px;
       height: 7px;
       flex-shrink: 0;
