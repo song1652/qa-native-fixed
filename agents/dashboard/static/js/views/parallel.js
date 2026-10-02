@@ -22,7 +22,9 @@ function buildParallelStepProgress(status, files, totalTargets) {
     const label = (isHeal && i === PARALLEL_STEPS.length - 1)
       ? PARALLEL_STEP_LABELS[effectiveStatus]
       : PARALLEL_STEP_LABELS[step];
-    html += `<div class="step-node"><div class="step-circle ${cls}">${i < stepIdx ? '&#10003;' : num}</div><div class="step-label ${labelCls}">${label}</div></div>`;
+    const failedClass = isHeal && i === PARALLEL_STEPS.length - 1 && effectiveStatus === 'heal_failed' ? 'failed' : '';
+    const statusText = failedClass ? '실패' : cls === 'done' || (cls === 'active' && effectiveStatus === 'done') ? '완료' : cls === 'active' ? '진행 중' : '대기';
+    html += `<div class="step-node"><div class="step-circle ${cls} ${failedClass}">${i < stepIdx ? '&#10003;' : num}</div><div class="step-label ${labelCls}">${label}</div><div class="step-status ${cls} ${failedClass}">${statusText}</div></div>`;
     if (i < PARALLEL_STEPS.length - 1) {
       html += `<div class="step-line ${stepIdx >= 0 && i < stepIdx ? 'done' : ''}"></div>`;
     }
@@ -70,7 +72,7 @@ function renderParallelPipeline(main) {
 
   let filesHtml = '';
   if (groupNames.length) {
-    filesHtml = `<table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:12px;">
+    filesHtml = `<table class="parallel-table">
       <thead><tr style="color:var(--text-dim);text-align:left;border-bottom:1px solid var(--border);">
         <th style="padding:6px 12px;">그룹</th><th style="padding:6px 12px;text-align:right;">파일 수</th><th style="padding:6px 12px;text-align:right;">크기</th>
       </tr></thead><tbody>`;
@@ -86,6 +88,20 @@ function renderParallelPipeline(main) {
     filesHtml += '</tbody></table>';
   }
 
+  const targetGroups = ps.targets?.length ? ps.targets : (pagesData.groups || []).map(g => {
+    const entry = (pagesData.pages || {})[g.name];
+    return {group_dir:g.name, case_count:g.count, url:typeof entry === 'string' ? entry : entry?.url || ''};
+  });
+  const targetRows = targetGroups.map(t => `<tr>
+    <td>${esc(t.group_label || t.group_dir || '')}</td>
+    <td class="parallel-url">${esc(t.url || '미등록')}</td>
+    <td class="parallel-number">${t.case_count || 0}</td>
+    <td class="parallel-number">${(groups[t.group_dir] || []).length}</td>
+  </tr>`).join('');
+  const targetsHtml = targetRows && !execResult ? `<section class="parallel-card">
+    <h3>대상 그룹</h3><table class="parallel-table"><thead><tr><th>그룹</th><th>URL</th><th class="parallel-number">케이스</th><th class="parallel-number">생성 파일</th></tr></thead><tbody>${targetRows}</tbody></table>
+  </section>` : '';
+
   // summaryHtml은 infoRows로 대체됨 (step-progress 바 아래 표시)
   const summaryHtml = '';
 
@@ -94,7 +110,7 @@ function renderParallelPipeline(main) {
   if (execResult) {
     const allPass = execResult.failed === 0;
     const badgeCls = allPass ? 'pass' : 'fail';
-    const badgeTxt = allPass ? 'ALL PASS' : `${execResult.failed} FAILED`;
+    const badgeTxt = allPass ? '모두 통과' : `${execResult.failed}건 실패`;
 
     const groupResultsHtml = buildGroupResultsHtml(execResult.group_results || {}, 'parallel');
 
@@ -105,11 +121,11 @@ function renderParallelPipeline(main) {
           <span class="exec-result-badge ${badgeCls}">${badgeTxt}</span>
         </div>
         <div class="exec-result-stats">
-          <div class="exec-stat"><div class="exec-stat-num" style="color:var(--text)">${execResult.total}</div><div class="exec-stat-label">Total</div></div>
-          <div class="exec-stat"><div class="exec-stat-num" style="color:var(--approved-color)">${execResult.passed}</div><div class="exec-stat-label">Passed</div></div>
-          <div class="exec-stat"><div class="exec-stat-num" style="color:var(--revision-color)">${execResult.failed}</div><div class="exec-stat-label">Failed</div></div>
-          ${(execResult.skipped || 0) > 0 ? `<div class="exec-stat"><div class="exec-stat-num" style="color:#a855f7">${execResult.skipped}</div><div class="exec-stat-label">Skipped</div></div>` : ''}
-          <div class="exec-stat"><div class="exec-stat-num" style="color:${allPass ? 'var(--approved-color)' : 'var(--revision-color)'}">${execResult.pass_rate}%</div><div class="exec-stat-label">Pass Rate</div></div>
+          <div class="exec-stat"><div class="exec-stat-num" style="color:var(--text)">${execResult.total}</div><div class="exec-stat-label">전체</div></div>
+          <div class="exec-stat"><div class="exec-stat-num" style="color:var(--approved-color)">${execResult.passed}</div><div class="exec-stat-label">통과</div></div>
+          <div class="exec-stat"><div class="exec-stat-num" style="color:var(--revision-color)">${execResult.failed}</div><div class="exec-stat-label">실패</div></div>
+          ${(execResult.skipped || 0) > 0 ? `<div class="exec-stat"><div class="exec-stat-num" style="color:var(--warn)">${execResult.skipped}</div><div class="exec-stat-label">건너뜀</div></div>` : ''}
+          <div class="exec-stat"><div class="exec-stat-num" style="color:${allPass ? 'var(--approved-color)' : 'var(--revision-color)'}">${execResult.pass_rate}%</div><div class="exec-stat-label">통과율</div></div>
         </div>
         ${groupResultsHtml}
         <div style="margin-top:12px;font-size:11px;color:var(--text-dim);">
@@ -127,27 +143,31 @@ function renderParallelPipeline(main) {
 
   const mlVisible = _uiState.mergeLogVisible;
   main.innerHTML = `
-    <div class="pipeline-view">
-      <div class="pipeline-title">병렬 파이프라인</div>
+    <div class="pipeline-view parallel-pipeline-view">
+      <div class="parallel-heading"><div><div class="pipeline-title">병렬 파이프라인</div>
+        <p class="pipeline-subtitle">config/pages.json과 testcases/를 스캔해 그룹마다 동시에 코드를 만들고 실행합니다.</p></div>
+        ${buildRunPanel('parallel')}
+      </div>
       ${stepProgressHtml}
       ${infoRows}
-      ${buildRunPanel('parallel')}
+      ${targetsHtml}
+      ${!execResult ? '<div class="parallel-note">코드 생성은 Claude Code가 그룹마다 하위 작업을 동시에 실행합니다. 이 화면은 진행 상황을 보여 줍니다.</div>' : ''}
       ${summaryHtml}
       ${execResultHtml}
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
-        <button class="action-btn action-btn-danger" onclick="parallelReset()" style="margin-left:auto;">parallel_state 초기화</button>
+        <button class="action-btn action-btn-danger" onclick="parallelReset()" style="margin-left:auto;">병렬 상태 초기화</button>
       </div>
       <div id="merge-log-area" style="${mlVisible ? '' : 'display:none;'}margin-bottom:16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;max-height:400px;overflow-y:auto;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-          <span style="font-size:12px;font-weight:600;color:var(--text-dim);">MERGE LOG</span>
+          <span style="font-size:12px;font-weight:600;color:var(--text-dim);">통합 로그</span>
           <button style="font-size:11px;background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--text-dim);padding:2px 8px;cursor:pointer;" onclick="_uiState.mergeLogVisible=false;document.getElementById('merge-log-area').style.display='none'">닫기</button>
         </div>
-        <pre id="merge-log-content" style="font-size:11px;color:var(--text);white-space:pre-wrap;word-break:break-all;font-family:Consolas,monospace;margin:0;">${esc(_uiState.mergeLogContent)}</pre>
+        <pre id="merge-log-content" style="font-size:11px;color:var(--text);white-space:pre-wrap;word-break:break-all;font-family:var(--font-mono);margin:0;">${esc(_uiState.mergeLogContent)}</pre>
       </div>
-      ${files.length ? `<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;">
-        <div style="font-size:13px;font-weight:600;margin-bottom:8px;">tests/generated/ 파일 목록</div>
+      ${files.length ? `<div class="parallel-card">
+        <h3>tests/generated/ 파일</h3>
         ${filesHtml}
-      </div>` : `<div class="empty"><div class="empty-icon" aria-hidden="true"><svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="8" y="6" width="24" height="28" rx="3"></rect><line x1="13" y1="14" x2="27" y2="14"></line><line x1="13" y1="20" x2="27" y2="20"></line><line x1="13" y1="26" x2="21" y2="26"></line></svg></div><h2>생성된 테스트 없음</h2><p>run_qa_parallel.py를 실행하고 subagent로 코드를 생성하세요</p></div>`}
+      </div>` : `<div class="empty"><div class="empty-icon" aria-hidden="true"><svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="8" y="6" width="24" height="28" rx="3"></rect><line x1="13" y1="14" x2="27" y2="14"></line><line x1="13" y1="20" x2="27" y2="20"></line><line x1="13" y1="26" x2="21" y2="26"></line></svg></div><h2>생성된 테스트 없음</h2><p>위의 병렬 실행 버튼으로 그룹마다 테스트 코드를 생성하세요</p></div>`}
     </div>`;
 
   // 로그 스크롤 복원
@@ -169,14 +189,14 @@ async function runParallelQA() {
       startLogPolling('run-parallel-log', 'run-parallel-log-content', 'run_parallel.txt');
       // state/parallel.json이 ready가 되면 알림 표시
       waitForParallelReady();
-      setTimeout(() => { if (btn) { btn.textContent = 'run_qa_parallel.py 실행'; btn.disabled = false; } }, 60000);
+      setTimeout(() => { if (btn) { btn.textContent = '병렬 실행'; btn.disabled = false; } }, 60000);
     } else {
       showToast('오류: ' + (data.error || 'unknown'));
-      if (btn) { btn.textContent = 'run_qa_parallel.py 실행'; btn.disabled = false; }
+      if (btn) { btn.textContent = '병렬 실행'; btn.disabled = false; }
     }
   } catch (e) {
     showToast('서버 연결 오류');
-    if (btn) { btn.textContent = 'run_qa_parallel.py 실행'; btn.disabled = false; }
+    if (btn) { btn.textContent = '병렬 실행'; btn.disabled = false; }
   }
 }
 

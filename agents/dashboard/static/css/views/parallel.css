@@ -1,193 +1,24 @@
-    .batch-summary {
-      display: flex;
-      gap: 16px;
-      margin-bottom: 20px;
-    }
-
-    .batch-stat {
-      background: var(--surface-glass);
-      backdrop-filter: blur(24px);
-      -webkit-backdrop-filter: blur(24px);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      padding: 18px 20px;
-      flex: 1;
-      text-align: center;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-      position: relative;
-      overflow: hidden;
-    }
-
-    .batch-stat::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.2), transparent);
-    }
-
-    .batch-stat-num {
-      font-size: 28px;
-      font-weight: 700;
-      line-height: 1;
-      margin-bottom: 4px;
-    }
-
-    .batch-stat-label {
-      font-size: 11px;
-      color: var(--text-dim);
-      text-transform: uppercase;
-    }
-
-    /* ── Parallel Execution Results ── */
-    .exec-result-card {
-      background: var(--surface-glass);
-      backdrop-filter: blur(24px);
-      -webkit-backdrop-filter: blur(24px);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      padding: 24px;
-      margin-bottom: 20px;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-      position: relative;
-    }
-
-    .exec-result-card::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.2), transparent);
-    }
-
-    .exec-result-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 16px;
-    }
-
-    .exec-result-title {
-      font-size: 14px;
-      font-weight: 700;
-    }
-
-    .exec-result-badge {
-      font-size: 11px;
-      font-weight: 700;
-      padding: 4px 16px;
-      border-radius: 20px;
-      letter-spacing: 0.8px;
-      text-transform: uppercase;
-    }
-
-    .exec-result-badge.pass {
-      background: rgba(16, 185, 129, .1);
-      color: #10b981;
-      border: 1px solid rgba(16, 185, 129, .25);
-    }
-
-    .exec-result-badge.fail {
-      background: rgba(244, 63, 94, .1);
-      color: #f43f5e;
-      border: 1px solid rgba(244, 63, 94, .25);
-    }
-
-    .exec-result-stats {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
-      gap: 12px;
-      margin-bottom: 16px;
-    }
-
-    .exec-stat {
-      background: rgba(22, 20, 50, 0.35);
-      border: 1px solid var(--border-glass);
-      border-radius: var(--radius-md);
-      padding: 14px;
-      text-align: center;
-    }
-
-    .exec-stat-num {
-      font-size: 24px;
-      font-weight: 700;
-      line-height: 1;
-      margin-bottom: 4px;
-    }
-
-    .exec-stat-label {
-      font-size: 10px;
-      color: var(--text-dim);
-      text-transform: uppercase;
-      letter-spacing: .5px;
-    }
-
-    /* ── Group Result → components.css로 전역화됨 ── */
-
-    /* ── Test List Filter + Pagination → components.css로 전역화됨 ── */
-
-    .test-list-table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 4px;
-    }
-
-    .test-list-table th {
-      font-size: 10px;
-      color: var(--text-dim);
-      text-transform: uppercase;
-      letter-spacing: .5px;
-      padding: 6px 10px;
-      text-align: left;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .test-list-table td {
-      font-size: 12px;
-      padding: 6px 10px;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .test-list-table tr:hover td {
-      background: rgba(139, 92, 246, 0.03);
-    }
-
-    .test-status-dot {
-      display: inline-block;
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      margin-right: 6px;
-    }
-
-    .test-status-dot.pass {
-      background: #10b981;
-    }
-
-    .test-status-dot.fail {
-      background: #f43f5e;
-    }
-
-    .test-status-dot.skip {
-      background: #a855f7;
-    }
-
-    .parallel-report-wrap,
-    .single-report-wrap {
-      margin-top: 16px;
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      overflow: hidden;
-      background: #fff;
-    }
-
-    .parallel-report-wrap iframe,
-    .single-report-wrap iframe {
-      width: 100%;
-      height: calc(100vh - 300px);
-      border: none;
-    }
+/* 병렬 파이프라인 — ParallelReady / ParallelRunning / ParallelPipeline */
+.parallel-heading { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: start; gap: 12px 20px; margin-bottom: 20px; }
+.parallel-heading .pipeline-title { margin-bottom: 4px; }
+.parallel-heading .pipeline-subtitle { margin-bottom: 0; }
+.parallel-run-controls { display: contents; }
+.parallel-run-controls > .action-btn-primary { height: 44px; padding: 0 24px; align-self: center; }
+.parallel-run-controls .run-log-box,.parallel-run-controls .log-toggle-btn { grid-column: 1 / -1; }
+.parallel-card { margin-bottom: 20px; overflow: hidden; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface); }
+.parallel-card h3 { padding: 14px 16px; border-bottom: 1px solid var(--border); font-size: var(--fs-h3); font-weight: 600; }
+.parallel-table { width: 100%; border-collapse: collapse; font-size: var(--fs-body); }
+.parallel-table th { padding: 9px 16px; background: var(--surface-sub); color: var(--text-2); text-align: left; font-size: var(--fs-label); font-weight: 500; }
+.parallel-table td { padding: 11px 16px; border-top: 1px solid var(--border); font: var(--fs-sub) var(--font-mono); overflow-wrap: anywhere; }
+.parallel-table .parallel-number { text-align: right; }
+.parallel-url { color: var(--text-2); max-width: 400px; }
+.parallel-note { margin-bottom: 20px; padding: 12px 14px; border-radius: var(--radius-ctrl); background: var(--accent-bg); color: var(--accent); font-size: var(--fs-sub); line-height: 1.6; }
+.batch-summary { display: flex; gap: 0; margin-bottom: 20px; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface); }
+.batch-stat { flex: 1; padding: 16px 20px; }
+.batch-stat + .batch-stat { border-left: 1px solid var(--border); }
+.batch-stat-num { font-size: 24px; font-weight: 600; margin-bottom: 8px; }
+.batch-stat-label { color: var(--text-2); font-size: var(--fs-sub); }
+.test-status-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 6px; }
+.parallel-report-wrap,.single-report-wrap { margin-top: 16px; border: 1px solid var(--border); border-radius: var(--radius-card); overflow: hidden; background: var(--surface); }
+.parallel-report-wrap iframe,.single-report-wrap iframe { width: 100%; height: calc(100vh - 300px); border: none; }
+@media (max-width: 900px) { .parallel-heading { grid-template-columns: minmax(0,1fr); } .parallel-run-controls > .action-btn-primary { justify-self: start; } .parallel-card { overflow-x: auto; } }

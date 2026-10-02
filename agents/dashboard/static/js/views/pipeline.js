@@ -42,20 +42,10 @@ function buildRunPanel(mode) {
       </div>`;
   } else {
     return `
-      <div class="run-pipeline-form">
-        <h3>run_qa_parallel.py 실행</h3>
-        <div class="run-form-row">
-          <span class="run-form-label">대상</span>
-          <span style="font-size:12px;color:var(--text-dim);">config/pages.json + testcases/ 자동 스캔 → subagent 병렬 코드 생성</span>
-        </div>
-        <div class="run-form-actions">
-          <button class="action-btn action-btn-primary" id="run-parallel-btn" onclick="runParallelQA()" ${!groups.length ? 'disabled title="testcases/ 폴더에 케이스가 없습니다"' : ''}>run_qa_parallel.py 실행</button>
-          ${!groups.length ? '<span style="font-size:11px;color:var(--danger);margin-left:8px;">testcases/ 폴더에 케이스 파일이 없습니다</span>' : ''}
-        </div>
-        <div style="display:flex;align-items:center;margin-top:8px;">
-          <div class="run-log-box" id="run-parallel-log" style="flex:1;margin-top:0;"><pre id="run-parallel-log-content" style="margin:0;"></pre></div>
-        </div>
-        <button class="log-toggle-btn" id="log-toggle-parallel" onclick="toggleLogExpand('run-parallel-log')" style="display:none;margin-top:4px;">확대</button>
+      <div class="parallel-run-controls">
+        <button class="action-btn action-btn-primary" id="run-parallel-btn" onclick="runParallelQA()" ${!groups.length ? 'disabled title="testcases/ 폴더에 케이스가 없습니다"' : ''}>병렬 실행</button>
+        <div class="run-log-box" id="run-parallel-log"><pre id="run-parallel-log-content" style="margin:0;"></pre></div>
+        <button class="log-toggle-btn" id="log-toggle-parallel" onclick="toggleLogExpand('run-parallel-log')" style="display:none;">확대</button>
       </div>`;
   }
 }
