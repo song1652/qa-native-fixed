@@ -116,10 +116,10 @@ function buildTestListHtml(tests, prefix, groupName) {
   const pfx = esc(prefix);
   const gn = esc(groupName || '');
   let html = '<div class="test-list-controls">';
-  html += `<button class="test-filter-btn ${filter === 'all' ? 'active-all' : ''}" onclick="testListSetFilter('${pfx}','${gn}','all')">All (${tests.length})</button>`;
-  html += `<button class="test-filter-btn ${filter === 'pass' ? 'active-pass' : ''}" onclick="testListSetFilter('${pfx}','${gn}','pass')">Pass (${passCount})</button>`;
-  html += `<button class="test-filter-btn ${filter === 'fail' ? 'active-fail' : ''}" onclick="testListSetFilter('${pfx}','${gn}','fail')">Fail (${failCount})</button>`;
-  if (skipCount > 0) html += `<button class="test-filter-btn ${filter === 'skip' ? 'active-skip' : ''}" onclick="testListSetFilter('${pfx}','${gn}','skip')">Skip (${skipCount})</button>`;
+  html += `<button class="test-filter-btn ${filter === 'all' ? 'active-all' : ''}" onclick="testListSetFilter('${pfx}','${gn}','all')">전체 (${tests.length})</button>`;
+  html += `<button class="test-filter-btn ${filter === 'pass' ? 'active-pass' : ''}" onclick="testListSetFilter('${pfx}','${gn}','pass')">통과 (${passCount})</button>`;
+  html += `<button class="test-filter-btn ${filter === 'fail' ? 'active-fail' : ''}" onclick="testListSetFilter('${pfx}','${gn}','fail')">실패 (${failCount})</button>`;
+  if (skipCount > 0) html += `<button class="test-filter-btn ${filter === 'skip' ? 'active-skip' : ''}" onclick="testListSetFilter('${pfx}','${gn}','skip')">건너뜀 (${skipCount})</button>`;
   if (totalPages > 1) {
     html += `<div class="test-list-pager">`;
     html += `<button onclick="testListSetPage('${pfx}','${gn}',${page - 1})" ${page <= 1 ? 'disabled' : ''}>&laquo;</button>`;
@@ -134,7 +134,7 @@ function buildTestListHtml(tests, prefix, groupName) {
     const num = start + i + 1;
     const oc = _outcome(t);
     const cls = oc === 'passed' ? 'pass' : oc === 'skipped' ? 'skip' : 'fail';
-    const label = oc === 'passed' ? 'PASS' : oc === 'skipped' ? 'SKIP' : 'FAIL';
+    const label = oc === 'passed' ? '통과' : oc === 'skipped' ? '건너뜀' : '실패';
     const rawNodeid = t.nodeid || '';
     const rowId = esc(pfx) + '_' + esc(gn) + '_' + (start + i);
     const nodeid = esc(rawNodeid);

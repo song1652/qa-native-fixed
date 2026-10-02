@@ -1,39 +1,54 @@
-    /* ── Quick Run ── */
-    .quick-group-list {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
+/* 빠른 실행 — QuickRun / QuickRunRunning / QuickRunFail */
+.quick-run-view .pipeline-title { margin-bottom: 4px; }
+.quick-subtitle { margin-bottom: 20px; color: var(--text-3); font-size: var(--fs-sub); }
+.quick-run-grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: var(--gap-section); align-items: start; margin-bottom: 20px; }
+.quick-folder-card,.quick-help-card,.quick-result-panel { min-width: 0; overflow: hidden; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface); }
+.quick-card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--border); }
+.quick-card-head h3 { font-size: var(--fs-h3); font-weight: 600; }
+.quick-folder-body { padding: 16px; }
+.quick-group-list { display: flex; flex-direction: column; }
+.quick-group-item { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid var(--border); cursor: pointer; font-size: var(--fs-body); }
+.quick-group-item:hover { background: var(--surface-sub); }
+.quick-run-view input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; }
+.quick-group-name { flex: 1; color: var(--text); font: var(--fs-sub) var(--font-mono); }
+.quick-group-count { color: var(--text-3); font-size: var(--fs-sub); }
+.quick-stale { margin-left: 6px; color: var(--warn); font-size: var(--fs-label); }
+.quick-actions { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-top: 16px; }
+.quick-actions .action-btn-primary { min-height: 44px; padding: 0 24px; }
+.quick-help-card ul { padding: 16px 16px 16px 34px; color: var(--text-2); font-size: var(--fs-sub); line-height: 1.8; }
+.quick-heal-banner { margin: 16px; padding: 10px 12px; border: 1px solid var(--warn); border-radius: var(--radius-ctrl); background: var(--warn-bg); color: var(--warn); font-size: var(--fs-sub); }
+.quick-heal-banner.failed { border-color: var(--fail); background: var(--fail-bg); color: var(--fail); }
+.quick-result-meta { padding: 12px 16px; border-top: 1px solid var(--border); color: var(--text-3); font-size: var(--fs-label); }
 
-    .quick-group-item {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 8px 12px;
-      border-radius: 8px;
-      cursor: pointer;
-      transition: background .15s;
-      font-size: 13px;
-    }
-
-    .quick-group-item:hover {
-      background: rgba(139, 92, 246, 0.04);
-    }
-
-    .quick-group-item input[type="checkbox"] {
-      accent-color: var(--senior-accent);
-      width: 16px;
-      height: 16px;
-      cursor: pointer;
-    }
-
-    .quick-group-name {
-      font-weight: 500;
-      color: var(--text);
-      flex: 1;
-    }
-
-    .quick-group-count {
-      font-size: 12px;
-      color: var(--text-dim);
-    }
+/* 단일·병렬에서도 같은 실행 결과 부품을 사용한다. */
+.exec-result-card { margin-bottom: 20px; padding: 16px; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface); box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
+.exec-result-card::before { display: none; }
+.exec-result-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.exec-result-title { font-size: var(--fs-h3); font-weight: 600; }
+.exec-result-badge { padding: 2px 8px; border: 0; border-radius: var(--radius-badge); font-size: var(--fs-label); font-weight: 600; letter-spacing: normal; text-transform: none; }
+.exec-result-badge.pass { border: 0; background: var(--pass-bg); color: var(--pass); }
+.exec-result-badge.fail { border: 0; background: var(--fail-bg); color: var(--fail); }
+.exec-result-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 0; overflow: hidden; margin-bottom: 20px; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface); }
+.exec-stat { display: flex; flex-direction: column; gap: 8px; padding: 16px 20px; border: 0; border-radius: 0; background: var(--surface); text-align: left; }
+.exec-stat + .exec-stat { border-left: 1px solid var(--border); }
+.exec-stat-label { order: -1; color: var(--text-2); font-size: var(--fs-sub); letter-spacing: normal; text-transform: none; }
+.exec-stat-num { margin: 0; font-size: 24px; font-weight: 600; line-height: 1.25; }
+.quick-run-view .exec-result-card { padding: 0; border: 0; border-radius: 0; background: transparent; }
+.quick-result-panel .exec-result-header { margin: 0; padding: 14px 16px; border-bottom: 1px solid var(--border); }
+.group-result-columns { display: grid; grid-template-columns: minmax(0, 1fr) 100px 110px; gap: 12px; padding: 9px 16px; background: var(--surface-sub); color: var(--text-2); font-size: var(--fs-label); }
+.group-result-columns span:not(:first-child) { text-align: right; }
+.group-result-list { gap: 0; }
+.group-result-item { border: 0; border-bottom: 1px solid var(--border); border-radius: 0; }
+.group-result-item:last-child { border-bottom: 0; }
+.group-result-header { padding: 11px 16px; }
+.group-result-name { font: var(--fs-sub) var(--font-mono); }
+.group-result-count { min-width: 100px; text-align: right; font: var(--fs-sub) var(--font-mono); }
+.group-result-badge { min-width: 98px; text-align: center; }
+.test-list-table { width: 100%; border-collapse: collapse; font-size: var(--fs-body); }
+.test-list-table th { padding: 9px 12px; background: var(--surface-sub); color: var(--text-2); font-size: var(--fs-label); font-weight: 500; letter-spacing: normal; text-transform: none; }
+.test-list-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); font-size: var(--fs-sub); }
+.test-list-table tr:hover td { background: var(--surface-sub); }
+.test-status-dot.pass { background: var(--pass); }
+.test-status-dot.fail { background: var(--fail); }
+.test-status-dot.skip { background: var(--warn); }
+@media (max-width: 1000px) { .quick-run-grid { grid-template-columns: minmax(0, 1fr); } }

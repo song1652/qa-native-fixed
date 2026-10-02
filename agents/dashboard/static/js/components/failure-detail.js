@@ -12,7 +12,7 @@ function _failConsoleSection(consoleErrors) {
   const body = items.length
     ? items.map((log) => {
         const type = log.type === 'warning' ? 'warning' : 'error';
-        const label = type === 'warning' ? 'WARN' : 'ERROR';
+        const label = type === 'warning' ? '경고' : '오류';
         return `<div class="fail-log-row">
           <span class="fail-log-dot ${type}"></span>
           <div class="fail-log-text"><span class="fail-log-tag ${type}">${label}</span>${esc(log.text || '')}</div>
@@ -20,7 +20,7 @@ function _failConsoleSection(consoleErrors) {
       }).join('')
     : '<div class="fail-card-empty">콘솔 에러 없음</div>';
   return `<div class="fail-card">
-    <div class="fail-card-head"><span class="fd-dot" style="background:#f87171"></span>콘솔 로그${items.length ? `<span class="fd-count">${items.length}건</span>` : ''}</div>
+    <div class="fail-card-head"><span class="fd-dot" style="background:var(--fail)"></span>콘솔 로그${items.length ? `<span class="fd-count">${items.length}건</span>` : ''}</div>
     ${body}
   </div>`;
 }
@@ -43,7 +43,7 @@ function _failNetworkSection(networkFailures) {
       }).join('')
     : '<div class="fail-card-empty">실패한 네트워크 요청 없음</div>';
   return `<div class="fail-card">
-    <div class="fail-card-head"><span class="fd-dot" style="background:#fbbf24"></span>네트워크${items.length ? `<span class="fd-count">${items.length}건</span>` : ''}</div>
+    <div class="fail-card-head"><span class="fd-dot" style="background:var(--warn)"></span>네트워크${items.length ? `<span class="fd-count">${items.length}건</span>` : ''}</div>
     ${body}
   </div>`;
 }
@@ -60,7 +60,7 @@ function _failActionsSection(data) {
   }
   const buttons = [];
   if (data.video_url) {
-    buttons.push(`<button class="fail-btn" onclick="window.open('${esc(data.video_url)}','_blank')">▶ 영상 재생</button>`);
+    buttons.push(`<button class="fail-btn" onclick="window.open('${esc(data.video_url)}','_blank')">영상 재생</button>`);
   }
   if (data.trace_cmd) {
     // JSON.stringify는 큰따옴표로 감싸는데 onclick 속성 자체도 큰따옴표라
@@ -101,7 +101,7 @@ function renderFailureDetail(data) {
   const diffRows = [];
   if (data.expected) {
     diffRows.push(`<div class="fail-diff-row">
-      <span class="fail-diff-label expect">Expected</span>
+      <span class="fail-diff-label expect">기대 결과</span>
       <div class="fail-diff-value expect">${esc(data.expected)}</div>
     </div>`);
   }
@@ -113,22 +113,21 @@ function renderFailureDetail(data) {
   }
 
   const leftCards = [];
-  if (shot) leftCards.push(`<div class="fail-card">${shot}</div>`);
-  if (stepsCard) leftCards.push(stepsCard);
-  if (diffRows.length) leftCards.push(`<div class="fail-card"><div class="fail-card-body">${diffRows.join('')}</div></div>`);
-  if (facts.length) {
-    leftCards.push(`<div class="fail-card">
+  if (shot) leftCards.push(`<div class="fail-card"><div class="fail-card-head">실패 시점 스크린샷</div><div class="fail-card-body">${shot}</div></div>`);
+  const actions = _failActionsSection(data);
+  if (actions) leftCards.push(actions);
+  const factsHtml = facts.length ? `<div class="fail-card fail-summary">
       <div class="fail-card-head"><span class="fd-dot" style="background:var(--text-dim)"></span>요약 정보</div>
       <div class="fail-card-body fail-facts">
         ${facts.map(([k, v]) => `<div class="ff-row"><span class="ff-k">${esc(k)}</span><span class="ff-v">${esc(v)}</span></div>`).join('')}
       </div>
-    </div>`);
-  }
+    </div>` : '';
 
   const rightCards = [
+    stepsCard,
+    ...diffRows.map(row => `<div class="fail-card"><div class="fail-card-body">${row}</div></div>`),
     _failConsoleSection(data.console_errors),
     _failNetworkSection(data.network_failures),
-    _failActionsSection(data),
   ].filter(Boolean);
 
   // auto-fit 그리드는 masonry가 아니라서, 카드 개수가 열 수로 딱 안
@@ -137,6 +136,7 @@ function renderFailureDetail(data) {
   // 두 칼럼이 항상 grow로 폭 100%를 나눠 갖기 때문에 구조적으로 빈
   // 공간이 생기지 않는다 — 대신 각 칼럼 안에서는 카드를 세로로 쌓는다.
   return `<div class="fail-detail">
+    ${factsHtml}
     <div class="fail-detail-grid">
       <div class="fail-col">${leftCards.join('')}</div>
       <div class="fail-col">${rightCards.join('')}</div>
