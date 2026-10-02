@@ -44,8 +44,8 @@ async function renderDashboardOverview(main) {
 
   const rptCount = (reportsList || []).length;
   const history = _ovRunHistory || [];
+  const groups = pagesData.groups || [];
   const healStats = _ovHealStats || {};
-  const patterns = healStats.patterns || {};
   const flakyData = _ovFlakyTests || null;
 
   // 최근 실행
@@ -59,7 +59,11 @@ async function renderDashboardOverview(main) {
     ? (quickState.execution_result.skipped ?? null) : null;
   const _stateSkipped = psResult.skipped ?? bsResult.skipped ?? _quickExecSkipped ?? 0;
   const totalSkipped = _rhSkipped !== null ? _rhSkipped : _stateSkipped;
-  const passRate = totalTests > 0 ? Math.round(totalPassed / totalTests * 1000) / 10 : 0;
+  const recentRuns = history.slice(-10);
+  const recentTotal = recentRuns.reduce((sum, run) => sum + (run.total || 0), 0);
+  const recentPassed = recentRuns.reduce((sum, run) => sum + (run.passed || 0), 0);
+  const recentPassRate = recentTotal ? Math.round(recentPassed / recentTotal * 100) : 0;
+  const recentHealCount = recentRuns.reduce((sum, run) => sum + (run.heal_count || 0), 0);
 
   // 상태 헬퍼
   function sLabel(s) {
@@ -71,98 +75,54 @@ async function renderDashboardOverview(main) {
     return s;
   }
 
-  // ── 1. Hero Section: 대형 도넛 + 핵심 지표 ──
-  const donutPct = passRate;
-  const donutColor = totalFailed === 0 ? 'var(--approved-color)' : donutPct >= 80 ? 'var(--pending-color)' : 'var(--revision-color)';
-  // 3-segment donut: circumference = 2π*42 ≈ 264
-  const _C = 264;
-  const _passedArc  = totalTests > 0 ? (totalPassed  / totalTests) * _C : 0;
-  const _failedArc  = totalTests > 0 ? (totalFailed  / totalTests) * _C : 0;
-  const _skippedArc = totalTests > 0 ? (totalSkipped / totalTests) * _C : 0;
+  // ── 핵심 지표 ──
+  const lastRunLabel = !lastRun ? '실행 기록 없음' : totalFailed > 0 ? '실패' : totalSkipped > 0 ? '중단' : '통과';
+  const lastRunClass = totalFailed > 0 ? 'fail' : totalSkipped > 0 ? 'warn' : 'pass';
+  const lastRunTime = lastRun ? (lastRun.timestamp || '').slice(5, 16) : '';
+  const heroHtml = `<section class="ov-summary-row" aria-label="요약">
+    <div class="ov-summary-item"><div class="ov-summary-label">마지막 실행</div><div class="ov-summary-value"><span class="ov-result ${lastRunClass}">${lastRunLabel}</span></div><div class="ov-summary-meta">${lastRun ? `${totalTests}건 중 ${totalPassed}건 통과 · 실패 ${totalFailed} · 건너뜀 ${totalSkipped} · ${Math.round(lastRun.duration_sec || 0)}초` : '실행 이력이 없습니다'}</div></div>
+    <div class="ov-summary-item"><div class="ov-summary-label">최근 10회 통과율</div><div class="ov-summary-value">${recentTotal ? `${recentPassRate}%` : '—'}</div><div class="ov-summary-meta">통과 ${recentPassed} · 전체 ${recentTotal}</div></div>
+    <div class="ov-summary-item"><div class="ov-summary-label">등록된 페이지</div><div class="ov-summary-value">${groups.length}</div><div class="ov-summary-meta">페이지 그룹</div></div>
+    <div class="ov-summary-item"><div class="ov-summary-label">자동 복구(힐링)</div><div class="ov-summary-value">${recentHealCount}</div><div class="ov-summary-meta">최근 ${recentRuns.length}회 기준</div></div>
+  </section>`;
 
-  // 도넛 범례: 파이프라인별 표시
-  const lastRunPipeline = lastRun ? ({parallel:'병렬', quick:'빠른 실행', single:'단일'}[lastRun.pipeline] || lastRun.pipeline) : '';
-  const lastRunTime = lastRun ? (lastRun.timestamp || '').split(' ')[1] || '' : '';
+  const recentRows = [...history].reverse().slice(0, 6).map(run => {
+    const typeLabel = { parallel: '병렬 파이프라인', quick: '빠른 실행', single: '단일 파이프라인' }[run.pipeline] || run.pipeline || '—';
+    const targets = run.group ? [run.group] : (run.groups || []);
+    const result = (run.failed || 0) > 0 ? ['실패', 'fail'] : (run.skipped || 0) > 0 ? ['중단', 'warn'] : ['통과', 'pass'];
+    const timestamp = (run.timestamp || '').slice(5, 16) || '—';
+    const duration = run.duration_sec ? `${Math.round(run.duration_sec)}초` : '—';
+    return `<tr><td><span class="ov-time">${esc(timestamp)}</span></td><td>${esc(typeLabel)}</td><td>${esc(targets.join(' · ') || '—')}</td><td><span class="ov-result ${result[1]}">${result[0]}</span></td><td class="ov-num">${run.passed || 0}/${run.total || 0}</td><td class="ov-num">${esc(duration)}</td></tr>`;
+  }).join('');
+  const recentTableHtml = `<section class="oax-card"><div class="oax-card-title">최근 실행 <button type="button" class="ov-history-link" onclick="selectView('history')">전체 기록 보기</button></div>${recentRows ? `<div class="ov-table-wrap"><table class="ov-table"><thead><tr><th>시작</th><th>종류</th><th>대상</th><th>결과</th><th style="text-align:right;">통과</th><th style="text-align:right;">소요</th></tr></thead><tbody>${recentRows}</tbody></table></div>` : `<div class="ov-table-empty">최근 실행 이력이 없습니다.</div>`}</section>`;
 
-  const heroHtml = totalTests > 0 ? `
-    <div class="oax-hero">
-      <div class="oax-hero-left">
-        <div class="oax-donut-wrap">
-          <svg viewBox="-5 -5 110 110" class="oax-donut">
-            <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(140,120,220,0.08)" stroke-width="5"/>
-            ${_passedArc  > 0 ? `<circle cx="50" cy="50" r="42" fill="none" stroke="var(--approved-color)" stroke-width="5" stroke-dasharray="${_passedArc} ${_C-_passedArc}" stroke-dashoffset="66" stroke-linecap="butt" style="filter:drop-shadow(0 0 4px var(--approved-color))"/>` : ''}
-            ${_failedArc  > 0 ? `<circle cx="50" cy="50" r="42" fill="none" stroke="var(--revision-color)" stroke-width="5" stroke-dasharray="${_failedArc} ${_C-_failedArc}" stroke-dashoffset="${66-_passedArc}" stroke-linecap="butt" style="filter:drop-shadow(0 0 4px var(--revision-color))"/>` : ''}
-            ${_skippedArc > 0 ? `<circle cx="50" cy="50" r="42" fill="none" stroke="#a855f7" stroke-width="5" stroke-dasharray="${_skippedArc} ${_C-_skippedArc}" stroke-dashoffset="${66-_passedArc-_failedArc}" stroke-linecap="butt" style="filter:drop-shadow(0 0 4px #a855f7)"/>` : ''}
-          </svg>
-          <div class="oax-donut-center">
-            <div class="oax-donut-pct">${passRate}<span class="oax-donut-unit">%</span></div>
-            <div class="oax-donut-label">Pass Rate</div>
-          </div>
-        </div>
-        <div class="oax-hero-detail">
-          <div class="oax-hero-context">${lastRunPipeline} 실행 · ${lastRunTime}</div>
-          <div class="oax-hero-stats">
-            <div class="oax-hero-stat">
-              <div class="oax-hero-stat-val">${totalTests}</div>
-              <div class="oax-hero-stat-label">Total</div>
-            </div>
-            <div class="oax-hero-stat">
-              <div class="oax-hero-stat-val" style="color:var(--approved-color)">${totalPassed}</div>
-              <div class="oax-hero-stat-label">Passed</div>
-            </div>
-            <div class="oax-hero-stat">
-              <div class="oax-hero-stat-val" style="color:${totalFailed > 0 ? 'var(--revision-color)' : 'var(--text-dim)'}">${totalFailed}</div>
-              <div class="oax-hero-stat-label">Failed</div>
-            </div>
-            ${totalSkipped > 0 ? `<div class="oax-hero-stat">
-              <div class="oax-hero-stat-val" style="color:#a855f7">${totalSkipped}</div>
-              <div class="oax-hero-stat-label">Skipped</div>
-            </div>` : ''}
-          </div>
-          <div class="oax-hero-legend">
-            <span class="oax-legend-item"><span class="oax-legend-dot" style="background:var(--approved-color)"></span>통과</span>
-            <span class="oax-legend-item"><span class="oax-legend-dot" style="background:var(--revision-color)"></span>실패</span>
-            <span class="oax-legend-item"><span class="oax-legend-dot" style="background:var(--pending-color)"></span>경고 (80%↑)</span>
-          </div>
-        </div>
-      </div>
-      <div class="oax-hero-right">
-        ${_buildTrendChart(history)}
-      </div>
-    </div>` : '';
+  const quickStatus = quickState || {};
+  const quickStep = quickStatus.status || quickStatus.step || 'idle';
+  const teamCount = (lastData?.team_sessions || []).length;
+  const statusRow = (label, value, view, meta = '') => `<button type="button" class="ov-status-row" onclick="selectView('${view}')"><span>${label}</span><span class="ov-status-value">${value}${meta ? `<span class="ov-status-meta">${meta}</span>` : ''}</span></button>`;
+  const statusHtml = `<section class="oax-card"><h3 class="oax-card-title">파이프라인 상태</h3><div class="ov-status-list">
+    ${statusRow('단일 파이프라인', sLabel(psStatus), 'single_pipeline', psStatus === 'done' && psTotal ? `${psPassed}/${psTotal}` : '')}
+    ${statusRow('병렬 파이프라인', sLabel(bsStatus), 'parallel_pipeline', bsStatus === 'done' && bsTotal ? `${bsPassed}/${bsTotal}` : '')}
+    ${statusRow('빠른 실행', sLabel(quickStep), 'quick_run', quickStep === 'done' && quickStatus.execution_result?.total ? `${quickStatus.execution_result.passed || 0}/${quickStatus.execution_result.total}` : '')}
+    ${statusRow('리포트', `${rptCount}건`, 'reports')}
+    <div class="ov-status-row"><span>팀 토론</span><span class="ov-status-value">${teamCount ? `진행 중 ${teamCount}건` : '토론 없음'}</span></div>
+  </div></section>`;
 
-  // ── 2. KPI 카드 행 ──
-  const kpiHtml = `
-    <div class="oax-kpi-row">
-      <div class="oax-kpi" onclick="selectView('single_pipeline')">
-        <div class="oax-kpi-icon" style="color:var(--accent)">◆</div>
-        <div class="oax-kpi-body">
-          <div class="oax-kpi-label">Single Pipeline</div>
-          <div class="oax-kpi-val" style="color:${psStatus === 'done' ? 'var(--approved-color)' : psStatus === 'idle' ? 'var(--text-dim)' : 'var(--pending-color)'}">${sLabel(psStatus)}</div>
+  const trendHtml = `<section class="oax-card"><h3 class="oax-card-title">통과율 추이</h3>${_buildTrendChart(history)}</section>`;
+  const logHtml = `
+    <section class="oax-card oax-log-section">
+      <div class="oax-card-title">최근 로그
+        <div style="margin-left:auto;display:flex;gap:4px;align-items:center;">
+          <button class="ov-log-tab active" data-log="run_qa.txt">단일</button>
+          <button class="ov-log-tab" data-log="run_parallel.txt">병렬</button>
+          <button class="ov-log-tab" data-log="quick_run.txt">빠른</button>
+          <button class="ov-log-refresh" id="ov-log-refresh" title="새로고침" aria-label="로그 새로고침">&#8635;</button>
         </div>
-        <div class="oax-kpi-meta">${psStatus === 'done' && psTotal > 0 ? psPassed + '/' + psTotal : ''}</div>
       </div>
-      <div class="oax-kpi" onclick="selectView('parallel_pipeline')">
-        <div class="oax-kpi-icon" style="color:var(--delib-accent)">◆</div>
-        <div class="oax-kpi-body">
-          <div class="oax-kpi-label">Parallel Pipeline</div>
-          <div class="oax-kpi-val" style="color:${bsStatus === 'done' ? 'var(--approved-color)' : bsStatus === 'idle' ? 'var(--text-dim)' : 'var(--pending-color)'}">${sLabel(bsStatus)}</div>
-        </div>
-        <div class="oax-kpi-meta">${bsStatus === 'done' && bsTotal > 0 ? bsPassed + '/' + bsTotal : ''}</div>
-      </div>
-      <div class="oax-kpi" onclick="selectView('reports')">
-        <div class="oax-kpi-icon" style="color:var(--senior-accent)">◆</div>
-        <div class="oax-kpi-body">
-          <div class="oax-kpi-label">Reports</div>
-          <div class="oax-kpi-val">${rptCount}<span style="font-size:12px;opacity:0.4;margin-left:3px;">건</span></div>
-        </div>
-        <div class="oax-kpi-meta">${rptCount > 0 ? esc(reportsList[0].name).substring(0, 20) : ''}</div>
-      </div>
-    </div>`;
+      <div class="ov-log-box" id="ov-log-content">로그 로딩 중...</div>
+    </section>`;
 
   // ── 3. 하단 그리드 ──
-  const groups = pagesData.groups || [];
-
   // ── ③ 힐링 상황판 ──
   let healPanelHtml = '';
   const healCtx = ps.heal_context || {};
@@ -173,7 +133,7 @@ async function renderDashboardOverview(main) {
     const totalFailCount = healCtx.failure_count || 0;
     if (psStep === 'heal_failed') {
       healPanelHtml = `<div class="heal-panel heal-panel--failed">
-        <div class="heal-panel-title">⚠ 수동 수정 필요</div>
+        <div class="heal-panel-title">수동 수정 필요</div>
         <div class="heal-panel-desc">힐링 ${maxHeals}회 모두 시도했으나 실패했습니다. 테스트 파일을 직접 수정해주세요.</div>
       </div>`;
     } else {
@@ -201,18 +161,17 @@ async function renderDashboardOverview(main) {
     if (flakyList.length > 0) {
       const rows = flakyList.slice(0, 6).map(f => {
         const dots = (f.recent || []).slice(-5).map(r =>
-          `<span class="flaky-dot flaky-dot--${r}"></span>`
+          `<span class="flaky-dot flaky-dot--${r}">${r === 'pass' ? '통과' : r === 'fail' ? '실패' : esc(r)}</span>`
         ).join('');
-        const rateColor = 'var(--pending-color)';
         return `<div class="flaky-row">
           <span class="flaky-name">${esc(f.test_id)}</span>
           <div class="flaky-dots">${dots}</div>
-          <span class="flaky-rate" style="color:${rateColor}">${Math.round(f.pass_rate * 100)}%</span>
+          <span class="flaky-rate">${Math.round(f.pass_rate * 100)}%</span>
         </div>`;
       }).join('');
       flakyHtml = `<div class="oax-card">
-        <div class="oax-card-title" style="color:var(--pending-color)">Flaky 테스트
-          <span class="oax-card-badge" style="color:var(--pending-color);background:rgba(251,191,36,0.08)">${flakyList.length}건</span>
+        <div class="oax-card-title">간헐적 실패 테스트
+          <span class="oax-card-badge">${flakyList.length}건</span>
         </div>
         ${rows}
       </div>`;
@@ -223,29 +182,14 @@ async function renderDashboardOverview(main) {
   const hasAnyData = totalTests > 0 || history.length > 0 || groups.length > 0;
   const welcomeHtml = !hasAnyData ? `
     <div class="oax-card" style="text-align:center;padding:48px 24px;">
-      <div style="font-size:40px;margin-bottom:16px;">🚀</div>
-      <h3 style="font-size:18px;font-weight:700;margin-bottom:8px;">첫 번째 테스트를 실행해 보세요</h3>
-      <p style="color:var(--text-dim);font-size:13px;margin-bottom:24px;">URL을 등록하고 파이프라인을 실행하면 테스트가 자동 생성됩니다.</p>
+      <div class="empty-icon" aria-hidden="true"><svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="8" y="6" width="24" height="28" rx="3"></rect><line x1="13" y1="14" x2="27" y2="14"></line><line x1="13" y1="20" x2="27" y2="20"></line><line x1="13" y1="26" x2="21" y2="26"></line></svg></div>
+      <h3 style="font-size:15px;font-weight:600;margin-bottom:0;">첫 번째 테스트를 실행해 보세요</h3>
+      <p style="color:var(--text-2);font-size:13px;margin-bottom:8px;">URL을 등록하고 파이프라인을 실행하면 테스트가 자동 생성됩니다.</p>
       <div style="display:flex;gap:12px;justify-content:center;">
         <button class="action-btn action-btn-primary" onclick="selectView('single_pipeline')">단일 파이프라인</button>
-        <button class="action-btn action-btn-primary" onclick="selectView('parallel_pipeline')">병렬 파이프라인</button>
+        <button class="action-btn" onclick="selectView('parallel_pipeline')">병렬 파이프라인</button>
       </div>
     </div>` : '';
-
-  // 로그
-  const logHtml = `
-    <div class="oax-card oax-log-section">
-      <div class="oax-card-title">
-        Recent Logs
-        <div style="margin-left:auto;display:flex;gap:4px;align-items:center;">
-          <button class="ov-log-tab active" data-log="run_qa.txt">단일</button>
-          <button class="ov-log-tab" data-log="run_parallel.txt">병렬</button>
-          <button class="ov-log-tab" data-log="quick_run.txt">빠른</button>
-          <button class="ov-log-refresh" id="ov-log-refresh" title="새로고침">&#8635;</button>
-        </div>
-      </div>
-      <div class="ov-log-box" id="ov-log-content">로그 로딩 중...</div>
-    </div>`;
 
   // ── 조합 ── (이전 로그 내용+스크롤 보존으로 깜빡임 방지)
   const _prevLogEl = document.getElementById('ov-log-content');
@@ -255,16 +199,17 @@ async function renderDashboardOverview(main) {
 
   main.innerHTML = `
     <div class="ov-wrap">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;">
-        <h2 class="ov-heading" style="margin-bottom:0;">Dashboard</h2>
-        <button class="action-btn action-btn-danger" onclick="resetDashboard()" style="font-size:11px;padding:5px 12px;">대시보드 초기화</button>
+      <div class="ov-head">
+        <div class="ov-head-copy"><h2 class="ov-heading">대시보드</h2><p class="ov-subtitle">${lastRun ? `마지막 실행 ${esc(lastRun.timestamp || '')}` : '아직 실행한 기록이 없습니다'}</p></div>
+        <button class="ov-reset-btn" onclick="resetDashboard()">대시보드 초기화</button>
       </div>
+      ${heroHtml}
       ${welcomeHtml}
       ${healPanelHtml}
-      ${heroHtml}
-      ${hasAnyData ? kpiHtml : ''}
-      ${hasAnyData && flakyHtml ? `<div class="oax-grid-3"><div class="oax-grid-col">${flakyHtml}</div></div>` : ''}
-      ${logHtml}
+      <div class="ov-main-grid">
+        <div class="ov-col">${recentTableHtml}${trendHtml}${flakyHtml}</div>
+        <div class="ov-col">${statusHtml}${logHtml}</div>
+      </div>
     </div>`;
 
   // 이전 로그 내용+스크롤 즉시 복원 (플래시 방지)
@@ -341,7 +286,6 @@ function _buildTrendChart(history) {
   const chartH = h - padY - padBot;
   const stepX = recent.length > 1 ? (w - padX * 2) / (recent.length - 1) : 0;
   let points = '';
-  let areaPoints = `${padX},${padY + chartH} `;
   let dots = '';
   let labels = '';
   let pctLabels = '';
@@ -359,52 +303,40 @@ function _buildTrendChart(history) {
     const rDisplay = rate === 100 ? '100' : (Math.floor(rate * 10) / 10).toFixed(1);
     const y = padY + chartH - (rate / 100) * chartH;
     points += `${x},${y} `;
-    areaPoints += `${x},${y} `;
     const ts = (r.timestamp || '').split(' ')[1] || '';
     const shortTs = ts.substring(0, 5);
     const color = rate === 100 ? 'var(--approved-color)' : rate >= 80 ? 'var(--pending-color)' : 'var(--revision-color)';
-    const _skippedTip = r.skipped ? ` | 스킵:${r.skipped}` : '';
-    dots += `<circle cx="${x}" cy="${y}" r="3.5" fill="${color}" stroke="rgba(8,7,27,0.6)" stroke-width="1.5" style="filter:drop-shadow(0 0 3px ${color})"><title>${rDisplay}% | 통과:${r.passed||0} 실패:${r.failed||0}${_skippedTip}</title></circle>`;
+    const _skippedTip = r.skipped ? ` · 건너뜀 ${r.skipped}` : '';
+    dots += `<circle cx="${x}" cy="${y}" r="3.5" fill="${color}" stroke="var(--surface)" stroke-width="1.5"><title>${rDisplay}% · 통과 ${r.passed||0} · 실패 ${r.failed||0}${_skippedTip}</title></circle>`;
 
     // 퍼센트 라벨 — 이전과 Y좌표가 가까우면 위/아래로 오프셋
     let labelY = y - 8;
     if (Math.abs(labelY - prevLabelY) < minLabelGap) {
       labelY = prevLabelY < y ? y + 14 : y - 8 - minLabelGap + Math.abs(labelY - prevLabelY);
     }
-    pctLabels += `<text x="${x}" y="${labelY}" text-anchor="middle" fill="${color}" font-size="8" font-weight="600" font-family="Inter">${rDisplay}%</text>`;
+    pctLabels += `<text x="${x}" y="${labelY}" text-anchor="middle" fill="${color}" font-size="8" font-weight="600" font-family="'IBM Plex Sans KR', sans-serif">${rDisplay}%</text>`;
     prevLabelY = labelY;
 
     // 시간 라벨 — 첫/마지막은 항상, 나머지는 간격에 따라
     if (i === 0 || i === recent.length - 1 || i % showEveryN === 0) {
-      labels += `<text x="${x}" y="${h - 2}" text-anchor="middle" fill="var(--text-dim)" font-size="7" font-family="Inter">${shortTs}</text>`;
+      labels += `<text x="${x}" y="${h - 2}" text-anchor="middle" fill="var(--text-2)" font-size="7" font-family="'JetBrains Mono', monospace">${shortTs}</text>`;
     }
   });
-  areaPoints += `${padX + stepX * (recent.length - 1)},${padY + chartH}`;
 
   // Y축 가이드라인
   const gridLines = [100, 80, 60].map(v => {
     const y = padY + chartH - (v / 100) * chartH;
-    return `<line x1="${padX}" y1="${y}" x2="${w - padX}" y2="${y}" stroke="rgba(140,120,220,0.06)" stroke-width="0.5"/>`;
+    return `<line x1="${padX}" y1="${y}" x2="${w - padX}" y2="${y}" stroke="var(--border)" stroke-width="0.75"/>`;
   }).join('');
 
-  const lastDur = recent.length > 0 && recent[recent.length - 1].duration_sec ? Math.round(recent[recent.length - 1].duration_sec) + 's' : '-';
-  const firstPass = recent.length > 0 && recent[recent.length - 1].first_pass ? 'First Pass' : (recent.length > 0 ? (recent[recent.length - 1].heal_count || 0) + '회 힐링' : '');
+  const lastDur = recent.length > 0 && recent[recent.length - 1].duration_sec ? Math.round(recent[recent.length - 1].duration_sec) + '초' : '—';
+  const firstPass = recent.length > 0 && recent[recent.length - 1].first_pass ? '첫 실행 통과' : (recent.length > 0 ? (recent[recent.length - 1].heal_count || 0) + '회 복구' : '');
 
   return `
     <div class="oax-trend">
-      <div class="oax-trend-header">
-        <span class="oax-trend-title">Run History</span>
-      </div>
       <svg viewBox="0 0 ${w} ${h}" class="oax-trend-svg">
-        <defs>
-          <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="var(--accent)" stop-opacity="0.2"/>
-            <stop offset="100%" stop-color="var(--accent)" stop-opacity="0"/>
-          </linearGradient>
-        </defs>
         ${gridLines}
-        <polygon points="${areaPoints}" fill="url(#areaGrad)"/>
-        <polyline points="${points}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 0 4px var(--accent-glow))"/>
+        <polyline points="${points}" fill="none" stroke="var(--approved-color)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
         ${dots}
         ${pctLabels}
         ${labels}
@@ -412,9 +344,9 @@ function _buildTrendChart(history) {
       <div class="oax-trend-footer">
         <span>${lastDur} · ${firstPass}</span>
         <span class="oax-trend-legend">
-          <span class="oax-legend-item"><span class="oax-legend-dot" style="background:var(--approved-color)"></span>100%</span>
-          <span class="oax-legend-item"><span class="oax-legend-dot" style="background:var(--pending-color)"></span>80%↑</span>
-          <span class="oax-legend-item"><span class="oax-legend-dot" style="background:var(--revision-color)"></span>80%↓</span>
+          <span class="oax-legend-item"><span class="oax-legend-dot" style="background:var(--approved-color)"></span>통과</span>
+          <span class="oax-legend-item"><span class="oax-legend-dot" style="background:var(--pending-color)"></span>주의</span>
+          <span class="oax-legend-item"><span class="oax-legend-dot" style="background:var(--revision-color)"></span>실패</span>
         </span>
       </div>
     </div>`;

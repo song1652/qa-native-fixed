@@ -251,3 +251,22 @@
   -webkit-mask-image: none;
   mask-image: none;
 }
+
+/* 모든 화면은 본문 여백 안에서 같은 위치·글꼴로 시작한다. */
+.content-scroll .pipeline-view,
+.content-scroll .hist-wrap,
+.content-scroll .tc-studio {
+  padding: 0;
+}
+
+.content-scroll .pipeline-title,
+.content-scroll .hist-heading,
+.content-scroll .ov-heading,
+.content-scroll .tc-studio .page-title {
+  font-family: var(--font-sans);
+  font-size: var(--fs-h1);
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--text);
+  -webkit-text-fill-color: var(--text);
+}
