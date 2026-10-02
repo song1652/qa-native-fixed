@@ -78,12 +78,6 @@ def resolve_page_meta(folder_name: str, pages: dict) -> dict:
     return {}
 
 
-def read_file_safe(path: Path) -> str:
-    if path.exists():
-        return path.read_text(encoding="utf-8")
-    return ""
-
-
 def analyze_url(url: str) -> dict:
     """01_analyze.py의 analyze() 함수를 직접 호출해 DOM 분석."""
     spec = _im("importlib.util").find_spec(

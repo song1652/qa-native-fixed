@@ -2,51 +2,16 @@
 
 05_execute.py (단일)와 99_merge.py (병렬)가 공유.
 그룹 접기/펼치기, All/Pass/Fail 필터, 그룹 내 페이지네이션 지원.
-Playwright 스타일 아티팩트: trace step 타이밍 / screenshot / video / trace 링크.
+Playwright 스타일 아티팩트: screenshot / video / trace 링크.
 """
 import html as _html
 import re
-import zipfile
-import json as _json
 from pathlib import Path
 
 _re_step = re.compile(r"^\s*\d+[\.\)]\s*")
 _re_bullet = re.compile(r"^\s*[-*]\s*")
-_re_camel = re.compile(r"(?<!^)(?=[A-Z])")
 
 CASES_PER_PAGE = 20
-
-# Playwright API → 친화적 이름 매핑
-_API_MAP = {
-    "Page.navigate": "page.goto",
-    "Page.click": "page.click",
-    "Page.fill": "page.fill",
-    "Page.type": "page.type",
-    "Page.press": "page.press",
-    "Page.check": "page.check",
-    "Page.uncheck": "page.uncheck",
-    "Page.selectOption": "page.select_option",
-    "Page.hover": "page.hover",
-    "Page.waitForSelector": "page.wait_for_selector",
-    "Page.waitForURL": "page.wait_for_url",
-    "Page.waitForLoadState": "page.wait_for_load_state",
-    "Page.waitForTimeout": "page.wait_for_timeout",
-    "Page.screenshot": "page.screenshot",
-    "Page.evaluate": "page.evaluate",
-    "Page.locator": "page.locator",
-    "Page.goto": "page.goto",
-    "Frame.click": "frame.click",
-    "Frame.fill": "frame.fill",
-    "Frame.waitForSelector": "frame.wait_for_selector",
-    "Locator.click": "locator.click",
-    "Locator.fill": "locator.fill",
-    "Locator.waitFor": "locator.wait_for",
-    "Locator.textContent": "locator.text_content",
-    "Locator.getAttribute": "locator.get_attribute",
-    "Locator.isVisible": "locator.is_visible",
-    "Locator.evaluate": "locator.evaluate",
-    "ElementHandle.click": "element.click",
-}
 
 
 def _esc(text: str) -> str:
@@ -59,75 +24,10 @@ def _strip_prefix(text: str) -> str:
     return t.strip()
 
 
-def _friendly_name(api_name: str) -> str:
-    if api_name in _API_MAP:
-        return _API_MAP[api_name]
-    if "." in api_name:
-        cls, method = api_name.split(".", 1)
-        snake = _re_camel.sub("_", method).lower()
-        return f"{cls.lower()}.{snake}"
-    return api_name.lower()
-
-
 def _fmt_ms(ms: int) -> str:
     if ms < 1000:
         return f"{ms}ms"
     return f"{ms / 1000:.1f}s"
-
-
-def parse_trace_steps(trace_zip_path: str) -> list:
-    """trace.zip에서 Playwright action 이벤트를 추출해 [{name, duration_ms}] 반환.
-
-    Playwright Python 트레이스 포맷:
-      {"type":"before","callId":"call@7","startTime":204.744,"class":"BrowserContext","method":"newPage",...}
-      {"type":"after","callId":"call@7","endTime":230.598,...}
-    before/after를 callId로 매칭해 duration 계산.
-    """
-    steps = []
-    try:
-        with zipfile.ZipFile(trace_zip_path) as zf:
-            trace_files = [n for n in zf.namelist() if n.endswith(".trace")]
-            for tf in trace_files:
-                data = zf.read(tf).decode("utf-8", errors="replace")
-                befores = {}  # callId -> {name, startTime}
-                for line in data.splitlines():
-                    line = line.strip()
-                    if not line:
-                        continue
-                    try:
-                        ev = _json.loads(line)
-                    except Exception:
-                        continue
-                    ev_type = ev.get("type")
-                    if ev_type == "before":
-                        call_id = ev.get("callId")
-                        if not call_id:
-                            continue
-                        # title이 있으면 우선 사용 (Expect "to_be_visible" 등)
-                        title = ev.get("title", "")
-                        if not title:
-                            cls = ev.get("class", "")
-                            method = ev.get("method", "")
-                            api = f"{cls}.{method}" if cls and method else method
-                            title = _friendly_name(api) if api else ""
-                        if title:
-                            befores[call_id] = {
-                                "name": title,
-                                "startTime": ev.get("startTime", 0),
-                            }
-                    elif ev_type == "after":
-                        call_id = ev.get("callId")
-                        if call_id and call_id in befores:
-                            before_ev = befores.pop(call_id)
-                            end = ev.get("endTime", 0)
-                            dur_ms = round(end - before_ev["startTime"]) if end > before_ev["startTime"] else 0
-                            steps.append({
-                                "name": before_ev["name"],
-                                "duration_ms": dur_ms,
-                            })
-    except Exception:
-        pass
-    return steps
 
 
 def _artifact_http_path(abs_path: str, subdir: str) -> str:
@@ -192,7 +92,7 @@ def case_row(case: dict, uid: str, outcome,
 
     outcome: "passed" | "failed" | "skipped"  또는 bool (하위 호환)
     duration: {setup_ms, call_ms, teardown_ms, total_ms} | None
-    artifacts: {screenshot_path, trace_path, video_path, trace_steps} | None
+    artifacts: {screenshot_path, trace_path, video_path} | None
     """
     if isinstance(outcome, bool):
         outcome = "passed" if outcome else "failed"

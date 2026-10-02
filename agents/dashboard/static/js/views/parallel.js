@@ -141,7 +141,6 @@ function renderParallelPipeline(main) {
       </div>`;
   }
 
-  const mlVisible = _uiState.mergeLogVisible;
   main.innerHTML = `
     <div class="pipeline-view parallel-pipeline-view">
       <div class="parallel-heading"><div><div class="pipeline-title">병렬 파이프라인</div>
@@ -156,13 +155,6 @@ function renderParallelPipeline(main) {
       ${execResultHtml}
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
         <button class="action-btn action-btn-danger" onclick="parallelReset()" style="margin-left:auto;">병렬 상태 초기화</button>
-      </div>
-      <div id="merge-log-area" style="${mlVisible ? '' : 'display:none;'}margin-bottom:16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;max-height:400px;overflow-y:auto;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-          <span style="font-size:12px;font-weight:600;color:var(--text-dim);">통합 로그</span>
-          <button style="font-size:11px;background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--text-dim);padding:2px 8px;cursor:pointer;" onclick="_uiState.mergeLogVisible=false;document.getElementById('merge-log-area').style.display='none'">닫기</button>
-        </div>
-        <pre id="merge-log-content" style="font-size:11px;color:var(--text);white-space:pre-wrap;word-break:break-all;font-family:var(--font-mono);margin:0;">${esc(_uiState.mergeLogContent)}</pre>
       </div>
       ${files.length ? `<div class="parallel-card">
         <h3>tests/generated/ 파일</h3>
@@ -235,49 +227,6 @@ function showParallelReport(name) {
   }
 }
 
-async function runMerge() {
-  const btn = document.getElementById('merge-btn');
-  if (btn) { btn.textContent = '실행 중...'; btn.disabled = true; }
-  try {
-    const res = await fetch('/api/run_merge', { method: 'POST' });
-    const data = await res.json();
-    if (data.ok) {
-      if (btn) btn.textContent = '실행됨 (PID: ' + (data.pid || '?') + ')';
-      _uiState.mergeLogVisible = true;
-      const logBtn = document.getElementById('merge-log-btn');
-      if (logBtn) logBtn.style.display = 'inline-block';
-      // 3초 후 로그 자동 표시
-      setTimeout(showMergeLog, 3000);
-      // 30초 후 버튼 복원
-      setTimeout(() => { if (btn) { btn.textContent = '99_merge.py 실행'; btn.disabled = false; } }, 30000);
-    } else {
-      showToast('오류: ' + (data.error || 'unknown'));
-      if (btn) { btn.textContent = '99_merge.py 실행'; btn.disabled = false; }
-    }
-  } catch (e) {
-    showToast('서버 연결 오류');
-    if (btn) { btn.textContent = '99_merge.py 실행'; btn.disabled = false; }
-  }
-}
-
-async function showMergeLog() {
-  try {
-    const res = await fetch('/api/merge_log', { method: 'POST' });
-    const data = await res.json();
-    _uiState.mergeLogVisible = true;
-    _uiState.mergeLogContent = data.log || '(로그 없음)';
-    const area = document.getElementById('merge-log-area');
-    const content = document.getElementById('merge-log-content');
-    if (area && content) {
-      content.textContent = _uiState.mergeLogContent;
-      area.style.display = 'block';
-      area.scrollTop = area.scrollHeight;
-    }
-    const logBtn = document.getElementById('merge-log-btn');
-    if (logBtn) logBtn.style.display = 'inline-block';
-  } catch (e) { }
-}
-
 async function parallelReset() {
   if (!(await safeConfirm('병렬 파이프라인 상태를 초기화하시겠습니까?'))) return;
   try {
@@ -285,8 +234,6 @@ async function parallelReset() {
     const data = await res.json();
     if (data.ok) {
       _uiState.parallelReportName = null;
-      _uiState.mergeLogVisible = false;
-      _uiState.mergeLogContent = '';
       showToast('병렬 파이프라인 초기화 완료', 'success');
       await refreshAll();
     } else {

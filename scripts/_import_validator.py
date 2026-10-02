@@ -91,13 +91,6 @@ def _parse_testcase_md(path: Path) -> dict:
     }
 
 
-def _extract_hash_from_md(path: Path) -> str:
-    fields = _parse_testcase_md(path)
-    if not fields:
-        return ""
-    return compute_hash(fields)
-
-
 def load_existing_testcases(testcases_dir: Path) -> dict:
     """testcases/ 하위 모든 tc_*.md 파일 스캔.
 

@@ -7,7 +7,6 @@ team_charter/senior/junior 페르소나 텍스트 제거 → dom_info + test_cas
 import json
 import sys
 from pathlib import Path
-from concurrent.futures import ThreadPoolExecutor
 from _paths import PIPELINE_STATE, read_state, resolve_sub_doms
 from _pipeline_registry import Step  # P80: step 검증용
 

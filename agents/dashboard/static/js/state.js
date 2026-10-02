@@ -17,8 +17,6 @@ var _uiState = {
   parallelReportName: null,     // 병렬 뷰: 열린 리포트 이름
   singleReportName: null,       // 단일 뷰: 열린 리포트 이름
   quickReportName: null,        // 빠른 실행 뷰: 열린 리포트 이름
-  mergeLogVisible: false,       // 병렬 뷰: merge 로그 표시 여부
-  mergeLogContent: '',          // 병렬 뷰: merge 로그 내용
   scrollTop: {},                // 뷰별 스크롤 위치
   overviewLogTab: 'run_qa.txt', // Overview: 선택된 로그 탭
 };

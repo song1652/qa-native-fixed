@@ -105,13 +105,6 @@ SCRIPT_DESCRIPTIONS: dict[str, str] = {
     "check_pending_parallel.py":  "훅: 병렬 파이프라인 대기 상태 확인",
     "check_pending_pipeline.py":  "훅: 단일 파이프라인 대기 상태 확인",
     "check_pending_quick_heal.py":"훅: 빠른 힐링 대기 상태 확인",
-    # 일회성 유틸 스크립트 (레거시 — 정리 예정)
-    "_add_login_retry.py":    "일회성: 생성 테스트에 로그인 retry 로직 일괄 추가 (레거시)",
-    "_complete_scaffolds.py": "일회성: scaffold 파일 완성 보조 (레거시)",
-    "_fix_final_lint.py":     "일회성: lint 최종 패치 (레거시)",
-    "_fix_login_wait.py":     "일회성: 로그인 대기 패치 (레거시)",
-    "_fix_string_split.py":   "일회성: 문자열 분리 패치 (레거시)",
-    "_revert_login.py":       "일회성: 로그인 패치 롤백 (레거시)",
 }
 
 SKILL_DESCRIPTIONS: dict[str, str] = {

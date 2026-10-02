@@ -262,7 +262,7 @@ TC 작성·내보내기, 파이프라인 실행·모니터링, 리포트 열람�
 | **단일 파이프라인 실행** | 단일 파이프라인 탭 → 페이지 선택 → URL 자동 표시 → 케이스 폴더 선택 → "파이프라인 실행" 버튼 |
 | **병렬 파이프라인 실행** | 병렬 파이프라인 탭 → "병렬 실행" 버튼 (pages.json + testcases/ 자동 스캔) |
 | **빠른 실행** | 빠른 실행 탭 → tests/generated/ 폴더 체크박스 선택 → "힐링 생략" 체크(선택) → "테스트 실행" 버튼 (전체 파이프라인 불필요) |
-| **99_merge.py 실행** | 병렬 파이프라인 탭 → 워커 완료 후 "99_merge.py 실행" 버튼 |
+| **병렬 결과 병합** | 병렬 실행 흐름에서 처리. 수동 실행은 `python3 parallel/99_merge.py` 사용 |
 | 단일 파이프라인 진행 상태 | 리뷰 완료 후 자동 실행 (승인 단계 없음) |
 | 실행 로그 실시간 확인 | 실행 버튼 클릭 후 하단 로그 박스에 3초 간격 폴링 표시 |
 | 파이프라인 진행 상태 모니터링 | 단일: 6단계 프로그레스 바 / 병렬: 워커 카드 그리드 |
@@ -453,7 +453,6 @@ kill -9 [PID]
 | `scripts/_tc_source_watch.py` | 출처 버전 변경 확인·차이·확인 완료 | ❌ (대시보드가 import) |
 | `scripts/_tc_md_export.py` | TC 라이브러리 → testcases/{group}/tc_*.md (퍼널·그룹 매핑·tc_id 고정·드리프트, 반영·롤백은 TC 스튜디오) | ❌ (대시보드가 import) |
 
-| `agents/dashboard/tools/scope_tc_studio_css.py` | 목업 CSS → `static/css/tc-studio.css` 생성 (목업을 고친 뒤 다시 실행) | ✅ (`.venv/bin/python agents/dashboard/tools/scope_tc_studio_css.py <목업> <출력>`) |
 | `scripts/assert_guard.py` | 힐링 패치 후 assertion 약화 감지. `original_assertions`(최초) vs 현재 파일 비교 → 감소 시 경고 출력 | ✅ (`.venv/bin/python scripts/assert_guard.py`) |
 | `scripts/jira_reporter.py` | 테스트 실패 시 Jira 이슈 자동 생성. 스크린샷·영상 첨부 포함. `config/jira_config.json` 또는 환경변수 `JIRA_TOKEN` 설정 필요. `99_merge.py`가 최종 실패 시 자동 호출 | ✅ (`.venv/bin/python scripts/jira_reporter.py [--group G] [--dry-run] [--all]`, `--all`은 이미 만든 이슈도 다시 생성) |
 | `scripts/parse_cases.py` | `.md`/`.json` 테스트케이스 파일 파서 (YAML frontmatter 지원). frontmatter 문자열값의 따옴표 자동 제거 (`id: "CL_01"` → `CL_01`). Steps는 번호(`1.`) 형식 권장이나 번호 없는 평문 줄도 파싱 지원 | ❌ (run_qa.py가 import해서 사용) |

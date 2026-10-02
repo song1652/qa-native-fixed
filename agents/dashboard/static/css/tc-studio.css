@@ -102,8 +102,6 @@
 .tc-studio .chip-select.p1 { color:var(--warn); }
 .tc-studio .chip-select.p2 { color:var(--info); }
 .tc-studio .chip-select.p3 { color:var(--text2); }
-.tc-studio .chip-select.yweb { color:var(--info); }
-.tc-studio .chip-select.yapp { color:var(--accent); }
 .tc-studio .chip-select.n { color:var(--text2); }
 .tc-studio .chip-select.empty { color:var(--text3); font-style:italic; }
 .tc-studio .chip-select.result-pass { color:var(--ok); background-color:var(--ok-bg); }

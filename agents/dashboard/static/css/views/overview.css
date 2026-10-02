@@ -20,9 +20,7 @@
 
 .ov-main-grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: var(--gap-section); align-items: start; }
 .ov-col { display: flex; flex-direction: column; gap: var(--gap-section); min-width: 0; }
-.oax-card,
-.oax-hero-left,
-.oax-hero-right {
+.oax-card {
   min-width: 0;
   overflow: hidden;
   border: 1px solid var(--border);
@@ -30,8 +28,7 @@
   background: var(--surface);
 }
 .oax-card { padding: 16px; }
-.oax-card-title,
-.oax-trend-title { display: flex; align-items: center; gap: 8px; color: var(--text); font-size: var(--fs-h3); font-weight: 600; }
+.oax-card-title { display: flex; align-items: center; gap: 8px; color: var(--text); font-size: var(--fs-h3); font-weight: 600; }
 .oax-card-title { margin-bottom: 14px; }
 .oax-card-badge { padding: 2px 8px; border-radius: var(--radius-badge); background: var(--surface-sub); color: var(--text-2); font-size: var(--fs-label); font-weight: 600; }
 
@@ -56,41 +53,14 @@ button.ov-status-row:hover { color: var(--accent); }
 .ov-result.warn { background: var(--warn-bg); color: var(--warn); }
 .ov-summary-value .ov-result { padding: 0; background: none; font-size: inherit; }
 
-.oax-hero { display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, 340px); gap: var(--gap-section); }
-.oax-hero-left { display: flex; align-items: center; gap: 24px; padding: 20px; }
-.oax-hero-right { padding: 16px; }
-.oax-donut-wrap { position: relative; width: 120px; height: 120px; flex-shrink: 0; }
-.oax-donut { width: 120px; height: 120px; transform: rotate(-90deg); }
-.oax-donut-center { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; white-space: nowrap; }
-.oax-donut-pct { color: var(--text); font: 600 22px / 1 var(--font-mono); }
-.oax-donut-unit { color: var(--text-2); font-size: var(--fs-sub); }
-.oax-donut-label { margin-top: 4px; color: var(--text-2); font-size: var(--fs-label); }
-.oax-hero-detail { display: flex; flex: 1; flex-direction: column; gap: 10px; min-width: 0; }
-.oax-hero-context { color: var(--text-2); font-size: var(--fs-label); }
-.oax-hero-stats { display: flex; gap: 12px; }
-.oax-hero-stat-val { color: var(--text); font: 600 20px / 1.2 var(--font-mono); }
-.oax-hero-stat-label { margin-top: 2px; color: var(--text-2); font-size: var(--fs-label); }
-.oax-hero-legend,.oax-trend-legend { display: flex; gap: 12px; flex-wrap: wrap; }
+.oax-trend-legend { display: flex; gap: 12px; flex-wrap: wrap; }
 .oax-legend-item { display: inline-flex; align-items: center; gap: 5px; color: var(--text-2); font-size: var(--fs-label); white-space: nowrap; }
 .oax-legend-dot { width: 7px; height: 7px; flex: 0 0 7px; border-radius: 50%; }
 .oax-trend { display: flex; height: 100%; flex-direction: column; }
-.oax-trend-header { display: flex; align-items: center; margin-bottom: 8px; }
-.oax-trend-title { flex: 1; }
 .oax-trend-svg { flex: 0 0 150px; width: 100%; height: 150px; }
 .oax-trend-footer { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 6px; color: var(--text-2); font-size: var(--fs-label); }
 .oax-trend-empty { display: flex; height: 100%; min-height: 120px; align-items: center; justify-content: center; color: var(--text-3); font-size: var(--fs-sub); }
 
-.oax-kpi-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
-.oax-kpi { display: flex; min-width: 0; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface); cursor: pointer; }
-.oax-kpi:hover { background: var(--surface-sub); }
-.oax-kpi-icon { display: none; }
-.oax-kpi-body { flex: 1; min-width: 0; }
-.oax-kpi-label { color: var(--text-2); font-size: var(--fs-label); }
-.oax-kpi-val { color: var(--text); font-size: var(--fs-body); font-weight: 600; }
-.oax-kpi-meta { overflow: hidden; color: var(--text-3); font: var(--fs-label) var(--font-mono); text-overflow: ellipsis; white-space: nowrap; }
-
-.oax-grid-3 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gap-section); }
-.oax-grid-col { display: flex; flex-direction: column; gap: var(--gap-section); min-width: 0; }
 .heal-row,.fp-row { display: grid; align-items: center; gap: 10px; margin-bottom: 8px; color: var(--text); font-size: var(--fs-sub); }
 .heal-row { grid-template-columns: 60px minmax(0, 1fr) 36px; }
 .fp-row { grid-template-columns: 60px minmax(0, 1fr) 42px 48px; }
@@ -113,9 +83,6 @@ button.ov-status-row:hover { color: var(--accent); }
 .heal-hist-ts,.hs-pattern-date { color: var(--text-3); font: var(--fs-label) var(--font-mono); text-align: right; white-space: nowrap; }
 .heal-bar-track,.fp-bar-track { background: var(--surface-sub); }
 .oax-card-badge { border-radius: var(--radius-badge); }
-.cmd-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-.cmd-btn { padding: 10px; border: 1px solid var(--border); border-radius: var(--radius-ctrl); background: var(--surface); color: var(--text-2); font: inherit; cursor: pointer; }
-.cmd-btn:hover { background: var(--surface-sub); }
 .ov-log-box { max-height: 220px; overflow: auto; padding: 12px 16px; border: 1px solid var(--border); border-radius: var(--radius-ctrl); background: var(--log-bg); color: var(--text-2); font: var(--fs-label) / 1.7 var(--font-mono); white-space: pre-wrap; word-break: break-all; }
 .ov-log-tab,.ov-log-refresh { min-height: 30px; padding: 0 10px; border: 1px solid var(--border); border-radius: var(--radius-ctrl); background: var(--surface); color: var(--text-2); font: var(--fs-label) var(--font-sans); cursor: pointer; }
 .ov-log-tab:hover,.ov-log-refresh:hover { background: var(--surface-sub); }
@@ -138,13 +105,10 @@ button.ov-status-row:hover { color: var(--accent); }
 
 @media (max-width: 1000px) {
   .ov-main-grid { grid-template-columns: minmax(0, 1fr); }
-  .oax-hero { grid-template-columns: minmax(0, 1fr); }
 }
 
 @media (max-width: 900px) {
   .ov-summary-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .ov-summary-item:nth-child(3) { border-left: 0; border-top: 1px solid var(--border); }
   .ov-summary-item:nth-child(4) { border-top: 1px solid var(--border); }
-  .oax-kpi-row,.oax-grid-3 { grid-template-columns: minmax(0, 1fr); }
-  .oax-hero-left { align-items: flex-start; flex-direction: column; }
 }

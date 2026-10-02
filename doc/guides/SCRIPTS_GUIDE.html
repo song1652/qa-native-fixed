@@ -311,7 +311,7 @@ object 형식 사용 시 <code>page_meta</code>(auth, spa, preconditions, notes)
 | <strong>단일 파이프라인 실행</strong> | 단일 파이프라인 탭 → 페이지 선택 → URL 자동 표시 → 케이스 폴더 선택 → "파이프라인 실행" 버튼 |
 | <strong>병렬 파이프라인 실행</strong> | 병렬 파이프라인 탭 → "병렬 실행" 버튼 (pages.json + testcases/ 자동 스캔) |
 | <strong>빠른 실행</strong> | 빠른 실행 탭 → tests/generated/ 폴더 체크박스 선택 → "힐링 생략" 체크(선택) → "테스트 실행" 버튼 (전체 파이프라인 불필요) |
-| <strong>99_merge.py 실행</strong> | 병렬 파이프라인 탭 → 워커 완료 후 "99_merge.py 실행" 버튼 |
+| <strong>병렬 결과 병합</strong> | 병렬 실행 흐름에서 처리. 수동 실행은 <code>python3 parallel/99_merge.py</code> 사용 |
 | 단일 파이프라인 진행 상태 | 리뷰 완료 후 자동 실행 (승인 단계 없음) |
 | 실행 로그 실시간 확인 | 실행 버튼 클릭 후 하단 로그 박스에 3초 간격 폴링 표시 |
 | 파이프라인 진행 상태 모니터링 | 단일: 6단계 프로그레스 바 / 병렬: 워커 카드 그리드 |
@@ -647,8 +647,7 @@ P44부터 트리거 조건 값은 <code>_pipeline_registry.py</code>의 <code>St
 </tr>
 </tbody>
 </table></div>
-<p>| <code>agents/dashboard/tools/scope_tc_studio_css.py</code> | 목업 CSS → <code>static/css/tc-studio.css</code> 생성 (목업을 고친 뒤 다시 실행) | ✅ (<code>.venv/bin/python agents/dashboard/tools/scope_tc_studio_css.py &lt;목업&gt; &lt;출력&gt;</code>) |
-| <code>scripts/assert_guard.py</code> | 힐링 패치 후 assertion 약화 감지. <code>original_assertions</code>(최초) vs 현재 파일 비교 → 감소 시 경고 출력 | ✅ (<code>.venv/bin/python scripts/assert_guard.py</code>) |
+<p>| <code>scripts/assert_guard.py</code> | 힐링 패치 후 assertion 약화 감지. <code>original_assertions</code>(최초) vs 현재 파일 비교 → 감소 시 경고 출력 | ✅ (<code>.venv/bin/python scripts/assert_guard.py</code>) |
 | <code>scripts/jira_reporter.py</code> | 테스트 실패 시 Jira 이슈 자동 생성. 스크린샷·영상 첨부 포함. <code>config/jira_config.json</code> 또는 환경변수 <code>JIRA_TOKEN</code> 설정 필요. <code>99_merge.py</code>가 최종 실패 시 자동 호출 | ✅ (<code>.venv/bin/python scripts/jira_reporter.py [--group G] [--dry-run] [--all]</code>, <code>--all</code>은 이미 만든 이슈도 다시 생성) |
 | <code>scripts/parse_cases.py</code> | <code>.md</code>/<code>.json</code> 테스트케이스 파일 파서 (YAML frontmatter 지원). frontmatter 문자열값의 따옴표 자동 제거 (<code>id: "CL_01"</code> → <code>CL_01</code>). Steps는 번호(<code>1.</code>) 형식 권장이나 번호 없는 평문 줄도 파싱 지원 | ❌ (run_qa.py가 import해서 사용) |
 | <code>tests/unit/</code> | 저장소 단위 테스트 — <code>pipeline/</code> <code>hooks/</code> <code>core/</code> <code>dashboard/</code> <code>import_studio/</code> 영역별 폴더 (파서 테스트: <code>core/test_core_parsers.py</code>) | ❌ (<code>pytest</code>가 자동 실행) |

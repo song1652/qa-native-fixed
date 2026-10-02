@@ -3,7 +3,6 @@ Step 3 -- 코드 lint 검사
 LLM 없음. flake8 실행 후 결과를 state.json에 저장.
 Claude Code는 결과를 보고 QA 리드용 요약을 직접 작성한다.
 """
-import json
 import subprocess
 import sys
 from pathlib import Path
