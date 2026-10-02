@@ -9,7 +9,7 @@ function renderMessage(msg, tabId, sessIdx, msgIdx) {
   const plan = msg.metadata && msg.metadata.proposed_plan;
   if (plan) {
     const planJson = esc(JSON.stringify(plan, null, 2));
-    planToggle = `<button class="plan-toggle" onclick="togglePlan('${uid}')">&#9654; proposed_plan 보기</button><div class="plan-body" id="plan-${uid}">${planJson}</div>`;
+    planToggle = `<button class="plan-toggle" onclick="togglePlan('${uid}')">&#9654; 제안 계획 보기</button><div class="plan-body" id="plan-${uid}">${planJson}</div>`;
   }
 
   let statusTag = '';
@@ -44,14 +44,23 @@ function renderSession(session, tabId, idx) {
 
 function renderTeamNew(main) {
   main.innerHTML = `
-    <div class="pipeline-view"><div style="max-width:520px;">
-      <div class="pipeline-title" style="margin-bottom:8px;">새 토론 시작</div>
-      <p style="font-size:13px;color:var(--text-dim);margin-bottom:20px;line-height:1.6;">주제를 입력하면 사수/부사수 멀티라운드 토론이 시작됩니다.</p>
-      <textarea id="new-topic-input" class="new-topic-input" placeholder="주제를 입력하세요..." rows="4" style="width:100%;"></textarea>
-      <button id="new-topic-btn" class="new-topic-btn" onclick="submitTopic()" style="width:100%;margin-top:12px;">토론 시작</button>
-      <div class="topic-status" id="topic-status"></div>
-    </div></div>
-  `;
+    <div class="pipeline-view team-new-view">
+      <div class="pipeline-title">새 토론 시작</div>
+      <p class="pipeline-subtitle">주제를 입력하면 사수와 부사수가 여러 라운드 토론한 뒤 결론을 냅니다. 결론은 승인하거나 반려합니다.</p>
+      <div class="team-new-grid">
+        <section class="team-card"><h3>토론 주제</h3><div class="team-card-body">
+          <label class="team-field-label" for="new-topic-input">주제</label>
+          <textarea id="new-topic-input" class="new-topic-input" placeholder="논의할 주제와 판단 기준을 입력하세요" rows="6"></textarea>
+          <button id="new-topic-btn" class="new-topic-btn" onclick="submitTopic()">토론 시작</button>
+          <div class="topic-status" id="topic-status"></div>
+        </div></section>
+        <section class="team-card"><h3>진행 방식</h3><ol class="team-guide">
+          <li>사수가 기준안을 제시합니다.</li><li>부사수가 반론과 보완점을 냅니다.</li>
+          <li>라운드마다 합의점을 정리합니다.</li><li>마지막에 결론과 검토 항목이 나옵니다.</li>
+          <li>승인한 항목은 구현 요청으로 넘어갑니다.</li>
+        </ol></section>
+      </div>
+    </div>`;
 }
 
 function renderTeamView(main) {
@@ -66,7 +75,7 @@ function renderTeamView(main) {
     main.innerHTML = '<div class="empty"><div class="empty-icon" aria-hidden="true"><svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="8" y="6" width="24" height="28" rx="3"></rect><line x1="13" y1="14" x2="27" y2="14"></line><line x1="13" y1="20" x2="27" y2="20"></line><line x1="13" y1="26" x2="21" y2="26"></line></svg></div><h2>토론 대기 중</h2><p>사이드바의 <strong>새 토론 시작</strong>을 클릭해 주제를 입력하세요</p></div>';
     return;
   }
-  main.innerHTML = sessions.map((s, i) => renderSession(s, currentView, i)).join('');
+  main.innerHTML = `<div class="pipeline-view team-session-view"><div class="pipeline-title">${esc(sessions[0].stage_label || sessions[0].stage || '팀 토론')}</div><p class="pipeline-subtitle">사수와 부사수의 토론 기록을 확인하고 결론 항목을 검토합니다.</p>${sessions.map((s, i) => renderSession(s, currentView, i)).join('')}</div>`;
 }
 
 function renderVoteSection(key, items) {
@@ -108,7 +117,7 @@ function toggleVoteItem(key, id) {
 async function voteItem(key, itemId, vote) {
   const actEl = document.getElementById(`va-${key}-${itemId}`);
   const itemEl = document.getElementById(`vi-${key}-${itemId}`);
-  if (actEl) actEl.innerHTML = '<span style="font-size:11px;color:var(--text-dim)">&#9203;</span>';
+  if (actEl) actEl.innerHTML = '<span style="font-size:11px;color:var(--text-dim)">처리 중</span>';
   try {
     const res = await fetch('/api/discuss/vote_item', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },

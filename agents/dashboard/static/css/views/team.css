@@ -1,371 +1,48 @@
-    /* ── Session card ── */
-    .session {
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      overflow: hidden;
-      margin-bottom: 16px;
-      background: var(--surface-glass);
-      backdrop-filter: blur(24px);
-      -webkit-backdrop-filter: blur(24px);
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-      position: relative;
-    }
-
-    .session::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.25), rgba(167, 139, 250, 0.3), transparent);
-      z-index: 1;
-    }
-
-    .session:last-child {
-      margin-bottom: 0;
-    }
-
-    .session-header {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 16px 20px;
-      background: rgba(22, 20, 50, 0.3);
-      cursor: pointer;
-      user-select: none;
-      transition: background 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-      border-bottom: 1px solid var(--border);
-    }
-
-    .session-header:hover {
-      background: rgba(28, 24, 60, 0.4);
-    }
-
-    .session-stage {
-      font-family: 'Outfit', sans-serif;
-      font-size: 14px;
-      font-weight: 600;
-      flex: 1;
-    }
-
-    .session-meta {
-      font-size: 12px;
-      color: var(--text-dim);
-    }
-
-    .session-toggle {
-      font-size: 12px;
-      color: var(--text-dim);
-    }
-
-    /* ── Messages ── */
-    .messages {
-      padding: 20px;
-      display: flex;
-      flex-direction: column;
-      gap: 18px;
-      background: rgba(12, 10, 30, 0.35);
-    }
-
-    .messages.collapsed {
-      display: none;
-    }
-
-    .msg {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-
-    .msg-meta {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 12px;
-      color: var(--text-dim);
-    }
-
-    .role-badge {
-      font-size: 11px;
-      font-weight: 700;
-      padding: 2px 10px;
-      border-radius: 10px;
-    }
-
-    .role-senior {
-      background: rgba(96, 165, 250, 0.1);
-      color: var(--senior-accent);
-      border: 1px solid rgba(96, 165, 250, 0.3);
-    }
-
-    .role-junior {
-      background: rgba(52, 211, 153, 0.1);
-      color: var(--junior-accent);
-      border: 1px solid rgba(52, 211, 153, 0.3);
-    }
-
-    .role-deliberation {
-      background: rgba(167, 139, 250, 0.1);
-      color: var(--delib-accent);
-      border: 1px solid rgba(167, 139, 250, 0.3);
-    }
-
-    .msg-bubble {
-      padding: 14px 16px;
-      border-radius: 4px 16px 16px 16px;
-      line-height: 1.65;
-      white-space: pre-wrap;
-      word-break: break-word;
-      font-size: 13.5px;
-    }
-
-    .bubble-senior {
-      background: rgba(22, 20, 50, 0.4);
-      border: 1px solid rgba(96, 165, 250, 0.15);
-    }
-
-    .bubble-junior {
-      background: rgba(6, 78, 59, 0.2);
-      border: 1px solid rgba(52, 211, 153, 0.15);
-    }
-
-    .bubble-deliberation {
-      background: rgba(42, 31, 70, 0.4);
-      border: 1px solid rgba(167, 139, 250, 0.15);
-    }
-
-    .msg-status-tag {
-      align-self: flex-start;
-      font-size: 11px;
-      font-weight: 600;
-      padding: 2px 10px;
-      border-radius: 10px;
-      margin-top: 2px;
-    }
-
-    /* ── Plan toggle ── */
-    .plan-toggle {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      font-size: 12px;
-      color: var(--junior-accent);
-      cursor: pointer;
-      margin-top: 6px;
-      padding: 4px 12px;
-      border-radius: 8px;
-      border: 1px solid var(--junior-border);
-      background: transparent;
-      font-family: inherit;
-    }
-
-    .plan-toggle:hover {
-      background: var(--junior-bg);
-    }
-
-    .plan-body {
-      margin-top: 8px;
-      padding: 14px;
-      border-radius: 8px;
-      background: rgba(8, 7, 20, 0.6);
-      border: 1px solid var(--border-glass);
-      font-size: 12.5px;
-      font-family: 'Consolas', 'Courier New', monospace;
-      white-space: pre-wrap;
-      word-break: break-all;
-      color: var(--accent-secondary);
-      display: none;
-      max-height: 400px;
-      overflow-y: auto;
-    }
-
-    .plan-body.open {
-      display: block;
-    }
-
-    /* ── 항목별 투표 섹션 ── */
-    .vote-section {
-      padding: 16px 20px;
-      background: rgba(18, 16, 42, 0.35);
-      border-top: 1px solid var(--border-glass);
-    }
-
-    .vote-section-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 12px;
-    }
-
-    .vote-section-label {
-      font-size: 12px;
-      color: var(--text-dim);
-    }
-
-    .vote-progress {
-      font-size: 11px;
-      font-weight: 700;
-      color: var(--text-dim);
-    }
-
-    .vote-item {
-      border: 1px solid var(--border-glass);
-      border-radius: var(--radius-md);
-      margin-bottom: 8px;
-      overflow: hidden;
-      transition: border-color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-      cursor: pointer;
-      background: rgba(12, 10, 30, 0.25);
-    }
-
-    .vote-item:last-child {
-      margin-bottom: 0;
-    }
-
-    .vote-item[data-status="approved"] {
-      border-color: var(--approved-border);
-    }
-
-    .vote-item[data-status="rejected"] {
-      border-color: var(--revision-border);
-    }
-
-    .vote-item-top {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 10px 14px;
-      background: rgba(22, 20, 50, 0.3);
-    }
-
-    .vote-item-title {
-      flex: 1;
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--text);
-    }
-
-    .vote-item-body {
-      padding: 10px 14px;
-      font-size: 12px;
-      color: var(--text-dim);
-      background: rgba(12, 10, 30, 0.25);
-      white-space: pre-wrap;
-      line-height: 1.6;
-      display: block;
-    }
-
-    .vote-item.collapsed .vote-item-body {
-      display: none;
-    }
-
-    .vote-tag {
-      font-size: 11px;
-      font-weight: 600;
-      padding: 2px 10px;
-      border-radius: 10px;
-    }
-
-    .vote-tag-approve {
-      background: var(--approved-bg);
-      color: var(--approved-color);
-      border: 1px solid var(--approved-border);
-    }
-
-    .vote-tag-reject {
-      background: var(--revision-bg);
-      color: var(--revision-color);
-      border: 1px solid var(--revision-border);
-    }
-
-    .vote-btn-y {
-      padding: 5px 14px;
-      border-radius: 6px;
-      font-size: 12px;
-      font-weight: 600;
-      background: transparent;
-      color: var(--approved-color);
-      border: 1px solid var(--approved-border);
-      cursor: pointer;
-      font-family: inherit;
-      transition: background .15s;
-    }
-
-    .vote-btn-y:hover {
-      background: var(--approved-bg);
-    }
-
-    .vote-btn-n {
-      padding: 5px 14px;
-      border-radius: 6px;
-      font-size: 12px;
-      font-weight: 600;
-      background: transparent;
-      color: var(--text-dim);
-      border: 1px solid var(--border);
-      cursor: pointer;
-      font-family: inherit;
-      transition: all .15s;
-    }
-
-    .vote-btn-n:hover {
-      background: var(--revision-bg);
-      color: var(--revision-color);
-      border-color: var(--revision-border);
-    }
-
-    /* ── 승인 액션 바 ── */
-    .approve-bar {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 14px 20px;
-      background: rgba(22, 20, 50, 0.3);
-      border-top: 1px solid var(--border-glass);
-    }
-
-    .approve-bar-label {
-      flex: 1;
-      font-size: 12px;
-      color: var(--text-dim);
-    }
-
-    .btn-approve {
-      padding: 8px 22px;
-      border-radius: 10px;
-      font-size: 13px;
-      font-weight: 600;
-      background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(16, 185, 129, 0.05) 100%);
-      color: var(--approved-color);
-      border: 1px solid rgba(16, 185, 129, 0.25);
-      cursor: pointer;
-      font-family: inherit;
-      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-      letter-spacing: 0.3px;
-    }
-
-    .btn-approve:hover {
-      background: linear-gradient(135deg, rgba(16, 185, 129, 0.18) 0%, rgba(16, 185, 129, 0.08) 100%);
-      transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15);
-    }
-
-    .btn-reject {
-      padding: 7px 20px;
-      border-radius: 8px;
-      font-size: 13px;
-      font-weight: 600;
-      background: transparent;
-      color: var(--text-dim);
-      border: 1px solid var(--border);
-      cursor: pointer;
-      font-family: inherit;
-      transition: all .15s;
-    }
-
-    .btn-reject:hover {
-      background: var(--revision-bg);
-      color: var(--revision-color);
-      border-color: var(--revision-border);
-    }
+/* 팀 토론 — TeamNew / TeamSession / TeamVote */
+.team-new-view .pipeline-title,.team-session-view .pipeline-title { margin-bottom: 4px; }
+.team-new-grid { display: grid; grid-template-columns: minmax(0,1fr) 340px; gap: 20px; align-items: start; }
+.team-card,.session { border: 1px solid var(--border); border-radius: var(--radius-card); overflow: hidden; margin-bottom: 20px; background: var(--surface); }
+.team-card h3 { padding: 14px 16px; border-bottom: 1px solid var(--border); font-size: var(--fs-h3); font-weight: 600; }
+.team-card-body { padding: 16px; }
+.team-field-label { display: block; margin-bottom: 6px; color: var(--text-2); font-size: var(--fs-label); }
+.team-card .new-topic-input { width: 100%; }
+.team-card .new-topic-btn { width: auto; margin-top: 16px; min-height: 44px; padding: 0 24px; border-color: var(--accent); background: var(--accent); color: var(--on-accent); }
+.team-card .new-topic-btn:hover { background: var(--accent-hover); }
+.team-guide { padding: 16px 16px 16px 34px; color: var(--text-2); font-size: var(--fs-sub); line-height: 1.9; }
+.session-header { display: flex; align-items: center; gap: 10px; width: 100%; padding: 14px 16px; border: 0; border-bottom: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; font: inherit; text-align: left; }
+.session-header:hover { background: var(--surface-sub); }
+.session-stage { font-size: var(--fs-h3); font-weight: 600; flex: 1; }
+.session-meta,.session-toggle { font-size: var(--fs-label); color: var(--text-3); }
+.messages { padding: 16px; display: flex; flex-direction: column; gap: 20px; background: var(--surface); }
+.messages.collapsed { display: none; }
+.msg { display: flex; flex-direction: column; gap: 8px; }
+.msg-meta { display: flex; align-items: center; gap: 8px; font-size: var(--fs-label); color: var(--text-3); }
+.role-badge,.msg-status-tag,.vote-tag { font-size: var(--fs-label); font-weight: 600; padding: 2px 8px; border-radius: var(--radius-badge); }
+.role-senior,.role-deliberation { background: var(--accent-bg); color: var(--accent); }
+.role-junior { background: var(--surface-sub); color: var(--text-2); }
+.msg-bubble { padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius-card); line-height: 1.65; white-space: pre-wrap; overflow-wrap: anywhere; font-size: var(--fs-body); background: var(--surface-sub); }
+.bubble-senior,.bubble-deliberation { background: var(--surface); }
+.msg-status-tag { align-self: flex-start; }
+.plan-toggle { align-self: flex-start; padding: 6px 12px; border: 1px solid var(--border); border-radius: var(--radius-ctrl); background: var(--surface); color: var(--accent); cursor: pointer; font: var(--fs-sub) var(--font-sans); }
+.plan-body { display: none; padding: 14px; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--log-bg); color: var(--text-2); font: var(--fs-sub) / 1.6 var(--font-mono); white-space: pre-wrap; overflow-wrap: anywhere; max-height: 400px; overflow: auto; }
+.plan-body.open { display: block; }
+.vote-section { padding: 16px; border-top: 1px solid var(--border); background: var(--surface); }
+.vote-section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.vote-section-label { font-size: var(--fs-h3); font-weight: 600; }
+.vote-progress { font: var(--fs-label) var(--font-mono); color: var(--text-3); }
+.vote-item { border: 1px solid var(--border); border-radius: var(--radius-card); margin-bottom: 8px; overflow: hidden; cursor: pointer; background: var(--surface); }
+.vote-item[data-status="approved"] { border-color: var(--pass); }
+.vote-item[data-status="rejected"] { border-color: var(--fail); }
+.vote-item-top { display: flex; align-items: center; gap: 10px; padding: 12px 14px; }
+.vote-item-title { flex: 1; font-size: var(--fs-body); font-weight: 600; }
+.vote-item-body { padding: 12px 14px; border-top: 1px solid var(--border); color: var(--text-2); font-size: var(--fs-sub); white-space: pre-wrap; line-height: 1.6; }
+.vote-item.collapsed .vote-item-body { display: none; }
+.vote-tag-approve { background: var(--pass-bg); color: var(--pass); }
+.vote-tag-reject { background: var(--fail-bg); color: var(--fail); }
+.vote-btn-y,.vote-btn-n,.btn-approve,.btn-reject { min-height: 34px; padding: 0 14px; border-radius: var(--radius-ctrl); font: var(--fs-sub) var(--font-sans); background: var(--surface); color: var(--text); border: 1px solid var(--border); cursor: pointer; }
+.vote-btn-y:hover { background: var(--pass-bg); color: var(--pass); }
+.vote-btn-n:hover,.btn-reject:hover { background: var(--fail-bg); color: var(--fail); }
+.approve-bar { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-top: 1px solid var(--border); }
+.approve-bar-label { flex: 1; font-size: var(--fs-sub); color: var(--text-2); }
+.btn-approve { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+@media (max-width: 1000px) { .team-new-grid { grid-template-columns: minmax(0,1fr); } }

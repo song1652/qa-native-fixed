@@ -11,8 +11,8 @@ var STATUS_CLASS = {
   approved: 'status-approved', revision_needed: 'status-revision_needed', rejected: 'status-revision_needed',
 };
 var MSG_STATUS_STYLE = {
-  approved: 'background:#1a2e1e;color:#3fb950;border:1px solid #238636',
-  revision_needed: 'background:#2d1212;color:#f85149;border:1px solid #da3633',
+  approved: 'background:var(--pass-bg);color:var(--pass);border:1px solid var(--border)',
+  revision_needed: 'background:var(--fail-bg);color:var(--fail);border:1px solid var(--border)',
 };
 
 // ── 파이프라인 단계 상수 (초기 fallback; /api/pipeline_registry fetch 후 갱신) ──
