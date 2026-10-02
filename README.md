@@ -219,6 +219,8 @@ python agents/dashboard/serve.py
 
 단일/병렬 파이프라인 실행, 빠른 실행, 팀 토론, 리포트 열람, 실행 로그 모니터링 지원.
 
+> 최신 화면과 메뉴별 사용법: [웹 QA 대시보드 사용자 가이드](doc/guides/DASHBOARD_USER_GUIDE.md)
+
 > 대시보드 기능 상세 · API 엔드포인트: [`doc/guides/SCRIPTS_GUIDE.md`](doc/guides/SCRIPTS_GUIDE.md) 참조
 
 ---

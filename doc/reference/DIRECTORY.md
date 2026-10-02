@@ -1,6 +1,6 @@
 # 디렉토리 구조
 
-> **자동 생성** — `python scripts/update_directory.py` | 마지막 갱신: 2026-10-02 07:53
+> **자동 생성** — `python scripts/update_directory.py` | 마지막 갱신: 2026-10-02 12:01
 > 최근 실행: 2026-10-01 09:43 | quick | partner_login/customer_login | 4/4 | heal:0
 
 > 역할 설명 수정: `scripts/update_directory.py` 내 `SCRIPT_DESCRIPTIONS` / `FOLDER_DESCRIPTIONS` 편집.
@@ -186,20 +186,7 @@
 | 파일 | 역할 |
 |------|------|
 | `README.md` | 문서 안내 |
-| `design/PROJECT_OVERVIEW.md` | QA-Native — 아키텍처 문서 |
-| `design/tc-studio/TC_AUTHORING_ELEMENT_SPEC.md` | TC 스튜디오 요소 동작 명세 |
-| `design/tc-studio/TC_AUTHORING_PRD.md` | PRD: TC Authoring Studio (문서 기반 테스트케이스 작성·관리) |
-| `development/DOCUMENTATION_REVIEW.md` | 문서 정리 기록 |
-| `development/design-refresh/HANDOFF.md` | 웹 대시보드 디자인 교체 — 인수인계 |
-| `development/tc-studio/IMPORT_STUDIO_INTEGRATION_REVIEW.md` | Import Studio를 TC 스튜디오에 통합하는 방안 |
-| `development/tc-studio/TC_AUTHORING_HANDOFF.md` | TC Authoring Studio 개발 인수인계 |
-| `development/tc-studio/TC_AUTHORING_IMPLEMENTATION_REPORT.md` | TC Authoring Studio 구현 보고 |
-| `development/tc-studio/TC_AUTHORING_ROADMAP.md` | TC Authoring Studio 개발 로드맵 |
-| `development/tc-studio/plans/2026-09-29-tc-authoring-phase1.md` | TC Authoring Studio Phase 1 Implementation Plan — 라이브러리 + 엑셀 왕복 |
-| `development/tc-studio/plans/2026-09-30-import-integration.md` | Import 기능의 TC 스튜디오 통합 구현 계획 |
-| `development/tc-studio/plans/2026-09-30-tc-authoring-phase2.md` | TC Authoring Studio Phase 2 Implementation Plan — 파일 소스 · 생성 작업 · 초안 검토 |
-| `development/tc-studio/plans/2026-09-30-tc-authoring-phase3.md` | TC Authoring Studio Phase 3 Implementation Plan — Confluence · Figma · PRD URL · 출처 버전 추적 |
-| `development/tc-studio/plans/2026-09-30-tc-authoring-phase4.md` | TC Authoring Studio Phase 4 Implementation Plan — md 내보내기 (파이프라인 연결) |
+| `guides/DASHBOARD_USER_GUIDE.md` | 웹 QA 대시보드 사용자 가이드 |
 | `guides/SCRIPTS_GUIDE.md` | 파이썬 파일 실행 가이드 |
 | `guides/TEST_CASE_GUIDE.md` | QA-Native 테스트 케이스 작성 가이드 |
 | `guides/tc-studio/TC_AUTHORING_USER_GUIDE.md` | TC 스튜디오 사용자 설명서 |

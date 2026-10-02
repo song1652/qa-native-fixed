@@ -120,7 +120,7 @@ FLAKY_TESTS_PATH = STATE_DIR / "flaky_tests.json"
 IMPORT_SESSIONS_DIR  = STATE_DIR / "import_sessions"
 IMPORT_SNAPSHOTS_DIR = STATE_DIR / "import_snapshots"
 IMPORT_PROFILES_PATH = STATE_DIR / "import_profiles.json"
-# TC 스튜디오 라이브러리 (doc/design/tc-studio/TC_AUTHORING_PRD.md §5). 스위트마다 하위 폴더,
+# TC 스튜디오 라이브러리 (doc/guides/tc-studio/TC_AUTHORING_USER_GUIDE.md). 스위트마다 하위 폴더,
 # "_uploads"·"_exports"처럼 "_"로 시작하는 폴더는 스위트가 아니라 작업 공간이다.
 TC_LIBRARY_DIR = STATE_DIR / "tc_library"
 

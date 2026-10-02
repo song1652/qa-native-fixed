@@ -168,7 +168,9 @@ object 형식 사용 시 `page_meta`(auth, spa, preconditions, notes)가 subagen
 
 ### `agents/dashboard/serve.py` — 모니터링 대시보드
 
-사수/부사수 대화를 실시간으로 보고, 팀 토론을 진행·승인할 수 있는 웹 UI 서버입니다.
+TC 작성·내보내기, 파이프라인 실행·모니터링, 리포트 열람과 팀 토론을 지원하는 웹 UI 서버입니다.
+
+최신 밝은 테마 화면과 메뉴별 사용 방법은 [웹 QA 대시보드 사용자 가이드](DASHBOARD_USER_GUIDE.md)를 참고하세요. TC 작성부터 내보내기까지는 [TC 스튜디오 사용자 설명서](tc-studio/TC_AUTHORING_USER_GUIDE.md)에 있습니다.
 
 ```bash
 .venv/bin/python agents/dashboard/serve.py
@@ -199,21 +201,21 @@ object 형식 사용 시 `page_meta`(auth, spa, preconditions, notes)가 subagen
 **대시보드에서 할 수 있는 것:**
 | 기능 | 방법 |
 |---|---|
-| **단일 파이프라인 실행** | 단일 파이프라인 탭 → 페이지 선택 → URL 자동 표시 → 케이스 폴더 선택 → "run_qa.py 실행" 버튼 |
-| **병렬 파이프라인 실행** | 병렬 파이프라인 탭 → "run_qa_parallel.py 실행" 버튼 (pages.json + testcases/ 자동 스캔) |
+| **단일 파이프라인 실행** | 단일 파이프라인 탭 → 페이지 선택 → URL 자동 표시 → 케이스 폴더 선택 → "파이프라인 실행" 버튼 |
+| **병렬 파이프라인 실행** | 병렬 파이프라인 탭 → "병렬 실행" 버튼 (pages.json + testcases/ 자동 스캔) |
 | **빠른 실행** | 빠른 실행 탭 → tests/generated/ 폴더 체크박스 선택 → "힐링 생략" 체크(선택) → "테스트 실행" 버튼 (전체 파이프라인 불필요) |
 | **99_merge.py 실행** | 병렬 파이프라인 탭 → 워커 완료 후 "99_merge.py 실행" 버튼 |
 | 단일 파이프라인 진행 상태 | 리뷰 완료 후 자동 실행 (승인 단계 없음) |
 | 실행 로그 실시간 확인 | 실행 버튼 클릭 후 하단 로그 박스에 3초 간격 폴링 표시 |
 | 파이프라인 진행 상태 모니터링 | 단일: 6단계 프로그레스 바 / 병렬: 워커 카드 그리드 |
-| 테스트 결과 필터·페이지네이션 | All/Pass/Fail 필터 버튼 + 20개 단위 페이지 (단일·병렬·빠른 실행 공통) |
-| **힐링 통계 시각화** | Overview 대시보드에 Heal Stats 위젯: 오류 유형별 도넛 차트 + Top 5 빈출 패턴 목록 |
+| 테스트 결과 필터·페이지네이션 | 전체/통과/실패/건너뜀 필터 버튼 + 20개 단위 페이지 (단일·병렬·빠른 실행 공통) |
+| **힐링 통계 시각화** | 대시보드의 힐링 통계: 오류 유형별 도넛 차트 + Top 5 빈출 패턴 목록 |
 | 팀 토론 실시간 모니터링 | 사수/부사수 티키타카 대화가 발언마다 실시간 표시 (SSE) |
 | 팀 토론 시작 | 팀 토론 섹션 주제 입력 → 토론 시작 버튼 |
 | 토론 결론 항목별 승인 | 각 항목 ✓/✗ 버튼 클릭 |
 | 승인 후 자동 구현 | 전체 투표 완료 시 스케줄러(2분 내)가 자동으로 Claude에게 구현 지시 |
 | 테스트 리포트 열람 | 리포트 목록 탭 → 리포트 클릭 (인라인 iframe 또는 새 탭) |
-| 대화 초기화 | 우측 상단 "대화 초기화" 버튼 |
+| **TC 작성·내보내기** | TC 스튜디오 → 기획 정보 · 생성/라이브러리/초안 검토/내보내기 |
 
 > **참고**: QA 파이프라인 심의(Plan·코드리뷰·힐링)는 대시보드에 표시되지 않습니다.
 > 결과는 `state/pipeline.json`에 저장되며, 터미널 로그에서 확인할 수 있습니다.
@@ -383,7 +385,7 @@ kill -9 [PID]
 | `scripts/_tc_credentials.py` | Confluence·Figma 자격증명 (마스킹·환경변수 우선) | ❌ (대시보드가 import) |
 | `scripts/_tc_connectors.py` | PRD URL·Confluence·Figma 소스 수집 | ❌ (대시보드가 import) |
 | `scripts/_tc_source_watch.py` | 출처 버전 변경 확인·차이·확인 완료 | ❌ (대시보드가 import) |
-| `scripts/_tc_md_export.py` | TC 라이브러리 → testcases/{group}/tc_*.md (퍼널·그룹 매핑·tc_id 고정·드리프트, 커밋·롤백은 Import Studio) | ❌ (대시보드가 import) |
+| `scripts/_tc_md_export.py` | TC 라이브러리 → testcases/{group}/tc_*.md (퍼널·그룹 매핑·tc_id 고정·드리프트, 반영·롤백은 TC 스튜디오) | ❌ (대시보드가 import) |
 
 | `agents/dashboard/tools/scope_tc_studio_css.py` | 목업 CSS → `static/css/tc-studio.css` 생성 (목업을 고친 뒤 다시 실행) | ✅ (`.venv/bin/python agents/dashboard/tools/scope_tc_studio_css.py <목업> <출력>`) |
 | `scripts/assert_guard.py` | 힐링 패치 후 assertion 약화 감지. `original_assertions`(최초) vs 현재 파일 비교 → 감소 시 경고 출력 | ✅ (`.venv/bin/python scripts/assert_guard.py`) |

@@ -86,7 +86,6 @@
         "DIRECTORY.md",
         "HEALING_GUIDE.md",
         "PIPELINE_STATE.md",
-        "PROJECT_OVERVIEW.md",
         "SCRIPTS_GUIDE.md"
       ]
     },
@@ -318,12 +317,6 @@
       "path": "doc/guides/SCRIPTS_GUIDE.md",
       "accessCount": 4,
       "lastAccessed": 1775618308229,
-      "type": "file"
-    },
-    {
-      "path": "doc/design/PROJECT_OVERVIEW.md",
-      "accessCount": 4,
-      "lastAccessed": 1775618310555,
       "type": "file"
     },
     {
