@@ -245,3 +245,50 @@ def test_report_list_returns_more_than_two_hundred_items(report_api):
     assert status == 200
     assert len(reports) == 206
     assert reports[-1]["name"] == "oldest.html"
+
+
+LEGACY_REPORT = '''<!DOCTYPE html><html lang="ko"><head><title>QA Report</title>
+<style>:root {--bg:#0d1117;} body{background:var(--bg);}</style></head><body>
+<div class="layout"><aside class="sidebar"><li id="nav_all" data-nav="all">All (2)</li></aside>
+<div class="main"><div class="topbar"><h1>Test Results</h1><div class="overall-badge fail">1 FAILED</div></div>
+<div class="stat-lbl">Pass Rate</div><section class="group-card" id="group_demo">
+<div class="group-sub">1 / 2 passed</div><div class="group-title">DEMO</div>
+<button class="fbtn" data-filter="demo" data-filter-val="all">All (2)</button>
+<div class="case-item fail" data-status="fail" data-toggle="demo_1"><span class="case-title">ALL PASS 표기를 검증하는 원본 제목</span>
+<span class="case-status-txt fail">FAIL</span><div id="detail_demo_1"><span class="detail-label">Steps</span>
+<span class="detail-val">원본 입력: Test Results / PASS / FAIL</span><img src="/screenshots/failure.png" class="screenshot-thumb"></div></div>
+</section></div></div><script>var _gState = {};
+function toggleGroup(label) {return label;}</script></body></html>'''
+
+
+def test_legacy_report_uses_current_theme_without_changing_saved_results(report_api):
+    base_url, reports_dir = report_api
+    original = LEGACY_REPORT.encode('utf-8')
+    path = reports_dir / 'legacy.html'
+    path.write_bytes(original)
+    with urlopen(f'{base_url}/reports/legacy.html', timeout=10) as response:
+        content = response.read()
+        assert int(response.headers['Content-Length']) == len(content)
+    html = content.decode('utf-8')
+    assert '--bg:#F5F6F8' in html
+    assert '#0d1117' not in html
+    assert '<h1>테스트 리포트</h1>' in html
+    assert '1건 실패' in html and '>실패</span>' in html
+    assert '>전체 (2)</button>' in html and '>통과율</div>' in html
+    assert 'ALL PASS 표기를 검증하는 원본 제목' in html
+    assert '원본 입력: Test Results / PASS / FAIL' in html
+    assert 'data-status="fail" data-toggle="demo_1"' in html
+    assert 'id="detail_demo_1"' in html and '/screenshots/failure.png' in html
+    assert "startsWith('전체')" in html
+    assert path.read_bytes() == original
+
+
+def test_missing_report_uses_light_readable_empty_state(report_api):
+    base_url, _ = report_api
+    with pytest.raises(HTTPError) as error:
+        urlopen(f'{base_url}/reports/missing.html', timeout=10)
+    assert error.value.code == 404
+    html = error.value.read().decode('utf-8')
+    assert '리포트가 삭제되었습니다' in html
+    assert '#F5F6F8' in html and '#111827' in html
+    assert '#08071b' not in html and '🗑' not in html

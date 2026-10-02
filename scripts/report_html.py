@@ -352,6 +352,12 @@ def report_css() -> str:
   .nav-dot.pass{background:var(--pass)}.nav-dot.fail{background:var(--fail)}.nav-dot.warn{background:var(--warn)}
   .nav-count{margin-left:auto;font-size:12px;color:var(--text3);font-family:var(--mono);white-space:nowrap}
   .main{min-width:0}
+  .main>.topbar{padding:0 0 20px;align-items:flex-start;flex-wrap:wrap}
+  .sidebar-logo{display:none}
+  .meta{overflow-wrap:anywhere}
+  .case-right{flex-wrap:wrap}
+  .group-title{overflow-wrap:anywhere}
+  .filter-bar{flex-wrap:wrap;row-gap:8px}
   .overall-badge,.badge{display:inline-block;font-size:12px;font-weight:600;padding:2px 8px;border-radius:var(--radius-badge);white-space:nowrap}
   .overall-badge.pass,.badge.pass{background:var(--pass-bg);color:var(--pass)}
   .overall-badge.fail,.badge.fail{background:var(--fail-bg);color:var(--fail)}
@@ -415,7 +421,10 @@ def report_css() -> str:
   .lb-overlay{display:none;position:fixed;inset:0;background:var(--scrim);z-index:9999;align-items:center;justify-content:center;cursor:zoom-out}
   .lb-overlay.open{display:flex}
   .lb-overlay img{max-width:92vw;max-height:92vh;object-fit:contain;border-radius:var(--radius);box-shadow:var(--shadow)}
-  @media(max-width:800px){.layout{grid-template-columns:1fr;padding:20px}.sidebar{position:static;max-height:none}.topbar{padding:20px}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.stat-card{border-bottom:1px solid var(--border)}.filter-bar{flex-wrap:wrap;gap:6px}.group-title-wrap{gap:6px}.case-header{gap:8px}.case-detail{padding-left:16px}.detail-row{flex-direction:column;gap:4px}}
+  @media(max-width:1000px){.layout{grid-template-columns:1fr;gap:20px}.sidebar{position:static;max-height:none}.nav-section ul{display:flex;flex-wrap:wrap;gap:4px}.nav-item{border:1px solid var(--border);background:var(--surface)}.nav-item.active{border-color:var(--accent);background:var(--accent-bg)}.nav-count{margin-left:8px}}
+  @media(max-width:800px){.layout{grid-template-columns:1fr;padding:20px}.sidebar{position:static;max-height:none}.topbar{padding:20px}.filter-bar{flex-wrap:wrap;gap:6px}.group-title-wrap{gap:6px}.case-header{gap:8px}.case-detail{padding-left:16px}.detail-row{flex-direction:column;gap:4px}}
+  @media(max-width:600px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.stat-card{border-bottom:1px solid var(--border)}.stat-card:nth-child(2n+1){border-left:0}.stat-card:last-child{grid-column:1/-1;border-left:0;border-bottom:0}}
+  @media(max-width:480px){.layout,.topbar{padding:16px}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.stat-card{padding:12px}.case-header{flex-wrap:wrap}.case-title{min-width:calc(100% - 20px)}.case-right{margin-left:18px}.filter-bar{padding:10px 12px}.fbtn{padding:0 10px}.group-header{flex-wrap:wrap}}
 """
 
 
@@ -670,3 +679,70 @@ def build_report(groups_data: list, summary: dict,
 <script>{report_js()}</script>
 </body>
 </html>"""
+
+
+def refresh_report_theme(content: str) -> str:
+    """옛 공통 생성기의 결과 데이터·식별자는 보존하고 표시만 갱신한다."""
+    if not all(marker in content for marker in (
+        '<title>QA Report</title>', 'id="nav_all"', 'var _gState = {};',
+    )):
+        return content
+    content = re.sub(r'<style>.*?</style>', lambda _: f'<style>{report_css()}</style>',
+                     content, count=1, flags=re.S)
+    content = re.sub(r'<script>\s*var _gState = \{\};.*?</script>',
+                     lambda _: f'<script>{report_js()}</script>', content, count=1, flags=re.S)
+    labels = {
+        'QA Report': '테스트 리포트', 'Test Results': '테스트 리포트',
+        'Test Report': '단일 파이프라인', 'Parallel Test Report': '병렬 파이프라인',
+        'Total': '전체', 'Passed': '통과', 'Failed': '실패', 'Skipped': '건너뜀',
+        'Groups': '그룹',
+        'Precondition': '사전 조건', 'Steps': '실행 절차', 'Expected': '기대 결과',
+        'Skip Reason': '건너뛴 이유', 'Screenshots': '스크린샷', 'Videos': '영상',
+        'N/A': '미실행',
+    }
+
+    def localize(text):
+        if re.fullmatch(r'ALL\s+PASS', text):
+            return '모두 통과'
+        if re.fullmatch(r'Pass\s+Rate', text):
+            return '통과율'
+        if text in labels:
+            return labels[text]
+        for old, new in [('FAILED', '건 실패'), ('PASS', '통과'), ('FAIL', '실패'),
+                         ('SKIP', '건너뜀'), ('All', '전체'), ('Pass', '통과'),
+                         ('Fail', '실패'), ('Skip', '건너뜀'), ('passed', '통과'),
+                         ('skipped', '건너뜀')]:
+            text = re.sub(rf'\b{old}\b', new, text)
+        return text.replace(' 건 실패', '건 실패')
+
+    # 본문 제목·Step·Expected에는 같은 영어가 있어도 바꾸지 않는다.
+    classes = ('stat-lbl|overall-badge|case-status-txt|badge|detail-label|'
+               'artifact-sub-title|fbtn|group-sub|logo-sub|nav-label')
+    pattern = (rf'(<(?P<tag>span|div|button)[^>]*class="(?:{classes})\b[^>]*>)'
+               rf'([^<]*)(</(?P=tag)>)')
+    content = re.sub(pattern, lambda m: m[1] + localize(m[3]) + m[4], content)
+    for tag, text in [('title', 'QA Report'), ('h1', 'Test Results')]:
+        content = content.replace(f'<{tag}>{text}</{tag}>', f'<{tag}>{labels[text]}</{tag}>')
+    content = re.sub(r'(<li[^>]*id="nav_all"[^>]*>)([^<]*)(</li>)',
+                     lambda m: m[1] + localize(m[2]) + m[3], content)
+    content = re.sub(r'(<a[^>]*class="trace-link"[^>]*>).*?(</a>)',
+                     lambda m: m[1] + 'trace 명령 복사' + m[2], content, flags=re.S)
+    content = re.sub(r'(<a[^>]*class="artifact-dl"[^>]*>).*?(</a>)',
+                     lambda m: m[1] + '영상 다운로드' + m[2], content, flags=re.S)
+    content = re.sub(r'(<div class="meta">)([^<]*)(</div>)',
+                     lambda m: m[1] + re.sub(r'(\d+) cases', r'\1건',
+                         re.sub(r'(\d+) groups?', r'그룹 \1개', m[2])) + m[3], content)
+    content = re.sub(r'(<section class="group-card" id="group_([^"]+)">.*?'
+                     r'<span class="group-title">)([^<]*)(</span>)',
+                     lambda m: m[1] + _esc(m[2]) + m[4], content, flags=re.S)
+    content = re.sub(r'(<li class="nav-item" id="nav_([^"]+)"[^>]*>'
+                     r'<span class="nav-dot [^"]+"></span>)([^<]*)(<span class="nav-count">)',
+                     lambda m: m[1] + _esc(m[2]) + m[4], content)
+    # 이전 결과지의 본문 안 제목을 현재 생성기처럼 전체 폭 헤더로 옮긴다.
+    topbar = re.search(r'(<div class="main">\s*)(<div class="topbar">.*?)'
+                       r'(\s*<div class="stats">)', content, re.S)
+    if topbar:
+        content = content[:topbar.start()] + topbar[1] + topbar[3] + content[topbar.end():]
+        content = content.replace('<body>', '<body><header class="report-header">'
+                                  + topbar[2] + '</header>', 1)
+    return content

@@ -410,6 +410,11 @@ class GetRoutesMixin:
         ):
             try:
                 content = fpath.read_bytes()
+                from report_html import refresh_report_theme
+                try:
+                    content = refresh_report_theme(content.decode("utf-8")).encode("utf-8")
+                except UnicodeDecodeError:
+                    pass
             except OSError:
                 self.send_response(404)
                 self.end_headers()
@@ -417,6 +422,7 @@ class GetRoutesMixin:
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
             self.send_header("Content-Length", str(len(content)))
+            self.send_header("Cache-Control", "no-store")
             self.send_header("X-XSS-Protection", "0")
             self.send_header("Content-Security-Policy",
                              "default-src 'self' https:; "
@@ -428,22 +434,20 @@ class GetRoutesMixin:
             self.end_headers()
             self.wfile.write(content)
         else:
+            from report_html import report_css
+            import html
             body = (
-                "<!DOCTYPE html><html><head><meta charset='utf-8'>"
-                "<style>"
-                "body{display:flex;align-items:center;justify-content:center;"
-                "height:100vh;margin:0;font-family:'Inter',sans-serif;"
-                "background:#08071b;color:#b8b3d0;}"
-                ".box{text-align:center;padding:32px;border:1px solid rgba(140,120,220,0.12);"
-                "border-radius:16px;background:rgba(18,16,42,0.55);backdrop-filter:blur(12px);}"
-                ".icon{font-size:44px;margin-bottom:16px;line-height:1;}"
-                ".title{font-size:16px;font-weight:600;color:#f0eff5;margin-bottom:8px;}"
-                ".sub{font-size:12px;color:rgba(184,179,208,0.5);font-family:monospace;"
-                "word-break:break-all;max-width:320px;margin:0 auto;}"
+                "<!DOCTYPE html><html lang='ko'><head><meta charset='utf-8'>"
+                "<meta name='viewport' content='width=device-width,initial-scale=1'>"
+                f"<style>{report_css()}"
+                "body{display:flex;align-items:center;justify-content:center;padding:24px;}"
+                ".box{max-width:480px;padding:32px;text-align:center;border:1px solid var(--border);"
+                "border-radius:var(--radius);background:var(--surface);}"
+                ".title{font-size:17px;font-weight:600;margin-bottom:8px;}"
+                ".sub{font-size:13px;color:var(--text3);overflow-wrap:anywhere;}"
                 "</style></head><body>"
-                f"<div class='box'><div class='icon'>🗑️</div>"
-                f"<div class='title'>리포트가 삭제되었습니다</div>"
-                f"<div class='sub'>{fname}</div></div></body></html>"
+                "<div class='box'><div class='title'>리포트가 삭제되었습니다</div>"
+                f"<div class='sub'>{html.escape(fname)}</div></div></body></html>"
             ).encode("utf-8")
             self.send_response(404)
             self.send_header("Content-Type", "text/html; charset=utf-8")
