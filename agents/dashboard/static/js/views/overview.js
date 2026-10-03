@@ -1,3 +1,12 @@
+function _overviewRunResult(run) {
+  return ['cancelled', 'interrupted', 'incomplete'].includes(run.status) ? ['중단', 'warn']
+      : ['timeout', 'timed_out'].includes(run.status) ? ['시간 초과', 'fail']
+      : ['failed', 'error', 'heal_failed', 'heal_needed'].includes(run.status) || (run.failed || 0) > 0 ? ['실패', 'fail']
+      : !(run.total > 0) ? ['미실행', 'warn']
+      : (run.skipped || 0) > 0 ? ['중단', 'warn']
+      : run.passed === run.total ? ['통과', 'pass'] : ['미완료', 'warn'];
+}
+
 // ── Dashboard Overview (OAXIS-inspired) ──
 
 async function resetDashboard() {
@@ -45,6 +54,7 @@ async function renderDashboardOverview(main) {
   const rptCount = (reportsList || []).length;
   const history = _ovRunHistory || [];
   const groups = pagesData.groups || [];
+  const pageCount = Object.keys(pagesData.pages || {}).filter(key => key !== '_comment').length;
   const healStats = _ovHealStats || {};
   const flakyData = _ovFlakyTests || null;
 
@@ -76,23 +86,30 @@ async function renderDashboardOverview(main) {
   }
 
   // ── 핵심 지표 ──
-  const lastRunLabel = !lastRun ? '실행 기록 없음' : totalFailed > 0 ? '실패' : totalSkipped > 0 ? '중단' : '통과';
-  const lastRunClass = totalFailed > 0 ? 'fail' : totalSkipped > 0 ? 'warn' : 'pass';
+  const lastRunResult = lastRun ? _overviewRunResult({...lastRun, skipped: totalSkipped}) : ['실행 기록 없음', 'warn'];
+  const lastRunLabel = lastRunResult[0];
+  const lastRunClass = lastRunResult[1];
   const lastRunTime = lastRun ? (lastRun.timestamp || '').slice(5, 16) : '';
   const heroHtml = `<section class="ov-summary-row" aria-label="요약">
     <div class="ov-summary-item"><div class="ov-summary-label">마지막 실행</div><div class="ov-summary-value"><span class="ov-result ${lastRunClass}">${lastRunLabel}</span></div><div class="ov-summary-meta">${lastRun ? `${totalTests}건 중 ${totalPassed}건 통과 · 실패 ${totalFailed} · 건너뜀 ${totalSkipped} · ${Math.round(lastRun.duration_sec || 0)}초` : '실행 이력이 없습니다'}</div></div>
     <div class="ov-summary-item"><div class="ov-summary-label">최근 10회 통과율</div><div class="ov-summary-value">${recentTotal ? `${recentPassRate}%` : '—'}</div><div class="ov-summary-meta">통과 ${recentPassed} · 전체 ${recentTotal}</div></div>
-    <div class="ov-summary-item"><div class="ov-summary-label">등록된 페이지</div><div class="ov-summary-value">${groups.length}</div><div class="ov-summary-meta">페이지 그룹</div></div>
+    <div class="ov-summary-item"><div class="ov-summary-label">등록된 페이지</div><div class="ov-summary-value">${pageCount}</div><div class="ov-summary-meta">페이지 그룹</div></div>
     <div class="ov-summary-item"><div class="ov-summary-label">자동 복구(힐링)</div><div class="ov-summary-value">${recentHealCount}</div><div class="ov-summary-meta">최근 ${recentRuns.length}회 기준</div></div>
   </section>`;
 
   const recentRows = [...history].reverse().slice(0, 6).map(run => {
     const typeLabel = { parallel: '병렬 파이프라인', quick: '빠른 실행', single: '단일 파이프라인' }[run.pipeline] || run.pipeline || '—';
     const targets = run.group ? [run.group] : (run.groups || []);
-    const result = (run.failed || 0) > 0 ? ['실패', 'fail'] : (run.skipped || 0) > 0 ? ['중단', 'warn'] : ['통과', 'pass'];
-    const timestamp = (run.timestamp || '').slice(5, 16) || '—';
+    const result = _overviewRunResult(run);
+    const detail = [
+      run.recovered_after_restart ? '재시작 후 복구' : '',
+      result[1] === 'pass' && run.heal_count > 0 ? '자동 복구 후 통과' : '',
+      result[1] !== 'pass' ? ((run.recovery || {}).message || run.error || '') : '',
+      !(run.total > 0) ? '실행된 테스트 없음 · 통과율 집계 제외' : '',
+    ].filter(Boolean).join(' · ');
+    const timestamp = (run.timestamp || '').replace('T', ' ').slice(5, 16) || '—';
     const duration = run.duration_sec ? `${Math.round(run.duration_sec)}초` : '—';
-    return `<tr><td><span class="ov-time">${esc(timestamp)}</span></td><td>${esc(typeLabel)}</td><td>${esc(targets.join(' · ') || '—')}</td><td><span class="ov-result ${result[1]}">${result[0]}</span></td><td class="ov-num">${run.passed || 0}/${run.total || 0}</td><td class="ov-num">${esc(duration)}</td></tr>`;
+    return `<tr><td><span class="ov-time">${esc(timestamp)}</span></td><td>${esc(typeLabel)}</td><td>${esc(targets.join(' · ') || '—')}</td><td><span class="ov-result ${result[1]}">${result[0]}</span>${detail ? `<div class="ov-result-detail">${esc(detail)}</div>` : ''}</td><td class="ov-num">${run.passed || 0}/${run.total || 0}</td><td class="ov-num">${esc(duration)}</td></tr>`;
   }).join('');
   const recentTableHtml = `<section class="oax-card"><div class="oax-card-title">최근 실행 <button type="button" class="ov-history-link" onclick="selectView('history')">전체 기록 보기</button></div>${recentRows ? `<div class="ov-table-wrap"><table class="ov-table"><thead><tr><th>시작</th><th>종류</th><th>대상</th><th>결과</th><th style="text-align:right;">통과</th><th style="text-align:right;">소요</th></tr></thead><tbody>${recentRows}</tbody></table></div>` : `<div class="ov-table-empty">최근 실행 이력이 없습니다.</div>`}</section>`;
 
@@ -271,18 +288,11 @@ async function renderDashboardOverview(main) {
 function _buildTrendChart(history) {
   if (!history || history.length === 0) return '<div class="oax-trend-empty">실행 이력 없음</div>';
 
-  const finalOnly = [];
-  for (let i = 0; i < history.length; i++) {
-    const cur = history[i];
-    const next = history[i + 1];
-    const curKey = cur.pipeline + '|' + (cur.group || (cur.groups || []).sort().join(','));
-    const nextKey = next ? next.pipeline + '|' + (next.group || (next.groups || []).sort().join(',')) : null;
-    if (curKey !== nextKey) finalOnly.push(cur);
-  }
-  const recent = finalOnly.slice(-8);
+  const recent = history.filter(run => run.total > 0).slice(-8);
+  if (!recent.length) return '<div class="oax-trend-empty">측정된 테스트 결과 없음</div>';
 
   // SVG 라인 차트
-  const w = 320, h = 120, padX = 28, padY = 18, padBot = 14;
+  const w = 480, h = 190, padX = 40, padY = 32, padBot = 78;
   const chartH = h - padY - padBot;
   const stepX = recent.length > 1 ? (w - padX * 2) / (recent.length - 1) : 0;
   let points = '';
@@ -290,60 +300,52 @@ function _buildTrendChart(history) {
   let labels = '';
   let pctLabels = '';
 
-  // 겹침 방지: 이전 라벨의 y좌표 추적
-  let prevLabelY = -100;
-  const minLabelGap = 12; // px 최소 간격
-
-  // 시간 라벨: 5개 이상이면 간격 두고 표시
-  const showEveryN = recent.length > 5 ? 2 : 1;
+  // 각 실행의 시간을 표시
+  const showEveryN = 1;
 
   recent.forEach((r, i) => {
     const x = padX + stepX * i;
-    const rate = r.pass_rate || 0;
-    const rDisplay = rate === 100 ? '100' : (Math.floor(rate * 10) / 10).toFixed(1);
+    const rate = Math.max(0, Math.min(100, Math.round((r.passed || 0) / r.total * 100)));
+    const rDisplay = String(rate);
     const y = padY + chartH - (rate / 100) * chartH;
     points += `${x},${y} `;
-    const ts = (r.timestamp || '').split(' ')[1] || '';
+    const ts = (r.timestamp || '').replace('T', ' ').split(' ')[1] || '';
     const shortTs = ts.substring(0, 5);
     const color = rate === 100 ? 'var(--approved-color)' : rate >= 80 ? 'var(--pending-color)' : 'var(--revision-color)';
     const _skippedTip = r.skipped ? ` · 건너뜀 ${r.skipped}` : '';
     dots += `<circle cx="${x}" cy="${y}" r="3.5" fill="${color}" stroke="var(--surface)" stroke-width="1.5"><title>${rDisplay}% · 통과 ${r.passed||0} · 실패 ${r.failed||0}${_skippedTip}</title></circle>`;
 
-    // 퍼센트 라벨 — 이전과 Y좌표가 가까우면 위/아래로 오프셋
-    let labelY = y - 8;
-    if (Math.abs(labelY - prevLabelY) < minLabelGap) {
-      labelY = prevLabelY < y ? y + 14 : y - 8 - minLabelGap + Math.abs(labelY - prevLabelY);
-    }
-    pctLabels += `<text x="${x}" y="${labelY}" text-anchor="middle" fill="${color}" font-size="8" font-weight="600" font-family="'IBM Plex Sans KR', sans-serif">${rDisplay}%</text>`;
-    prevLabelY = labelY;
+    // 숫자는 점 위에, 시간은 차트 아래에 배치한다.
+    pctLabels += `<text x="${x}" y="${y - 11}" text-anchor="middle" fill="${color}" font-size="11" font-weight="600" font-family="'JetBrains Mono', monospace">${rDisplay}%</text>`;
 
     // 시간 라벨 — 첫/마지막은 항상, 나머지는 간격에 따라
     if (i === 0 || i === recent.length - 1 || i % showEveryN === 0) {
-      labels += `<text x="${x}" y="${h - 2}" text-anchor="middle" fill="var(--text-2)" font-size="7" font-family="'JetBrains Mono', monospace">${shortTs}</text>`;
+      labels += `<text x="${x}" y="${h - 7}" text-anchor="middle" fill="var(--text-2)" font-size="10" font-family="'JetBrains Mono', monospace">${shortTs}</text>`;
     }
   });
 
   // Y축 가이드라인
-  const gridLines = [100, 80, 60].map(v => {
+  const gridLines = [100, 80, 60, 40, 20, 0].map(v => {
     const y = padY + chartH - (v / 100) * chartH;
     return `<line x1="${padX}" y1="${y}" x2="${w - padX}" y2="${y}" stroke="var(--border)" stroke-width="0.75"/>`;
   }).join('');
 
-  const lastDur = recent.length > 0 && recent[recent.length - 1].duration_sec ? Math.round(recent[recent.length - 1].duration_sec) + '초' : '—';
-  const firstPass = recent.length > 0 && recent[recent.length - 1].first_pass ? '첫 실행 통과' : (recent.length > 0 ? (recent[recent.length - 1].heal_count || 0) + '회 복구' : '');
+  const last = history[history.length - 1];
+  const lastDur = last.duration_sec ? last.duration_sec + '초' : '—';
+  const lastStatus = _overviewRunResult(last)[0];
 
   return `
     <div class="oax-trend">
       <svg viewBox="0 0 ${w} ${h}" class="oax-trend-svg">
         <defs><g id="areaGrad"></g></defs>
         ${gridLines}
-        <polyline points="${points}" fill="none" stroke="var(--approved-color)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <polyline points="${points}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
         ${dots}
         ${pctLabels}
         ${labels}
       </svg>
       <div class="oax-trend-footer">
-        <span>${lastDur} · ${firstPass}</span>
+        <span>${lastDur} · ${lastStatus}</span>
         <span class="oax-trend-legend">
           <span class="oax-legend-item ov-result pass"><span class="oax-legend-dot" style="background:var(--approved-color)"></span>통과</span>
           <span class="oax-legend-item ov-result warn"><span class="oax-legend-dot" style="background:var(--pending-color)"></span>주의</span>

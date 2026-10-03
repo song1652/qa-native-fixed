@@ -1,6 +1,6 @@
 # 디렉토리 구조
 
-> **자동 생성** — `python scripts/update_directory.py` | 마지막 갱신: 2026-10-02 12:37
+> **자동 생성** — `python scripts/update_directory.py` | 마지막 갱신: 2026-10-03 11:02
 > 최근 실행: 2026-10-01 09:43 | quick | partner_login/customer_login | 4/4 | heal:0
 
 > 역할 설명 수정: `scripts/update_directory.py` 내 `SCRIPT_DESCRIPTIONS` / `FOLDER_DESCRIPTIONS` 편집.
@@ -67,6 +67,7 @@
 | `check_pending_quick_heal.py` | 훅: 빠른 힐링 대기 상태 확인 |
 | `coverage_matrix.py` | 커버리지 매트릭스 생성 (→ state/coverage.json) |
 | `dom_helpers.js` | JS 공통 유틸 (isVisible·esc·getSelectorsSimple) — _js()가 자동 주입 |
+| `error_policy.py` |  |
 | `flaky_detector.py` | Flaky Test 감지기 (run_history.json 분석 → state/flaky_tests.json) |
 | `heal_utils.py` | 힐링 공용 유틸 (classify_error 7분류, append_lessons) |
 | `hook_utils.py` | 훅 스크립트 공통 유틸: check_state() + remaining_steps_hint() — 레지스트리 기반 잔여 단계 지시문 생성 |
@@ -74,6 +75,7 @@
 | `parse_cases.py` | tc_*.md 파싱 (data_key: {프로덕트}.{데이터셋}) |
 | `report_html.py` | HTML 리포트 생성 (단일/병렬 공통) |
 | `result_parser.py` | pytest JSON 리포트 파싱 (단일/병렬 공유) |
+| `run_results.py` |  |
 | `structured_log.py` | 구조화 로그 (JSON Lines → logs/structured.jsonl) |
 | `sync_test_data.py` | test_data/{프로덕트}.json 데이터셋 동기화 |
 | `team_approve.py` | 팀 토론 승인 (터미널용) |
@@ -139,6 +141,7 @@
 | 파일 | 역할 |
 |------|------|
 | `coverage.json` | 커버리지 매트릭스 (coverage_matrix.py 생성) |
+| `dashboard_execution.json` | 런타임 생성 |
 | `discuss.json` | 팀 토론 상태 |
 | `heal_stats.json` | 힐링 오류 패턴별 빈도 카운터 (06_heal.py 자동 갱신) |
 | `import_profiles.json` | 런타임 생성 |

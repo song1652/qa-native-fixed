@@ -174,7 +174,9 @@
     ['dragover','dragenter'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('over');}));
     ['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,()=>drop.classList.remove('over')));
     drop.addEventListener('drop',e=>{e.preventDefault();pick(e.dataTransfer.files);});
-    $('#import-file',root).addEventListener('change',e=>pick(e.target.files));
+    $('#import-file',root).addEventListener('change',e=>{
+      const selected=Array.from(e.target.files);e.target.value='';pick(selected);
+    });
     ['#import-close','#import-cancel'].forEach(s=>$(s,root).addEventListener('click',close));
     $('#import-plan',root).addEventListener('click',makePlan);$('#import-confirm',root).addEventListener('click',confirm);
     ['#import-suite','#import-sheets'].forEach(s=>$(s,root).addEventListener('input',updateSummary));

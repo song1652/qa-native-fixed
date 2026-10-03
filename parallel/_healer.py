@@ -31,9 +31,10 @@ from heal_utils import (
     append_lessons, update_heal_stats,
     build_heal_batches, print_heal_batches,
     LESSONS_PATH, LESSONS_AUTO_PATH,
-    snapshot_assertions, compare_assertions,
+    snapshot_assertions, compare_assertions, update_heal_state,
 )
 from structured_log import slog
+from error_policy import classify_error as recovery_for_error
 
 PROJECT_ROOT = Path(__file__).parent.parent
 
@@ -106,6 +107,7 @@ def _build_heal_context(report: dict, heal_count: int, state_path: Path) -> dict
     6. 힐링 전 assertion 스냅샷 저장
     """
     failures = []
+    execution = read_state(state_path).get("execution_result", {})
     for t in report.get("tests", []):
         if t.get("outcome") in ("failed", "error"):
             call = t.get("call") or {}
@@ -120,9 +122,18 @@ def _build_heal_context(report: dict, heal_count: int, state_path: Path) -> dict
                 "file":       t.get("nodeid", "").split("::")[0],
                 "traceback":  traceback_str,
                 "error_type": classify_error(traceback_str),
-                "screenshot": find_screenshot_for_test(test_name),
+                "screenshot": find_screenshot_for_test(test_name, run_id=execution.get("run_id"),
+                                                         invocation_id=execution.get("invocation_id")),
             })
     if not failures:
+        return None
+
+    blocker = next((recovery_for_error(f["traceback"]) for f in failures
+                    if not recovery_for_error(f["traceback"])["can_heal"]), None)
+    if blocker:
+        write_state(HEAL_CONTEXT_STATE, {"failures": failures, "recovery": blocker,
+                                        "recovery_stopped": True, "error": blocker["message"]})
+        print(f"[99] 자동 복구 중단: {blocker['message']}")
         return None
 
     # 실패 그룹의 URL 수집 (pages.json에서)
@@ -197,6 +208,8 @@ def _build_heal_context(report: dict, heal_count: int, state_path: Path) -> dict
 
     ctx = {
         "heal_count":      heal_count,
+        "run_id": execution.get("run_id"),
+        "invocation_id": execution.get("invocation_id"),
         "failure_count":   len(healable),
         "failures":        healable,
         # M-3(P101): 다음 라운드 반복 감지용 안정 스냅샷.
@@ -268,19 +281,29 @@ def _try_auto_heal(state_path: Path | None = None) -> bool:
     # P65: 병렬 파이프라인은 heal_context를 HEAL_CONTEXT_STATE에 별도 저장
     if HEAL_CONTEXT_STATE.exists():
         cmd += ["--heal-context-path", str(HEAL_CONTEXT_STATE)]
+    def stopped(reason):
+        ctx = read_state(HEAL_CONTEXT_STATE)
+        if ctx.get("recovery_stopped"):
+            print(f"  [auto_heal] 자동 복구 중단: {ctx.get('error', reason)}")
+            return
+        write_state(HEAL_CONTEXT_STATE, {**ctx, "recovery_stopped": True, "error": reason})
+        print(f"  [auto_heal] 자동 복구 중단: {reason}")
+
     try:
         result = subprocess.run(
             cmd,
             cwd=str(PROJECT_ROOT),
             capture_output=True, text=True,
-            timeout=120,
+            # Child owns bounded browser/pytest waits; an outer kill would bypass rollback.
         )
         if result.stdout.strip():
             for line in result.stdout.strip().splitlines():
                 print(f"  {line}")
+        if result.returncode not in (0, 1):
+            stopped(f"자동 복구 종료 코드 {result.returncode}")
         return result.returncode == 0
-    except (subprocess.TimeoutExpired, Exception) as e:
-        print(f"  [auto_heal] 실행 실패 (무시): {e}")
+    except Exception as e:
+        stopped(f"자동 복구 실행 실패: {e}")
         return False
 
 
@@ -336,9 +359,17 @@ def run_heal_cycle(
         auto_all_fixed:  True이면 auto_heal이 모든 실패를 수정 → 재실행으로 검증 필요
                          (H-2/P132: HEAL_NEEDED 교착 방지)
     """
+    def preserve_stopped(ctx):
+        recovery = ctx.get("recovery") or {"category": "unknown", "message": ctx.get("error", "자동 복구 중단")}
+        update_heal_state(state_path, lambda fresh: {
+            **fresh, "heal_context": ctx,
+            "execution_result": {**fresh.get("execution_result", {}), "recovery_stop": recovery},
+        })
+
     heal_ctx = _build_heal_context(report, heal_count, state_path)
     if not heal_ctx:
-        # build_heal_context가 None = 사이트 불가 또는 전체 반복 (P67)
+        # build_heal_context가 None = 복구 불가; 보존된 원인을 사용자에게 전달.
+        preserve_stopped(read_state(HEAL_CONTEXT_STATE))
         return False, True, False
 
     # auto_heal 시도 (deterministic 패치)
@@ -349,6 +380,10 @@ def run_heal_cycle(
         _reloaded = read_state(HEAL_CONTEXT_STATE)
         if _reloaded:
             heal_ctx = _reloaded
+    if heal_ctx.get("recovery_stopped"):
+        preserve_stopped(heal_ctx)
+        print("[99] 자동 복구 중단 — 추가 Agent 힐링·실행 없음")
+        return False, True, False
     pipeline_label = "quick" if quick_mode else "parallel"
     if auto_heal_applied:
         print("[99] auto_heal 성공 -- Agent 힐링 불필요할 수 있습니다.")

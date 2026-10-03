@@ -6,6 +6,7 @@ serve는 이 모듈을 import하고, 이 모듈은 serve를 import하지 않는�
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import stat
@@ -354,3 +355,62 @@ def build_dialogs() -> dict:
         "team_sessions": team_sessions,
         "discuss_state": discuss_state,
     }
+
+
+def build_recovery_notices() -> dict:
+    """Read only durable, owned execution outcomes; never infer from another run."""
+    from error_policy import recovery_for_result
+
+    actions = {
+        "check_environment": ("실행 기록 확인", "/?view=history"),
+        "reconnect_browser": ("실행 기록 확인", "/?view=history"),
+        "review_configuration": ("URL 설정 확인", "/?view=pages"),
+        "review_locator": ("실행 기록 확인", "/?view=history"),
+        "review_assertion": ("실행 기록 확인", "/?view=history"),
+        "inspect_log": ("실행 기록 확인", "/?view=history"),
+    }
+    history = load_json(_paths.RUN_HISTORY) or []
+    notices = []
+    active = load_json(_paths.RUN_HISTORY.parent / "dashboard_execution.json") or {}
+    seen_runs = {active.get("run_id")} if active.get("status") == "running" else set()
+    if not isinstance(history, list):
+        return {"ok": True, "notices": []}
+    for entry in reversed(history):
+        if not isinstance(entry, dict):
+            continue
+        run_id = entry.get("run_id")
+        if run_id:
+            if run_id in seen_runs:
+                continue
+            seen_runs.add(run_id)
+        status = entry.get("status")
+        if not status:
+            status = "failed" if entry.get("failed", 0) else "passed"
+        if status not in {"failed", "timed_out", "interrupted", "incomplete"}:
+            continue
+        run_id = entry.get("run_id")
+        if not run_id:
+            # Legacy history has no run IDs. Hash the owned record, never its list position.
+            run_id = "legacy_" + hashlib.sha256(
+                json.dumps(entry, sort_keys=True, ensure_ascii=False).encode("utf-8")
+            ).hexdigest()[:20]
+        recovery = entry.get("recovery")
+        if not isinstance(recovery, dict) or not all(
+            recovery.get(key) for key in ("category", "title", "message", "action")
+        ):
+            recovery = recovery_for_result({**entry, "status": status})
+        label, href = actions.get(recovery.get("action"), actions["inspect_log"])
+        groups = entry.get("groups")
+        if not isinstance(groups, list):
+            groups = [entry["group"]] if entry.get("group") else []
+        notices.append({
+            "id": f"run:{run_id}:{status}", "run_id": run_id,
+            "groups": groups, "category": recovery["category"],
+            "title": recovery["title"], "message": recovery["message"],
+            "action_label": label, "href": href,
+            "severity": "error" if status == "failed" else "warning",
+            "created_at": entry.get("timestamp", ""),
+        })
+        if len(notices) == 10:
+            break
+    return {"ok": True, "notices": notices}

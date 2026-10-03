@@ -128,6 +128,10 @@ function _buildHistCard(r) {
   } else {
     badge = `<span class="hist-badge hist-badge--type" style="opacity:0.4;">-</span>`;
   }
+  const failedRun = r.failed > 0 || ['failed', 'error', 'timeout', 'timed_out', 'interrupted', 'cancelled', 'incomplete', 'heal_failed', 'heal_needed'].includes(r.status);
+  const statusLabel = ['timeout', 'timed_out'].includes(r.status) ? '시간 초과' : ['interrupted', 'cancelled'].includes(r.status) ? '중단' : failedRun ? '실패' : '통과';
+  const recovery = r.recovery || {};
+  const recoveryHtml = failedRun ? `<div class="hist-recovery">${recovery.title ? `<strong>${esc(recovery.title)}</strong><br>` : ''}${esc(recovery.message || r.error || '실행 로그에서 오류 원인을 확인하세요.')}<br><span class="muted">${r.report_path ? '리포트: ' + esc(r.report_path) : '리포트 없음 · 실행 기록은 보존됩니다.'}</span></div>` : '';
   const failBadge = r.failed > 0
     ? `<span class="hist-badge hist-badge--fail">${r.failed}건 실패</span>` : '';
 
@@ -140,7 +144,7 @@ function _buildHistCard(r) {
     <td class="hist-time">${esc(datePart)}<br><span class="muted">${esc(timePart)}</span></td>
     <td>${typeLabel}</td>
     <td>${groupTags || '—'}</td>
-    <td><span class="hist-badge ${r.failed > 0 ? 'hist-badge--fail' : 'hist-badge--first'}">${r.failed > 0 ? '실패' : '통과'}</span> ${badge}${failBadge}</td>
+    <td><span class="hist-badge ${failedRun ? 'hist-badge--fail' : 'hist-badge--first'}">${statusLabel}</span> ${failedRun && r.first_pass ? '' : badge}${failBadge}${recoveryHtml}</td>
     <td class="hist-number">${r.passed || 0} / ${r.total || 0}</td>
     <td class="hist-number" style="color:${rateColor}">${rate}%</td>
     <td class="hist-number">${r.heal_count || 0}</td>

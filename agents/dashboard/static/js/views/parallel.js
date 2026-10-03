@@ -108,9 +108,9 @@ function renderParallelPipeline(main) {
   // 실행 결과 카드
   let execResultHtml = '';
   if (execResult) {
-    const allPass = execResult.failed === 0;
+    const allPass = execResult.total > 0 && execResult.failed === 0 && !executionFailed(ps, execResult);
     const badgeCls = allPass ? 'pass' : 'fail';
-    const badgeTxt = allPass ? '모두 통과' : `${execResult.failed}건 실패`;
+    const badgeTxt = allPass ? '모두 통과' : execResult.failed > 0 ? `${execResult.failed || 0}건 실패` : '실행 중단·오류';
 
     const groupResultsHtml = buildGroupResultsHtml(execResult.group_results || {}, 'parallel');
 
@@ -121,11 +121,11 @@ function renderParallelPipeline(main) {
           <span class="exec-result-badge ${badgeCls}">${badgeTxt}</span>
         </div>
         <div class="exec-result-stats">
-          <div class="exec-stat"><div class="exec-stat-num" style="color:var(--text)">${execResult.total}</div><div class="exec-stat-label">전체</div></div>
-          <div class="exec-stat"><div class="exec-stat-num" style="color:var(--approved-color)">${execResult.passed}</div><div class="exec-stat-label">통과</div></div>
-          <div class="exec-stat"><div class="exec-stat-num" style="color:var(--revision-color)">${execResult.failed}</div><div class="exec-stat-label">실패</div></div>
+          <div class="exec-stat"><div class="exec-stat-num" style="color:var(--text)">${execResult.total || 0}</div><div class="exec-stat-label">전체</div></div>
+          <div class="exec-stat"><div class="exec-stat-num" style="color:var(--approved-color)">${execResult.passed || 0}</div><div class="exec-stat-label">통과</div></div>
+          <div class="exec-stat"><div class="exec-stat-num" style="color:var(--revision-color)">${execResult.failed || 0}</div><div class="exec-stat-label">실패</div></div>
           ${(execResult.skipped || 0) > 0 ? `<div class="exec-stat"><div class="exec-stat-num" style="color:var(--warn)">${execResult.skipped}</div><div class="exec-stat-label">건너뜀</div></div>` : ''}
-          <div class="exec-stat"><div class="exec-stat-num" style="color:${allPass ? 'var(--approved-color)' : 'var(--revision-color)'}">${execResult.pass_rate}%</div><div class="exec-stat-label">통과율</div></div>
+          <div class="exec-stat"><div class="exec-stat-num" style="color:${allPass ? 'var(--approved-color)' : 'var(--revision-color)'}">${execResult.pass_rate || 0}%</div><div class="exec-stat-label">통과율</div></div>
         </div>
         ${groupResultsHtml}
         <div style="margin-top:12px;font-size:11px;color:var(--text-dim);">
@@ -152,6 +152,7 @@ function renderParallelPipeline(main) {
       ${targetsHtml}
       ${!execResult ? '<div class="parallel-note">코드 생성은 Claude Code가 그룹마다 하위 작업을 동시에 실행합니다. 이 화면은 진행 상황을 보여 줍니다.</div>' : ''}
       ${summaryHtml}
+      ${recoveryGuidanceHtml(ps, execResult)}
       ${execResultHtml}
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
         <button class="action-btn action-btn-danger" onclick="parallelReset()" style="margin-left:auto;">병렬 상태 초기화</button>
@@ -178,7 +179,8 @@ async function runParallelQA() {
     const data = await res.json();
     if (data.ok) {
       if (btn) btn.textContent = '실행됨 (PID: ' + (data.pid || '?') + ')';
-      startLogPolling('run-parallel-log', 'run-parallel-log-content', 'run_parallel.txt');
+      startLogPolling('run-parallel-log', 'run-parallel-log-content', 'run_parallel.txt', data.run_id);
+      executionStatusRefresh();
       // state/parallel.json이 ready가 되면 알림 표시
       waitForParallelReady();
       setTimeout(() => { if (btn) { btn.textContent = '병렬 실행'; btn.disabled = false; } }, 60000);

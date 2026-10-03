@@ -21,6 +21,26 @@ def workbook(path: Path, sheet='회원등록', title='이름 오류 표시'):
     return path
 
 
+def test_corrected_workbook_can_be_selected_again_with_same_name(page, tmp_path):
+    path = tmp_path / 'same.xlsx'
+    wb = openpyxl.Workbook()
+    wb.active.append(['대분류', '잘못된 제목 헤더', 'Test Step', 'Expected Result'])
+    wb.save(path)
+    with dashboard_server(tmp_path / 'project') as base:
+        page.goto(base + '/tc-studio')
+        page.locator('[data-id="btn-import-xlsx"]').click()
+        upload = page.locator('[data-id="import-file-input"]')
+        upload.set_input_files(str(path))
+        expect(page.locator('[data-id="import-plan"]')).to_be_disabled()
+        expect(page.locator('[data-id="import-sheets"]')).to_contain_text('same.xlsx')
+        wb.active.cell(1, 2, '기능')
+        wb.save(path)
+        upload.set_input_files(str(path))
+        expect(page.locator('[data-id="import-sheets"] input[type="checkbox"]')).to_have_count(1)
+        expect(page.locator('[data-id="import-plan"]')).to_be_enabled()
+    wb.close()
+
+
 def test_mapping_profile_management_is_available_in_tc_import(page, tmp_path):
     with dashboard_server(tmp_path / 'project') as base:
         page.goto(base + '/tc-studio')

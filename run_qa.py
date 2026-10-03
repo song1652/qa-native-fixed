@@ -37,6 +37,7 @@ QA 자동화 진입점.
 """
 import argparse
 import sys
+import os
 from pathlib import Path
 
 import _bootstrap  # noqa: F401 — scripts/ 경로 설정
@@ -47,11 +48,14 @@ from _pipeline_registry import make_initial_pipeline_state
 
 def init_state(url: str, test_cases: list, cases_path: str) -> dict:
     """pipeline.json 초기 상태 생성 — make_initial_pipeline_state() 에 위임 (P39)."""
-    return make_initial_pipeline_state(
+    state = make_initial_pipeline_state(
         url=url,
         test_cases=test_cases,
         cases_path=str(cases_path),
     )
+    if os.environ.get("QA_RUN_ID"):
+        state["run_id"] = os.environ["QA_RUN_ID"]
+    return state
 
 
 def print_cases(test_cases: list):
@@ -71,6 +75,10 @@ HEADLESS_PROMPT = (
     "03_lint -> 03a_dialog -> 체크리스트 리뷰와 review 저장 -> 04_approve -> "
     "05_execute --no-report -> 06_heal 순서로 진행하고, 실패하면 CLAUDE.md의 힐링 절차를 따르세요. "
     "전체 통과를 확인한 뒤 마지막 05_execute로 HTML 리포트를 생성하세요. "
+    "측정된 실패가 모두 Locator 오류일 때만 복구하세요. 기대값·연결·설정·알 수 없는 오류는 멈추고 안내하세요. "
+    "06_auto_heal 종료코드 5 또는 recovery_stopped=true이면 변경 복원 후 즉시 중단하고, "
+    "06a_dialog·다른 패치·05_execute를 추가 실행하지 마세요. "
+    "QA_RUN_ID와 QA_WORKFLOW_ID를 유지하고, 새 DOM 수집이 실패하면 캐시로 복구하지 마세요. "
     "모든 Python 명령은 프로젝트 루트의 .venv/bin/python을 사용하세요. "
     "state 변경은 update_state와 레지스트리 상수를 사용하고 step을 수동 덮어쓰지 마세요. "
     "md 하나당 실제 동작과 Expected를 검증하는 테스트 파일·함수 하나를 작성하세요. "
@@ -96,7 +104,9 @@ def _launch_headless_pipeline() -> None:
 
     logs_dir = PROJECT_ROOT / "logs"
     logs_dir.mkdir(exist_ok=True)
-    log_path = logs_dir / "run_qa_headless.txt"
+    run_id = os.environ.get("QA_RUN_ID", "").strip()
+    log_path = logs_dir / "runs" / f"{run_id}-headless.txt" if run_id else logs_dir / "run_qa_headless.txt"
+    log_path.parent.mkdir(exist_ok=True)
 
     print()
     print("  [자동 실행] headless Claude Code 세션을 백그라운드로 시작합니다.")
@@ -106,7 +116,7 @@ def _launch_headless_pipeline() -> None:
     # context manager: Popen 예외 시에도 log_file이 반드시 닫힘.
     # POSIX에서 부모가 fd를 닫아도 자식은 dup된 fd로 계속 씀 — 데이터 유실 없음.
     with open(log_path, "w", encoding="utf-8") as log_file:
-        subprocess.Popen(
+        proc = subprocess.Popen(
             [
                 "claude", "-p", HEADLESS_PROMPT,
                 "--settings", '{"disableAllHooks":true}',
@@ -120,6 +130,11 @@ def _launch_headless_pipeline() -> None:
             cwd=str(PROJECT_ROOT),
             stdout=log_file, stderr=subprocess.STDOUT,
         )
+        # 대시보드는 이 진입점의 생존 여부로 중복 실행을 차단한다.
+        sys.stdout.flush()
+        exit_code = proc.wait()
+        if isinstance(exit_code, int) and exit_code:
+            raise SystemExit(exit_code)
 
 
 def run_single(url: str, test_cases: list, cases_path: str, auto: bool = True):

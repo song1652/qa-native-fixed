@@ -75,10 +75,25 @@
 |---|---|---|
 | `/api/run_qa` | `{ url, cases_dir }` | 단일 파이프라인 실행 |
 | `/api/run_qa_parallel` | `{}` | 병렬 파이프라인 실행 |
-| `/api/run_merge` | `{ group?, quick?, no_heal?, no_report? }` | 99_merge.py 실행 |
+| `/api/run_merge` | `{}` | 99_merge.py 병렬 결과 실행 |
 | `/api/run_quick` | `{ groups: [], no_heal? }` | 빠른 실행 |
-| `/api/run_log` | `{ log: "파일명" }` | 실행 로그 조회 |
+| `/api/run_log` | `{ run_id }` 또는 이전 `{ log: "파일명" }` | 해당 실행의 소유 로그 조회. 실행 ID 사용 권장 |
+| `/api/cancel` | `{ run_id }` | 서버가 현재 추적하는 해당 실행의 프로세스 그룹 중단 |
 | `/api/merge_log` | `{}` | `logs/merge.txt` 내용 `{ ok, log }` |
+
+#### 실행 소유권·중단 계약
+
+네 가지 실행 트리거는 성공 시 `{ok:true, pid, run_id, log, log_name, status:"running"}`을 반환합니다. `run_id`는 서버가 발급한 작업 ID, `log`는 서버의 로그 경로, `log_name`은 파일명입니다. 전체 실행 유형이 하나의 원자적 실행 예약을 공유합니다. 진행 중인 작업이 있으면 `{ok:false, error, run_id?}`로 거부하며 새 프로세스를 만들지 않습니다. 호출자는 HTTP 상태와 `ok`를 함께 확인해야 합니다.
+
+자식 프로세스에는 `QA_RUN_ID`와 `QA_WORKFLOW_ID`가 전달됩니다. 반복 실행에는 별도의 `invocation_id`가 있고, 병렬 작업의 개별 worker에는 루트 workflow 안에서 구분되는 실행 ID가 있습니다. 실행 결과와 pytest JSON은 해당 ID의 저장 위치에서만 읽습니다.
+
+`POST /api/cancel`은 현재 예약의 `run_id`가 일치할 때만 중단합니다. 다른 ID나 없는 ID는 `{ok:false,error}`입니다. 같은 ID가 이미 종료되었으면 `{ok:true,run_id,status}`로 현재 종료 상태를 반환합니다. POSIX에서는 소유 프로세스 그룹에 TERM을 보내 최대 3초 동안 하위 작업의 정리를 기다리고, 필요한 경우 KILL 뒤 종료를 확인합니다. 종료 확인에 실패하면 예약을 유지하며 다음 상태 확인에서 정리를 계속합니다. Windows에서는 소유 PID의 하위 트리를 종료합니다. 중단 API를 자동 재시도하지 않습니다.
+
+대시보드에서 시작한 전체 작업의 시간 제한은 **3600초**입니다. 시작 시점부터 분석·생성·실행·힐링을 합산하며 초과 시 `timed_out`으로 보존합니다. 별도로 단일 pytest 호출은 3600초, 병렬 실행기의 pytest 호출은 7200초 제한을 사용하므로 CLI 직접 실행과 대시보드 전체 작업 제한을 구분해야 합니다.
+
+`GET /api/execution_status`는 현재 또는 마지막 작업을 `{ok:true,execution:{...}}`로 반환합니다. 이력 없는 환경의 `execution`은 빈 객체입니다. `execution`에는 `run_id`, `tag`, `pid`(프로세스 생성 성공 시), `status`, `groups`, `started_at`, `finished_at`(종료 시), `log_name` 등이 있습니다. `status`는 `running`, `passed`, `failed`, `cancelled`, `timed_out`, `interrupted`, `incomplete` 중 하나입니다. 종료 확인 중에는 `stopping:true`와 `stop_status`가 추가될 수 있습니다. 상태 조회는 저장된 예약과 프로세스의 실제 생존 여부를 조정하며 후속 파이프라인 단계를 시작하지 않습니다.
+
+`POST /api/run_log {run_id}`는 `logs/runs/<run_id>.txt`와 존재하는 `<run_id>-headless.txt`를 합쳐 `{ok,log}`로 반환합니다. 실행 ID는 영문·숫자로 시작하고 영문·숫자·밑줄·점·하이픈으로 구성된 최대 128자여야 합니다. 경로 탈출 ID는 거부합니다. 기존 `log` 파일명 조회와 `/api/merge_log`는 호환용이며 최신 고정 이름의 로그를 읽으므로, 실행별 조회에는 `run_id`를 사용합니다.
 
 ### 상태 조회 (GET)
 
@@ -95,7 +110,9 @@
 | `/api/generated_groups` | `{ groups: [{name, files}] }` | tests/generated/ 그룹 목록 |
 | `/api/pages` | `{ pages, groups }` | pages.json + testcases 그룹 |
 | `/api/reports` | `[{ name, path, mtime }]` | HTML 리포트 목록 |
-| `/api/run_history` | run_history.json 전체 | 실행 이력 배열 |
+| `/api/run_history` | run_history.json 전체 | 실행 이력 배열. HTML 리포트 없는 실패·중단도 포함 |
+| `/api/execution_status` | `{ ok, execution }` | 현재 또는 마지막 실행 예약과 종료 상태 |
+| `/api/recovery-notices` | `{ ok, notices: [] }` | 저장된 실행별 원인·다음 행동 안내. `/api/recovery_notices` 별칭 지원 |
 | `/api/heal_stats` | heal_stats.json 전체 | 힐링 오류 패턴 통계 |
 | `/api/pipeline_registry` | `{ pipeline: {steps, step_labels, step_compat}, parallel: {steps, step_labels} }` | `_pipeline_registry.py` 상수 노출 — constants.js가 fetch해 전역 변수 갱신 (P45) |
 | `/api/coverage` | coverage.json (없으면 실시간 생성) | 테스트 커버리지 매트릭스 |
@@ -105,11 +122,25 @@
 | `/api/import/profiles` | 매핑 프로필 목록 | Excel→md 매핑 프로필 |
 | `/api/import/preview/csv?session_id=` | CSV | 미리보기 결과 내려받기 |
 
+#### 복구 알림 계약
+
+각 `notices[]` 항목은 `{id,run_id,groups,category,title,message,action_label,href,severity,created_at}`입니다. `id`는 `run:<run_id>:<status>` 형태로 반복 조회에도 유지되며, 실행 ID 없는 이전 기록은 해당 기록의 해시로 안정된 ID를 만듭니다. `severity`는 `error` 또는 `warning`입니다. `href`는 같은 origin의 상대 경로이며 실제 대상은 `/?view=history` 또는 `/?view=pages`입니다.
+
+저장된 실행 기록에서 최신 순으로 최대 10건을 반환합니다. 같은 `run_id`의 마지막 기록만 판단하며 `failed`, `timed_out`, `interrupted`, `incomplete`가 대상입니다. 진행 중인 루트 실행, 통과한 실행, 사용자가 취소한 실행은 제외합니다. 다른 실행의 최신 pipeline 결과를 가져와 원인을 채우지 않습니다. 조회·알림 확인은 실행·힐링을 자동으로 시작하지 않습니다.
+
+`category`는 `browser_unavailable`, `session_lost`, `transport`, `locator`, `assertion`, `configuration`, `timeout`, `interrupted`, `unknown`입니다. 원인 분류와 안내는 `scripts/error_policy.py`를 공유합니다. 브라우저의 **확인했어요**는 알림 ID를 현재 origin의 `localStorage`에 최근 100개까지 보관하며 서버 기록을 변경하지 않습니다.
+
+대시보드의 안전한 읽기 재시도는 `GET /api/recovery-notices`와 `GET /api/execution_status`에만 적용합니다. 요청당 5초 제한, 총 최대 3회 시도, 재시도 전 0.5초·1초 대기입니다. 일시적인 네트워크 실패·요청 시간 초과·HTTP 502/503/504만 다시 시도하며, 기존 알림과 마지막 실행 상태를 유지합니다. POST 동작은 이 정책의 대상이 아닙니다.
+
 ### 상태 변경 (POST)
 
 | 엔드포인트 | 설명 |
 |---|---|
-| `/api/reset` | pipeline.json 초기화 |
+| `/api/reset` | dialog.json 토론 데이터 초기화. 실행 중이면 거부 |
+| `/api/reset/all` | 대시보드 상태 전체 초기화. 실행 중이면 거부 |
+| `/api/pipeline/reset` | 단일 파이프라인 초기화. 실행 중이면 거부 |
+| `/api/parallel/reset` | 병렬 파이프라인 초기화. 실행 중이면 거부 |
+| `/api/quick/reset` | `{run_id}` 또는 이전 `{pid}`로 소유 실행 중단. 실행이 없으면 quick.json 초기화 |
 | `/api/run_history/reset` | run_history.json 초기화 |
 | `/api/heal_stats/reset` | heal_stats.json 초기화 |
 | `/api/discuss/start` | 팀 토론 시작 (`{ topic }`) |
@@ -270,4 +301,4 @@ workspace lifecycle의 단일 소스가 정해질 때까지 보류합니다.
 
 | 엔드포인트 | 이벤트 | 설명 |
 |---|---|---|
-| `/api/events` | `state_update` | pipeline.json / discuss.json 변경 시 실시간 푸시 |
+| `/api/events` | 기본 `message` (`data` JSON) | dialog·discuss·pipeline·parallel·quick·run_history JSON 변경 시 토론 payload를 보내 갱신 유도. 15초 간격 keepalive |

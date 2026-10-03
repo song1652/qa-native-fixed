@@ -33,10 +33,10 @@
 .oax-card-badge { padding: 2px 8px; border-radius: var(--radius-badge); background: var(--surface-sub); color: var(--text-2); font-size: var(--fs-label); font-weight: 600; }
 
 .ov-table-wrap { overflow-x: auto; }
-.ov-table { width: 100%; min-width: 620px; border-collapse: collapse; color: var(--text); font-size: var(--fs-body); }
+.ov-table { width: 100%; min-width: 720px; table-layout: fixed; border-collapse: collapse; color: var(--text); font-size: var(--fs-sub); font-family: var(--font-sans); line-height: 1.5; }
 .ov-table th { padding: 9px 16px; background: var(--surface-sub); color: var(--text-2); font-size: var(--fs-label); font-weight: 500; text-align: left; white-space: nowrap; }
 .ov-table td { padding: 11px 16px; border-top: 1px solid var(--border); vertical-align: top; }
-.ov-table .ov-num { color: var(--text); font-family: var(--font-mono); font-size: var(--fs-sub); text-align: right; white-space: nowrap; }
+.ov-table .ov-num { color: var(--text); font-family: var(--font-sans); font-size: var(--fs-sub); text-align: right; white-space: nowrap; }
 .ov-table .ov-time { color: var(--text-2); font-family: var(--font-mono); font-size: var(--fs-sub); white-space: nowrap; }
 .ov-table-empty { padding: 40px 16px; color: var(--text-2); text-align: center; }
 .ov-history-link { margin-left: auto; padding: 0; border: 0; background: none; color: var(--accent); font: 400 var(--fs-sub) var(--font-sans); cursor: pointer; }
@@ -57,7 +57,7 @@ button.ov-status-row:hover { color: var(--accent); }
 .oax-legend-item { display: inline-flex; align-items: center; gap: 5px; color: var(--text-2); font-size: var(--fs-label); white-space: nowrap; }
 .oax-legend-dot { width: 7px; height: 7px; flex: 0 0 7px; border-radius: 50%; }
 .oax-trend { display: flex; height: 100%; flex-direction: column; }
-.oax-trend-svg { flex: 0 0 150px; width: 100%; height: 150px; }
+.oax-trend-svg { display: block; flex: 0 0 156px; width: min(100%, 396px); height: 156px; margin: 0 auto; overflow: visible; }
 .oax-trend-footer { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 6px; color: var(--text-2); font-size: var(--fs-label); }
 .oax-trend-empty { display: flex; height: 100%; min-height: 120px; align-items: center; justify-content: center; color: var(--text-3); font-size: var(--fs-sub); }
 
@@ -112,3 +112,14 @@ button.ov-status-row:hover { color: var(--accent); }
   .ov-summary-item:nth-child(3) { border-left: 0; border-top: 1px solid var(--border); }
   .ov-summary-item:nth-child(4) { border-top: 1px solid var(--border); }
 }
+
+.ov-result-detail { margin-top: 2px; color: var(--text-2); font-size: smaller; line-height: 1.5; white-space: normal; word-break: keep-all; overflow-wrap: anywhere; }
+
+.ov-table th:nth-child(1) { width: 132px; }
+.ov-table th:nth-child(2) { width: 96px; }
+.ov-table th:nth-child(3) { width: 160px; }
+.ov-table th:nth-child(5) { width: 68px; }
+.ov-table th:nth-child(6) { width: 80px; }
+.ov-table td:nth-child(2) { white-space: nowrap; }
+.ov-table td:nth-child(3) { overflow-wrap: anywhere; }
+.ov-table .ov-result { font-weight: 400; }

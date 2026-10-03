@@ -14,7 +14,8 @@ LLM 없음. 순수 Python.
 """
 from __future__ import annotations
 
-import shutil
+import os
+import uuid
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -31,6 +32,8 @@ from _constants import MAX_HEAL, PYTEST_NORMAL_EXIT_CODES  # M-2(P119): 단일 �
 from _pipeline_registry import ParallelStatus, RESETTABLE_PARALLEL_STATUSES  # M-4(P121)
 from result_parser import parse_results, parse_skip_messages, parse_failure_messages
 from structured_log import slog
+from error_policy import classify_error, recovery_for_result, errors_from_report
+from run_results import read_execution_result, write_execution_result
 
 # 분리된 모듈
 from _exec   import collect_test_files, run_pytest, is_spa_group
@@ -54,6 +57,7 @@ def _update_parallel_status(
     extra: dict | None = None,
     *,
     path: Path | None = None,
+    run_id: str | None = None,
 ) -> None:
     """state/parallel.json(또는 path)의 status 필드를 업데이트 (원자적 RMW).
 
@@ -64,6 +68,8 @@ def _update_parallel_status(
                 quick 모드에서는 QUICK_STATE를 전달한다 (P41).
     """
     def _mutator(fresh: dict) -> dict:
+        if run_id and fresh.get("run_id") not in (None, "", run_id):
+            return fresh
         updated = {**fresh, "status": status}
         if extra:
             updated.update(extra)
@@ -99,14 +105,50 @@ def main() -> None:
 
     _start_time = _time.monotonic()
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    ts  = datetime.now().strftime("%Y%m%d_%H%M%S")
+    ts  = datetime.now().strftime("%Y%m%d_%H%M%S") + "_" + uuid.uuid4().hex[:8]
+    run_id = os.environ.get("QA_RUN_ID", "").strip() or "parallel_" + ts
+
+    if (read_execution_result(PROJECT_ROOT, run_id) or {}).get("status") in ("cancelled", "interrupted", "timed_out"):
+        print(f"[99] 종료된 실행 — 테스트를 반복하지 않습니다: {run_id}")
+        return
 
     quick_mode = args.quick
     state_path = QUICK_STATE if quick_mode else PARALLEL_STATE
 
+    initial = read_state(state_path)
+    inherited = os.environ.get("QA_RUN_ID", "").strip()
+    if inherited and initial.get("run_id") not in (None, "", inherited):
+        print("[99] 이전 실행 요청 — 새 실행 소유권을 유지합니다")
+        return
+    def claim(fresh):
+        if inherited and fresh.get("run_id") not in (None, "", run_id):
+            return fresh
+        return {**fresh, "run_id": run_id}
+    claimed = update_state(state_path, claim)
+    if claimed.get("run_id") != run_id:
+        return
+
+    def record_start_failure(error, exit_code=None):
+        result = {"run_id": run_id, "status": "failed", "pipeline": "quick" if quick_mode else "parallel",
+                  "passed": 0, "failed": 0, "skipped": 0, "total": 0, "pass_rate": 0,
+                  "exit_code": exit_code, "error": error, "groups": args.group or [],
+                  "report_path": None, "report_name": None, "group_results": {},
+                  "executed_at": now, "finished_at": now, "heal_count": 0, "first_pass": False,
+                  "recovery": classify_error(error)}
+        result["recovery"] = recovery_for_result(result)
+        if result["recovery"]["category"] == "interrupted":
+            result["status"] = "interrupted"
+        saved = write_execution_result(PROJECT_ROOT, run_id, result)
+        if saved.get("status") != result["status"]:
+            return
+        result = saved
+        _update_parallel_status(ParallelStatus.ERROR, {"error": error, "execution_result": result}, path=state_path, run_id=run_id)
+        append_run_history({**result, "timestamp": now, "duration_sec": round(_time.monotonic() - _start_time, 1)})
+
     # ── (A) 파일 수집 ──────────────────────────────────────────────
     sorted_files, scope_label = collect_test_files(args.group)
     if not sorted_files:
+        record_start_failure("no tests collected: 선택한 그룹에 실행할 테스트 파일이 없습니다", 5)
         return
 
     slog("step_start", step="99_merge", scope=scope_label,
@@ -116,11 +158,7 @@ def main() -> None:
     _exec_mode = "순차" if _single_session else "병렬"
     print(f"\n[99] 실행 범위: {scope_label}  ({len(sorted_files)}개 케이스, {_exec_mode} 실행)")
 
-    # 스크린샷·트레이스 정리 — 최종 실패 시에만 남김 (L-7/P147: traces 추가)
-    if SCREENSHOTS_DIR.exists():
-        shutil.rmtree(SCREENSHOTS_DIR, ignore_errors=True)
-    if TRACES_DIR.exists():
-        shutil.rmtree(TRACES_DIR, ignore_errors=True)
+    # 실행별 파일 접두어로 증거를 분리한다. 이전 실행의 리포트 증거는 보존한다.
 
     # M-4(P110/P121): RESETTABLE 상태에서 새 실행 시작 시 heal_count 리셋.
     # HEAL_NEEDED(힐링 재실행) 상태이면 리셋하지 않아 누적 카운트를 유지.
@@ -131,7 +169,7 @@ def main() -> None:
         update_state(state_path, lambda fresh: {**fresh, "heal_count": 0})
 
     # FSM: TESTING으로 전이 (P41 — done→testing→결과 경로 확보)
-    _update_parallel_status(ParallelStatus.TESTING, path=state_path)
+    _update_parallel_status(ParallelStatus.TESTING, {"last_run_id": run_id}, path=state_path, run_id=run_id)
 
     # 이전 heal_count 읽기 (병렬 상태 파일에서, 단일 파이프라인 오염 방지)
     _prev_state = read_state(state_path)
@@ -148,20 +186,22 @@ def main() -> None:
     # _single_session은 L-3(P113) 수정으로 위쪽(slog 직전)에서 이미 계산됨
     if _single_session:
         print("[99] SPA 사이트 감지 → 단일세션 순차 실행")
-    pytest_exit_code, report = run_pytest(sorted_files, single_session=_single_session)
+    try:
+        pytest_exit_code, report = run_pytest(sorted_files, single_session=_single_session, run_id=run_id)
+    except Exception as exc:
+        record_start_failure(f"{type(exc).__name__}: {exc}")
+        return
     test_results    = parse_results(report)
     pytest_summary  = report.get("summary", {})
     failed_count    = pytest_summary.get("failed", 0) + pytest_summary.get("error", 0)
 
-    # C-1(P130): JSON 파싱 실패 시 거짓 DONE 방지.
-    # pytest가 비정상 종료(exit≠0)했는데 report={}이면 failed_count=0이 되어 DONE으로 처리됨.
-    # exit code로 비정상 여부를 직접 판단해 ERROR로 조기 종료.
-    if pytest_exit_code != 0 and not report:
-        print(f"[99] ⚠️ JSON 리포트 파싱 실패 (exit={pytest_exit_code}) — ERROR 처리")
-        _update_parallel_status(
-            ParallelStatus.ERROR, path=state_path,
-            extra={"error": f"pytest exit {pytest_exit_code}이지만 JSON 리포트 파싱 실패"},
-        )
+    # 실행 메타데이터만 있는 리포트는 테스트 측정 증거가 아니다.
+    # 정상 종료코드라도 측정 결과·수집 오류가 모두 없으면 통과로 기록하지 않는다.
+    if not test_results and not errors_from_report(report):
+        print(f"[99] 측정된 테스트 결과 없음 (exit={pytest_exit_code}) — ERROR 처리")
+        record_start_failure("no tests collected" if pytest_exit_code == 5 else
+                             "pytest usage error" if pytest_exit_code == 4 else
+                             f"pytest exit {pytest_exit_code}: 실행 결과를 수집하지 못했습니다", pytest_exit_code)
         sys.exit(0)
 
     # P73: pytest exit 5 = 수집된 테스트 없음
@@ -169,15 +209,35 @@ def main() -> None:
         print("\n[99] ⚠️ pytest 종료코드 5 — 수집된 테스트 없음")
         print("     tests/generated/ 디렉토리가 비어있거나 tc_*.py 파일이 없습니다.")
         print("     힐링이 아닌 코드 생성(02_generate) 단계를 확인하세요.")
-        _update_parallel_status(
-            ParallelStatus.ERROR, path=state_path,
-            extra={"error": "pytest exit 5: 테스트 수집 없음 — 코드 생성 문제"},
-        )
+        record_start_failure("no tests collected: 코드 생성과 선택 그룹을 확인하세요", 5)
         sys.exit(0)
+
+    # 복구는 측정된 이 실행의 오류만 참조한다.
+    measured = {"run_id": run_id, "status": "failed" if pytest_exit_code else "passed",
+                "errors": errors_from_report(report), "executed_at": now, "exit_code": pytest_exit_code,
+                "invocation_id": (report.get("_qa_execution") or {}).get("invocation_id"),
+                "passed": pytest_summary.get("passed", 0), "failed": failed_count,
+                "json_report_path": (report.get("_qa_execution") or {}).get("json_report_path"),
+                "pipeline": "quick" if quick_mode else "parallel", "groups": args.group or []}
+    measured["recovery"] = recovery_for_result(measured)
+    measured = write_execution_result(PROJECT_ROOT, run_id, measured)
+    if measured["status"] in ("cancelled", "interrupted", "timed_out"):
+        return
+    update_state(state_path, lambda fresh: {**fresh, "last_run_id": run_id, "execution_result": measured}
+                 if fresh.get("run_id") == run_id else fresh)
+    if read_state(state_path).get("run_id") != run_id:
+        print("[99] 실행 소유권 변경 — 이전 실행의 후속 작업 중단")
+        return
 
     # ── (C) 힐링 ───────────────────────────────────────────────────
     decision = should_heal(pytest_exit_code, failed_count, args.no_heal, heal_count)
     _heal_impossible = False
+    recovery = recovery_for_result({"errors": errors_from_report(report), "exit_code": pytest_exit_code})
+    if decision == "heal" and not recovery["can_heal"]:
+        decision = "blocked"
+        _heal_impossible = True
+        HEAL_CONTEXT_STATE.unlink(missing_ok=True)
+        print(f"[99] 자동 복구 중단: {recovery['message']}")
 
     if decision == "ok":
         HEAL_CONTEXT_STATE.unlink(missing_ok=True)
@@ -196,7 +256,7 @@ def main() -> None:
             **fresh, "heal_count": heal_count,
         })
 
-    else:  # decision == "heal"
+    elif decision == "heal":
         # P70: heal_count 원자적 증가 (RMW 경쟁 방지)
         update_state(state_path, lambda fresh: {
             **fresh, "heal_count": fresh.get("heal_count", 0) + 1,
@@ -207,7 +267,7 @@ def main() -> None:
         )
         if _heal_impossible:
             # P67: 사이트 불가·전체 반복 → HEAL_FAILED
-            HEAL_CONTEXT_STATE.unlink(missing_ok=True)
+            # 중단 원인과 원본 복원 기록은 보존한다.
             # L-2(P124): "HEAL_FAILED 전이" 직접 출력 제거 — exit code 가드(C-2) 우선 시
             # ERROR가 될 수 있으므로, 최종 상태는 아래 _new_status 결정 후 출력함.
             print("[99] 힐링 불가 (사이트 접근 불가 또는 전체 반복)")
@@ -215,10 +275,17 @@ def main() -> None:
             # H-2(P132): auto_heal 전건 성공 → HEAL_NEEDED 교착 방지.
             # 모든 실패가 자동 수정됐으므로 subagent 힐링 대신 재실행으로 검증한다.
             print("[99] ✅ auto_heal 전건 성공 — 재실행으로 최종 검증 중...")
-            pytest_exit_code, report = run_pytest(sorted_files, single_session=_single_session)
+            pytest_exit_code, report = run_pytest(sorted_files, single_session=_single_session, run_id=run_id)
             test_results   = parse_results(report)
             pytest_summary = report.get("summary", {})
             failed_count   = pytest_summary.get("failed", 0) + pytest_summary.get("error", 0)
+            if not test_results and not errors_from_report(report):
+                record_start_failure("검증 실행에서 측정된 테스트 결과를 수집하지 못했습니다", pytest_exit_code)
+                return
+            current_recovery = recovery_for_result({"errors": errors_from_report(report), "exit_code": pytest_exit_code})
+            if pytest_exit_code and not current_recovery["can_heal"]:
+                decision = "blocked"
+                _heal_impossible = True
             if not failed_count:
                 HEAL_CONTEXT_STATE.unlink(missing_ok=True)
             else:
@@ -227,7 +294,7 @@ def main() -> None:
     # ── (D) HTML 리포트 ────────────────────────────────────────────
     is_final_run = decision in ("ok", "skip", "over_limit") or _heal_impossible
     index_path: Path | None = None
-    if is_final_run:
+    if is_final_run and not args.no_report:
         report_dir = PROJECT_ROOT / "tests" / "reports"
         report_dir.mkdir(parents=True, exist_ok=True)
         index_path = report_dir / f"parallel_index_{ts}.html"
@@ -236,6 +303,8 @@ def main() -> None:
                 test_results, pytest_summary, now,
                 target_groups=args.group,
                 skip_messages=parse_skip_messages(report),
+                quick_mode=quick_mode,
+                evidence_owner=report.get("_qa_execution"),
             ),
             encoding="utf-8",
         )
@@ -320,6 +389,12 @@ def main() -> None:
         _new_status = ParallelStatus.HEAL_NEEDED
 
     _new_execution_result = {
+        "run_id": run_id,
+        "invocation_id": (report.get("_qa_execution") or {}).get("invocation_id"),
+        "json_report_path": (report.get("_qa_execution") or {}).get("json_report_path"),
+        "status": "passed" if _new_status == ParallelStatus.DONE and pytest_exit_code == 0 else "failed",
+        "exit_code": pytest_exit_code,
+        "errors": errors_from_report(report),
         "passed":      passed,
         "failed":      failed,
         "skipped":     skipped,
@@ -330,9 +405,21 @@ def main() -> None:
         "group_results": group_results,
         "executed_at": now,
         "heal_count":  heal_count,
+        "heal_decision": decision,
     }
 
-    update_state(state_path, lambda fresh: {
+    _new_execution_result["recovery"] = recovery_for_result(_new_execution_result)
+    if _new_execution_result["recovery"]["category"] == "interrupted":
+        _new_execution_result["status"] = "interrupted"
+    _stopped = (read_state(state_path).get("heal_context") or {}).get("recovery_stopped")
+    if _stopped:
+        _new_execution_result["recovery_stopped"] = True
+        _new_execution_result["recovery"] = {**_new_execution_result["recovery"], "can_heal": False,
+            "message": (read_state(state_path).get("heal_context") or {}).get("error", "자동 복구 검증 실패 — 변경을 복원하고 추가 실행을 중단했습니다.")}
+    _new_execution_result = write_execution_result(PROJECT_ROOT, run_id, {**_new_execution_result, "pipeline": "quick" if quick_mode else "parallel", "groups": args.group or [], "finished_at": datetime.now().isoformat()})
+    if _new_execution_result["status"] in ("cancelled", "interrupted", "timed_out"):
+        _new_status = ParallelStatus.ERROR
+    update_state(state_path, lambda fresh: fresh if fresh.get("run_id") != run_id else {
         **fresh,
         "groups":           args.group or [],
         "execution_result": _new_execution_result,
@@ -344,6 +431,11 @@ def main() -> None:
     groups_list = list(group_results.keys()) if group_results else (args.group or [])
     append_run_history({
         "timestamp":  now,
+        "run_id": run_id,
+        "status": _new_execution_result["status"],
+        "recovery": _new_execution_result["recovery"],
+        "errors": _new_execution_result["errors"],
+        "report_path": _new_execution_result["report_path"],
         "pipeline":   "quick" if quick_mode else "parallel",
         "groups":     groups_list,
         "passed":     passed,
@@ -352,7 +444,7 @@ def main() -> None:
         "total":      total,
         "pass_rate":  pass_rate,
         "heal_count": heal_count,
-        "first_pass": failed == 0 and heal_count == 0,
+        "first_pass": _new_execution_result["status"] == "passed" and heal_count == 0,
         "duration_sec": _duration,
     })
 

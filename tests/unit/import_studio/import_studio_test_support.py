@@ -77,6 +77,10 @@ def configure_isolated_project(serve: Any, project_root: Path) -> None:
 
     paths = {
         "PROJECT_ROOT": project_root,
+        "STATE_DIR": project_root / "state",
+        "LOGS_DIR": project_root / "logs",
+        "RUN_HISTORY": project_root / "state" / "run_history.json",
+        "HEAL_CONTEXT_STATE": project_root / "state" / "heal_context.json",
         "IMPORT_DIR": project_root / "import",
         "TESTCASES_DIR": project_root / "testcases",
         "GENERATED_DIR": project_root / "tests" / "generated",

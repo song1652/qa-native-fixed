@@ -5,6 +5,63 @@
 > **독자**: Claude Code — pipeline.json / 관련 state 파일 스키마를 확인해야 할 때 on-demand 참조.
 > 헬링 중 실패 구조 파악, 새 필드 추가 시, state 읽기/쓰기 코드 작성 전에 확인.
 
+## 실행 소유권과 최신 화면 상태
+
+`pipeline.json`, `parallel.json`, `quick.json`은 현재 화면에 보여 줄 최신 실행의 상태입니다. 실행별 결과의 저장 위치는 `state/runs/<run_id>/execution_result.json`입니다. 새 작업의 상태가 예전 작업의 늦은 응답으로 덮이지 않도록 최신 상태를 변경할 때 소유 ID를 함께 확인합니다. 모든 상태 갱신은 `update_state(path, mutator)`의 잠금 안에서 처리합니다.
+
+| 공통 필드 | 설명 |
+|---|---|
+| `run_id` | 해당 상태 파일을 현재 소유하는 실행 ID. 대시보드 시작 시 새 ID로 교체 |
+| `last_run_id` | 최신 테스트 실행 결과의 소유 ID. 결과를 화면 상태에 반영할 때 `run_id`와 함께 확인 |
+| `workflow_status` | 대시보드가 관리하는 전체 작업의 `running`, `passed`, `failed`, `cancelled`, `timed_out`, `interrupted`, `incomplete` 상태. `step`·병렬 `status` FSM과 별도 |
+| `execution_result` | 해당 ID에 속하는 측정 결과·오류·복구 안내. 시작 시 예전 결과를 제거하며 완료 시 현재 소유 ID가 일치할 때만 저장 |
+
+새 대시보드 실행은 `workflow_status=running`을 기록하고 이전 `execution_result`, `error`, `heal_subagent_contexts`를 제거합니다. URL·생성 파일 경로 등 실행 설정은 유지합니다. 힐링 횟수 초기화는 기존 새 실행 준비 규칙에 따르며 결과 정리 과정에서 임의로 리셋하지 않습니다. 전체 작업이 실패했지만 이미 측정한 테스트는 통과했을 수 있으므로 결과 건수만으로 전체 완료 여부를 판단하지 않습니다.
+
+단일 파이프라인의 `step`과 병렬·빠른 실행의 `status`는 `_pipeline_registry.py`에 정의된 값을 사용합니다. 대시보드의 중단·시간 초과를 표시하려고 FSM에 `cancelled` 같은 새 문자열을 넣지 않습니다. 상단과 실행 화면은 `workflow_status`와 `execution_result.status`를 함께 확인합니다.
+
+## state/dashboard_execution.json 구조
+
+대시보드의 단일·병렬·병렬 결과 실행·빠른 실행이 공유하는 실행 예약입니다. 시작·중단·상태 조정·파이프라인 초기화가 같은 파일 잠금을 사용합니다. 빈 환경에서는 빈 객체가 저장될 수 있습니다.
+
+```json
+{
+  "run_id": "<server-issued-id>",
+  "tag": "run_qa | run_qa_parallel | run_merge | run_quick",
+  "pipeline": "single | parallel | quick",
+  "groups": ["login"],
+  "status": "running",
+  "started_at": "ISO datetime",
+  "started_epoch": 0.0,
+  "pid": 12345,
+  "process_identity": "<process birth and process group identity>",
+  "log_name": "<run_id>.txt"
+}
+```
+
+종료 시 `finished_at`, 종료 `status`, `error`를 추가합니다. 종료를 아직 확인하지 못했으면 `stopping:true`와 `stop_status`를 보존해 새 실행을 막습니다. PID만으로 소유권을 판단하지 않으며 프로세스 생성 정보로 재사용된 PID를 구분합니다.
+
+서버 재시작 후 살아 있는 소유 실행과 하위 프로세스 그룹은 계속 예약을 차지합니다. 프로세스가 끝난 뒤에는 해당 실행의 저장된 결과를 사용하며, 종료 결과가 없으면 `interrupted`로 저장합니다. 비정상 launcher 종료는 중간 테스트 통과 결과가 있어도 전체 작업을 실패로 표시하고 측정 건수를 유지합니다. 남은 파이프라인 단계를 자동 시작하지 않습니다.
+
+대시보드에서 시작한 전체 작업은 시작 시점부터 **3600초**로 제한합니다. 초과 시 하위 작업을 정리하고 `timed_out` 결과를 보존합니다. POSIX 중단은 TERM 후 전체 프로세스 그룹이 사라질 때까지 최대 3초 기다리고, 필요하면 KILL 후 종료를 확인합니다. 하위 코드 복구 작업의 정리 시간을 확보하며, 그룹 종료를 확인하기 전에는 예약을 해제하지 않습니다.
+
+## 실행별 결과와 시도별 자료
+
+| 경로·필드 | 소유권과 수명 |
+|---|---|
+| `state/runs/<run_id>/execution_result.json` | 한 실행의 최신 결과. 내부 `run_id`가 디렉터리 ID와 일치해야 읽음 |
+| `state/runs/<run_id>/execute/<invocation_id>/pytest_report.json` | 매 pytest 호출의 별도 JSON. 같은 실행의 힐링 재시도도 새 `invocation_id` 사용 |
+| `logs/runs/<run_id>.txt` | 대시보드 launcher의 소유 로그 |
+| `logs/runs/<run_id>-headless.txt` | 존재하는 경우 같은 실행의 Claude 자동 실행 로그 |
+| `QA_RUN_ID`·`QA_WORKFLOW_ID` | launcher에서 자식으로 전달하는 실행·전체 workflow ID |
+| `QA_INVOCATION_ID`·`QA_ARTIFACT_PREFIX` | pytest 시도 ID와 증거 파일의 실행·시도별 접두어 |
+
+병렬 worker의 개별 상태는 루트 ID와 해당 상태 경로에서 파생한 worker ID로 분리합니다. `workflow_id`는 같은 전체 작업을 연결하며 `run_id`는 결과의 실제 소유자를 구분합니다. 이전 시도의 JSON·스크린샷 메타데이터를 현재 실행의 성공 증거로 사용하지 않습니다. HTML 리포트와 스크린샷·영상·Trace도 실행·시도를 구별하는 이름으로 저장합니다.
+
+`scripts/run_results.py`의 원자적 결과 쓰기는 이미 저장된 `cancelled`, `interrupted`, `timed_out`을 후속 늦은 실행 결과가 덮지 못하게 합니다. HTML 리포트가 없어도 결과 JSON과 실행 기록은 보존합니다. 실행별 자료의 자동 만료·일괄 정리 정책은 현재 제공하지 않습니다. DOM 캐시의 TTL과 리포트 선택 삭제는 별도 기능입니다.
+
+## state/pipeline.json 예시
+
 ```json
 {
   "url": "",
@@ -115,13 +172,19 @@
 
 ## state/run_history.json 구조
 
-매 실행(단일/병렬) 완료 시 `append_run_history()`가 자동으로 한 줄씩 추가하는 배열.
+단일·병렬·빠른 실행의 결과와 대시보드가 조정한 실패·중단을 `append_run_history()`가 원자적으로 추가하는 배열입니다. 같은 실행의 여러 시도는 이력에 여러 항목으로 남을 수 있습니다. 리포트 파일 유무로 기록을 필터링하지 않습니다.
 
 ```json
 [
   {
     "timestamp": "YYYY-MM-DD HH:MM:SS",
-    "pipeline": "single | quick",
+    "pipeline": "single | parallel | quick",
+    "run_id": "<execution-id>",
+    "workflow_id": "<root-workflow-id>",
+    "invocation_id": "<pytest-invocation-id>",
+    "status": "passed",
+    "report_path": null,
+    "recovery": {"category": "unknown", "title": "", "message": "", "action": "inspect_log", "can_heal": false, "read_retryable": false},
     "group": "{group_name}",
     "groups": ["{group_a}", "{group_b}"],
     "passed": 10,
@@ -141,7 +204,11 @@
 
 | 필드 | 설명 |
 |------|------|
-| `pipeline` | `single` (05_execute.py 단일 파이프라인) 또는 `quick` (99_merge.py --quick 빠른 실행) |
+| `pipeline` | `single`, `parallel`, `quick` 실행 유형 |
+| `run_id`·`workflow_id`·`invocation_id` | 결과 소유 실행·전체 작업·pytest 시도 ID. 이전 기록이나 pytest 전에 중단한 작업에는 일부 필드가 없을 수 있음 |
+| `status` | `passed`, `failed`, `cancelled`, `timed_out`, `interrupted`, `incomplete`. 측정 건수와 별도로 실행 완료 여부를 판단 |
+| `report_path` | 해당 실행의 HTML 파일 경로. 생성하지 못했거나 `--no-report`이면 이력에서 `null` |
+| `recovery`·`errors`·`error` | 공유 오류 분류의 원인·다음 행동과 실제 오류 자료. 테스트 준비 중 실패도 보존 |
 | `skipped` | pytest가 skip한 테스트 수 |
 | `per_test_results` | 테스트 함수명(nodeid의 `::` 이후 부분) → `"pass"` \| `"fail"` \| `"skip"` 매핑 (대시보드 필터링용) |
 | `group` | 단일 파이프라인: 대상 그룹명 |
@@ -180,9 +247,15 @@
 | `failed` | 실패 테스트 수 |
 | `total` | 전체 테스트 수 |
 | `pass_rate` | 통과율 (%) |
-| `exit_code` | pytest 종료코드 (0=성공, 1=실패) |
+| `exit_code` | pytest 종료코드. 0=완료, 1=테스트 실패, 2=중단/수집 오류, 3=내부 오류, 4=옵션 오류, 5=테스트 없음. 종료코드와 오류 단계를 함께 판단 |
 | `heal_count` | 이 execution에서 적용된 힐링 횟수 |
-| `json_report_path` | pytest-json-report 파일 경로 (06_heal.py가 재활용, 삭제하지 않음) |
+| `json_report_path` | 해당 `run_id`·`invocation_id`의 pytest JSON 경로. 힐링에서 소유 ID·요약·테스트 목록을 검증한 뒤 읽음 |
+| `run_id`·`workflow_id`·`invocation_id` | 실행 결과의 소유 ID, 전체 workflow ID, 이번 pytest 호출 ID |
+| `started_at`·`finished_at` | 해당 호출의 시작·종료 시각 |
+| `status` | 테스트 수와 별도의 실행 결과 상태. 준비 실패·중단·시간 초과도 표현 |
+| `report_path`·`report_name` | 이번 시도의 HTML 자료. 미생성 시 빈 값 또는 `null` |
+| `errors` | 실패한 setup·call·teardown 단계와 테스트 수집 오류를 모두 포함 |
+| `recovery` | `{category,title,message,action,can_heal,read_retryable}`. 다른 실행의 오류로 채우지 않음 |
 
 | `failure_groups` | 에러 유형별 실패 테스트 그룹 (단일 파이프라인에서도 Agent 일괄 처리용) |
 | `mcp_snapshot_recommended` | `true`이면 heal agent가 `browser_snapshot`으로 실시간 DOM 확인 권장 (Locator/Assertion/Timeout 오류 시 자동 설정) |
@@ -193,6 +266,9 @@
 - `heal_count` (top-level): 06_heal.py만 증가시킴 (05_execute.py는 읽기만 함). 최대 3회 제한.
 - `execution_result.heal_count`: 현재 state의 heal_count 값을 복사 (05_execute.py가 기록 시점의 스냅샷).
 - 초과 시 `step = "heal_failed"`, 종료코드 2로 파이프라인 중단.
+- 자동 힐링은 실제 실패가 모두 수정 가능한 Locator 오류로 분류된 경우에만 허용합니다. Assertion·환경·세션·통신·설정·중단·시간 초과·불명 오류가 섞이면 `recovery_stopped`와 원인 안내를 보존하고 중단합니다. `heal_failed`만으로 힐링 횟수 초과를 단정하지 않습니다.
+- 힐링 전 실행 ID가 일치하는 pytest JSON의 요약·노드·실패 단계가 저장된 결과와 일치하는지 확인합니다. 무관한 JSON이나 기존 리포트를 수정 근거로 사용하지 않습니다.
+- 분석 단계의 알려진 DOM 읽기만 재시도 가능한 통신 오류에서 총 최대 3회 시도합니다. 클릭·입력·이동 또는 pytest 전체 실행은 이 정책으로 자동 반복하지 않습니다.
 
 ## state/discuss.json 구조 (팀 토론)
 

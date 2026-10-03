@@ -8,18 +8,20 @@ from __future__ import annotations
 import argparse
 import ast
 import json
+import os
 import re
-import shutil
 import subprocess
 import sys
-import tempfile
+import uuid
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone
 
 from _python import PYTHON_EXE
+from error_policy import classify_error, recovery_for_result, errors_from_report
+from run_results import execution_result_path, write_execution_result, worker_run_id
 from _paths import (
     PIPELINE_STATE, PROJECT_ROOT, read_state, update_state, append_run_history,
-    SCREENSHOTS_DIR, VIDEOS_DIR, is_spa_group,  # L-5(P127): 단일 소스
+    SCREENSHOTS_DIR, is_spa_group,  # L-5(P127): 단일 소스
 )
 from _constants import DEFAULT_GENERATED_FILE, MAX_PYTEST_WORKERS
 from _pipeline_registry import Step  # P68: Step 상수 사용 — 문자열 리터럴 대신
@@ -31,13 +33,17 @@ TESTCASES_DIR = PROJECT_ROOT / "testcases"
 TRACES_DIR = PROJECT_ROOT / "tests" / "traces"
 
 
-def _scan_meta_files() -> dict:
+def _scan_meta_files(run_id=None, invocation_id=None) -> dict:
     """tests/screenshots/*.meta.json 스캔 → {test_name: meta_dict}."""
     meta_by_name = {}
     if SCREENSHOTS_DIR.exists():
         for meta_file in SCREENSHOTS_DIR.glob("*.meta.json"):
             try:
                 m = json.loads(meta_file.read_text(encoding="utf-8"))
+                if run_id and m.get("run_id") != run_id:
+                    continue
+                if invocation_id and m.get("invocation_id") != invocation_id:
+                    continue
                 name = m.get("test_name", "")
                 if name:
                     meta_by_name[name] = m
@@ -218,7 +224,7 @@ def generate_report_from_state(state_path: Path) -> None:
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     report_dir = PROJECT_ROOT / "tests" / "reports"
     report_dir.mkdir(parents=True, exist_ok=True)
-    report_path = report_dir / f"report_{ts}.html"
+    report_path = report_dir / f"report_{ts}_{uuid.uuid4().hex[:10]}.html"
 
     group_name = _extract_group_name(state)
     # 항상 최신 tc_*.md에서 직접 로드 (state.test_cases는 stale title 가능)
@@ -229,7 +235,7 @@ def generate_report_from_state(state_path: Path) -> None:
     test_results = parse_results(report)
     skip_messages = parse_skip_messages(report)
     durations = parse_durations(report)
-    meta_by_name = _scan_meta_files()
+    meta_by_name = _scan_meta_files(execution_result.get("run_id"), execution_result.get("invocation_id"))
     pytest_summary = report.get("summary", {})
 
     rows_html = _build_rows_html(test_results, test_cases, group_name, skip_messages,
@@ -278,16 +284,58 @@ def main():
         "--only-failed", action="store_true",
         help="이전 실행 결과에서 실패한 테스트만 재실행 (힐링 재확인 시 사용)",
     )
+    parser.add_argument("--state-path", type=Path, default=None, help="개별 worker 상태 파일")
     args = parser.parse_args()
     no_report = args.no_report
     only_failed = args.only_failed
 
-    state_path = PIPELINE_STATE
-    if not state_path.exists():
-        print("[오류] state/pipeline.json 없음.")
+    state_path = args.state_path or PIPELINE_STATE
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    inherited_run_id = os.environ.get("QA_RUN_ID", "").strip()
+    run_id = inherited_run_id or f"single_{ts}_{uuid.uuid4().hex[:12]}"
+    workflow_id = os.environ.get("QA_WORKFLOW_ID", "").strip() or run_id
+    if state_path.resolve() != PIPELINE_STATE.resolve():
+        run_id = worker_run_id(run_id, state_path)
+    invocation_id = uuid.uuid4().hex
+    started_at = datetime.now(timezone.utc).isoformat()
+    invocation_dir = execution_result_path(PROJECT_ROOT, run_id).parent / "execute" / invocation_id
+    invocation_dir.mkdir(parents=True, exist_ok=True)
+    json_report_path = invocation_dir / "pytest_report.json"
+    running_result = {"run_id": run_id, "workflow_id": workflow_id, "invocation_id": invocation_id,
+                      "status": "running", "started_at": started_at, "json_report_path": str(json_report_path)}
+    running_result = write_execution_result(PROJECT_ROOT, run_id, running_result)
+
+
+    state = read_state(state_path) if state_path.exists() else {}
+    if state_path.exists():
+        update_state(state_path, lambda fresh: {**fresh, "run_id": run_id, "last_run_id": run_id,
+                                                "execution_result": running_result}
+                     if not inherited_run_id or fresh.get("run_id") in (None, "", run_id, inherited_run_id)
+                     else fresh)
+
+    def startup_failure(error, status="failed"):
+        failure = {**running_result, "status": status, "exit_code": 1, "error": str(error),
+                   "passed": 0, "failed": 0, "total": 0, "heal_count": state.get("heal_count", 0),
+                   "finished_at": datetime.now(timezone.utc).isoformat(), "recovery": classify_error(error, status=status)}
+        failure = write_execution_result(PROJECT_ROOT, run_id, failure)
+        if state_path.exists():
+            update_state(state_path, lambda fresh: {**fresh, "execution_result": failure}
+                         if fresh.get("run_id") == run_id else fresh)
+        append_run_history({**failure, "timestamp": now, "pipeline": "single",
+                            "group": state.get("group_dir", "unknown"),
+                            "groups": [_extract_group_name(state)], "report_path": None})
+        print(f"[오류] {error}")
         sys.exit(1)
 
-    state = read_state(state_path)
+    if running_result.get("status") in ("cancelled", "interrupted", "timed_out"):
+        print(f"[05] 종료된 실행: {run_id}")
+        sys.exit(1)
+    if inherited_run_id and state_path.exists() and read_state(state_path).get("run_id") != run_id:
+        startup_failure(RuntimeError("새 실행이 상태 파일을 소유하고 있습니다."), status="interrupted")
+
+    if not state_path.exists():
+        startup_failure(FileNotFoundError(f"상태 파일 없음: {state_path}"))
 
     # H-2(P117): 리셋 전 heal_count 캡처 → execution_result/run_history에 실제 힐링 횟수 기록.
     # C-1(P102) 리셋 후 state.get("heal_count")가 0이 되므로 미리 저장해야 한다.
@@ -297,27 +345,19 @@ def main():
     from _pipeline_registry import RESETTABLE_STEPS  # M-4(P121): 단일 소스 집합
     if state.get("step") in RESETTABLE_STEPS:
         update_state(state_path, lambda s: {**s, "heal_count": 0})
-        state = read_state(state_path)
+        state = {**state, "heal_count": 0}
 
     # heal_count는 06_heal.py에서만 증가시킴 (이중 증가 방지)
 
     file_path = state.get("generated_file_path", DEFAULT_GENERATED_FILE)
     if not Path(file_path).exists():
-        print(f"[오류] 테스트 파일 없음: {file_path}")
-        sys.exit(1)
-
-    if SCREENSHOTS_DIR.exists():
-        shutil.rmtree(SCREENSHOTS_DIR, ignore_errors=True)
-    if TRACES_DIR.exists():
-        shutil.rmtree(TRACES_DIR, ignore_errors=True)
-    if VIDEOS_DIR.exists():
-        shutil.rmtree(VIDEOS_DIR, ignore_errors=True)
+        startup_failure(FileNotFoundError(f"테스트 파일 없음: {file_path}"))
 
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     report_dir = PROJECT_ROOT / "tests" / "reports"
     report_dir.mkdir(parents=True, exist_ok=True)
-    report_path = report_dir / f"report_{ts}.html"
+    report_path = report_dir / f"report_{ts}_{invocation_id[:10]}.html"
 
     n_funcs, has_dependent = count_test_functions(file_path)
     parallel_opts = []
@@ -342,7 +382,6 @@ def main():
          n_funcs=n_funcs, no_report=no_report)
     print()
 
-    json_report_path = Path(tempfile.gettempdir()) / f"qa_single_report_{ts}.json"
 
     # ── --only-failed: 이전 실패 nodeids만 수집 ─────────────────────
     test_targets: list[str] = [str(file_path)]
@@ -369,27 +408,42 @@ def main():
         result = subprocess.run(
             [
                 PYTHON_EXE, "-m", "pytest", *test_targets,
+                "-p", "no:rerunfailures",
                 "--json-report",
                 f"--json-report-file={json_report_path}",
                 "-v",
                 "--tb=short",
             ] + parallel_opts,
+            env={**os.environ, "QA_RUN_ID": run_id, "QA_INVOCATION_ID": invocation_id,
+                 "QA_ARTIFACT_PREFIX": f"{run_id}__{invocation_id}__"},
             capture_output=False,
             text=True,
             timeout=3600,
         )
-    except subprocess.TimeoutExpired:
-        print("\n[05] pytest 실행 타임아웃 (3600초 초과)")
+    except (subprocess.TimeoutExpired, KeyboardInterrupt, OSError) as error:
+        terminal_status = "timed_out" if isinstance(error, subprocess.TimeoutExpired) else (
+            "interrupted" if isinstance(error, KeyboardInterrupt) else "failed")
+        recovery = classify_error(error, status=terminal_status)
+        print(f"\n[05] {recovery['title']}: {error}")
         _timeout_result = {
             "passed": 0, "failed": 0, "total": 0,
-            "exit_code": -1, "summary": "타임아웃 (3600초 초과)",
+            "exit_code": -1, "summary": recovery["title"], "error": str(error),
             "executed_at": now, "heal_count": state.get("heal_count", 0),
+            "run_id": run_id, "workflow_id": workflow_id, "invocation_id": invocation_id,
+            "started_at": started_at, "finished_at": datetime.now(timezone.utc).isoformat(),
+            "status": terminal_status, "recovery": recovery,
         }
         # pytest 실행(최대 3600초)이 끝난 시점의 최신 상태 위에 이번 실행이
         # 책임지는 필드(step, execution_result)만 병합해 쓴다 — 그 사이 다른
         # 프로세스가 쓴 값을 덮어쓰지 않기 위함(RMW 경쟁 방지).
+        _timeout_result = write_execution_result(PROJECT_ROOT, run_id, _timeout_result)
         update_state(state_path, lambda fresh: {
-            **fresh, "step": Step.TIMEOUT, "execution_result": _timeout_result,  # P68: 리터럴 → 상수
+            **fresh, "step": Step.TIMEOUT if terminal_status == "timed_out" else Step.HEAL_NEEDED, "execution_result": _timeout_result,  # P68: 리터럴 → 상수
+        } if fresh.get("last_run_id") == run_id and fresh.get("run_id") == run_id else fresh)
+        append_run_history({
+            **_timeout_result, "timestamp": now, "pipeline": "single",
+            "group": state.get("group_dir", "unknown"), "groups": [_group_name],
+            "report_path": None,
         })
         sys.exit(1)
 
@@ -408,8 +462,8 @@ def main():
     skipped_count = pytest_summary.get("skipped", 0)
 
     if not test_results:
-        passed_count = 0 if result.returncode != 0 else 1
-        failed_count = 1 if result.returncode != 0 else 0
+        passed_count = 0
+        failed_count = 1
         skipped_count = 0
 
     # ── --only-failed 결과 병합 ──────────────────────────────────────
@@ -445,13 +499,13 @@ def main():
     if not no_report:
         skip_messages = parse_skip_messages(report)
         durations = parse_durations(report)
-        meta_by_name = _scan_meta_files()
+        meta_by_name = _scan_meta_files(run_id, invocation_id)
         rows_html = _build_rows_html(test_results, test_cases, group_name, skip_messages,
                                      durations=durations, meta_by_name=meta_by_name)
         g_pass_cnt = sum(1 for v in test_results.values() if v == "passed")
         g_skip_cnt = sum(1 for v in test_results.values() if v == "skipped")
         g_total_cnt = len(test_results)
-        all_pass = failed_count == 0
+        all_pass = failed_count == 0 and result.returncode == 0
 
         groups_data = [{
             "label": group_name,
@@ -498,6 +552,9 @@ def main():
         group_results[group_name] = gr
 
     execution_result = {
+        "run_id": run_id, "workflow_id": workflow_id, "invocation_id": invocation_id,
+        "started_at": started_at, "finished_at": datetime.now(timezone.utc).isoformat(),
+        "status": "passed" if result.returncode == 0 and failed_count == 0 else "failed",
         "passed":      passed_count,
         "failed":      failed_count,
         "skipped":     skipped_count,
@@ -513,6 +570,16 @@ def main():
         "json_report_path": str(json_report_path),
     }
 
+    execution_result["errors"] = errors_from_report(report)
+    if not execution_result["errors"] and result.returncode in (4, 5):
+        execution_result["error"] = "pytest usage error" if result.returncode == 4 else "no tests collected"
+    elif result.returncode < 0 or (result.returncode == 2 and not any(
+            error.get("phase") == "collection" for error in execution_result["errors"])):
+        execution_result["status"] = "interrupted"
+    if not test_results and not execution_result["errors"] and not execution_result.get("error"):
+        execution_result["error"] = "실행 로그에 측정된 테스트 결과가 없습니다."
+    execution_result["recovery"] = recovery_for_result(execution_result)
+
     # M-2(P119): 비정상 종료(exit 2/3/4) 시에도 HEAL_NEEDED 처리 — 테스트 수집 실패 등
     from _constants import PYTEST_NORMAL_EXIT_CODES
     if result.returncode not in PYTEST_NORMAL_EXIT_CODES:
@@ -522,9 +589,14 @@ def main():
     # pytest 실행(최대 3600초)이 끝난 시점의 최신 상태 위에 이번 실행이
     # 책임지는 필드(step, execution_result)만 병합해 쓴다 — read_state 시점의
     # 오래된 state 스냅샷으로 다른 프로세스의 갱신을 덮어쓰지 않기 위함.
+    execution_result = write_execution_result(PROJECT_ROOT, run_id, execution_result)
+    if execution_result["status"] in ("cancelled", "interrupted", "timed_out"):
+        _new_step = Step.TIMEOUT if execution_result["status"] == "timed_out" else Step.HEAL_NEEDED
     update_state(state_path, lambda fresh: {
         **fresh, "step": _new_step, "execution_result": execution_result,
-    })
+    } if fresh.get("last_run_id") == run_id and fresh.get("run_id") == run_id else fresh)
+    if execution_result.get("invocation_id") != invocation_id:
+        return
     state["step"] = _new_step
     state["execution_result"] = execution_result
     slog("step_end", step="05_execute", passed=passed_count,
@@ -540,6 +612,14 @@ def main():
 
     append_run_history({
         "timestamp": now,
+        "run_id": run_id, "workflow_id": workflow_id, "invocation_id": invocation_id,
+        "started_at": started_at, "finished_at": execution_result["finished_at"],
+        "status": execution_result["status"],
+        "recovery": execution_result["recovery"],
+        "errors": execution_result["errors"],
+        "error": execution_result.get("error", ""),
+        "groups": [group_name],
+        "report_path": execution_result["report_path"] or None,
         "pipeline": "single",
         "group": state.get("group_dir", "unknown"),
         "passed": passed_count,
@@ -548,14 +628,14 @@ def main():
         "total": total,
         "pass_rate": pass_rate,
         "heal_count": _prev_heal_count,  # H-2(P117): 리셋 전 캡처값 사용
-        "first_pass": _prev_heal_count == 0 and failed_count == 0,
+        "first_pass": _prev_heal_count == 0 and execution_result["status"] == "passed",
         "duration_sec": None,
         "per_test_results": per_test_results,
     })
 
     print()
     print("=" * 55)
-    all_pass = failed_count == 0
+    all_pass = execution_result["status"] == "passed"
     status = "성공" if all_pass else "실패"
     print(f"  테스트 {status}: {summary}")
     if not no_report:

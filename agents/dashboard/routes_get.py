@@ -17,6 +17,7 @@ import _paths
 from _validators import is_safe_filename
 from dash_state import (
     build_dialogs,
+    build_recovery_notices,
     build_pipeline_state,
     build_batch_state,
     build_pipeline_registry,
@@ -136,6 +137,12 @@ class GetRoutesMixin:
         payload = _enrich_group_results(payload)
         self._serve_bytes(
             json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+            "application/json; charset=utf-8"
+        )
+
+    def _get_recovery_notices(self):
+        self._serve_bytes(
+            json.dumps(build_recovery_notices(), ensure_ascii=False).encode("utf-8"),
             "application/json; charset=utf-8"
         )
 

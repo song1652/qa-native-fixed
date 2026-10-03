@@ -9,25 +9,24 @@ Claude Code가 heal_context를 읽고 test_generated.py를 직접 패치한 뒤 
   EXIT_HEAL_EXCEEDED (2) = 최대 힐링 횟수 초과 (기본 3회) → 파이프라인 중단
 """
 import re
-import subprocess
 import sys
 from pathlib import Path
 from datetime import datetime
-from _python import PYTHON_EXE
-from _paths import PIPELINE_STATE, read_state, update_state
+from _paths import PIPELINE_STATE, read_state
 from _constants import (
     EXIT_SUCCESS, EXIT_HEAL_NEEDED, EXIT_HEAL_EXCEEDED, MAX_HEAL,
     DEFAULT_GENERATED_DIR, DEFAULT_GENERATED_FILE,
-    HEAL_PYTEST_WORKERS, PYTEST_HEAL_TIMEOUT_SEC,
 )
 from _pipeline_registry import Step  # P62: 문자열 리터럴 대신 Step 상수 사용
-from heal_utils import (
+from heal_utils import (  # noqa: F401 — legacy extract_key_lines re-export
     classify_error, extract_key_lines,  # noqa: F401 (re-export for tests)
     find_screenshot_for_test, append_lessons, update_heal_stats,
     build_heal_batches, print_heal_batches, MCP_SNAPSHOT_ERROR_TYPES,
-    snapshot_assertions,
+    snapshot_assertions, load_heal_execution_state,
 )
+from heal_utils import update_heal_state as update_state
 from structured_log import slog
+from error_policy import recovery_for_result, errors_from_report
 
 
 def _detect_repeated_failures(
@@ -126,75 +125,44 @@ def collect_failure_details_from_report(state: dict) -> tuple[list[dict], str]:
         try:
             report = _json.loads(Path(json_report_path).read_text(encoding="utf-8"))
             failures = []
-            raw_lines = []
-            for test in report.get("tests", []):
-                if test.get("outcome") in ("failed", "error"):
-                    nodeid = test.get("nodeid", "")
-                    test_name = nodeid.split("::")[-1] if "::" in nodeid else nodeid
-                    # call 단계의 longrepr (traceback)
-                    longrepr = ""
-                    call = test.get("call", {})
-                    longrepr = call.get("longrepr", "")
-                    if not longrepr:
-                        # setup/teardown 에러
-                        for phase in ("setup", "teardown"):
-                            p = test.get(phase, {})
-                            if p.get("longrepr"):
-                                longrepr = p["longrepr"]
-                                break
-                    failures.append({
-                        "test_id": nodeid,
-                        "test_name": test_name,
-                        "traceback": longrepr,
-                    })
-                    raw_lines.append(f"FAILED {nodeid}")
-                    if longrepr:
-                        raw_lines.append(longrepr[:500])
-            return failures, "\n".join(raw_lines)
+            for error in errors_from_report(report):
+                nodeid = error.get("nodeid", "")
+                failures.append({"test_id": nodeid, "test_name": nodeid.split("::")[-1],
+                                 "traceback": str(error.get("error", ""))})
+            return failures, "\n".join(f["traceback"] for f in failures)
+
         except Exception:
             pass
-    # JSON report가 없으면 fallback: 실패 테스트만 재실행
-    return _collect_failure_details_fallback(
-        state.get("generated_file_path", DEFAULT_GENERATED_DIR)
-    )
-
-
-def _collect_failure_details_fallback(file_path: str) -> tuple[list[dict], str]:
-    """Fallback: JSON report 없을 때 실패 테스트만 재실행하여 정보 수집."""
-    try:
-        cmd = [PYTHON_EXE, "-m", "pytest", file_path,
-               "--tb=long", "-v", "--no-header", "--lf"]
-        if Path(file_path).is_dir():
-            cmd += [f"-n{HEAL_PYTEST_WORKERS}", "--dist=load"]
-        result = subprocess.run(
-            cmd,
-            capture_output=True, text=True,
-            encoding="utf-8", errors="replace",
-            timeout=PYTEST_HEAL_TIMEOUT_SEC,
-        )
-        output = result.stdout + result.stderr
-        if "no tests ran" in output or "collected 0 items" in output:
-            cmd_full = [c for c in cmd if c != "--lf"]
-            result = subprocess.run(
-                cmd_full,
-                capture_output=True, text=True,
-                encoding="utf-8", errors="replace",
-                timeout=PYTEST_HEAL_TIMEOUT_SEC,
-            )
-            output = result.stdout + result.stderr
-    except subprocess.TimeoutExpired:
-        output = f"[06] pytest 실행 타임아웃 ({PYTEST_HEAL_TIMEOUT_SEC}초 초과)"
-    failures = parse_failures(output, file_path)
-    return failures, output
+    execution = state.get("execution_result", {})
+    errors = execution.get("errors", [])
+    if errors:
+        failures = []
+        for error in errors:
+            nodeid = error.get("nodeid") or error.get("test_id", "")
+            failures.append({"test_id": nodeid, "test_name": nodeid.split("::")[-1],
+                             "traceback": str(error.get("error") or error.get("traceback", ""))})
+        return failures, "\n".join(f["traceback"] for f in failures)
+    # Missing diagnostics never authorize replaying the failing test's actions.
+    execution = state.get("execution_result", {})
+    raw = execution.get("output", "") or execution.get("stderr", "")
+    return parse_failures(raw, state.get("generated_file_path", DEFAULT_GENERATED_DIR)), raw
 
 
 def main():
-    state_path = PIPELINE_STATE
+    import argparse
+    parser = argparse.ArgumentParser(add_help=False)
+    parser.add_argument("--state-path", type=Path, default=PIPELINE_STATE)
+    args, _ = parser.parse_known_args()
+    state_path = args.state_path
     if not state_path.exists():
         print("[오류] state/pipeline.json 없음.")
         sys.exit(1)
 
-    state = read_state(state_path)
+    try:
+        state = load_heal_execution_state(read_state(state_path), state_path=state_path)
+    except RuntimeError as exc:
+        print(f"[06] {exc}")
+        sys.exit(EXIT_HEAL_EXCEEDED)
 
     # C2: step 가드 — 힐링이 불가능한 상태에서 안전하게 종료
     # M-2(P108): TIMEOUT은 _UNHEALABLE_STEPS에서 제거 → heal_failed 전이 코드가 실행되도록 허용.
@@ -230,6 +198,20 @@ def main():
         _spec.loader.exec_module(_mod)
         _mod.generate_report_from_state(state_path)
         sys.exit(EXIT_SUCCESS)
+
+    failures, raw_output = collect_failure_details_from_report(state)
+    # Every failed phase and the process exit participate in recovery admission.
+    gate_errors = execution_result.get("errors") or [
+        {"error": f.get("traceback", "")} for f in failures
+    ]
+    admission = recovery_for_result({**execution_result, "errors": gate_errors})
+    blocker = None if admission["can_heal"] else admission
+    if blocker:
+        ctx = {"failures": failures, "recovery": blocker,
+               "recovery_stopped": True, "error": blocker["message"]}
+        update_state(state_path, lambda fresh: {**fresh, "step": Step.HEAL_FAILED, "heal_context": ctx})
+        print(f"[06] 자동 복구 중단: {blocker['message']}")
+        sys.exit(EXIT_HEAL_EXCEEDED)
 
     # 힐링 횟수 확인
     heal_count = state.get("heal_count", 0)
@@ -270,15 +252,15 @@ def main():
     print(f"[06] 실패 분석 중 (힐링 {heal_count + 1}/{MAX_HEAL}회차)...")
     print()
 
-    failures, raw_output = collect_failure_details_from_report(state)
-
     # 실패가 파싱되지 않은 경우 raw 출력 전체 저장
     if not failures and execution_result.get("exit_code", 0) != 0:
         failures = [{"test_id": "unknown", "test_name": "unknown", "traceback": raw_output[-3000:]}]
 
     # 각 failure에 스크린샷 경로 연결 (힐링 시 시각 검증용)
     for f in failures:
-        f["screenshot"] = find_screenshot_for_test(f["test_name"])
+        f["screenshot"] = find_screenshot_for_test(
+            f["test_name"], run_id=execution_result.get("run_id"),
+            invocation_id=execution_result.get("invocation_id"))
 
     # 동일 오류 2회 연속 반복 감지 → 해당 테스트 스킵
     prev_heal_context = state.get("heal_context") or {}
@@ -323,6 +305,8 @@ def main():
     needs_mcp = any(f.get("error_type", "") in MCP_SNAPSHOT_ERROR_TYPES for f in healable)
     heal_context = {
         "heal_count": heal_count + 1,
+        "run_id": execution_result.get("run_id"),
+        "invocation_id": execution_result.get("invocation_id"),
         "failure_count": len(healable),
         "failures": healable,
         # M2: 다음 라운드 반복 감지용 안정 스냅샷. auto_heal이 "failures"를 덮어써도

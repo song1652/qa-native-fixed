@@ -56,7 +56,8 @@ API 호출 없이 Claude Code 자체가 LLM 역할을 수행하는 QA 자동화 
 | `check_pending_discuss.py` | `discuss.json` `step=pending` | 팀 토론 진행 지시 |
 | `check_pending_impl.py` | `pending_impl.json` 승인 항목 있음 | 구현 요청 주입 |
 
-> 훅이 주입한 지시문이 보이면 해당 파이프라인 단계를 즉시 실행합니다.
+> `workflow_status`가 `failed`·`cancelled`·`interrupted`·`timed_out`·`incomplete`이면 훅은 잔존 단계의 실행 지시를 주입하지 않습니다. 중단된 작업은 새 실행 진입점에서 시작합니다.
+> 진행 가능한 작업에 훅이 지시문을 주입하면 해당 파이프라인 단계를 실행합니다.
 > 트리거 조건 값은 모두 `_pipeline_registry.py` 레지스트리 상수 기반 (P44).
 
 ## 스킬 프레임워크 & OMC 적용
@@ -78,11 +79,22 @@ API 호출 없이 Claude Code 자체가 LLM 역할을 수행하는 QA 자동화 
 |------|------|--------------|------|
 | 코드 완성 (02_generate 이후) | `/oh-my-claudecode:ultrapilot` | `playwright-best-practices`, `python-testing` | scaffold 파일을 agent별 파티셔닝, dom_info+lessons_learned+SKILL.md 참조 |
 | 린트 수정 (03_lint 이후) | Agent tool 직접 병렬 호출 | `python-testing` | lint 이슈 파일별로 Agent 동시 실행 |
-| 힐링 루프 (05_execute 실패 시) | `/oh-my-claudecode:ultraqa` | `heal-patterns`, `browser-qa` | 06_heal → 06_auto_heal → (잔여) 06a_dialog 순서 준수. 최대 3회, 동일 오류 2회 반복 시 자동 스킵. 패치마다 lessons_learned 기록 |
+| 힐링 루프 (05_execute 실패 시) | `/oh-my-claudecode:ultraqa` | `heal-patterns`, `browser-qa` | 06_heal → 06_auto_heal → (잔여) 06a_dialog 순서 준수. 검증 실패 없이 남은 Locator 후보에 최대 3회. exit 5·recovery_stopped면 즉시 중단. 패치마다 lessons_learned 기록 |
 | 병렬 공통 심의 (02a_parallel_dialog 후) | Agent tool 직접 | `playwright-best-practices`, `python-testing` | parallel_plan.json 저장 후 subagent spawn |
 | 패치 후 검증 | `/oh-my-claudecode:verify` | `verify` | 힐링 패치 직후 05_execute 증거 확인. 통과 전 완료 선언 금지 |
 | 패턴 등록 (세션 종료 전) | `/oh-my-claudecode:skillify` | `skillify` | 반복 패턴 발견 시 heal-patterns 또는 lessons_learned에 등록 |
 | 슬롭 정리 (전체 통과 후) | `/oh-my-claudecode:ai-slop-cleaner` | — | 힐링/병렬 완료 후 생성 코드 품질 정리. 동작 변경 없이 중복·죽은 코드 제거 |
+
+## 실행 안전 정책 (1·2·3차 공통)
+
+- **1차 — 실행 소유권·취소**: 대시보드 단일·병렬·빠른 실행과 초기화는 공통 실행 잠금으로 보호한다. `QA_RUN_ID`·`QA_WORKFLOW_ID`를 자식 단계에 유지한다. `state/runs/{run_id}/execution_result.json`의 소유 결과만 사용하며, 소유권이 바뀐 이전 작업은 최신 상태를 갱신하지 않는다. worker는 모든 단계에 동일한 `--state-path`를 전달한다.
+- **2차 — 종료 상태·증거**: 대시보드 재시작 후 실행을 재확인한다. 프로세스 종료만으로 PASS를 만들지 않는다. `workflow_status`의 실패·취소·중단·시간 초과·미완료는 다음 단계 훅을 억제한다. pytest 호출별 `invocation_id`로 리포트·화면·Trace를 구분하고 기존 실행의 증거를 덮어쓰거나 폴더 전체를 초기화하지 않는다.
+- **3차 — 제한된 복구**: setup·call·teardown·수집 오류를 모두 판정한다. 측정된 실패가 모두 Locator 오류이고 pytest가 정상 종료(0·1)한 경우에만 자동 복구한다. 기대값·브라우저·세션·통신·설정·일반 타임아웃·중단·알 수 없는 오류는 멈추고 원인을 안내한다.
+- **실패 자체는 재실행 권한이 아니다**: 진단용 `--lf`·전체 pytest 재실행을 하지 않는다. `rerunfailures`는 비활성화한다. 알려진 일시적 통신 오류의 DOM 읽기만 최초 호출 포함 최대 3회 재시도하며 클릭·입력·저장 동작은 반복하지 않는다.
+- **새 DOM 필수**: 자동 복구 전 현재 URL에서 캐시를 무시하고 DOM을 수집한다. 수집 실패·빈 DOM이면 검증 전에 중단한다. 이전 DOM·다른 실행의 스크린샷으로 대체하지 않는다.
+- **복구 검증 실패 즉시 중단**: 변경 파일당 한 번 검증하며 첫 미통과·크래시·타임아웃에서 이번 자동 패치의 파일을 원래 바이트로 복원한다. `06_auto_heal` 종료코드 **5** 또는 `recovery_stopped=true` 이후 다른 전략·파일·배치·Agent 패치·`06a_dialog`·`05_execute`·`99_merge`를 추가 실행하지 않는다. SIGTERM·KeyboardInterrupt도 검증 중 임시 변경을 복원한다. SIGKILL은 복원 코드를 실행할 수 없다.
+
+상세 CLI·종료코드 → [힐링 가이드](doc/operations/HEALING_GUIDE.md).
 
 ## 힐링
 
@@ -106,8 +118,8 @@ lint 수정·코드 생성 시 반복 오류도 동일하게 lessons_learned.md�
 5. `python scripts/03a_dialog.py` → [심의] [review_deliberation.md](prompts/review_deliberation.md) + ctx
 6. `python scripts/04_approve.py` — QA 리드 승인 게이트. 종료코드 0: 승인 / **4**: 반려→재작성 (EXIT_REJECTED=4, P59에서 EXIT_HEAL_EXCEEDED=2와 충돌 해소) (config/pipeline.json의 auto_approve=true가 기본값이라 보통 즉시 승인됨; "대시보드 대기" 폴백은 UI가 없는 데드엔드라 #26에서 제거)
 7. `python scripts/05_execute.py` — pytest 실행
-8. `python scripts/06_heal.py` — 종료코드 0: 완료 / 10: 힐링→재실행 반복 / 2: 초과→수동 수정
-9. `python scripts/06_auto_heal.py` — 결정적 패턴 자동 패치 (Agent 호출 전). 종료코드 0: 완료·재실행 / 1: 잔여 실패→10번으로 / 3: 스킵(heal_needed 아님)
+8. `python scripts/06_heal.py` — 종료코드 0: 실패 없음·대상 단계 아님 / 10: 복구 후보 준비 / 2: 복구 불가·반복·초과 등으로 중단
+9. `python scripts/06_auto_heal.py` — 결정적 패턴 자동 패치 (Agent 호출 전). 종료코드 0: 검증 통과·잔여 없음 / 1: 검증 실패 없이 미수정 후보 남음→10번으로 / 3: 스킵 / **5: 원본 복원·자동 복구 중단**
 10. (exit 1시) `python scripts/06a_dialog.py` → [심의] [heal_deliberation.md](prompts/heal_deliberation.md) + ctx
 11. (exit 1시) Agent 패치 → `python scripts/assert_guard.py` 실행
 
@@ -115,11 +127,11 @@ lint 수정·코드 생성 시 반복 오류도 동일하게 lessons_learned.md�
 > 06a_dialog(심의)는 자동 수정 후 **남은 어려운 실패만** 컨텍스트에 담으므로 Agent 지시가 더 정확해진다.
 
 > **리포트/스크린샷/Trace 규칙 (필수)**:
-> - **첫 실행 포함 모든 실행은 `--no-report`로 실행**. 리포트·스크린샷은 전체 통과 확인 후 마지막 1회만 생성.
-> - 실행 순서: `05_execute.py --no-report` → `06_heal.py` → 패치 → `05_execute.py --no-report` → ... → 전체 통과 확인 → `05_execute.py` (리포트 생성)
-> - **힐링 재실행 시**: `05_execute.py --no-report --only-failed`로 실패 테스트만 재실행 가능
-> - 05_execute.py는 매 실행 전 `tests/screenshots/`, `tests/traces/` 초기화.
-> - **Trace**: 실패한 TC에 한해 `tests/traces/{group}__{test}.zip` 자동 생성. 힐링 시 `meta.json`의 `trace_path` 참조. 뷰어: `npx playwright show-trace <파일>.zip`
+> - **첫 실행 포함 모든 실행은 `--no-report`로 실행**. HTML 리포트는 전체 통과 확인 후 마지막 1회 생성하고 실패 진단 화면·Trace는 각 실행에서 보존.
+> - 실행 순서: `05_execute.py --no-report` → `06_heal.py` → 패치 → `05_execute.py --no-report` → ... → 전체 통과 확인 → `05_execute.py` (리포트 생성). 복구 검증 실패·exit 5이면 그 시점에서 중단
+> - **허용된 패치 확인 시**: `05_execute.py --no-report --only-failed`로 이전 실패만 선택 가능. exit 5·recovery_stopped·종료된 workflow에서는 재실행 금지
+> - `--no-report`는 HTML 생성을 생략하며 실패 진단 증거는 계속 저장한다. 기존 증거 폴더는 초기화하지 않는다. 실행·호출별 접두어로 분리한다.
+> - **Trace**: 실패한 TC에 한해 `tests/traces/{run_id}__{invocation_id}__{group}__{test}.zip` 자동 생성. 힐링 시 `meta.json`의 `trace_path` 참조. 뷰어: `npx playwright show-trace <파일>.zip`
 
 > **슬롭 정리 (선택, 전체 통과 후)**:
 > 힐링을 여러 번 거친 파일에 중복 패치·죽은 코드가 쌓였다면 리포트 생성 전 실행:
@@ -139,7 +151,7 @@ run_qa_parallel.py → 02a_parallel_dialog → [공통 심의] → subagents × 
 4. `shared_context_paths`의 파일들(`parallel_plan.json` 포함)은 각 subagent가 직접 읽음 (토큰 절감)
 5. `subagents[]` 배열의 각 항목을 Agent tool로 **동시에** 실행 — [parallel_subagent.md](prompts/parallel_subagent.md) 참조
 6. 모든 subagent 완료 후 `python parallel/99_merge.py`
-7. 실패 시 단일과 동일한 힐링 플로우 ([HEALING_GUIDE](doc/operations/HEALING_GUIDE.md) 참조). 최대 3회, 초과 시 수동 수정 요청
+7. Locator 후보만 단일과 동일하게 복구 ([HEALING_GUIDE](doc/operations/HEALING_GUIDE.md) 참조). 검증 실패 없이 남은 후보에 최대 3회. 검증 실패·exit 5·recovery_stopped면 원본 복원 후 즉시 중단
 8. **슬롭 정리 (선택, 전체 통과 후)**: 여러 subagent가 생성한 파일의 스타일 불일치·중복 정리
    `/oh-my-claudecode:ai-slop-cleaner tests/generated/`
 

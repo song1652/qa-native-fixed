@@ -53,6 +53,13 @@ _detect_repeated  = _healer_mod._detect_repeated_failures_parallel
 verify_lessons    = _healer_mod.verify_lessons_learned_updated
 _scan_groups      = _report_mod._scan_generated_groups
 build_heal_ctx    = _healer_mod._build_heal_context
+
+
+def test_quick_report_identifies_its_execution_mode(tmp_path, monkeypatch):
+    monkeypatch.setattr(_report_mod, "GENERATED_DIR", tmp_path)
+    html = _report_mod.build_parallel_html({}, {"total": 0}, "2026-10-02", quick_mode=True)
+    assert "빠른 실행" in html
+    assert "병렬 파이프라인" not in html
 _update_status    = _merge_mod._update_parallel_status
 
 
@@ -258,7 +265,7 @@ def test_build_heal_context_returns_ctx_with_failures(tmp_path):
             {
                 "outcome": "failed",
                 "nodeid": "tests/generated/login/tc_01.py::test_login",
-                "call": {"longrepr": "AssertionError: expected True"},
+                "call": {"longrepr": "Error: strict mode violation: locator(\"button\") resolved to 2 elements"},
             }
         ]
     }

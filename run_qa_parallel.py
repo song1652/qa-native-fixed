@@ -21,6 +21,7 @@ import argparse
 import asyncio
 import json
 import sys
+import os
 from pathlib import Path
 from datetime import datetime
 
@@ -221,6 +222,10 @@ PARALLEL_HEADLESS_PROMPT = (
     "   parallel_plan.json 포함 — 각 subagent가 읽도록 지시) "
     "4) 모든 subagent 완료 후 .venv/bin/python parallel/99_merge.py 실행 "
     "5) 실패 케이스가 있으면 doc/operations/HEALING_GUIDE.md를 참조해서 힐링 루프 진행 (최대 3회). "
+    "측정된 실패가 모두 Locator 오류인 경우에만 복구해. "
+    "recovery_stopped=true 또는 06_auto_heal 종료코드 5이면 변경 복원 후 즉시 중단하고, "
+    "다른 패치·배치·99_merge 재실행을 진행하지 마. 새 DOM 수집 실패 시 캐시로 복구하지 마. "
+    "QA_RUN_ID와 QA_WORKFLOW_ID를 모든 단계에서 유지해. "
     "모든 파이썬 명령은 프로젝트 루트의 .venv/bin/python을 사용해서 실행해."
 )
 
@@ -240,7 +245,9 @@ def _launch_headless_parallel(output_payload: dict) -> None:
     ctx_path = PROJECT_ROOT / "state" / "parallel_contexts.json"
     logs_dir = PROJECT_ROOT / "logs"
     logs_dir.mkdir(exist_ok=True)
-    log_path = logs_dir / "run_qa_parallel_headless.txt"
+    run_id = os.environ.get("QA_RUN_ID", "").strip()
+    log_path = logs_dir / "runs" / f"{run_id}-headless.txt" if run_id else logs_dir / "run_qa_parallel_headless.txt"
+    log_path.parent.mkdir(exist_ok=True)
 
     # headless Claude가 읽을 컨텍스트 파일 저장
     ctx_path.write_text(
@@ -257,7 +264,7 @@ def _launch_headless_parallel(output_payload: dict) -> None:
     # POSIX에서 부모가 fd를 닫아도 자식은 dup된 fd로 계속 씀 — 데이터 유실 없음.
     try:
         with open(log_path, "w", encoding="utf-8") as log_file:
-            subprocess.Popen(
+            proc = subprocess.Popen(
                 [
                     "claude", "-p", PARALLEL_HEADLESS_PROMPT,
                     "--dangerously-skip-permissions",
@@ -266,6 +273,11 @@ def _launch_headless_parallel(output_payload: dict) -> None:
                 cwd=str(PROJECT_ROOT),
                 stdout=log_file, stderr=subprocess.STDOUT,
             )
+            # 대시보드가 생성·실행이 끝날 때까지 실행 중으로 추적하도록 한다.
+            sys.stdout.flush()
+            exit_code = proc.wait()
+        if isinstance(exit_code, int) and exit_code:
+            raise SystemExit(exit_code)
     except Exception:
         # Popen 실패 시 컨텍스트 파일을 삭제해 stale 상태 방지
         ctx_path.unlink(missing_ok=True)
@@ -294,7 +306,7 @@ def main():
     parallel_dir.mkdir(exist_ok=True)
     STATE_DIR.mkdir(exist_ok=True)
     # FSM 전이 검증 없이 초기 상태로 리셋 (재실행 시 ValueError 방지, P50)
-    reset_state(PARALLEL_STATE_PATH, {"status": ParallelStatus.INIT, "created_at": datetime.now().isoformat()})  # P68: 리터럴 → 상수
+    reset_state(PARALLEL_STATE_PATH, {"status": ParallelStatus.INIT, "created_at": datetime.now().isoformat(), **({"run_id": os.environ["QA_RUN_ID"]} if os.environ.get("QA_RUN_ID") else {})})  # P68: 리터럴 → 상수
     # H-1(P131): 이전 라운드 heal_context 삭제 — 잔존 시 "동일 오류 2회" 로직이
     # 오작동해 첫 힐링부터 즉시 HEAL_FAILED로 전이되는 교착 현상 방지.
     HEAL_CONTEXT_STATE.unlink(missing_ok=True)

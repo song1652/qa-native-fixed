@@ -28,7 +28,7 @@ GENERATED_DIR = Path(__file__).parent.parent / "tests" / "generated"
 TESTCASES_DIR = Path(__file__).parent.parent / "testcases"
 
 
-def _scan_meta_files() -> dict:
+def _scan_meta_files(run_id=None, invocation_id=None) -> dict:
     """tests/screenshots/*.meta.json 스캔 → {test_name: meta_dict}.
 
     P84 리팩토링 후 _report.py에 누락됐던 로직 복원 (05_execute.py와 동일 패턴).
@@ -38,6 +38,10 @@ def _scan_meta_files() -> dict:
         for meta_file in SCREENSHOTS_DIR.glob("*.meta.json"):
             try:
                 m = json.loads(meta_file.read_text(encoding="utf-8"))
+                if run_id and m.get("run_id") != run_id:
+                    continue
+                if invocation_id and m.get("invocation_id") != invocation_id:
+                    continue
                 name = m.get("test_name", "")
                 if name:
                     meta_by_name[name] = m
@@ -99,6 +103,8 @@ def build_parallel_html(
     created_at: str,
     target_groups: list[str] | None = None,
     skip_messages: dict | None = None,
+    quick_mode: bool = False,
+    evidence_owner: dict | None = None,
 ) -> str:
     """그룹별 테스트 결과를 HTML 리포트 문자열로 반환.
 
@@ -118,7 +124,8 @@ def build_parallel_html(
         groups = {k: v for k, v in groups.items() if k in target_groups}
 
     # 실패 TC의 스크린샷/영상/트레이스 정보 로드 (P84 리팩 후 누락된 부분 복원)
-    meta_by_name = _scan_meta_files()
+    owner = evidence_owner or {}
+    meta_by_name = _scan_meta_files(owner.get("run_id"), owner.get("invocation_id"))
 
     groups_data = []
     for label, files in groups.items():
@@ -188,4 +195,4 @@ def build_parallel_html(
             "skip_cnt": g_skip_cnt,
         })
 
-    return build_report(groups_data, summary, created_at, "병렬 파이프라인")
+    return build_report(groups_data, summary, created_at, "빠른 실행" if quick_mode else "병렬 파이프라인")

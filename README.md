@@ -203,7 +203,7 @@ python run_qa_parallel.py --no-auto
 | `tests/generated/` 파일 없음 | subagent 코드 생성 미완료 | Claude Code에 subagent 재실행 요청 |
 | 특정 케이스 FAIL | assertion / locator 오류 | 해당 `.py` 파일 직접 확인 후 수정, 또는 Healer 재실행 |
 | 스크린샷 미생성 | conftest.py 중복 로드 | `tests/generated/` 하위에 conftest.py 없어야 함 |
-| 힐링 3회 반복 실패 | selector/assertion 불일치 | MCP로 실제 페이지 DOM 확인 (`browser_navigate` → `browser_snapshot`) |
+| 자동 복구 중단 | 요소 수정 검증 실패 또는 복구 대상이 아닌 오류 | 원본 복원 여부와 실행 로그를 확인. 기대값 불일치는 실제 요구사항을 검토하고, 요소 오류는 최신 화면으로 진단 |
 | `browser_snapshot` 도구 없음 | Playwright MCP 미설치 | `claude mcp add playwright -- npx -y @playwright/mcp@latest` 실행 후 재시작 |
 | 병렬 힐링 후 lessons_learned 누락 경고 | 힐링 패치만 적용, 교훈 미기록 | `agents/lessons_learned.md`에 교훈 수동 기록 후 `99_merge.py` 재실행 (자동 로그는 `lessons_learned_auto.md`에 별도) |
 | assertion 무결성 경고 (`9 → 7` 등) | 힐링 중 assertion이 단순화(약화)됨 | 경고 메시지의 파일·줄 번호 확인 후 원래 키워드 조건 체크(`assert any(keyword in text ...)`)로 복원 |
@@ -233,3 +233,16 @@ python agents/dashboard/serve.py
 
 - [TC 스튜디오 사용자 설명서](doc/guides/tc-studio/TC_AUTHORING_USER_GUIDE.html): 기획 입력부터 작성·검토·내보내기까지.
 - [스크립트 사용 매뉴얼](doc/guides/SCRIPTS_GUIDE.html): 프로그램 실행 순서와 주요 스크립트 역할.
+
+## 실행 안전 정책 (2026-10-03)
+
+`qa-native-app`의 1·2·3차 안정화 정책을 이 웹 프로젝트에 적용했습니다.
+
+- 대시보드는 실행 ID로 작업·로그·결과·실패 증거를 구분하고, 서로 다른 메뉴에서의 중복 실행도 차단합니다.
+- 서버를 재시작하면 살아 있는 작업을 추적합니다. 다음 단계는 자동 재개하지 않습니다. 상단 **실행 중단**으로 프로세스 그룹을 종료할 수 있습니다. 대시보드 실행 전체 제한은 3,600초입니다.
+- 재시도는 지정된 상태 조회와 DOM 읽기에만 최대 3회 적용합니다. 실행 요청·클릭·실패 테스트는 무조건 반복하지 않습니다.
+- 요소 오류만 자동 복구 대상입니다. 최신 DOM 수집이 실패하면 복구를 중단하며, 수정 검증 실패 시 원본 바이트를 복원하고 추가 실행을 중단합니다.
+- 상단 오류 알림에는 원인과 대응 방법이 표시됩니다. **확인했어요**는 해당 브라우저에만 저장됩니다.
+- 리포트가 없는 시작 실패·시간 초과·중단도 실행 기록과 실행별 결과 파일에 보존됩니다.
+
+자세한 절차는 [사용자 가이드](doc/guides/USER_GUIDE.html), [API](doc/reference/API_REFERENCE.md), [복구 지침](doc/operations/HEALING_GUIDE.md)을 참고하세요. 원본 프로젝트의 네이티브 Appium·Capture 기능은 이 저장소에 없어 웹 DOM 수집과 기존 메뉴에 맞춰 적용했습니다.

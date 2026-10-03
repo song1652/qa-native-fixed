@@ -35,6 +35,64 @@ WEAK_METHODS = frozenset({
 })
 
 
+def update_heal_state(path: Path, mutator):
+    """A finishing recovery cannot replace the latest run's state."""
+    import os
+    run_id = os.environ.get("QA_RUN_ID", "").strip()
+    from run_results import worker_run_id
+    from _paths import PIPELINE_STATE, PARALLEL_STATE, QUICK_STATE
+    if run_id and Path(path).resolve() not in {p.resolve() for p in (PIPELINE_STATE, PARALLEL_STATE, QUICK_STATE)}:
+        run_id = worker_run_id(run_id, path)
+    return update_state(path, lambda fresh: mutator(fresh)
+                        if not run_id or fresh.get("last_run_id", fresh.get("run_id")) == run_id
+                        else fresh)
+
+
+def load_heal_execution_state(state: dict, root: Path = PROJECT_ROOT, state_path: Path | None = None) -> dict:
+    """A dashboard run must heal its owned errors, never a later run's summary."""
+    import os
+    from run_results import read_execution_result, worker_run_id
+    run_id = os.environ.get("QA_RUN_ID", "").strip()
+    if not run_id:
+        return state
+    from _paths import PIPELINE_STATE, PARALLEL_STATE, QUICK_STATE
+    if state_path is not None and Path(state_path).resolve() not in {p.resolve() for p in (PIPELINE_STATE, PARALLEL_STATE, QUICK_STATE)}:
+        run_id = worker_run_id(run_id, state_path)
+    if state.get("last_run_id", state.get("run_id")) != run_id:
+        raise RuntimeError("실행 소유권 변경 — 이전 실행의 복구 중단")
+    owned = read_execution_result(root, run_id)
+    if not owned:
+        raise RuntimeError(f"실행 {run_id}의 오류 결과 없음 — 자동 복구 중단")
+    return {**state, "execution_result": owned}
+
+
+def refresh_heal_snapshot(context: dict, state: dict) -> dict:
+    """Collect only current web pages, without cached DOM or interactive exploration."""
+    import asyncio
+    import importlib.util
+    urls = set(context.get("urls", {}).values())
+    url = context.get("url") or state.get("url")
+    if url:
+        urls.add(url)
+    urls.discard(None)
+    urls.discard("")
+    if not urls:
+        raise RuntimeError("새 DOM을 수집할 URL 없음")
+    spec = importlib.util.spec_from_file_location("heal_analyzer", Path(__file__).parent / "01_analyze.py")
+    analyzer = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(analyzer)
+
+    async def collect():
+        snapshots = {}
+        for url in sorted(urls):
+            dom, _ = await analyzer.analyze_all(url, [], force_refresh=True, skip_dynamic=True)
+            if not isinstance(dom, dict) or not dom or dom.get("error"):
+                raise RuntimeError(f"새 DOM 수집 실패: {url}: {dom}")
+            snapshots[url] = dom
+        return snapshots
+    return asyncio.run(collect())
+
+
 def classify_error(traceback: str) -> str:
     """traceback에서 오류 유형 분류.
 
@@ -135,7 +193,8 @@ def extract_key_lines(traceback: str) -> list[str]:
     return []
 
 
-def find_screenshot_for_test(test_name: str) -> dict | None:
+def find_screenshot_for_test(test_name: str, run_id: str | None = None,
+                             invocation_id: str | None = None) -> dict | None:
     """tests/screenshots/ 에서 테스트명에 매칭되는 스크린샷과 메타데이터를 찾는다."""
     if not SCREENSHOTS_DIR.exists():
         return None
@@ -146,7 +205,22 @@ def find_screenshot_for_test(test_name: str) -> dict | None:
         candidates = list(SCREENSHOTS_DIR.glob(f"{test_name}.png"))
     if not candidates:
         return None
-    shot_path = candidates[0]
+    if run_id or invocation_id:
+        owned = []
+        for candidate in candidates:
+            try:
+                meta = json.loads(candidate.with_suffix(".meta.json").read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                continue
+            if run_id and meta.get("run_id") != run_id:
+                continue
+            if invocation_id and meta.get("invocation_id") != invocation_id:
+                continue
+            owned.append(candidate)
+        candidates = owned
+        if not candidates:
+            return None
+    shot_path = max(candidates, key=lambda path: path.stat().st_mtime)
     result = {"path": str(shot_path)}
     meta_path = shot_path.with_suffix("").with_suffix(".meta.json")
     if meta_path.exists():
@@ -532,7 +606,8 @@ def print_heal_batches(batches: list[list[dict]], url: str = "",
     print("  5. 패치 후 개별 테스트 실행으로 통과 확인")
     print("  6. 패치 후 python scripts/assert_guard.py 실행 — assertion 무결성 검증")
     print("     (assert_guard 경고 시: assert 값이 의도적으로 바뀐 것인지 확인)")
-    print("  ※ MCP 실패 시 dom_info 기반 힐링으로 자동 전환 (graceful degradation)")
+    print("  ※ 새 DOM 수집 실패 시 자동 복구 중단. 이전 DOM·스크린샷으로 대체 금지")
+    print("  ※ 검증 실패 시 원본 복원 후 추가 전략·테스트 실행 중단")
     print()
     if pipeline == "single":
         print("  완료 후: python scripts/05_execute.py --no-report → python scripts/06_heal.py")

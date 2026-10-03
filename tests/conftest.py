@@ -1,4 +1,5 @@
 import json
+import os
 import pytest
 from pathlib import Path
 from datetime import datetime
@@ -80,7 +81,7 @@ def page(browser_instance, request):
             # 재인코딩 없이 그냥 rename만 하므로 확장자도 실제 포맷인 .webm을
             # 써야 한다. .mp4로 잘못 붙이면 Content-Type이 실제 콘텐츠와
             # 안 맞아 엄격한 플레이어(Safari 등)에서 재생이 깨질 수 있다.
-            dest = video_dir / f"{group}__{test_name}.webm"
+            dest = video_dir / f"{os.environ.get('QA_ARTIFACT_PREFIX', '')}{group}__{test_name}.webm"
             try:
                 Path(video_path_raw).rename(dest)
                 _video_paths[test_name] = str(dest)
@@ -90,7 +91,7 @@ def page(browser_instance, request):
     # meta.json에 video_path 추가 (실패 TC의 meta.json은 이미 makereport에서 작성됨)
     if outcome != "passed" and test_name in _video_paths:
         shot_dir = Path("tests/screenshots")
-        meta_path = shot_dir / f"{group}__{test_name}.meta.json"
+        meta_path = shot_dir / f"{os.environ.get('QA_ARTIFACT_PREFIX', '')}{group}__{test_name}.meta.json"
         if meta_path.exists():
             try:
                 meta = json.loads(meta_path.read_text(encoding="utf-8"))
@@ -122,15 +123,17 @@ def pytest_runtest_makereport(item, call):
             if report.failed:
                 shot_dir = Path("tests/screenshots")
                 shot_dir.mkdir(parents=True, exist_ok=True)
-                path = shot_dir / f"{group}__{item.name}.png"
+                path = shot_dir / f"{os.environ.get('QA_ARTIFACT_PREFIX', '')}{group}__{item.name}.png"
                 trace_dir = Path("tests/traces")
                 trace_dir.mkdir(parents=True, exist_ok=True)
-                trace_path = trace_dir / f"{group}__{item.name}.zip"
+                trace_path = trace_dir / f"{os.environ.get('QA_ARTIFACT_PREFIX', '')}{group}__{item.name}.zip"
                 try:
                     page.screenshot(path=str(path))
                     page.context.tracing.stop(path=str(trace_path))
                     meta = {
                         "test_name": item.name,
+                        "run_id": os.environ.get("QA_RUN_ID", ""),
+                        "invocation_id": os.environ.get("QA_INVOCATION_ID", ""),
                         "group": group,
                         "url": page.url,
                         "timestamp": datetime.now().isoformat(),
@@ -140,7 +143,7 @@ def pytest_runtest_makereport(item, call):
                         "console_errors": _console_logs.get(item.name, []),
                         "network_failures": _network_failures.get(item.name, []),
                     }
-                    meta_path = shot_dir / f"{group}__{item.name}.meta.json"
+                    meta_path = shot_dir / f"{os.environ.get('QA_ARTIFACT_PREFIX', '')}{group}__{item.name}.meta.json"
                     meta_path.write_text(
                         json.dumps(meta, ensure_ascii=False, indent=2),
                         encoding="utf-8",

@@ -7,6 +7,8 @@ parallel/_exec.py — 병렬 파이프라인 테스트 파일 수집 + pytest �
 from __future__ import annotations
 
 import json
+import os
+import uuid
 import re
 import subprocess
 import sys
@@ -17,6 +19,7 @@ _SCRIPTS_DIR = str(Path(__file__).parent.parent / "scripts")
 if _SCRIPTS_DIR not in sys.path:
     sys.path.insert(0, _SCRIPTS_DIR)
 
+from run_results import execution_result_path
 from _python import PYTHON_EXE
 from _constants import MAX_PYTEST_WORKERS  # m3(P95): 병렬 실행 워커 수
 from _paths import PROJECT_ROOT, is_spa_group  # noqa: F401  # L-5(P127): is_spa_group 단일 소스 (_paths.py) — 99_merge.py re-export용
@@ -107,7 +110,7 @@ def collect_test_files(group: list[str] | None) -> tuple[list[Path], str]:
     return sorted_files, scope_label
 
 
-def run_pytest(sorted_files: list[Path], *, single_session: bool = False) -> tuple[int, dict]:
+def run_pytest(sorted_files: list[Path], *, single_session: bool = False, run_id: str | None = None) -> tuple[int, dict]:
     """정렬된 파일 목록으로 pytest를 실행하고 결과를 반환.
 
     Args:
@@ -123,7 +126,11 @@ def run_pytest(sorted_files: list[Path], *, single_session: bool = False) -> tup
         - 타임아웃: 7200초.
     """
     ts = __import__("datetime").datetime.now().strftime("%Y%m%d_%H%M%S")
-    json_report_path = Path(tempfile.gettempdir()) / f"qa_report_{ts}.json"
+    run_id = run_id or os.environ.get("QA_RUN_ID", "").strip() or f"parallel_{ts}_{uuid.uuid4().hex[:12]}"
+    invocation_id = uuid.uuid4().hex
+    invocation_dir = execution_result_path(PROJECT_ROOT, run_id).parent / "execute" / invocation_id
+    invocation_dir.mkdir(parents=True, exist_ok=True)
+    json_report_path = invocation_dir / "pytest_report.json"
     _runner_script: Path | None = None
 
     try:
@@ -142,6 +149,7 @@ def run_pytest(sorted_files: list[Path], *, single_session: bool = False) -> tup
                 "import sys, pytest\n"
                 f"files = {file_args!r}\n"
                 "args = files + [\n"
+                "    '-p', 'no:rerunfailures',\n"
                 "    '--json-report',\n"
                 f"    '--json-report-file={_json_report_str}',\n"
                 f"{n_line}"
@@ -163,6 +171,7 @@ def run_pytest(sorted_files: list[Path], *, single_session: bool = False) -> tup
                 else ["-n", str(MAX_PYTEST_WORKERS)]  # m3(P95): 병렬 실행
             )
             cmd = [PYTHON_EXE, "-m", "pytest"] + file_args + [
+                "-p", "no:rerunfailures",
                 "--json-report",
                 f"--json-report-file={json_report_path}",
                 *_parallel_flags,
@@ -172,6 +181,8 @@ def run_pytest(sorted_files: list[Path], *, single_session: bool = False) -> tup
         proc = subprocess.run(
             cmd,
             cwd=str(PROJECT_ROOT),
+            env={**os.environ, "QA_RUN_ID": run_id, "QA_INVOCATION_ID": invocation_id,
+                 "QA_ARTIFACT_PREFIX": f"{run_id}__{invocation_id}__"},
             capture_output=False,
             timeout=7200,
         )
@@ -191,6 +202,6 @@ def run_pytest(sorted_files: list[Path], *, single_session: bool = False) -> tup
             report = json.loads(json_report_path.read_text(encoding="utf-8"))
         except (json.JSONDecodeError, OSError) as _e:
             print(f"[99] JSON 리포트 파싱 실패 ({_e}) — 빈 리포트로 처리")
-        json_report_path.unlink(missing_ok=True)
-
+    report["_qa_execution"] = {"run_id": run_id, "invocation_id": invocation_id,
+                               "json_report_path": str(json_report_path)}
     return pytest_exit_code, report

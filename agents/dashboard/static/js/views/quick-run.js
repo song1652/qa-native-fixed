@@ -31,9 +31,9 @@ function renderQuickRun(main) {
   // 실행 결과 카드
   let resultHtml = '';
   if (execResult) {
-    const allPass = execResult.failed === 0;
+    const allPass = execResult.total > 0 && execResult.failed === 0 && !executionFailed(quickState || {}, execResult);
     const badgeCls = allPass ? 'pass' : 'fail';
-    const badgeTxt = allPass ? '모두 통과' : `${execResult.failed}건 실패`;
+    const badgeTxt = allPass ? '모두 통과' : execResult.failed > 0 ? `${execResult.failed || 0}건 실패` : '실행 중단·오류';
     const groupResultsHtml = buildGroupResultsHtml(execResult.group_results || {}, 'quick');
     const quickStatus = quickState ? quickState.status : null;
     const healBannerHtml = (!allPass && quickStatus === 'heal_needed') ? `
@@ -41,16 +41,16 @@ function renderQuickRun(main) {
         힐링 필요 — 실패한 테스트를 수정한 후 다시 실행하세요. (힐링 ${execResult.heal_count || 0}/3회 완료)
       </div>` : (!allPass && quickStatus === 'heal_failed') ? `
       <div class="quick-heal-banner failed">
-        최대 힐링 횟수 초과 — 수동으로 실패 테스트를 수정하세요.
+        ${execResult.heal_decision === 'skip' ? '힐링 생략 — 오류 상세를 확인한 후 다시 실행하세요.' : execResult.heal_decision === 'over_limit' ? '최대 힐링 횟수 초과 — 수동으로 실패 테스트를 수정하세요.' : '자동 복구 중단 — 실행 로그에서 사유를 확인하세요.'}
       </div>` : '';
     resultHtml = `
       <div class="exec-result-card">
         <div class="exec-result-stats">
-          <div class="exec-stat"><div class="exec-stat-num" style="color:var(--text)">${execResult.total}</div><div class="exec-stat-label">전체</div></div>
-          <div class="exec-stat"><div class="exec-stat-num" style="color:var(--pass)">${execResult.passed}</div><div class="exec-stat-label">통과</div></div>
-          <div class="exec-stat"><div class="exec-stat-num" style="color:var(--fail)">${execResult.failed}</div><div class="exec-stat-label">실패</div></div>
+          <div class="exec-stat"><div class="exec-stat-num" style="color:var(--text)">${execResult.total || 0}</div><div class="exec-stat-label">전체</div></div>
+          <div class="exec-stat"><div class="exec-stat-num" style="color:var(--pass)">${execResult.passed || 0}</div><div class="exec-stat-label">통과</div></div>
+          <div class="exec-stat"><div class="exec-stat-num" style="color:var(--fail)">${execResult.failed || 0}</div><div class="exec-stat-label">실패</div></div>
           ${(execResult.skipped || 0) > 0 ? `<div class="exec-stat"><div class="exec-stat-num" style="color:var(--warn)">${execResult.skipped}</div><div class="exec-stat-label">건너뜀</div></div>` : ''}
-          <div class="exec-stat"><div class="exec-stat-num" style="color:${allPass ? 'var(--pass)' : 'var(--fail)'}">${execResult.pass_rate}%</div><div class="exec-stat-label">통과율</div></div>
+          <div class="exec-stat"><div class="exec-stat-num" style="color:${allPass ? 'var(--pass)' : 'var(--fail)'}">${execResult.pass_rate || 0}%</div><div class="exec-stat-label">통과율</div></div>
         </div>
         <section class="quick-result-panel"><div class="exec-result-header">
           <span class="exec-result-title">그룹별 결과</span>
@@ -101,6 +101,7 @@ function renderQuickRun(main) {
         <pre id="run-quick-log-content" style="margin:0;">${esc(_quickRunState.logContent || '(대기 중...)')}</pre>
       </div>
       <button class="log-toggle-btn" id="log-toggle-quick" onclick="toggleLogExpand('run-quick-log')" style="display:${logVis ? 'inline-block' : 'none'};margin-bottom:16px;">확대</button>
+      ${recoveryGuidanceHtml(quickState || {}, execResult)}
       ${resultHtml}
       <div class="quick-report-wrap" id="quick-report-wrap" style="display:${_uiState.quickReportName ? 'block' : 'none'};margin-top:16px;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
@@ -136,7 +137,7 @@ function renderQuickRun(main) {
     fetch('/api/run_log', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ log: 'quick_run.txt' }),
+      body: JSON.stringify({ log: 'quick_run.txt', ...(_quickRunState.runId ? {run_id: _quickRunState.runId} : {}) }),
     }).then(r => r.json()).then(data => {
       const el = document.getElementById('run-quick-log-content');
       const area = document.getElementById('run-quick-log');
@@ -175,14 +176,16 @@ async function runQuickTest() {
     const data = await res.json();
     if (data.ok) {
       _quickRunState.pid = data.pid;
+      _quickRunState.runId = data.run_id;
+      executionStatusRefresh();
       if (btn) btn.textContent = '실행됨 (PID: ' + (data.pid || '?') + ')';
       _quickRunState.logVisible = true;
-      startLogPolling('run-quick-log', 'run-quick-log-content', 'quick_run.txt');
+      startLogPolling('run-quick-log', 'run-quick-log-content', 'quick_run.txt', data.run_id);
       // 완료 대기 → 결과 자동 갱신
       const checkDone = setInterval(async () => {
         await fetchQuickState();
         const qs = quickState || {};
-        if (qs.status === 'done' || qs.status === 'heal_needed' || qs.status === 'heal_failed') {
+        if ((!data.run_id || qs.run_id === data.run_id) && (['done', 'heal_needed', 'heal_failed', 'error'].includes(qs.status) || ['passed', 'failed', 'cancelled', 'interrupted', 'timed_out'].includes(qs.workflow_status))) {
           clearInterval(checkDone);
           _quickRunState._checkDoneTimer = null;
           // 로그 폴링 정리 + 최종 로그 보존
@@ -203,14 +206,6 @@ async function runQuickTest() {
         }
       }, 3000);
       _quickRunState._checkDoneTimer = checkDone;
-      // 최대 5분 후 자동 해제
-      setTimeout(() => {
-        clearInterval(checkDone);
-        _quickRunState.running = false;
-        _quickRunState.pid = null;
-        _quickRunState._checkDoneTimer = null;
-        if (btn) { btn.textContent = '테스트 실행'; btn.disabled = false; }
-      }, 300000);
     } else {
       showToast('오류: ' + (data.error || 'unknown'));
       _quickRunState.running = false;
@@ -255,7 +250,7 @@ async function quickReset() {
     const res = await fetch('/api/quick/reset', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ pid: pidToKill }),
+      body: JSON.stringify({ pid: pidToKill, ...(_quickRunState.runId ? {run_id: _quickRunState.runId} : {}) }),
     });
     const data = await res.json();
     if (data.ok) {

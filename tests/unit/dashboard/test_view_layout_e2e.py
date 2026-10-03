@@ -6,12 +6,68 @@
 from __future__ import annotations
 
 import sys
+import json
+import pytest
 from pathlib import Path
 
 from playwright.sync_api import sync_playwright
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts"))
 from tests.unit.import_studio.import_studio_test_support import dashboard_server  # noqa: E402
+
+
+def test_skipped_healing_is_not_reported_as_retry_limit(tmp_path):
+    from playwright.sync_api import expect
+    with dashboard_server(tmp_path / "project") as base, sync_playwright() as playwright:
+        browser = playwright.chromium.launch()
+        page = browser.new_page()
+        page.route('**/api/quick_state*', lambda route: route.fulfill(json={
+            "status": "heal_failed", "execution_result": {
+                "total": 3, "passed": 1, "failed": 2, "pass_rate": 33.3,
+                "heal_count": 0, "heal_decision": "skip", "group_results": {},
+            },
+        }))
+        page.goto(base + "/")
+        page.wait_for_function("quickState && quickState.execution_result")
+        page.locator('#tab-quick_run').click()
+        expect(page.locator('.quick-heal-banner')).to_contain_text('힐링 생략')
+        expect(page.locator('.quick-heal-banner')).not_to_contain_text('최대 힐링 횟수 초과')
+        browser.close()
+
+
+@pytest.mark.parametrize("notification", ["single_init", "parallel"])
+def test_automatic_pipeline_notice_does_not_block_page_management(tmp_path, notification):
+    with dashboard_server(tmp_path / "project") as base, sync_playwright() as playwright:
+        browser = playwright.chromium.launch()
+        page = browser.new_page()
+        page.goto(base + "/")
+        page.evaluate("kind => showHookAlert(kind, '실행 준비 완료')", notification)
+        assert page.locator('#hook-alert').count() == 0
+        page.locator('#tab-pages').click()
+        assert page.locator('#pg-url').is_visible()
+        browser.close()
+
+
+def test_overview_counts_registered_pages_instead_of_case_folders(tmp_path):
+    project = tmp_path / "project"
+    (project / "testcases" / "unregistered").mkdir(parents=True)
+    (project / "config").mkdir()
+    (project / "config" / "pages.json").write_text(json.dumps({
+        "_comment": "Not a page",
+        "login": "https://example.com/login",
+        "cart": {"url": "https://example.com/cart"},
+    }), encoding="utf-8")
+    with dashboard_server(project) as base, sync_playwright() as playwright:
+        browser = playwright.chromium.launch()
+        page = browser.new_page()
+        page.goto(base + "/")
+        page.wait_for_function("pagesData.pages && pagesData.pages.cart")
+        page.evaluate("selectView('')")
+        summary = page.locator('.ov-summary-item').filter(has_text="등록된 페이지")
+        assert summary.locator('.ov-summary-value').inner_text() == "2"
+        page.evaluate("selectView('pages')")
+        assert page.locator('.pages-list-title').inner_text() == "등록된 페이지 (2개)"
+        browser.close()
 
 VIEWS = ["", "quick_run", "single_pipeline", "parallel_pipeline", "reports", "history", "team_new", "pages",
          "tc_studio"]

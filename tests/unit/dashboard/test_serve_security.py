@@ -306,6 +306,8 @@ class TestQuickHealCountReset:
             patch.object(_paths, "GENERATED_DIR", tmp_path),
             patch.object(_serve, "_register_spawned_pid"),
             patch("subprocess.Popen") as mock_popen,
+            patch.object(_routes_ops, "start_execution", side_effect=lambda *a, **kw:
+                         (kw["prepare"](), {"ok": True, "pid": 12345})[1]),
             patch.object(handler, "_serve_bytes"),
             patch.object(_routes_ops, "_read_body", return_value=body),
         ):
@@ -346,6 +348,8 @@ class TestQuickHealCountReset:
             patch.object(_paths, "GENERATED_DIR", tmp_path),
             patch.object(_serve, "_register_spawned_pid"),
             patch("subprocess.Popen") as mock_popen,
+            patch.object(_routes_ops, "start_execution", side_effect=lambda *a, **kw:
+                         (kw["prepare"](), {"ok": True, "pid": 12345})[1]),
             patch.object(handler, "_serve_bytes"),
             patch.object(_routes_ops, "_read_body", return_value=body),
         ):
@@ -387,6 +391,8 @@ class TestQuickHealCountReset:
             patch.object(_paths, "GENERATED_DIR", tmp_path),
             patch.object(_serve, "_register_spawned_pid"),
             patch("subprocess.Popen") as mock_popen,
+            patch.object(_routes_ops, "start_execution", side_effect=lambda *a, **kw:
+                         (kw["prepare"](), {"ok": True, "pid": 12345})[1]),
             patch.object(handler, "_serve_bytes"),
             patch.object(_routes_ops, "_read_body", return_value=body),
         ):

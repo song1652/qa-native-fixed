@@ -211,12 +211,12 @@ object 형식 사용 시 `page_meta`(auth, spa, preconditions, notes)가 subagen
 |---|---|
 | `--group`, `-g` | 실행할 폴더명 (예: `mysite`). 생략 시 전체 실행 |
 | `--quick` | 빠른 실행 모드. 결과를 `state/quick.json`에 저장 (`state/parallel.json` 미변경) |
-| `--no-heal` | 힐링 생략. 실패해도 `heal_context.json`을 생성하지 않고 바로 리포트 생성. 상태는 `done`으로 설정 |
+| `--no-heal` | 힐링 생략. 실패해도 `heal_context.json`을 생성하지 않고 리포트 생성. 실패 상태는 `heal_failed`로 보존 |
 | `--no-report` | 리포트 생성 생략. 힐링 중 중간 실행 시 사용. Jira 이슈 생성도 건너뜀 |
 
 **동작:**
-1. `tests/generated/` 폴더 pytest 일괄 실행 (병렬 최대 4 workers, timeout=900s)
-2. **실패 시**: 단일 파이프라인과 동일한 힐링 플로우 실행 — 에러 분류(7종) → 사이트 사전 접근 체크 → 반복 실패 감지(2회 스킵) → `06_auto_heal.py` (deterministic 패치) → `state/heal_context.json` 생성 → Claude Code 패치 → 재실행 (최대 3회). `--no-heal` 시 이 단계를 건너뜀
+1. `tests/generated/` 폴더 pytest 일괄 실행 (병렬 최대 4 workers, timeout=7200s). `rerunfailures` 비활성화
+2. **실패 시**: setup·call·teardown·수집 오류와 pytest 종료코드를 함께 판정. 정상 종료(0·1)의 모든 실패가 Locator 오류일 때 `heal_context.json` 생성 → 새 DOM 수집 → 자동 패치와 파일당 한 번 검증. 검증 실패면 원본 복원 후 추가 실행 중단. 검증 실패 없이 미수정 후보가 남았을 때만 Agent 심의 가능. `--no-heal`은 복구를 생략
 3. 전체 통과 시: `tests/reports/parallel_index_{날짜시간}.html` 리포트 생성
 4. `--group` 지정 시 리포트에 해당 그룹만 포함 (미선택 그룹 제외)
 
@@ -350,40 +350,45 @@ kill -9 [PID]
   → 종료코드 0: 승인 / 4: 반려(재작성) / 1: stdin 없음(비대화형인데 auto_approve 꺼짐) / 2: 3회 반려 초과
 
 05_execute.py
-  → pytest로 테스트 실행 (최대 4 workers 병렬, spa: true 사이트는 세션 충돌 방지를 위해 1 worker 고정)
+  → pytest 실행 (최대 4 workers; spa: true 사이트는 순차 실행). rerunfailures 비활성화
+  → 실행별 결과를 state/runs/{run_id}/execution_result.json에 원자적으로 저장
+  → 최신 소유자일 때만 state/pipeline.json의 execution_result를 갱신
   → report_html.build_report()로 HTML 리포트 생성 (병렬과 동일 형식)
-  → result_parser.parse_results()로 결과 파싱 (99_merge.py와 공유)
-  → state/pipeline.json에 execution_result 저장 (heal_count는 읽기만, 증가 안 함)
-  → `--no-report` 플래그: 리포트·스크린샷 생성 건너뜀 (힐링 중간 실행용)
-  → `--only-failed` 플래그: 이전 실행에서 실패한 테스트만 재실행 (힐링 시 시간 대폭 절감)
-  → 첫 실행 포함 모든 실행은 `--no-report`, 전체 통과 확인 후 마지막 1회만 리포트 생성
-  → 매 실행 전 `tests/screenshots/`, `tests/traces/` 초기화
+  → --no-report: HTML 생성 생략. 실패 스크린샷·Trace와 실행 결과는 저장
+  → --only-failed: 안전한 수정 확인용으로 이전 실패만 선택. 중단된 복구에는 사용 금지
+  → --state-path: worker 상태 경로. 모든 단계에 같은 경로 전달
+  → JSON 리포트는 실행/호출별 경로, 증거 파일은 run_id__invocation_id__ 접두어로 분리
+  → 기존 screenshots/traces/videos 폴더 전체를 초기화하지 않음
 
 06_heal.py
-  → 05_execute가 생성한 JSON 리포트(json_report_path)에서 실패 정보를 파싱 (pytest 재실행 없음)
-  → 스크린샷·Trace 경로를 연결해 heal_context 저장 (meta.json의 trace_path 참조). 타임아웃 600s, -n8 병렬
-  → --lf 실행 시 0개 수집이면 --lf 없이 재실행 (fallback)
+  → 저장된 소유 JSON 리포트 또는 오류에서 모든 실패 단계·수집 오류를 읽음
+  → 오류 수집을 위한 --lf·전체 pytest 재실행 없음
+  → 모든 실패가 Locator이고 pytest 정상 종료(0·1)일 때만 복구 후보 준비
+  → 현재 run_id·invocation_id에 속한 스크린샷·Trace만 연결
+  → --state-path: worker 상태 경로
+  → 종료코드 0: 실패 없음·대상 단계 아님 / 10: 후보 준비 / 2: 복구 불가·초과 등 중단
 
 06_auto_heal.py
-  → 06_heal.py 이후 자동 패치. 7개 정적 패턴:
-     strict mode violation → .first 추가
-     timeout 오류 → timeout 값 증가 (5000→15000, 10000→20000)
-     to_have_class(r"...") → to_have_class(re.compile(r"..."))
-     triple_click() → click(click_count=3)
-     page.evaluate('return ...') → page.evaluate('() => ...')
-     UnicodeDecodeError cp949 → open() 에 encoding='utf-8' 추가
-     모달 wait_for timeout 10000 → 20000
-  + heal_stats 빈출 패턴 Top 5 보고
-  → 수정 파일만 재실행하여 검증. 전부 통과 시 Agent 불필요 (종료코드 0)
-  → 잔여 실패 시 heal_context 업데이트 후 Agent에 위임 (종료코드 1). heal_needed가 아니면 스킵 (종료코드 3)
-  → `--state-path`: 상태 파일 (기본 state/pipeline.json, 병렬은 state/parallel.json)
-  → `--state-key`: heal_needed 판정 키 (기본 step, 병렬은 status)
-  → `--heal-context-path`: heal_context를 상태 파일 대신 이 JSON에서 읽음 (병렬 heal_context.json)
+  → 소유 실행과 모든 실패의 복구 가능 여부를 재확인
+  → 캐시를 무시하고 현재 URL의 새 DOM 수집. 클릭·호버 탐색은 생략
+  → 새 DOM 수집 실패·빈 결과면 패치·검증 전에 종료코드 5로 중단
+  → 7개 정적 패치 함수가 있으나 Locator 복구 허용 판정을 통과한 경우만 적용
+  → 변경 파일당 검증 한 번: --maxfail=1 -p no:rerunfailures (파일별 timeout=300s)
+  → 검증 실패·크래시·타임아웃·검증 중 종료 신호는 임시 파일 변경을 원래 바이트로 복원
+  → 종료코드 0: 자동 검증 통과·잔여 없음 / 1: 검증 실패 없이 미수정 후보 남음
+  → 종료코드 3: 스킵 / 5: 자동 복구 중단. exit 5·recovery_stopped 이후 추가 실행 금지
+  → --state-path: 상태 파일 (기본 state/pipeline.json; 병렬 state/parallel.json)
+  → --state-key: heal_needed 판정 키 (기본 step; 병렬 status)
+  → --heal-context-path: 별도 컨텍스트 JSON (병렬 state/heal_context.json)
+  → 검증 호출에도 별도 invocation_id와 증거 파일 접두어 부여
 
-06a_dialog.py
-  → 힐링 심의에 필요한 파일들을 병렬로 읽어 JSON으로 출력
-  → heal_stats.json에서 Top 5 빈출 패턴을 DELIBERATION_CONTEXT에 자동 주입
-  → Claude가 traceback + 스크린샷 + 빈출 패턴을 분석해 코드 패치 후 05_execute.py 재실행
+06a_dialog.py / assert_guard.py
+  → --state-path: worker 상태 경로
+  → 06a_dialog는 이미 중단된 복구에서 종료코드 5로 심의를 거부
+  → 심의는 새 DOM·현재 실행의 오류/화면·빈출 패턴만 사용
+  → assert_guard는 최초 또는 직전 assertion 스냅샷과 현재 파일을 비교
+  → 기대값·assertion 약화로 실패를 숨기지 않음
+
 ```
 
 **개별 실행이 필요한 경우 (cwd = 프로젝트 루트):**
@@ -411,6 +416,7 @@ kill -9 [PID]
 > 모든 훅은 `hook_utils.check_state(path, key, value, extra_check)` 공통 함수를 사용합니다.
 > P44부터 트리거 조건 값은 `_pipeline_registry.py`의 `Step.*` / `ParallelStatus.*` 레지스트리 상수를 사용합니다.
 > 실행 지시문은 `hook_utils.remaining_steps_hint(from_step)`이 레지스트리 기반으로 자동 생성합니다.
+> `workflow_status`가 `failed`·`cancelled`·`interrupted`·`timed_out`·`incomplete`이면 `hook_utils.check_state()`가 잔존 단계의 실행 지시를 억제합니다. 새 실행은 진입점에서 시작합니다.
 
 | 파일 | 감지 대상 | 트리거 상수 | 동작 |
 |---|---|---|---|
@@ -430,10 +436,12 @@ kill -9 [PID]
 | `scripts/_python.py` | `PROJECT_ROOT`를 `_paths.py`에서 import하여 `.venv` 경로 구성. `PYTHON_EXE` 상수 제공 | ❌ (다른 스크립트가 import) |
 | `scripts/_paths.py` | 중앙 경로 상수 (`STATE_DIR`, `LOGS_DIR`, `DOM_CACHE_DIR`, `RUN_HISTORY` 등) + `DOM_CACHE_TTL_HOURS=168`(7일) / `DOM_DYNAMIC_CACHE_TTL_HOURS=24`(24시간) TTL 상수 + `read_state()` (락 파일 기반 크로스플랫폼 잠금) / `write_state()` (atomic rename + **pipeline.json FSM 전이 자동 검증**) / `append_run_history()` (락 파일로 read-modify-write 보호, Windows 포함 크로스플랫폼) / `get_cached_dom()` (정적·동적 TTL 분리 체크 — 동적 만료 시 `dynamic_elements`/`contextmenu_elements`만 제거) / `save_dom_cache()` (atomic write + `_cached_at` / `_dynamic_cached_at` 분리 저장) / `resolve_sub_doms(state)` (sub_dom_keys → {url:dom} 매핑) 유틸 | ❌ (다른 스크립트가 import) |
 | `scripts/_constants.py` | 파이프라인 종료 코드 상수 (`EXIT_SUCCESS=0`, `EXIT_HEAL_NEEDED=10`, `EXIT_HEAL_EXCEEDED=2`, `EXIT_REJECTED=4`) + `VALID_TRANSITIONS` step 전이 맵 + `assert_valid_transition()` 검증 함수 | ❌ (다른 스크립트가 import) |
+| `scripts/error_policy.py` | 오류 분류·안내와 복구 허용 판정. 모든 실패 단계·수집 오류·pytest 종료 상태를 함께 확인하며 Locator 후보만 복구 허용 | ❌ (다른 스크립트가 import) |
+| `scripts/run_results.py` | 실행 소유 결과의 원자적 읽기/쓰기, worker ID 파생. 취소·중단·시간 초과 결과를 뒤늦은 worker 결과로 덮어쓰지 않음 | ❌ (다른 스크립트가 import) |
 | `scripts/result_parser.py` | pytest JSON 리포트 → `{nodeid: passed}` 매핑 파싱. `05_execute.py`와 `99_merge.py`가 공유 | ❌ (다른 스크립트가 import) |
 | `scripts/hook_utils.py` | 훅 스크립트 공통 유틸. `check_state(path, key, value, extra_check)` + `remaining_steps_hint(from_step)` (레지스트리 기반 잔여 단계 지시문 자동 생성, P44) — 5개 `check_pending_*.py`가 공유 | ❌ (다른 스크립트가 import) |
 | `scripts/structured_log.py` | 구조화된 로그 (JSON Lines). `slog(event, **kwargs)` → `logs/structured.jsonl`에 기록. 05_execute, 06_heal, 99_merge에서 사용. 파이프라인 병목 분석·이벤트 추적용 | ❌ (다른 스크립트가 import) |
-| `scripts/heal_utils.py` (힐링 배치 병렬화: `build_heal_batches()` + `print_heal_batches()` — 단일/병렬/빠른 공통, HEAL_BATCH_SIZE=6) | 힐링 공용 유틸리티. `classify_error` (7분류: Locator/Assertion/Timeout/URL/JS평가/Python런타임/Playwright일반/기타), `MCP_SNAPSHOT_ERROR_TYPES`, `extract_key_lines`, `find_screenshot_for_test`, `append_lessons` (→ `lessons_learned_auto.md`에 자동 기록), `update_heal_stats` — `06_heal.py`와 `99_merge.py`에서 공유 | ❌ (다른 스크립트가 import) |
+| `scripts/heal_utils.py` (힐링 배치 병렬화: `build_heal_batches()` + `print_heal_batches()` — 단일/병렬/빠른 공통, HEAL_BATCH_SIZE=6) | 힐링 공용 유틸리티. 통계용 `classify_error` (Locator/Assertion/Timeout/URL/JS평가/Python런타임/Playwright일반/기타), 실행 소유권 확인·새 DOM 수집·소유 화면 조회, `MCP_SNAPSHOT_ERROR_TYPES`, `extract_key_lines`, `find_screenshot_for_test`, `append_lessons` (→ `lessons_learned_auto.md`에 자동 기록), `update_heal_stats` — `06_heal.py`와 `99_merge.py`에서 공유 | ❌ (다른 스크립트가 import) |
 | `scripts/_pipeline_registry.py` | FSM 단일 소스. `Step.*` / `ParallelStatus.*` 상수, `PIPELINE_STEP_DEFS`(메타), `VALID_TRANSITIONS` / `VALID_PARALLEL_TRANSITIONS`, `make_initial_pipeline_state()` 팩토리 | ❌ (다른 스크립트가 import) |
 | `scripts/_validators.py` | 대시보드 `serve.py` 입력 검증 헬퍼. `serve.py`의 백그라운드 스레드 부작용 없이 재사용 가능하도록 분리 | ❌ (serve.py + 테스트가 import) |
 | `scripts/_tc_model.py` | TC 스튜디오 케이스 모델: 허용 값(P0~P3, 실행 결과), Step·Expected 파싱, 결과 병합, id 발급, 검증 규칙 | ❌ (다른 스크립트가 import) |
@@ -503,7 +511,9 @@ kill -9 [PID]
 | `state/quick.json` | 빠른 실행 결과 (병렬 상태와 분리) | `99_merge.py --quick` 완료 시 |
 | `state/heal_context.json` | 병렬 파이프라인 힐링 컨텍스트 (에러 분류, failure_groups, skipped_repeated, lessons_snapshot 포함) | `99_merge.py` 실패 시 |
 | `state/heal_stats.json` | 힐링 오류 패턴별 빈도 카운터 (Top 5를 심의 컨텍스트에 주입) | `06_heal.py` 실패 분석 시 |
-| `state/run_history.json` | 실행 이력 배열 (timestamp, passed/failed, heal_count, first_pass, duration_sec) | 매 실행 완료 시 자동 append |
+| `state/run_history.json` | 실행 소유 ID·종료 상태·복구 안내·측정 결과·리포트 경로를 포함한 실행 이력 | 실행 결과 저장 및 작업 종료 시 갱신 |
+| `state/runs/{run_id}/execution_result.json` | 실행 소유 결과. 최신 상태와 분리해 취소·중단·측정 결과 보존 | 각 실행 단계와 대시보드 종료 처리 |
+| `state/dashboard_execution.json` | 대시보드 공통 실행 예약·소유 프로세스·종료 상태 | 실행 시작·재시작 복구·취소 시 |
 | `logs/merge.txt` | 99_merge.py 실행 로그 | `99_merge.py` 실행 시 |
 | `logs/quick_run.txt` | 빠른 실행 로그 | 대시보드 빠른 실행 시 |
 | `logs/run_parallel.txt` | 병렬 파이프라인 실행 로그 | 대시보드에서 병렬 실행 시 |

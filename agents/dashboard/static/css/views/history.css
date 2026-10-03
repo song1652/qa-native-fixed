@@ -27,3 +27,5 @@
 .hist-empty-icon { width: 40px; height: 40px; margin: 0 auto 12px; }
 .hist-empty-text { font-size: var(--fs-sub); }
 @media (max-width: 900px) { .hist-stat-row { grid-template-columns: repeat(2,minmax(0,1fr)); } .hist-stat { border-bottom: 1px solid var(--border); } }
+
+.hist-recovery { margin-top: 8px; max-width: 400px; color: var(--text-2); font-size: var(--fs-sub); line-height: 1.6; overflow-wrap: anywhere; }

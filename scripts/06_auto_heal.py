@@ -7,17 +7,27 @@ LLM 없음. 알려진 패턴을 regex 기반으로 자동 패치.
   0 = 모든 실패 자동 수정 완료 (Agent 불필요)
   1 = 일부 실패 남음 (Agent 힐링 필요)
   3 = 스킵 (heal_needed 상태가 아님 / 실패 없음) — 단일·병렬 공통
+  5 = 자동 복구 중단 (새 DOM 수집/검증 실패, 원본 복원)
 """
 import ast
 import json
+import os
 import re
+import signal
 import subprocess
 import sys
 import tempfile
+import uuid
 from pathlib import Path
-from _paths import PIPELINE_STATE, read_state, update_state, HEAL_STATS_PATH
-from _pipeline_registry import ParallelStatus, Step  # m1(P93) + L-1(P111): Step 추가
+from _paths import PIPELINE_STATE, read_state, HEAL_STATS_PATH
+from _pipeline_registry import Step
 from _python import PYTHON_EXE
+from heal_utils import refresh_heal_snapshot, load_heal_execution_state
+from heal_utils import update_heal_state as update_state
+from error_policy import classify_error as recovery_for_error, recovery_for_result
+
+EXIT_RECOVERY_STOPPED = 5
+_refresh_heal_snapshot = refresh_heal_snapshot
 
 
 def _insert_import(source: str, import_line: str) -> str:
@@ -259,11 +269,11 @@ def _rerun_outcome(stdout: str, returncode: int, expected_count: int) -> dict:
         "failed": failed,
         "errors": errors,
         "crashed": crashed,
-        "all_passed": passed == expected_count,
+        "all_passed": returncode == 0 and passed == expected_count and failed == 0 and errors == 0,
     }
 
 
-def main():
+def _main():
     import argparse
     from _paths import PARALLEL_STATE, QUICK_STATE
     parser = argparse.ArgumentParser(add_help=False)
@@ -303,7 +313,11 @@ def main():
         print(f"[오류] {state_path.name} 없음.")
         sys.exit(1)
 
-    state = read_state(state_path)
+    try:
+        state = load_heal_execution_state(read_state(state_path), state_path=state_path)
+    except RuntimeError as exc:
+        print(f"[06-auto] {exc}")
+        sys.exit(EXIT_RECOVERY_STOPPED)
 
     # P65: --heal-context-path가 지정된 경우 외부 파일에서 heal_context 로드.
     # 병렬 파이프라인은 heal_context를 state와 별도 파일(heal_context.json)에 저장하므로
@@ -325,10 +339,60 @@ def main():
             print("[스킵] heal_needed 상태가 아님.")
             sys.exit(3)  # 스킵 코드 — 호출자가 "자동 완료"와 구분할 수 있어야 함
 
+    if os.environ.get("QA_RUN_ID") and heal_context.get("run_id") != state.get("execution_result", {}).get("run_id"):
+        print("[06-auto] 다른 실행의 힐링 컨텍스트 — 자동 복구 중단")
+        sys.exit(EXIT_RECOVERY_STOPPED)
+
     failures = heal_context.get("failures", [])
     if not failures:
         print("[06-auto] 실패 없음.")
         sys.exit(3)  # 스킵 코드 — 호출자가 "자동 완료"와 구분할 수 있어야 함
+
+    originals = {}
+    written_files = set()
+
+    def stop_recovery(reason):
+        stopped = {**heal_context, "recovery_stopped": True,
+                   "auto_heal_rerun_error": reason, "auto_healed": 0,
+                   "error": f"자동 복구 중단: {reason}"}
+        if args.heal_context_path:
+            _atomic_write_text(hc_path, json.dumps(stopped, ensure_ascii=False, indent=2))
+        def mark(fresh):
+            updated = {**fresh, "heal_context": stopped}
+            updated.pop("heal_subagent_contexts", None)
+            if state_key == "step":
+                updated["step"] = Step.HEAL_FAILED
+            return updated
+        update_state(state_path, mark)
+        print(f"[06-auto] {stopped['error']} — 추가 실행 없이 원본 복원")
+        sys.exit(EXIT_RECOVERY_STOPPED)
+
+    if heal_context.get("recovery_stopped"):
+        stop_recovery("이전 복구가 중단되었습니다")
+    execution = state.get("execution_result", {})
+    if execution:
+        admission = recovery_for_result({**execution, "errors": execution.get("errors") or [
+            {"error": failure.get("traceback", "")} for failure in failures
+        ]})
+        if not admission["can_heal"]:
+            heal_context = {**heal_context, "recovery": admission}
+            stop_recovery(admission["message"])
+    for failure in failures:
+        recovery = recovery_for_error(failure.get("traceback", ""))
+        if not recovery["can_heal"]:
+            heal_context = {**heal_context, "recovery": recovery}
+            stop_recovery(recovery["message"])
+    try:
+        fresh_dom = _refresh_heal_snapshot(heal_context, state)
+        if not fresh_dom:
+            raise RuntimeError("새 DOM 없음")
+    except Exception as exc:
+        stop_recovery(f"새 DOM 수집 실패: {exc}")
+    heal_context = {**heal_context, "fresh_dom_info": fresh_dom}
+    if args.heal_context_path:
+        _atomic_write_text(hc_path, json.dumps(heal_context, ensure_ascii=False, indent=2))
+    else:
+        update_state(state_path, lambda fresh: {**fresh, "heal_context": {**fresh.get("heal_context", {}), "fresh_dom_info": fresh_dom}})
 
     # 빈출 패턴 보고 (Agent 힌트)
     frequent = _load_frequent_patterns(min_count=3)
@@ -358,7 +422,8 @@ def main():
         if fkey in patched_files:
             source = patched_files[fkey]
         else:
-            source = file_path.read_text(encoding="utf-8")
+            originals[file_path] = file_path.read_bytes()
+            source = originals[file_path].decode("utf-8")
 
         original = source
         applied = []
@@ -377,136 +442,83 @@ def main():
         print("[06-auto] 자동 패치 가능한 패턴 없음.")
         sys.exit(1)
 
-    # 패치된 파일 저장 (문법 검증을 통과한 것만 기록)
-    # 검증이 쓰기보다 앞서므로 원본이 훼손될 구간이 없다 → 별도 백업/복원 불필요.
-    for fpath, source in list(patched_files.items()):
-        target = Path(fpath)
-        try:
-            # ast.parse가 아닌 compile: ast.parse는 __future__ import 위치 규칙을
-            # 검사하지 않아 바로 이 버그를 놓친다.
-            compile(source, fpath, "exec")
-        except SyntaxError as e:
-            print(f"  [오류] {target.name}: 패치 결과가 문법 오류 — 패치 취소 "
-                  f"(line {e.lineno}: {e.msg})")
-            del patched_files[fpath]
-            continue
-
-        _atomic_write_text(target, source)
-
-    if not patched_files:
-        print("[06-auto] 유효한 자동 패치 없음 (전부 문법 오류로 취소).")
-        sys.exit(1)
-
-    print(f"\n[06-auto] {len(patched_files)}개 파일, {patch_count}건 자동 패치 완료")
-
-    # 패치된 파일만 재실행
-    patched_nodeids = []
-    for f in failures:
-        test_id = f.get("test_id", "")
-        if "::" in test_id and test_id.split("::")[0] in patched_files:
-            patched_nodeids.append(test_id)
-
-    if patched_nodeids:
-        print(f"[06-auto] {len(patched_nodeids)}개 테스트 재실행 중...")
-        try:
-            result = subprocess.run(
-                [PYTHON_EXE, "-m", "pytest"] + patched_nodeids +
-                ["-v", "--tb=line", "--no-header"],
-                capture_output=True, text=True, timeout=300,
-            )
-        except subprocess.TimeoutExpired:
-            print("[06-auto] pytest 재실행 타임아웃 (300s) — Agent 힐링 필요")
-            # M-5(P122): 파일이 패치됐으나 재실행 실패 → hc_path에 경고 기록 (traceback 불일치 방지)
-            if args.heal_context_path and patched_files:
-                _hc_timeout_note = {**heal_context,
-                                    "files_patched_by_auto_heal": list(patched_files.keys()),
-                                    "auto_heal_rerun_error": "timeout"}
-                _atomic_write_text(hc_path, json.dumps(_hc_timeout_note, ensure_ascii=False, indent=2))
-            sys.exit(1)
-
-        # 결과 파싱 — "전부 성공"은 passed == 기대 개수로 판정 (#24: ERROR가
-        # 섞이면 failed==0이라도 실패다. _rerun_outcome 참조)
-        outcome = _rerun_outcome(result.stdout, result.returncode, len(patched_nodeids))
-        passed, failed, errors = outcome["passed"], outcome["failed"], outcome["errors"]
-
-        if outcome["crashed"]:
-            print(f"[06-auto] pytest 크래시 (exit {result.returncode}) — Agent 힐링 필요")
-            if result.stderr:
-                print(result.stderr[:300])
-            # M-5(P122): 파일이 패치됐으나 재실행 크래시 → hc_path에 경고 기록
-            if args.heal_context_path and patched_files:
-                _hc_crash_note = {**heal_context,
-                                  "files_patched_by_auto_heal": list(patched_files.keys()),
-                                  "auto_heal_rerun_error": f"crashed(exit {result.returncode})"}
-                _atomic_write_text(hc_path, json.dumps(_hc_crash_note, ensure_ascii=False, indent=2))
-            sys.exit(1)
-
-        print(f"[06-auto] 재실행 결과: {passed} passed, {failed} failed, {errors} error")
-
-        if outcome["all_passed"]:
-            # 모든 자동 패치 성공 -- 남은 실패에서 패치된 것 제거
-            patched_ids = {nid for nid in patched_nodeids}
-            remaining = [f for f in failures if f.get("test_id") not in patched_ids]
-
-            if not remaining:
-                print("[06-auto] 모든 실패 자동 수정 완료!")
-                # heal_context 업데이트 (RMW — 재실행 사이의 변경을 덮어쓰지 않음)
-                # L-1(P123): --heal-context-path 지정 시 state_path(parallel.json)에 truncated
-                # heal_context를 쓰지 않음 — 병렬 파이프라인은 heal_context.json이 단일 소스.
-                if not args.heal_context_path:
-                    update_state(
-                        state_path,
-                        _make_heal_context_mutator([], len(patched_nodeids)),
-                    )
-                # H-2(P105): --heal-context-path 지정 시 해당 파일에도 동기화
-                # (06_auto_heal은 그 파일에서 읽지만 update_state는 state_path에만 씀 → 불일치 해소)
-                if args.heal_context_path:
-                    _hc_updated = {**heal_context, "failures": [], "failure_count": 0,
-                                   "auto_healed": len(patched_nodeids)}
-                    _atomic_write_text(hc_path, json.dumps(_hc_updated, ensure_ascii=False, indent=2))
-
-                # 패치 후 assertion 무결성 검증 (assert_guard.py 자동 호출)
-                _scripts_dir = Path(__file__).parent
-                _guard = subprocess.run(
-                    [PYTHON_EXE, str(_scripts_dir / "assert_guard.py")],
-                    capture_output=True, text=True,
+    # Each changed file gets one verification; the first failure ends this transaction.
+    verified_ids = set()
+    verification_complete = False
+    try:
+        for fpath, source in list(patched_files.items()):
+            target = Path(fpath)
+            try:
+                compile(source, fpath, "exec")
+            except SyntaxError as exc:
+                print(f"[06-auto] {target.name}: 문법 오류 — 패치 취소 ({exc})")
+                continue
+            nodeids = list(dict.fromkeys(
+                f["test_id"] for f in failures
+                if f.get("test_id", "").split("::")[0] == fpath
+            ))
+            try:
+                load_heal_execution_state(read_state(state_path), state_path=state_path)
+                written_files.add(target)
+                _atomic_write_text(target, source)
+                verification_id = uuid.uuid4().hex
+                verification_owner = (state.get("execution_result", {}).get("run_id")
+                                      or heal_context.get("run_id")
+                                      or f"autoheal_{uuid.uuid4().hex}")
+                result = subprocess.run(
+                    [PYTHON_EXE, "-m", "pytest", *nodeids,
+                     "-v", "--tb=line", "--no-header", "--maxfail=1", "-p", "no:rerunfailures"],
+                    env={**os.environ, "QA_RUN_ID": verification_owner,
+                         "QA_INVOCATION_ID": verification_id,
+                         "QA_ARTIFACT_PREFIX": f"{verification_owner}__{verification_id}__"},
+                    capture_output=True, text=True, timeout=300,
                 )
-                # assert_guard는 advisory — 오류나도 파이프라인을 막지 않음
-                if _guard.stdout:
-                    print(_guard.stdout.rstrip())
-                if _guard.returncode not in (0, 1):
-                    print(f"[06-auto] assert_guard 비정상 종료 (exit {_guard.returncode})")
+            except Exception as exc:
+                heal_context = {**heal_context, "recovery": recovery_for_error(exc)}
+                stop_recovery(f"검증 실행 실패: {exc}")
+            try:
+                load_heal_execution_state(read_state(state_path), state_path=state_path)
+            except RuntimeError as exc:
+                stop_recovery(str(exc))
+            outcome = _rerun_outcome(result.stdout, result.returncode, len(nodeids))
+            if not outcome["all_passed"]:
+                heal_context = {**heal_context, "recovery": recovery_for_error(result.stdout + result.stderr)}
+                stop_recovery(f"복구 검증 실패 (exit {result.returncode})")
+            verified_ids.update(nodeids)
+        verification_complete = True
+    finally:
+        if not verification_complete:
+            for changed in written_files:
+                changed.write_bytes(originals[changed])
 
-                sys.exit(0)
-            else:
-                print(f"[06-auto] {len(remaining)}건 잔여 실패 -- Agent 힐링 필요")
-                # 이 분기는 failed == 0 -- 재실행한 patched_nodeids는 전부 통과했다.
-                # 잔여 실패(remaining)는 애초에 패치 대상이 아니었던 테스트들이라
-                # 자동 힐링 건수에서 뺄 것이 없다.
-                # L-1(P123): --heal-context-path 지정 시 state_path에 쓰지 않음 (스키마 오염 방지)
-                if not args.heal_context_path:
-                    update_state(
-                        state_path,
-                        _make_heal_context_mutator(remaining, len(patched_nodeids)),
-                    )
-                # H-2(P105): --heal-context-path 지정 시 해당 파일에도 동기화
-                if args.heal_context_path:
-                    _hc_updated = {**heal_context, "failures": remaining,
-                                   "failure_count": len(remaining), "auto_healed": len(patched_nodeids)}
-                    _atomic_write_text(hc_path, json.dumps(_hc_updated, ensure_ascii=False, indent=2))
-                sys.exit(1)
-        else:
-            not_passed = len(patched_nodeids) - passed
-            print(f"[06-auto] 자동 패치 후에도 {not_passed}건 미통과(FAILED/ERROR) -- Agent 힐링 필요")
-            # M-5(P122): 파일이 패치됐으나 일부 미통과 → hc_path에 경고 기록
-            if args.heal_context_path and patched_files:
-                _hc_notpass_note = {**heal_context,
-                                    "files_patched_by_auto_heal": list(patched_files.keys()),
-                                    "auto_heal_rerun_error": f"not_all_passed({not_passed}건 미통과)"}
-                _atomic_write_text(hc_path, json.dumps(_hc_notpass_note, ensure_ascii=False, indent=2))
-            sys.exit(1)
+    if not verified_ids:
+        print("[06-auto] 유효한 자동 패치 없음.")
+        sys.exit(1)
+    remaining = [f for f in failures if f.get("test_id") not in verified_ids]
+    if args.heal_context_path:
+        updated = {**heal_context, "failures": remaining, "failure_count": len(remaining),
+                   "auto_healed": len(verified_ids)}
+        _atomic_write_text(hc_path, json.dumps(updated, ensure_ascii=False, indent=2))
+    else:
+        update_state(state_path, _make_heal_context_mutator(remaining, len(verified_ids)))
+    if not remaining:
+        guard = subprocess.run(
+            [PYTHON_EXE, str(Path(__file__).parent / "assert_guard.py"), "--state-path", str(state_path)],
+            capture_output=True, text=True,
+        )
+        if guard.stdout:
+            print(guard.stdout.rstrip())
+    print(f"[06-auto] 검증 통과 {len(verified_ids)}건, 잔여 실패 {len(remaining)}건")
+    sys.exit(1 if remaining else 0)
 
-    sys.exit(1)
+
+def main():
+    previous = signal.getsignal(signal.SIGTERM)
+    signal.signal(signal.SIGTERM, lambda signum, frame: sys.exit(128 + signum))
+    try:
+        _main()
+    finally:
+        signal.signal(signal.SIGTERM, previous)
 
 
 if __name__ == "__main__":

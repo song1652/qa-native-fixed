@@ -8,7 +8,7 @@ import json
 import sys
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
-from _paths import PIPELINE_STATE, PROJECT_ROOT, read_state, HEAL_STATS_PATH
+from _paths import PIPELINE_STATE, read_state, HEAL_STATS_PATH
 from _constants import DEFAULT_GENERATED_FILE
 from _pipeline_registry import Step  # P68: Step 상수 사용 — 문자열 리터럴 대신
 
@@ -31,7 +31,11 @@ def read_file(path, filter_files=None):
 
 
 def main():
-    state_path = PIPELINE_STATE
+    import argparse
+    parser = argparse.ArgumentParser(add_help=False)
+    parser.add_argument("--state-path", type=Path, default=PIPELINE_STATE)
+    args, _ = parser.parse_known_args()
+    state_path = args.state_path
 
     if not state_path.exists():
         print("[오류] state/pipeline.json 없음.")
@@ -39,6 +43,10 @@ def main():
 
     state = read_state(state_path)
     heal_context = state.get("heal_context")
+
+    if heal_context and heal_context.get("recovery_stopped"):
+        print("[06a] 자동 복구가 중단되었습니다. 추가 심의·패치 금지.")
+        sys.exit(5)
 
     if not heal_context:
         print("[오류] heal_context 없음. 06_heal.py를 먼저 실행하세요.")
@@ -107,7 +115,7 @@ def main():
         "generated_file_path": generated_path,
         "generated_code": ctx["generated_code"],
         "heal_context": heal_context,
-        "dom_info": state.get("dom_info", {}),
+        "dom_info": heal_context.get("fresh_dom_info", {}),
         "team_charter": ctx["team_charter"],
         "senior_role": ctx["senior_role"],
         "junior_role": ctx["junior_role"],
@@ -116,7 +124,7 @@ def main():
         "top_heal_patterns": top_heal_patterns,
         "assertion_integrity": assertion_integrity,
         "mcp_instructions": {
-            "when": "traceback만으로 원인 불명확한 Locator/Assertion/Timeout 오류 시",
+            "when": "자동 복구 전 새로운 DOM 수집 필수. 실패 시 즉시 중단",
             "steps": [
                 "1. Read tool로 screenshot.path 파일 열기 → 실패 시점 화면 확인",
                 "2. Playwright_navigate → URL 접속 (필요 시)",

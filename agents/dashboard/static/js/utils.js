@@ -34,6 +34,10 @@ function toggleLogExpand(logAreaId) {
 }
 
 function showHookAlert(type, detail) {
+  if (type === 'single_init' || type === 'parallel') {
+    showToast(`${detail} · 자동 실행 중입니다. 진행 상태에서 결과를 확인하세요.`, 'info');
+    return;
+  }
   const existing = document.getElementById('hook-alert');
   if (existing) existing.remove();
 
@@ -42,16 +46,6 @@ function showHookAlert(type, detail) {
       title: '토론이 예약되었습니다',
       desc: `<strong style="color:var(--accent);">"${esc(detail)}"</strong>`,
       action: 'Claude Code에서 <strong>아무 메시지</strong>를 보내주세요.<br>훅이 자동으로 토론을 시작합니다.'
-    },
-    parallel: {
-      title: '병렬 실행 준비 완료',
-      desc: `<strong style="color:var(--accent);">${detail}</strong>`,
-      action: 'Claude Code에서 <strong>아무 메시지</strong>를 보내주세요.<br>자동으로 병렬 작업이 시작됩니다.'
-    },
-    single_init: {
-      title: '단일 파이프라인 준비 완료',
-      desc: `<strong style="color:var(--accent);">${detail}</strong>`,
-      action: 'Claude Code에서 <strong>아무 메시지</strong>를 보내주세요.<br>훅이 자동으로 파이프라인을 시작합니다.'
     },
     single_approved: {
       title: '파이프라인 승인 완료',
@@ -93,7 +87,7 @@ function showHookAlert(type, detail) {
 }
 
 // 로그 폴링 (3초 간격, 최대 1800초)
-function startLogPolling(logAreaId, logContentId, logFileName) {
+function startLogPolling(logAreaId, logContentId, logFileName, runId) {
   if (_logTimers[logAreaId]) clearInterval(_logTimers[logAreaId]);
   const area = document.getElementById(logAreaId);
   if (area) area.style.display = 'block';
@@ -112,7 +106,7 @@ function startLogPolling(logAreaId, logContentId, logFileName) {
       const res = await fetch('/api/run_log', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ log: logFileName }),
+        body: JSON.stringify({ log: logFileName, ...(runId ? {run_id: runId} : {}) }),
       });
       const data = await res.json();
       const el = document.getElementById(logContentId);
@@ -144,4 +138,16 @@ function startLogPolling(logAreaId, logContentId, logFileName) {
   };
   poll();
   _logTimers[logAreaId] = setInterval(poll, 3000);
+}
+
+function executionFailed(state, result) {
+  return ['failed', 'error', 'cancelled', 'interrupted', 'timed_out', 'incomplete'].includes(state.workflow_status)
+    || ['failed', 'cancelled', 'interrupted', 'timed_out', 'incomplete'].includes((result || {}).status);
+}
+
+function recoveryGuidanceHtml(state, result) {
+  result = result || {};
+  if (!executionFailed(state, result) && !result.recovery_stopped && !result.recovery_stop) return '';
+  const recovery = result.recovery_stop || result.recovery || {};
+  return `<div class="pipeline-heal-notice failed"><strong>${esc(recovery.title || '실행 확인 필요')}</strong><p>${esc(recovery.message || state.error || result.error || '실행 로그에서 중단 원인을 확인하세요.')}</p>${!result.report_name ? '<p>리포트 없음 · 실행 기록과 로그는 보존됩니다.</p>' : ''}</div>`;
 }

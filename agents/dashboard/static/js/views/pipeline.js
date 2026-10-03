@@ -88,7 +88,8 @@ async function runSingleQA() {
     const data = await res.json();
     if (data.ok) {
       if (btn) btn.textContent = '실행됨 (PID: ' + (data.pid || '?') + ')';
-      startLogPolling('run-single-log', 'run-single-log-content', 'run_qa.txt');
+      startLogPolling('run-single-log', 'run-single-log-content', 'run_qa.txt', data.run_id);
+      executionStatusRefresh();
       waitForSingleInit(url);
       setTimeout(() => { if (btn) { btn.textContent = '파이프라인 실행'; btn.disabled = false; } }, 60000);
     } else {
@@ -170,9 +171,9 @@ function renderSinglePipeline(main) {
   // 실행 결과 카드 (병렬 파이프라인과 동일 구조)
   let singleExecResultHtml = '';
   if (execResult.total !== undefined && execResult.total > 0) {
-    const allPass = execResult.failed === 0;
+    const allPass = execResult.total > 0 && execResult.failed === 0 && !executionFailed(state, execResult);
     const badgeCls = allPass ? 'pass' : 'fail';
-    const badgeTxt = allPass ? '모두 통과' : `${execResult.failed}건 실패`;
+    const badgeTxt = allPass ? '모두 통과' : execResult.failed > 0 ? `${execResult.failed || 0}건 실패` : '실행 중단·오류';
 
     const groupResultsHtml = buildGroupResultsHtml(execResult.group_results || {}, 'single');
 
@@ -183,11 +184,11 @@ function renderSinglePipeline(main) {
           <span class="exec-result-badge ${badgeCls}">${badgeTxt}</span>
         </div>
         <div class="exec-result-stats">
-          <div class="exec-stat"><div class="exec-stat-num" style="color:var(--text)">${execResult.total}</div><div class="exec-stat-label">전체</div></div>
-          <div class="exec-stat"><div class="exec-stat-num" style="color:var(--approved-color)">${execResult.passed}</div><div class="exec-stat-label">통과</div></div>
-          <div class="exec-stat"><div class="exec-stat-num" style="color:var(--revision-color)">${execResult.failed}</div><div class="exec-stat-label">실패</div></div>
+          <div class="exec-stat"><div class="exec-stat-num" style="color:var(--text)">${execResult.total || 0}</div><div class="exec-stat-label">전체</div></div>
+          <div class="exec-stat"><div class="exec-stat-num" style="color:var(--approved-color)">${execResult.passed || 0}</div><div class="exec-stat-label">통과</div></div>
+          <div class="exec-stat"><div class="exec-stat-num" style="color:var(--revision-color)">${execResult.failed || 0}</div><div class="exec-stat-label">실패</div></div>
           ${(execResult.skipped || 0) > 0 ? `<div class="exec-stat"><div class="exec-stat-num" style="color:var(--warn)">${execResult.skipped}</div><div class="exec-stat-label">건너뜀</div></div>` : ''}
-          <div class="exec-stat"><div class="exec-stat-num" style="color:${allPass ? 'var(--approved-color)' : 'var(--revision-color)'}">${execResult.pass_rate}%</div><div class="exec-stat-label">통과율</div></div>
+          <div class="exec-stat"><div class="exec-stat-num" style="color:${allPass ? 'var(--approved-color)' : 'var(--revision-color)'}">${execResult.pass_rate || 0}%</div><div class="exec-stat-label">통과율</div></div>
         </div>
         ${groupResultsHtml}
         <div style="margin-top:12px;font-size:11px;color:var(--text-dim);">
@@ -208,8 +209,9 @@ function renderSinglePipeline(main) {
       <div class="pipeline-title">단일 파이프라인</div>
       <div class="step-progress">${stepsHtml}</div>
       <div class="pipeline-info"><h3>상태</h3>${infoRows}</div>
-      ${isHeal ? `<div class="pipeline-heal-notice ${currentStep === 'heal_failed' ? 'failed' : ''}">${currentStep === 'heal_failed' ? '힐링 한도에 도달했습니다. 실패 상세에서 원인을 확인하고 테스트를 수정한 뒤 다시 실행하세요.' : '실패한 테스트를 수정하는 중입니다. 최대 3회 안에 고치지 못하면 수동 수정이 필요합니다.'}</div>` : ''}
+      ${isHeal ? `<div class="pipeline-heal-notice ${currentStep === 'heal_failed' ? 'failed' : ''}">${currentStep === 'heal_failed' ? '자동 복구 중단 — 아래 대응 안내와 실행 로그를 확인하세요.' : '실패한 테스트를 수정하는 중입니다. 최대 3회 안에 고치지 못하면 수동 수정이 필요합니다.'}</div>` : ''}
       ${actionsHtml}
+      ${recoveryGuidanceHtml(state, execResult)}
       ${singleExecResultHtml}
       ${resetBtnHtml}
     </div>`;
@@ -221,6 +223,7 @@ function renderSinglePipeline(main) {
         <div class="pipeline-title">단일 파이프라인</div>
         <p class="pipeline-subtitle">URL 하나를 분석해 TC md로 테스트 코드를 만들고 실행합니다.</p>
         ${buildRunPanel('single')}
+        ${recoveryGuidanceHtml(state, execResult)}
         <div class="empty"><div class="empty-icon" aria-hidden="true"><svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="8" y="6" width="24" height="28" rx="3"></rect><line x1="13" y1="14" x2="27" y2="14"></line><line x1="13" y1="20" x2="27" y2="20"></line><line x1="13" y1="26" x2="21" y2="26"></line></svg></div><h2>파이프라인 비활성</h2><p>위에서 URL과 케이스를 선택해 실행하거나, 터미널에서 run_qa.py를 실행하세요</p></div>
       </div>`;
   } else {

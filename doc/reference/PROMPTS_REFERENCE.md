@@ -51,7 +51,7 @@
   "failures": [
     { "test_id": "", "test_name": "", "traceback": "", "error_type": "Locator", "screenshot": null }
   ],
-  "failure_groups": { "Locator": ["test_a"], "Assertion": ["test_b"] },
+  "failure_groups": { "Locator": ["test_a"] },
   "heal_stats_top5": [
     { "key": "Locator::...", "count": 5, "error_type": "Locator", "summary": "..." }
   ],
@@ -69,3 +69,11 @@
 | `plan_good.json` | 올바른 plan 구조 예시 | `plan_deliberation.md` 내부 참조 |
 | `plan_bad.json` | 흔한 plan 실수 예시 | `plan_deliberation.md` 내부 참조 |
 | `heal_patch.json` | 오류 유형별 before/after 패치 예시 | `heal_deliberation.md` 내부 참조 |
+
+## 안전 복구와 실행 중단 (2026-10-03)
+
+- 프롬프트 실행 전에 실행 결과의 모든 단계 오류와 종료 코드를 분류합니다. 요소 오류만 복구 컨텍스트를 생성하며, 기대값 불일치·환경·전송·세션·설정 오류와 비정상 종료는 사용자 확인 대상으로 둡니다.
+- 복구 컨텍스트의 `fresh_dom_info`는 해당 실행의 현재 URL에서 새로 수집한 화면입니다. 누락·수집 실패 시 과거 DOM으로 대체하지 않습니다.
+- 코드 수정 검증 실패 시 원본을 복원하고 `recovery_stopped`를 기록합니다. 자동 복구 종료 코드 **5**는 추가 Agent 호출이나 테스트 재실행을 중단하라는 계약입니다.
+- `workflow_status`가 `failed`, `cancelled`, `interrupted`, `timed_out`, `incomplete`이면 프롬프트 훅이 이전 단계·복구 컨텍스트를 재주입하지 않습니다. 서버 재시작 후에도 단계를 자동 재개하지 않습니다.
+- 전체 운영 절차는 [힐링 지침](../operations/HEALING_GUIDE.md), 실행별 상태 계약은 [파이프라인 상태](PIPELINE_STATE.md)를 참고하세요.

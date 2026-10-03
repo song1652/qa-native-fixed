@@ -18,7 +18,7 @@
 
 | 문서 | 설명 |
 |---|---|
-| [웹 QA 대시보드 사용자 가이드](guides/USER_GUIDE.html) | 최신 밝은 테마 화면 10장으로 메뉴·실행·리포트 사용법 안내 |
+| [웹 QA 대시보드 사용자 가이드](guides/USER_GUIDE.html) | 최신 밝은 테마 화면으로 메뉴·실행 중단·오류 알림·리포트 사용법 안내 |
 | [TC 스튜디오 사용자 설명서](guides/tc-studio/TC_AUTHORING_USER_GUIDE.html) | 기획 입력 → 초안 생성/직접 작성 → 수정/검토 → Excel·Markdown 내보내기. 테스트 실행 절차는 포함하지 않음 |
 | [TC 작성 가이드](guides/TEST_CASE_GUIDE.html) | Markdown 파일 형식, 필수 항목, 작성 예시와 체크리스트 |
 | [스크립트 사용 매뉴얼](guides/SCRIPTS_GUIDE.html) | 프로그램 실행 순서, 주요 스크립트의 역할, 설정·로그 위치 |
@@ -93,3 +93,5 @@ python3 scripts/build_user_guides.py --check
 python3 scripts/update_directory.py
 python3 -m pytest tests/unit/core/test_html_guides.py tests/unit/core/test_documentation_index.py tests/unit/core/test_doc_registry_sync.py -q -W ignore -p no:cacheprovider
 ```
+
+최근 갱신: **2026-10-03**. 1·2·3차 안정화의 실행 격리·중단·재시작 추적·오류 안내·안전 복구 기준을 사용자 가이드와 API·상태·운영 지침에 반영했습니다.

@@ -1,14 +1,14 @@
 # 현재 제품 화면과 촬영 기준
 
-- 촬영 날짜: **2026-10-02**.
-- 기준 구현: `2793e8b` 이후의 밝은 테마 대시보드. 리포트 호환 표시는 `fe02238`에 포함되었습니다.
-- 서버: 실제 로컬 QA 대시보드 **http://localhost:8766/**.
-- 도구: Playwright Chromium. 화면 크기 **1440 × 1000**, 작성 규칙 편집만 전체 항목을 보여 주기 위해 **1440 × 1400**을 사용했습니다.
+- 촬영 날짜: 대시보드 **2026-10-03**, TC 스튜디오 **2026-10-02**.
+- 기준 구현: 밝은 테마 및 1·2·3차 안정화 적용 작업본.
+- 서버: 대시보드 캡처는 저장소를 복제한 실제 `serve.py` **http://localhost:62916/**, TC 스튜디오는 **http://localhost:8766/**.
+- 도구: Playwright Chromium. 화면 크기 **1440 × 1000**, 개요와 작성 규칙 편집은 전체 항목을 보여 주기 위해 **1440 × 1400**을 사용했습니다.
 - 스위트 이름·건수·시각은 촬영 당시 예시 환경의 값이며 사용자 환경에서는 달라집니다.
 
 ## 대시보드
 
-`dashboard-user-guide/`의 화면은 실제 조회한 상태입니다. 리포트는 저장된 실제 결과를 열고 상세를 펼쳤습니다. 촬영을 위해 테스트 실행·파이프라인 초기화·리포트 삭제를 하지 않았습니다.
+`dashboard-user-guide/`는 검증용 복제 저장소에서 실제 Playwright 테스트를 실행한 화면입니다. 가상 회원 등록 화면의 성공·의도된 실패·복구 검증 실패·서버 재시작·취소·실행 파일 없는 실패를 기록했습니다. 리포트는 실제 생성 결과를 열었습니다. API 응답을 가짜로 주입하지 않았으며 사용자 원본의 실행 데이터는 변경하지 않았습니다.
 
 | 이미지 | 화면 |
 |---|---|
@@ -22,6 +22,8 @@
 | [08-pages.png](dashboard-user-guide/08-pages.png) | 페이지 URL 관리 |
 | [09-report-open.png](dashboard-user-guide/09-report-open.png) | 실제 저장된 리포트 열기 |
 | [10-report-detail.png](dashboard-user-guide/10-report-detail.png) | 그룹과 TC 상세 펼치기 |
+| [11-recovery-notices.png](dashboard-user-guide/11-recovery-notices.png) | 오류 원인과 대응·브라우저별 확인 |
+| [12-execution-stopped.png](dashboard-user-guide/12-execution-stopped.png) | 중단 및 리포트 없는 실패 기록 |
 
 ## TC 스튜디오
 

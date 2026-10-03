@@ -13,10 +13,11 @@ import sys
 from pathlib import Path
 from playwright.async_api import async_playwright
 from _paths import (
-    PIPELINE_STATE, DOM_CACHE_DIR,
+    PIPELINE_STATE,
     read_state, update_state,
     get_cached_dom, save_dom_cache, url_cache_key,
 )
+from error_policy import classify_error
 from _pipeline_registry import Step  # P68: Step 상수 사용 — 문자열 리터럴 대신
 
 _DOM_HELPERS_JS = (Path(__file__).parent / "dom_helpers.js").read_text(encoding="utf-8")
@@ -457,13 +458,24 @@ DYNAMIC_CAPTURE_JS = _js("""
 # ---------------------------------------------------------------------------
 # 동적 UI 요소 분석 -- 트리거 인터랙션 후 새로 나타난 요소 수집
 # ---------------------------------------------------------------------------
+async def _read_dom(page, script):
+    """Retry only known DOM reads, at most three attempts; never replay clicks."""
+    for attempt in range(3):
+        try:
+            return await page.evaluate(script)
+        except Exception as error:
+            if attempt == 2 or not classify_error(error)["read_retryable"]:
+                raise
+            await asyncio.sleep(0.1 * (attempt + 1))
+
+
 async def analyze_dynamic(page) -> list:
     """페이지에서 동적 UI 트리거를 순회하며 인터랙션 후 나타나는 요소를 수집.
 
     최대 30초 내에 처리 가능한 트리거만 수집한다.
     """
     try:
-        triggers = await page.evaluate(DYNAMIC_TRIGGER_JS)
+        triggers = await _read_dom(page, DYNAMIC_TRIGGER_JS)
     except Exception as e:
         print(f"     [동적] 트리거 목록 수집 실패 — {e}")
         return []
@@ -504,7 +516,7 @@ async def analyze_dynamic(page) -> list:
                     break
                 continue
 
-            revealed = await page.evaluate(DYNAMIC_CAPTURE_JS)
+            revealed = await _read_dom(page, DYNAMIC_CAPTURE_JS)
 
             if revealed:
                 dynamic_elements.append({
@@ -583,7 +595,7 @@ async def analyze_contextmenu(page) -> list:
                     break
                 continue
 
-            menu_items = await page.evaluate(CONTEXTMENU_CAPTURE_JS)
+            menu_items = await _read_dom(page, CONTEXTMENU_CAPTURE_JS)
 
             if not menu_items:
                 continue
@@ -651,7 +663,7 @@ async def analyze_all(main_url: str, sub_urls: list[str],
             try:
                 await page.goto(main_url, wait_until="networkidle", timeout=30000)
                 if main_dom is None:
-                    main_dom = await page.evaluate(DOM_EXTRACT_JS)
+                    main_dom = await _read_dom(page, DOM_EXTRACT_JS)
 
                 # 동적 UI 분석: 같은 페이지 세션에서 트리거 순회
                 if not skip_dynamic:
@@ -673,7 +685,7 @@ async def analyze_all(main_url: str, sub_urls: list[str],
 
                 save_dom_cache(main_url, main_dom)
             except Exception as e:
-                return {"error": str(e), "url": main_url}, {}
+                return {"error": str(e), "recovery": classify_error(e), "url": main_url}, {}
             finally:
                 await page.close()
 
@@ -699,7 +711,7 @@ async def analyze_all(main_url: str, sub_urls: list[str],
                     try:
                         await page.goto(url, wait_until="load", timeout=15000)
                         await page.wait_for_timeout(500)
-                        dom = await page.evaluate(DOM_EXTRACT_JS)
+                        dom = await _read_dom(page, DOM_EXTRACT_JS)
                         save_dom_cache(url, dom)
                         return (url, dom)
                     except Exception as e:

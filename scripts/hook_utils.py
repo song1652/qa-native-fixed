@@ -54,6 +54,9 @@ def check_state(path: Path, key: str, value: str, extra_check=None) -> dict | No
     except Exception:
         return None
 
+    if state.get("workflow_status") in {"failed", "cancelled", "interrupted", "timed_out", "incomplete"}:
+        return None
+
     if state.get(key) != value:
         return None
 

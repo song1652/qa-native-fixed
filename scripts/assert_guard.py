@@ -25,7 +25,10 @@ from heal_utils import snapshot_assertions, compare_assertions
 
 
 def main():
-    state_path = PIPELINE_STATE
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--state-path", type=Path, default=PIPELINE_STATE)
+    state_path = parser.parse_args().state_path
     if not state_path.exists():
         print("[assert_guard] state/pipeline.json 없음.")
         sys.exit(1)

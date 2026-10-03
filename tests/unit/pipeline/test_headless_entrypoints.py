@@ -12,6 +12,48 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+
+@pytest.mark.parametrize("parallel", [False, True])
+def test_launcher_stays_running_until_claude_finishes(tmp_path, monkeypatch, parallel):
+    import os
+    import threading
+    import time
+
+    binary = tmp_path / "claude"
+    binary.write_text(f"#!{sys.executable}\n" +
+                      "from pathlib import Path\nimport time\n" +
+                      "Path('started').touch()\n" +
+                      "while not Path('release').exists(): time.sleep(0.02)\n")
+    binary.chmod(0o755)
+    monkeypatch.setenv("PATH", str(tmp_path) + os.pathsep + os.environ["PATH"])
+    mod = _load_run_qa_parallel() if parallel else _load_run_qa()
+    monkeypatch.setattr(mod, "PROJECT_ROOT", tmp_path)
+    monkeypatch.setattr(mod, "STATE_DIR", tmp_path / "state")
+    (tmp_path / "state").mkdir()
+    finished = threading.Event()
+
+    def launch():
+        try:
+            if parallel:
+                mod._launch_headless_parallel({"subagents": []})
+            else:
+                mod._launch_headless_pipeline()
+        finally:
+            finished.set()
+
+    worker = threading.Thread(target=launch)
+    worker.start()
+    try:
+        deadline = time.monotonic() + 5
+        while not (tmp_path / "started").exists() and time.monotonic() < deadline:
+            time.sleep(0.02)
+        assert (tmp_path / "started").exists()
+        assert not finished.wait(0.2), "Launcher exited while Claude was still running"
+    finally:
+        (tmp_path / "release").touch()
+        worker.join(5)
+    assert finished.is_set()
+
 # 프로젝트 루트를 sys.path에 추가
 _ROOT = Path(__file__).resolve().parents[3]
 if str(_ROOT) not in sys.path:
