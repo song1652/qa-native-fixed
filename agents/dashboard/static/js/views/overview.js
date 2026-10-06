@@ -136,7 +136,7 @@ async function renderDashboardOverview(main) {
           <button class="ov-log-refresh" id="ov-log-refresh" title="새로고침" aria-label="로그 새로고침">&#8635;</button>
         </div>
       </div>
-      <div class="ov-log-box" id="ov-log-content">로그 로딩 중...</div>
+      <div class="ov-log-box" id="ov-log-content">로그 로딩 중…</div>
     </section>`;
 
   // ── 3. 하단 그리드 ──
@@ -230,7 +230,7 @@ async function renderDashboardOverview(main) {
     </div>`;
 
   // 이전 로그 내용+스크롤 즉시 복원 (플래시 방지)
-  if (_prevLogContent && _prevLogContent !== '로그 로딩 중...') {
+  if (_prevLogContent && _prevLogContent !== '로그 로딩 중…') {
     const logBoxInit = document.getElementById('ov-log-content');
     if (logBoxInit) {
       logBoxInit.textContent = _prevLogContent;

@@ -11,7 +11,7 @@ async function addPage() {
 
   if (!group || !url) { status.textContent = '그룹명과 URL은 필수입니다'; status.className = 'pages-form-status err'; return; }
 
-  btn.disabled = true; btn.textContent = '추가 중...';
+  btn.disabled = true; btn.textContent = '추가 중…';
   status.textContent = ''; status.className = 'pages-form-status';
 
   try {
@@ -119,7 +119,7 @@ async function saveEditRow(tr, grp, origCfg) {
   errEl.textContent = '';
 
   const saveBtn = tr.querySelector('.pages-save-btn');
-  saveBtn.disabled = true; saveBtn.textContent = '저장 중...';
+  saveBtn.disabled = true; saveBtn.textContent = '저장 중…';
 
   try {
     const res = await fetch('/api/pages/update', {

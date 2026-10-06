@@ -173,7 +173,7 @@ function renderParallelPipeline(main) {
 // 병렬 파이프라인 실행
 async function runParallelQA() {
   const btn = document.getElementById('run-parallel-btn');
-  if (btn) { btn.textContent = '실행 중...'; btn.disabled = true; }
+  if (btn) { btn.textContent = '실행 중…'; btn.disabled = true; }
   try {
     const res = await fetch('/api/run_qa_parallel', { method: 'POST' });
     const data = await res.json();

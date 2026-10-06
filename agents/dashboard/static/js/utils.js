@@ -115,7 +115,7 @@ function startLogPolling(logAreaId, logContentId, logFileName, runId) {
         // 현재 스크롤 위치 저장 (업데이트 전)
         const prevScrollTop = logArea.scrollTop;
         const isAtBottom = _firstPoll || (logArea.scrollHeight - prevScrollTop - logArea.clientHeight < 40);
-        const logText = data.log || '(대기 중...)';
+        const logText = data.log || '(대기 중…)';
         el.textContent = logText;
         // 맨 아래에 있었으면 자동 스크롤, 위로 올렸으면 위치 유지
         if (isAtBottom) {

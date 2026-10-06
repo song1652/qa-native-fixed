@@ -12,7 +12,7 @@ async function submitTopic() {
   const topic = input.value.trim();
   if (!topic) { status.textContent = '주제를 입력해주세요.'; status.className = 'topic-status err'; return; }
   btn.disabled = true;
-  status.textContent = '전송 중...'; status.className = 'topic-status';
+  status.textContent = '전송 중…'; status.className = 'topic-status';
   try {
     const res = await fetch('/api/discuss/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ topic }) });
     const data = await res.json();

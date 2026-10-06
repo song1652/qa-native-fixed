@@ -189,7 +189,8 @@ def build_pipeline_registry() -> dict:
     """
     # 단일 파이프라인 스텝바 순서 (heal/timeout은 표시 이탈 상태이므로 제외)
     _terminal_excl = {Step.HEAL_NEEDED, Step.HEAL_FAILED, Step.TIMEOUT}
-    pipeline_steps = [s.step for s in PIPELINE_STEP_DEFS if s.step not in _terminal_excl]
+    # reviewed는 린트·리뷰 심의·승인 하위 단계로 여러 번 선언되므로 스텝바에서는 한 번만 표시한다
+    pipeline_steps = list(dict.fromkeys(s.step for s in PIPELINE_STEP_DEFS if s.step not in _terminal_excl))
 
     # 모든 step 라벨 (heal 포함 — STEP_LABELS 전체 대체용)
     # M-2(P134): last-wins dict comprehension → STEP_DEF_BY_NAME 사용 (first-wins, STEP_DEF_BY_NAME과 동일 동작)

@@ -70,6 +70,11 @@ class TestPipelineSection:
         assert isinstance(steps, list)
         assert len(steps) >= 5
 
+    def test_pipeline_steps_unique(self, registry):
+        """하위 단계로 여러 번 선언된 step(reviewed)이 스텝바에 중복 표시되지 않는다."""
+        steps = registry["pipeline"]["steps"]
+        assert len(steps) == len(set(steps))
+
     def test_pipeline_steps_contains_core_steps(self, registry):
         steps = registry["pipeline"]["steps"]
         for core in ("init", "analyzed", "generated", "reviewed", "done"):

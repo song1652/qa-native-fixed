@@ -1,3 +1,7 @@
+/* JetBrains Mono 합자가 URL의 :// 를 'https: //'처럼 띄워 보이게 해서 끈다.
+   요소별 font 단축 속성이 이 값을 초기화하므로 !important로 고정한다. */
+*, *::before, *::after { font-variant-ligatures: no-contextual !important; }
+
     * {
       box-sizing: border-box;
       margin: 0;

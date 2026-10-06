@@ -54,7 +54,7 @@ async function toggleTestDetail(rowId, nodeid, outcome) {
   }
 
   // 로딩 표시 후 펼침
-  cell.innerHTML = _plainDetailHtml('불러오는 중...');
+  cell.innerHTML = _plainDetailHtml('불러오는 중…');
   detailRow.style.display = '';
   _testDetailOpen[nodeid] = true;
 

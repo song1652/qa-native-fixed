@@ -30,7 +30,7 @@ function renderSession(session, tabId, idx) {
 
   const msgsHtml = session.messages && session.messages.length
     ? session.messages.map((m, mi) => renderMessage(m, tabId, idx, mi)).join('')
-    : '<div class="waiting-msg">대화 대기 중...</div>';
+    : '<div class="waiting-msg">대화 대기 중…</div>';
 
   const isDiscussed = session.stage === 'team_discussion' && session.status === 'discussed';
   let approveBar = '';

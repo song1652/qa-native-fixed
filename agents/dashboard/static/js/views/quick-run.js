@@ -84,7 +84,7 @@ function renderQuickRun(main) {
         <div class="quick-folder-body"><div class="quick-group-list">${groupsHtml}</div>
         <div class="quick-actions">
           <button class="action-btn action-btn-primary" id="quick-run-btn" onclick="runQuickTest()" ${!groups.length ? 'disabled title="생성된 테스트 폴더가 없습니다"' : ''}>
-            ${_quickRunState.running ? '실행 중...' : '테스트 실행'}
+            ${_quickRunState.running ? '실행 중…' : '테스트 실행'}
           </button>
           <label style="font-size:12px;color:var(--text-dim);cursor:pointer;display:flex;align-items:center;gap:4px;">
             <input type="checkbox" id="quick-no-heal" onchange="_quickRunState.noHeal = this.checked" ${_quickRunState.noHeal ? 'checked' : ''}> 힐링 생략
@@ -98,7 +98,7 @@ function renderQuickRun(main) {
         <li>완료 후 그룹별 결과와 리포트를 확인할 수 있습니다.</li>
       </ul></section></div>
       <div class="run-log-box" id="run-quick-log" style="display:${logVis ? 'block' : 'none'};margin-bottom:16px;">
-        <pre id="run-quick-log-content" style="margin:0;">${esc(_quickRunState.logContent || '(대기 중...)')}</pre>
+        <pre id="run-quick-log-content" style="margin:0;">${esc(_quickRunState.logContent || '(대기 중…)')}</pre>
       </div>
       <button class="log-toggle-btn" id="log-toggle-quick" onclick="toggleLogExpand('run-quick-log')" style="display:${logVis ? 'inline-block' : 'none'};margin-bottom:16px;">확대</button>
       ${recoveryGuidanceHtml(quickState || {}, execResult)}
@@ -141,7 +141,7 @@ function renderQuickRun(main) {
     }).then(r => r.json()).then(data => {
       const el = document.getElementById('run-quick-log-content');
       const area = document.getElementById('run-quick-log');
-      if (el) el.textContent = data.log || '(대기 중...)';
+      if (el) el.textContent = data.log || '(대기 중…)';
       if (area) area.scrollTop = area.scrollHeight;
     }).catch(() => {});
   }
@@ -162,7 +162,7 @@ async function runQuickTest() {
   // 이전 실행 결과 클리어 (서버 + 클라이언트 모두)
   quickState = {};
   try { await fetch('/api/quick/reset', { method: 'POST' }); } catch (e) {}
-  if (btn) { btn.textContent = '실행 중...'; btn.disabled = true; }
+  if (btn) { btn.textContent = '실행 중…'; btn.disabled = true; }
   // 결과 카드 즉시 제거
   const oldResult = document.querySelector('.exec-result-card');
   if (oldResult) oldResult.remove();

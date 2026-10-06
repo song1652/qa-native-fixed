@@ -15,6 +15,7 @@
 .hist-table { width: 100%; border-collapse: collapse; font-size: var(--fs-body); }
 .hist-table th { padding: 9px 16px; background: var(--surface-sub); color: var(--text-2); font-size: var(--fs-label); font-weight: 500; text-align: left; white-space: nowrap; }
 .hist-table td { padding: 11px 16px; border-top: 1px solid var(--border); vertical-align: top; }
+.hist-table td:nth-child(2) { white-space: nowrap; }
 .hist-time,.hist-number { font: var(--fs-sub) / 1.6 var(--font-mono); white-space: nowrap; }
 .hist-table .hist-number { text-align: right; }
 .hist-badge { display: inline-block; padding: 2px 8px; border-radius: var(--radius-badge); font-size: var(--fs-label); font-weight: 600; white-space: nowrap; }
