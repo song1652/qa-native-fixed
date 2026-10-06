@@ -109,9 +109,9 @@
     </div></div>
   </section>
   <div class="scrim" id="profile-modal" data-id="profile-modal" hidden>
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="profile-modal-title" style="width:min(640px,96vw)">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="profile-modal-title" style="width:min(640px,96vw);max-height:90vh;display:flex;flex-direction:column">
       <div class="panel-head" id="profile-modal-title">작성 규칙 편집</div>
-      <div class="panel-body" id="gen-profile-editor" style="display:grid;gap:10px;max-height:min(70vh,640px);overflow:auto">
+      <div class="panel-body" id="gen-profile-editor" style="display:grid;gap:10px;min-height:0;overflow:auto">
         <div class="row"><span class="help">규칙 (한 줄에 하나)</span><span class="spacer"></span>
           <label class="btn-sm" for="gen-style-file" data-id="gen-style-import" title="기존 TC 엑셀의 제목·Step·Expected 말투를 읽어 규칙·끝맺음·기준 예시를 채웁니다">엑셀에서 문체 가져오기</label>
           <input type="file" id="gen-style-file" data-id="gen-style-file" accept=".xlsx" hidden></div>
@@ -119,9 +119,12 @@
         <label class="help">금지 표현 (쉼표로 구분)<input class="input" id="gen-banned-input" data-id="gen-banned-input"></label>
         <label class="help">Expected 끝맺음 (쉼표로 구분 · 비우면 검사하지 않음)<input class="input" id="gen-endings-input" data-id="gen-endings-input" placeholder="예: 된다., 는다."></label>
         <div class="help" id="gen-profile-examples" data-id="gen-profile-examples"></div>
-        <label class="help">저장할 프로필 이름<input class="input" id="gen-profile-name" data-id="gen-profile-name" placeholder="예: 톤앤매너"></label>
-        <div class="row"><span class="spacer"></span><button class="btn btn-ghost" id="gen-profile-cancel" data-id="gen-profile-cancel">취소</button><button class="btn btn-primary" data-id="gen-profile-save" id="gen-profile-save">저장</button></div>
       </div>
+      <!-- 내용이 길어 본문이 스크롤돼도 이름·저장은 항상 보이도록 하단에 고정 -->
+      <div class="row" style="padding:12px 16px;border-top:1px solid var(--border);gap:8px;flex-wrap:wrap">
+        <label class="help" for="gen-profile-name">저장할 프로필 이름</label>
+        <input class="input" id="gen-profile-name" data-id="gen-profile-name" placeholder="예: 톤앤매너" style="flex:1;min-width:160px">
+        <button class="btn btn-ghost" id="gen-profile-cancel" data-id="gen-profile-cancel">취소</button><button class="btn btn-primary" data-id="gen-profile-save" id="gen-profile-save">저장</button></div>
     </div>
   </div>
   <div class="scrim" id="sheet-rename-modal" data-id="sheet-rename-modal" hidden>
