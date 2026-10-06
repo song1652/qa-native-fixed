@@ -9,7 +9,9 @@
 .fail-card-head .fd-count { margin-left: auto; padding: 2px 8px; border-radius: var(--radius-badge); background: var(--surface-sub); color: var(--text-2); font-size: var(--fs-label); font-weight: 600; }
 .fail-card-body { padding: 16px; }
 .fail-card-empty { padding: 16px; color: var(--text-3); font-size: var(--fs-sub); }
-.fail-shot-note { margin: 8px 0 0; color: var(--text-2); font-size: var(--fs-sub); }
+.fail-shot-empty { display: flex; flex-direction: column; gap: 6px; align-items: center; justify-content: center; min-height: 180px; padding: 24px; border: 1px dashed var(--border); border-radius: var(--radius-ctrl); background: var(--surface-sub); text-align: center; }
+.fail-shot-empty strong { color: var(--text); font-size: var(--fs-body); font-weight: 600; }
+.fail-shot-empty span { color: var(--text-2); font-size: var(--fs-sub); line-height: 1.6; }
 .fail-shot { display: block; width: 100%; border: 1px solid var(--border); border-radius: var(--radius-ctrl); cursor: zoom-in; }
 .fail-diff-label { display: block; margin-bottom: 12px; color: var(--text); font-size: var(--fs-h3); font-weight: 600; }
 .fail-diff-label.expect,.fail-diff-label.actual { color: var(--text); }

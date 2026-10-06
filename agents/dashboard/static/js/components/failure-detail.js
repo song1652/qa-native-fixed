@@ -82,12 +82,15 @@ function renderFailureDetail(data) {
   if (data.url) facts.push(['URL', data.url]);
   if (data.timestamp) facts.push(['실행 시각', data.timestamp]);
 
-  // 페이지 이동 자체가 실패하면(연결 거부 등) 브라우저 오류 페이지가 헤드리스에선 빈 화면으로 찍힌다
+  // 페이지 이동 자체가 실패하면(연결 거부 등) 브라우저 오류 페이지가 헤드리스에선 빈 화면으로 찍힌다.
+  // 빈 이미지나 빈 칸 대신 왜 화면이 없는지 안내한다.
   const blankPage = /^(chrome-error:|about:blank)/.test(data.url || '');
-  const shot = data.screenshot_url
-    ? `<img class="fail-shot" src="${esc(data.screenshot_url)}" alt="실패 시점 스크린샷" onclick="window.open('${esc(data.screenshot_url)}','_blank')">`
-      + (blankPage ? '<p class="fail-shot-note">페이지를 열지 못해 빈 화면으로 찍혔습니다. 대상 서버가 켜져 있는지, URL이 맞는지 확인하세요.</p>' : '')
-    : '';
+  const shotEmpty = (title, hint) => `<div class="fail-shot-empty"><strong>${title}</strong><span>${hint}</span></div>`;
+  const shot = blankPage
+    ? shotEmpty('페이지를 열지 못해 화면을 찍지 못했습니다', '대상 서버가 켜져 있는지, URL이 맞는지 확인하세요. 원인은 오른쪽 실패 원인·네트워크에 있습니다.')
+    : data.screenshot_url
+      ? `<img class="fail-shot" src="${esc(data.screenshot_url)}" alt="실패 시점 스크린샷" onclick="window.open('${esc(data.screenshot_url)}','_blank')">`
+      : shotEmpty('저장된 스크린샷이 없습니다', '브라우저를 열기 전에 실패했거나 이전 실행 기록일 수 있습니다. 실패 원인과 Trace를 확인하세요.');
 
   // 스텝은 "비교 대상"이 아니라 순서가 있는 절차라서 Expected/실패원인의
   // 초록/빨강 diff 박스가 아니라 번호 매긴 목록으로 별도 카드에 둔다.
@@ -116,7 +119,7 @@ function renderFailureDetail(data) {
   }
 
   const leftCards = [];
-  if (shot) leftCards.push(`<div class="fail-card"><div class="fail-card-head">실패 시점 스크린샷</div><div class="fail-card-body">${shot}</div></div>`);
+  leftCards.push(`<div class="fail-card"><div class="fail-card-head">실패 시점 스크린샷</div><div class="fail-card-body">${shot}</div></div>`);
   const actions = _failActionsSection(data);
   if (actions) leftCards.push(actions);
   const factsHtml = facts.length ? `<div class="fail-card fail-summary">
