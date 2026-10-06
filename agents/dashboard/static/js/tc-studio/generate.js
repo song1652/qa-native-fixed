@@ -41,7 +41,7 @@
   });
   registerSourceTab({
     id: 'paste', label: '텍스트 붙여넣기',
-    html: () => `<div class="field"><textarea class="textarea" id="src-paste" data-id="src-paste" rows="6" placeholder="기획 문서 본문을 붙여넣으세요 (최대 1MB)"></textarea>
+    html: () => `<div class="field"><textarea class="textarea" id="src-paste" data-id="src-paste" rows="6" aria-label="기획 문서 본문" placeholder="기획 문서 본문을 붙여넣으세요 (최대 1MB)"></textarea>
       <div class="row"><span class="help" id="paste-size">0 KB / 1 MB</span><span class="spacer"></span><button class="btn-sm" data-id="src-paste-add" id="src-paste-add">소스로 추가</button></div></div>`,
     mount: (r, add) => {
       $('#src-paste', r).addEventListener('input', (e) => {
@@ -75,18 +75,18 @@
       <div style="display:grid;gap:16px">
         <div class="panel"><div class="panel-head">작성 위치</div>
           <div class="panel-body" style="display:grid;gap:10px">
-            <div class="field"><span class="label">시트</span><div class="row" style="flex-wrap:nowrap"><select class="select" id="gen-target-sheet" data-id="gen-target-sheet" style="min-width:0"></select><button class="btn-sm" type="button" data-id="gen-add-sheet" id="gen-add-sheet" style="white-space:nowrap;flex-shrink:0">시트 추가</button><button class="btn-sm" type="button" data-id="gen-rename-sheet" id="gen-rename-sheet" style="white-space:nowrap;flex-shrink:0" disabled>이름 변경</button></div></div>
+            <div class="field"><label class="label" for="gen-target-sheet">시트</label><div class="row" style="flex-wrap:nowrap"><select class="select" id="gen-target-sheet" data-id="gen-target-sheet" style="min-width:0"></select><button class="btn-sm" type="button" data-id="gen-add-sheet" id="gen-add-sheet" style="white-space:nowrap;flex-shrink:0">시트 추가</button><button class="btn-sm" type="button" data-id="gen-rename-sheet" id="gen-rename-sheet" style="white-space:nowrap;flex-shrink:0" disabled>이름 변경</button></div></div>
             <div class="picker" data-id="gen-target-path">
-              ${[['l1', '대분류'], ['l2', '중분류'], ['l3', '소분류']].map(([k, l]) => `<div class="field"><span class="label">${l}</span>
+              ${[['l1', '대분류'], ['l2', '중분류'], ['l3', '소분류']].map(([k, l]) => `<div class="field"><label class="label" for="gen-path-${k}">${l}</label>
                 <select class="select" id="gen-path-${k}" data-id="gen-path-${k}"></select>
-                <input class="input" id="gen-new-${k}" data-id="gen-new-${k}" placeholder="새 ${l} 이름" hidden></div>`).join('')}
+                <input class="input" id="gen-new-${k}" data-id="gen-new-${k}" placeholder="새 ${l} 이름" aria-label="새 ${l} 이름" hidden></div>`).join('')}
             </div>
             <div class="row"><button class="btn-sm" type="button" id="gen-add-branch" data-id="gen-add-branch" disabled>분류 추가</button><span class="help">대분류를 입력하세요. 중·소분류는 선택 사항입니다.</span></div>
             <div class="examples" data-id="gen-style-examples" id="gen-examples"></div>
           </div></div>
         <div class="panel"><div class="panel-head">작성 규칙<span class="spacer"></span><button class="btn-sm" data-id="gen-profile-edit" id="gen-profile-edit">규칙 편집</button></div>
           <div class="panel-body" style="display:grid;gap:10px">
-            <select class="select" id="gen-profile" data-id="gen-profile"></select>
+            <select class="select" id="gen-profile" data-id="gen-profile" aria-label="작성 규칙 프로필"></select>
             <ul class="profile-rules" id="gen-rules"></ul>
           </div></div>
         <div class="panel"><div class="panel-body" style="display:grid;gap:12px" id="job-panel" data-id="job-panel">

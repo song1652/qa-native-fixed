@@ -209,7 +209,7 @@ function renderSinglePipeline(main) {
       <div class="pipeline-title">단일 파이프라인</div>
       <div class="step-progress">${stepsHtml}</div>
       <div class="pipeline-info"><h3>상태</h3>${infoRows}</div>
-      ${isHeal ? `<div class="pipeline-heal-notice ${currentStep === 'heal_failed' ? 'failed' : ''}">${currentStep === 'heal_failed' ? '자동 복구 중단 — 아래 대응 안내와 실행 로그를 확인하세요.' : '실패한 테스트를 수정하는 중입니다. 최대 3회 안에 고치지 못하면 수동 수정이 필요합니다.'}</div>` : ''}
+      ${isHeal ? `<div class="pipeline-heal-notice ${currentStep === 'heal_failed' ? 'failed' : ''}">${currentStep === 'heal_failed' ? '자동 복구 중단 — 아래 대응 안내와 실행 로그를 확인하세요.' : '화면 요소(Locator) 오류만 자동 복구하는 중입니다. 복구 검증에 실패하면 원래 코드로 되돌리고 멈춥니다.'}</div>` : ''}
       ${actionsHtml}
       ${recoveryGuidanceHtml(state, execResult)}
       ${singleExecResultHtml}

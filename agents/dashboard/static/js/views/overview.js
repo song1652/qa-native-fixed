@@ -316,11 +316,11 @@ function _buildTrendChart(history) {
     dots += `<circle cx="${x}" cy="${y}" r="3.5" fill="${color}" stroke="var(--surface)" stroke-width="1.5"><title>${rDisplay}% · 통과 ${r.passed||0} · 실패 ${r.failed||0}${_skippedTip}</title></circle>`;
 
     // 숫자는 점 위에, 시간은 차트 아래에 배치한다.
-    pctLabels += `<text x="${x}" y="${y - 11}" text-anchor="middle" fill="${color}" font-size="11" font-weight="600" font-family="'JetBrains Mono', monospace">${rDisplay}%</text>`;
+    pctLabels += `<text x="${x}" y="${y - 11}" text-anchor="middle" fill="${color}" font-size="13" font-weight="600" font-family="'JetBrains Mono', monospace">${rDisplay}%</text>`;
 
     // 시간 라벨 — 첫/마지막은 항상, 나머지는 간격에 따라
     if (i === 0 || i === recent.length - 1 || i % showEveryN === 0) {
-      labels += `<text x="${x}" y="${h - 7}" text-anchor="middle" fill="var(--text-2)" font-size="10" font-family="'JetBrains Mono', monospace">${shortTs}</text>`;
+      labels += `<text x="${x}" y="${h - 7}" text-anchor="middle" fill="var(--text-2)" font-size="12" font-family="'JetBrains Mono', monospace">${shortTs}</text>`;
     }
   });
 

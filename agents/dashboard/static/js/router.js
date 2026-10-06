@@ -29,9 +29,9 @@ function selectView(viewId, options = {}) {
   if (!options.fromHistory && currentPath !== nextPath) {
     window.history.pushState({ viewId }, '', nextPath);
   }
-  document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.sidebar-item').forEach(el => { el.classList.remove('active'); el.removeAttribute('aria-current'); });
   const el = document.getElementById('tab-' + viewId);
-  if (el) el.classList.add('active');
+  if (el) { el.classList.add('active'); el.setAttribute('aria-current', 'page'); }
   renderCurrentView();
 }
 

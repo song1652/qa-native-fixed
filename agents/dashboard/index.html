@@ -26,7 +26,7 @@
 
 <body>
 
-  <div class="toast-container" id="toast-container"></div>
+  <div class="toast-container" id="toast-container" role="status" aria-live="polite"></div>
   <div class="header">
     <button type="button" class="header-title" onclick="selectView('')"><svg class="header-logo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4.5h6M8.5 12l2 2 4-4M8.5 18h7"/></svg>QA 컨트롤 센터</button>
     <div class="header-meta" id="header-meta"></div>
@@ -51,48 +51,48 @@
         <!-- 개요 섹션 -->
         <div class="sidebar-section">
           <div class="sidebar-label">개요</div>
-          <div class="sidebar-item active" id="tab-" onclick="selectView('')">
-            <div class="sidebar-dot-spacer"></div>
+          <button type="button" class="sidebar-item active" id="tab-" onclick="selectView('')" aria-current="page">
+            <span class="sidebar-dot-spacer"></span>
             <span class="sidebar-name">대시보드</span>
-          </div>
+          </button>
         </div>
 
         <div class="sidebar-section">
           <div class="sidebar-label">TC 작성</div>
-          <div class="sidebar-item" id="tab-tc_studio" onclick="selectView('tc_studio')">
-            <div class="sidebar-dot-spacer"></div>
+          <button type="button" class="sidebar-item" id="tab-tc_studio" onclick="selectView('tc_studio')">
+            <span class="sidebar-dot-spacer"></span>
             <span class="sidebar-name">TC 스튜디오</span>
-          </div>
+          </button>
         </div>
 
         <!-- 파이프라인 섹션 -->
         <div class="sidebar-section">
           <div class="sidebar-label">실행</div>
-          <div class="sidebar-item" id="tab-quick_run" onclick="selectView('quick_run')">
-            <div class="sidebar-dot" id="dot-quick"></div>
+          <button type="button" class="sidebar-item" id="tab-quick_run" onclick="selectView('quick_run')">
+            <span class="sidebar-dot" id="dot-quick"></span>
             <span class="sidebar-name">빠른 실행</span>
-          </div>
-          <div class="sidebar-item" id="tab-single_pipeline" onclick="selectView('single_pipeline')">
-            <div class="sidebar-dot" id="dot-single"></div>
+          </button>
+          <button type="button" class="sidebar-item" id="tab-single_pipeline" onclick="selectView('single_pipeline')">
+            <span class="sidebar-dot" id="dot-single"></span>
             <span class="sidebar-name">단일 파이프라인</span>
-          </div>
-          <div class="sidebar-item" id="tab-parallel_pipeline" onclick="selectView('parallel_pipeline')">
-            <div class="sidebar-dot" id="dot-parallel"></div>
+          </button>
+          <button type="button" class="sidebar-item" id="tab-parallel_pipeline" onclick="selectView('parallel_pipeline')">
+            <span class="sidebar-dot" id="dot-parallel"></span>
             <span class="sidebar-name">병렬 파이프라인</span>
-          </div>
+          </button>
         </div>
 
         <!-- 테스트 리포트 섹션 -->
         <div class="sidebar-section">
           <div class="sidebar-label">결과</div>
-          <div class="sidebar-item" id="tab-reports" onclick="selectView('reports')">
-            <div class="sidebar-dot-spacer"></div>
+          <button type="button" class="sidebar-item" id="tab-reports" onclick="selectView('reports')">
+            <span class="sidebar-dot-spacer"></span>
             <span class="sidebar-name">리포트</span>
-          </div>
-          <div class="sidebar-item" id="tab-history" onclick="selectView('history')">
-            <div class="sidebar-dot-spacer"></div>
+          </button>
+          <button type="button" class="sidebar-item" id="tab-history" onclick="selectView('history')">
+            <span class="sidebar-dot-spacer"></span>
             <span class="sidebar-name">실행 기록</span>
-          </div>
+          </button>
         </div>
 
         <!-- 팀 토론 섹션 -->
@@ -101,19 +101,19 @@
             팀 토론
             <button class="sidebar-reset" onclick="resetTeamDiscussion()" title="팀 토론 초기화">리셋</button>
           </div>
-          <div class="sidebar-item" id="tab-team_new" onclick="selectView('team_new')">
-            <div class="sidebar-dot-spacer"></div>
+          <button type="button" class="sidebar-item" id="tab-team_new" onclick="selectView('team_new')">
+            <span class="sidebar-dot-spacer"></span>
             <span class="sidebar-name">새 토론 시작</span>
-          </div>
+          </button>
           <div id="team-tabs"></div>
         </div>
 
         <!-- 설정 섹션 -->
         <div class="sidebar-section">
-          <div class="sidebar-item" id="tab-pages" onclick="selectView('pages')">
-            <div class="sidebar-dot-spacer"></div>
+          <button type="button" class="sidebar-item" id="tab-pages" onclick="selectView('pages')">
+            <span class="sidebar-dot-spacer"></span>
             <span class="sidebar-name">페이지 URL 관리</span>
-          </div>
+          </button>
         </div>
       </div>
     </div>

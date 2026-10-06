@@ -29,7 +29,7 @@
           <div class="field"><span class="label">무결성 검사</span>
             <ul class="checks" id="xlsx-checks" data-id="xlsx-integrity"><li class="faint">내보내기 전에 검사를 실행하세요</li></ul>
             <button class="btn btn-ghost" data-id="xlsx-run-check" id="xlsx-run-check" style="justify-self:start">검사 실행</button></div>
-          <div class="field"><span class="label">History 시트에 추가할 행</span>
+          <div class="field"><label class="label" for="xlsx-history-note">History 시트에 추가할 행</label>
             <textarea class="textarea" id="xlsx-history-note" data-id="xlsx-history-note" rows="3"></textarea></div>
           <div class="field"><span class="label">파일 이름</span><div class="fname" id="xlsx-filename" data-id="xlsx-filename">—</div></div>
           <button class="btn btn-primary" data-id="xlsx-download" id="xlsx-download" disabled style="justify-self:start">검사 후 내려받기</button>
@@ -64,8 +64,8 @@
     const pageOpts = el.pages.map((p) => `<option>${esc(p)}</option>`).join('');
     $('#md-groups', root).innerHTML = el.branches.map((b, i) => `<div class="maprow"><span>${esc(b.path.join(' › '))} <span class="faint">→ ${b.group ? `${esc(b.group)} (${esc(b.code)})` : '(없음)'}</span></span>
       ${b.group ? `<span class="tag ok">매핑됨 · ${b.count}건</span>` : `<span class="row"><span class="tag err">그룹 없음 · ${b.count}건 제외</span>
-        <select class="fselect" data-id="md-map-group" data-i="${i}">${pageOpts || '<option value="">pages.json이 비어 있음</option>'}</select>
-        <input class="input mono" data-id="md-map-code" data-i="${i}" placeholder="접두어" maxlength="8" style="width:80px">
+        <select class="fselect" data-id="md-map-group" data-i="${i}" aria-label="연결할 그룹">${pageOpts || '<option value="">pages.json이 비어 있음</option>'}</select>
+        <input class="input mono" data-id="md-map-code" data-i="${i}" placeholder="접두어" aria-label="TC ID 접두어" maxlength="8" style="width:80px">
         <button class="btn-sm" data-id="md-map-fix" data-i="${i}">매핑 추가</button></span>`}</div>`).join('')
       || '<span class="help">승인된 케이스가 없습니다</span>';
     $$('[data-id="md-map-fix"]', root).forEach((b) => b.addEventListener('click', async () => {

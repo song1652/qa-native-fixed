@@ -221,6 +221,11 @@ input, select, textarea, button {
   to { opacity: 0; transform: translateY(-6px); }
 }
 
+/* 동작 줄이기: 움직임 없이 같은 시점에 사라지기만 한다 */
+@media (prefers-reduced-motion: reduce) {
+  .toast { animation: toastOut 0s 3.2s forwards; }
+}
+
 .info-banner {
   display: flex;
   align-items: flex-start;

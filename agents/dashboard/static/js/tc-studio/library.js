@@ -22,9 +22,9 @@
     <div class="lib no-detail" id="lib">
       <aside class="tree-pane" aria-label="계층 트리">
         <div class="tree-tools">
-          <input class="input" id="tree-search" data-id="tree-search" placeholder="가지 이름 검색" autocomplete="off">
-          <div class="row" style="justify-content:space-between">
-            <span class="faint" style="font-size:12px">시트 › 대분류 › 중분류 › 소분류 › 제목</span>
+          <input class="input" id="tree-search" data-id="tree-search" placeholder="가지 이름 검색" aria-label="가지 이름 검색" autocomplete="off">
+          <div class="row" style="justify-content:space-between;flex-wrap:nowrap">
+            <span class="faint" style="font-size:12px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="시트 › 대분류 › 중분류 › 소분류 › 제목">시트 › 대분류 › 중분류 › 소분류 › 제목</span>
             <button class="icon-btn" data-id="tree-collapse-all" id="tree-collapse-all" title="모두 접기" aria-label="모두 접기">⊟</button>
           </div>
         </div>
@@ -34,7 +34,7 @@
       <div class="center">
         <div id="lib-banners"></div>
         <div class="filterbar" role="search">
-          <div class="search"><input class="input" id="lib-search" data-id="lib-search" placeholder="제목, Step, Expected, UI 문구 검색  ( / )" autocomplete="off"></div>
+          <div class="search"><input class="input" id="lib-search" data-id="lib-search" aria-label="케이스 검색" placeholder="제목, Step, Expected, UI 문구 검색  ( / )" autocomplete="off"></div>
           <select class="fselect" id="lib-filter-result" data-id="lib-filter-result" aria-label="실행 결과">
             ${opt('', '실행 결과 전체')}${opt('none', '미실행')}${opt('pass', 'Pass')}${opt('fail', 'Fail')}${opt('not_test', 'Not Test')}${opt('na', 'N/A')}</select>
           <select class="fselect" id="lib-filter-status" data-id="lib-filter-status" aria-label="검토 상태">
@@ -58,7 +58,7 @@
         </div>
         <div class="grid-wrap" id="grid-wrap">
           <table class="grid" id="grid" data-id="lib-grid" aria-label="케이스 그리드">
-            <colgroup><col style="width:34px"><col style="width:20px"><col style="width:44px"><col style="width:96px"><col class="c-l2" style="width:96px"><col class="c-l3" style="width:96px"><col style="width:200px"><col style="width:150px"><col style="width:200px"><col style="width:240px"><col style="width:74px"><col style="width:100px"><col style="width:130px"></colgroup>
+            <colgroup><col style="width:34px"><col style="width:28px"><col style="width:44px"><col style="width:96px"><col class="c-l2" style="width:96px"><col class="c-l3" style="width:96px"><col style="width:200px"><col style="width:150px"><col style="width:200px"><col style="width:240px"><col style="width:74px"><col style="width:100px"><col style="width:130px"></colgroup>
             <thead><tr>
               <th><input type="checkbox" id="grid-check-all" data-id="grid-check-all" aria-label="전체 선택"></th>
               <th></th><th class="no"><span class="xl">A</span>No.</th>
@@ -71,9 +71,9 @@
         </div>
         <div class="bulkbar" id="bulkbar" data-id="bulk-bar" hidden>
           <b><span id="bulk-n">0</span>건 선택</b>
-          <select class="chip-select" data-id="bulk-priority" id="bulk-priority">${opt('', '우선순위…')}${NS.PRIORITIES.map((p) => opt(p, p)).join('')}</select>
-          <select class="chip-select" data-id="bulk-result" id="bulk-result">${opt('', '실행 결과…')}${opt('none', '미실행')}${opt('pass', 'Pass')}${opt('fail', 'Fail')}${opt('not_test', 'Not Test')}${opt('na', 'N/A')}</select>
-          <select class="chip-select" data-id="bulk-status" id="bulk-status">${opt('', '검토 상태…')}${opt('approved', '승인')}${opt('draft', '초안으로')}${opt('rejected', '반려')}</select>
+          <select class="chip-select" data-id="bulk-priority" id="bulk-priority" aria-label="선택한 케이스 우선순위 변경">${opt('', '우선순위…')}${NS.PRIORITIES.map((p) => opt(p, p)).join('')}</select>
+          <select class="chip-select" data-id="bulk-result" id="bulk-result" aria-label="선택한 케이스 실행 결과 변경">${opt('', '실행 결과…')}${opt('none', '미실행')}${opt('pass', 'Pass')}${opt('fail', 'Fail')}${opt('not_test', 'Not Test')}${opt('na', 'N/A')}</select>
+          <select class="chip-select" data-id="bulk-status" id="bulk-status" aria-label="선택한 케이스 검토 상태 변경">${opt('', '검토 상태…')}${opt('approved', '승인')}${opt('draft', '초안으로')}${opt('rejected', '반려')}</select>
           <button class="btn-sm" data-id="bulk-move" id="bulk-move">계층 이동…</button>
           <button class="btn-sm" data-id="bulk-duplicate" id="bulk-duplicate">복제</button>
           <button class="btn btn-danger" data-id="bulk-delete" id="bulk-delete" style="padding:4px 10px;font-size:12px">삭제</button>
@@ -97,8 +97,8 @@
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="mv-title" style="width:min(440px,100%)">
       <div class="panel-head"><span id="mv-title">계층 이동</span><span class="spacer"></span><button class="icon-btn" data-id="move-close" id="move-close" aria-label="닫기">✕</button></div>
       <div class="panel-body" style="display:grid;gap:10px">
-        <div class="field"><span class="label">시트 › 대분류 › 중분류 › 소분류</span><select class="select" id="move-target" data-id="move-target"></select></div>
-        <div class="field"><span class="label">제목</span><input class="input" id="move-feature" data-id="move-feature" placeholder="비워 두면 기존 제목 유지"></div>
+        <div class="field"><label class="label" for="move-target">시트 › 대분류 › 중분류 › 소분류</label><select class="select" id="move-target" data-id="move-target"></select></div>
+        <div class="field"><label class="label" for="move-feature">제목</label><input class="input" id="move-feature" data-id="move-feature" placeholder="비워 두면 기존 제목 유지"></div>
         <div class="row"><span class="spacer"></span><button class="btn btn-ghost" id="move-cancel" data-id="move-cancel">취소</button><button class="btn btn-primary" id="move-confirm" data-id="move-confirm">이동</button></div>
       </div>
     </div>

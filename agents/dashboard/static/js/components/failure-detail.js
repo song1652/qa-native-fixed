@@ -89,7 +89,7 @@ function renderFailureDetail(data) {
   const shot = blankPage
     ? shotEmpty('페이지를 열지 못해 화면을 찍지 못했습니다', '대상 서버가 켜져 있는지, URL이 맞는지 확인하세요. 원인은 오른쪽 실패 원인·네트워크에 있습니다.')
     : data.screenshot_url
-      ? `<img class="fail-shot" src="${esc(data.screenshot_url)}" alt="실패 시점 스크린샷" onclick="window.open('${esc(data.screenshot_url)}','_blank')">`
+      ? `<a class="fail-shot-link" href="${esc(data.screenshot_url)}" target="_blank" rel="noopener" aria-label="실패 시점 스크린샷 새 탭에서 크게 보기"><img class="fail-shot" src="${esc(data.screenshot_url)}" alt="실패 시점 스크린샷" width="1280" height="720" loading="lazy"></a>`
       : shotEmpty('저장된 스크린샷이 없습니다', '브라우저를 열기 전에 실패했거나 이전 실행 기록일 수 있습니다. 실패 원인과 Trace를 확인하세요.');
 
   // 스텝은 "비교 대상"이 아니라 순서가 있는 절차라서 Expected/실패원인의

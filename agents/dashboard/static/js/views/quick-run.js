@@ -94,7 +94,7 @@ function renderQuickRun(main) {
         </div>
       </section><section class="quick-help-card"><div class="quick-card-head"><h3>실행 방법</h3></div><ul>
         <li>이미 생성된 테스트를 바로 실행합니다.</li>
-        <li>실패하면 힐링이 최대 3회 수정을 시도합니다. 끄려면 ‘힐링 생략’을 선택하세요.</li>
+        <li>실패 원인이 화면 요소(Locator)를 찾지 못한 것뿐이면 자동 복구를 시도합니다. 기대값·통신·설정 오류는 고치지 않고 멈춘 뒤 원인을 안내합니다. 끄려면 ‘힐링 생략’을 선택하세요.</li>
         <li>완료 후 그룹별 결과와 리포트를 확인할 수 있습니다.</li>
       </ul></section></div>
       <div class="run-log-box" id="run-quick-log" style="display:${logVis ? 'block' : 'none'};margin-bottom:16px;">

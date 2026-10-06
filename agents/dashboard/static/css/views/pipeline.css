@@ -22,7 +22,7 @@
 .pipeline-info-row { display: flex; justify-content: space-between; gap: 16px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: var(--fs-sub); }
 .pipeline-info-row:last-child { border-bottom: 0; }
 .pipeline-info-label { min-width: 100px; color: var(--text-2); font-size: var(--fs-label); }
-.pipeline-info-val { min-width: 0; color: var(--text); font: var(--fs-sub) var(--font-mono); overflow-wrap: anywhere; text-align: right; }
+.pipeline-info-val { min-width: 0; color: var(--text); font: var(--fs-sub) var(--font-sans); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; text-align: right; }
 .pipeline-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
 .pipeline-heal-notice { margin-bottom: 20px; padding: 12px 16px; border-radius: var(--radius-ctrl); background: var(--warn-bg); color: var(--warn); font-size: var(--fs-sub); }
 .pipeline-heal-notice.failed { background: var(--fail-bg); color: var(--fail); }

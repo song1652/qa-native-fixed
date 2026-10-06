@@ -97,7 +97,7 @@
         <button class="btn btn-ghost" data-id="draft-edit" style="padding:5px 12px">편집</button>
         <button class="btn btn-ghost" data-id="draft-regen" ${jobInfo ? '' : 'disabled title="작업에서 온 초안만 재생성할 수 있습니다"'} style="padding:5px 12px">재생성…</button>
       </div>
-      <div class="regen" data-regen hidden><textarea class="textarea" data-id="draft-regen-note" rows="2" placeholder="무엇을 바꿔야 하나요? 예) 배너 3개일 때와 5개일 때를 행으로 나눠 주세요"></textarea>
+      <div class="regen" data-regen hidden><textarea class="textarea" data-id="draft-regen-note" rows="2" aria-label="재생성 요청 내용" placeholder="무엇을 바꿔야 하나요? 예) 배너 3개일 때와 5개일 때를 행으로 나눠 주세요"></textarea>
         <div class="row"><button class="btn-sm" data-id="draft-regen-submit">이 메모로 재생성</button><button class="btn-sm" data-id="draft-regen-cancel">닫기</button></div></div>
     </article>`;
   }

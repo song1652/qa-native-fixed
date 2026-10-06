@@ -33,9 +33,9 @@
         <div class="detail-body">
           <div class="dpane active" data-pane="edit">
             <div class="two">
-              <div class="field"><span class="label">우선순위</span><select class="select" id="detail-priority" data-id="detail-priority">${opt('', '미지정')}${NS.PRIORITIES.map((p) => opt(p, p)).join('')}</select></div>
-              <div class="field"><span class="label">실행 결과</span><select class="select" id="detail-result" data-id="detail-result">${Object.entries(NS.RESULT_LABEL).map(([k, l]) => opt(k, l)).join('')}</select></div>
-              <div class="field"><span class="label">검토 상태</span><select class="select" id="detail-status" data-id="detail-status">${Object.entries(NS.STATUS_LABEL).map(([k, l]) => opt(k, l)).join('')}</select></div>
+              <div class="field"><label class="label" for="detail-priority">우선순위</label><select class="select" id="detail-priority" data-id="detail-priority">${opt('', '미지정')}${NS.PRIORITIES.map((p) => opt(p, p)).join('')}</select></div>
+              <div class="field"><label class="label" for="detail-result">실행 결과</label><select class="select" id="detail-result" data-id="detail-result">${Object.entries(NS.RESULT_LABEL).map(([k, l]) => opt(k, l)).join('')}</select></div>
+              <div class="field"><label class="label" for="detail-status">검토 상태</label><select class="select" id="detail-status" data-id="detail-status">${Object.entries(NS.STATUS_LABEL).map(([k, l]) => opt(k, l)).join('')}</select></div>
             </div>
             <div class="field"><label class="label" for="detail-source-tc-id">원본 TC ID</label><input class="input mono" id="detail-source-tc-id" data-id="detail-source-tc-id" readonly></div>
             <div class="field"><label class="label" for="detail-tags">태그</label><input class="input" id="detail-tags" data-id="detail-tags" placeholder="쉼표로 구분"><span class="help">태그를 쉼표로 구분해 입력하세요.</span></div>

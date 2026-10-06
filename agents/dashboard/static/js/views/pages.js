@@ -78,17 +78,17 @@ function enterEditRow(tr, grp, c) {
             <input class="pages-form-input pages-edit-url" id="pages-edit-url-input" type="url" value="${esc(c.url || '')}" autocomplete="url">
           </div>
           <div class="pages-edit-field">
-            <label class="pages-form-label">프로젝트</label>
-            <input class="pages-form-input pages-edit-project" type="text"
+            <label class="pages-form-label" for="pages-edit-project-input">프로젝트</label>
+            <input class="pages-form-input pages-edit-project" id="pages-edit-project-input" type="text"
               list="pg-project-list" value="${esc(c.project || '')}">
           </div>
           <div class="pages-edit-field">
-            <label class="pages-form-label">메모</label>
-            <input class="pages-form-input pages-edit-notes" type="text" value="${esc(c.notes || '')}">
+            <label class="pages-form-label" for="pages-edit-notes-input">메모</label>
+            <input class="pages-form-input pages-edit-notes" id="pages-edit-notes-input" type="text" value="${esc(c.notes || '')}">
           </div>
           <div class="pages-edit-field pages-edit-spa-wrap">
-            <label class="pages-form-label">SPA</label>
-            <input type="checkbox" class="pages-edit-spa-cb"${c.spa ? ' checked' : ''}>
+            <label class="pages-form-label" for="pages-edit-spa-input">SPA</label>
+            <input type="checkbox" class="pages-edit-spa-cb" id="pages-edit-spa-input"${c.spa ? ' checked' : ''}>
           </div>
         </div>
         <div class="pages-edit-actions">
