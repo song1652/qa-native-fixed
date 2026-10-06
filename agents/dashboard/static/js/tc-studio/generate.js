@@ -88,17 +88,6 @@
           <div class="panel-body" style="display:grid;gap:10px">
             <select class="select" id="gen-profile" data-id="gen-profile"></select>
             <ul class="profile-rules" id="gen-rules"></ul>
-            <div id="gen-profile-editor" hidden style="display:grid;gap:8px">
-              <div class="row"><span class="help">규칙 (한 줄에 하나)</span><span class="spacer"></span>
-                <label class="btn-sm" for="gen-style-file" data-id="gen-style-import" title="기존 TC 엑셀의 제목·Step·Expected 말투를 읽어 규칙·끝맺음·기준 예시를 채웁니다">엑셀에서 문체 가져오기</label>
-                <input type="file" id="gen-style-file" data-id="gen-style-file" accept=".xlsx" hidden></div>
-              <textarea class="textarea" id="gen-rules-input" data-id="gen-rules-input" rows="6" aria-label="규칙 (한 줄에 하나)"></textarea>
-              <label class="help">금지 표현 (쉼표로 구분)<input class="input" id="gen-banned-input" data-id="gen-banned-input"></label>
-              <label class="help">Expected 끝맺음 (쉼표로 구분 · 비우면 검사하지 않음)<input class="input" id="gen-endings-input" data-id="gen-endings-input" placeholder="예: 된다., 는다."></label>
-              <div class="help" id="gen-profile-examples" data-id="gen-profile-examples"></div>
-              <div class="row"><input class="input" id="gen-profile-name" data-id="gen-profile-name" placeholder="저장할 프로필 이름" style="max-width:220px">
-                <button class="btn-sm" data-id="gen-profile-save" id="gen-profile-save">저장</button></div>
-            </div>
           </div></div>
         <div class="panel"><div class="panel-body" style="display:grid;gap:12px" id="job-panel" data-id="job-panel">
           <div class="row"><button class="btn btn-primary" data-id="gen-submit" id="gen-submit" disabled>초안 생성</button><span class="help" id="gen-hint">소스를 하나 이상 추가하세요</span></div>
@@ -119,6 +108,22 @@
       </div>
     </div></div>
   </section>
+  <div class="scrim" id="profile-modal" data-id="profile-modal" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="profile-modal-title" style="width:min(640px,96vw)">
+      <div class="panel-head" id="profile-modal-title">작성 규칙 편집</div>
+      <div class="panel-body" id="gen-profile-editor" style="display:grid;gap:10px;max-height:min(70vh,640px);overflow:auto">
+        <div class="row"><span class="help">규칙 (한 줄에 하나)</span><span class="spacer"></span>
+          <label class="btn-sm" for="gen-style-file" data-id="gen-style-import" title="기존 TC 엑셀의 제목·Step·Expected 말투를 읽어 규칙·끝맺음·기준 예시를 채웁니다">엑셀에서 문체 가져오기</label>
+          <input type="file" id="gen-style-file" data-id="gen-style-file" accept=".xlsx" hidden></div>
+        <textarea class="textarea" id="gen-rules-input" data-id="gen-rules-input" rows="8" aria-label="규칙 (한 줄에 하나)"></textarea>
+        <label class="help">금지 표현 (쉼표로 구분)<input class="input" id="gen-banned-input" data-id="gen-banned-input"></label>
+        <label class="help">Expected 끝맺음 (쉼표로 구분 · 비우면 검사하지 않음)<input class="input" id="gen-endings-input" data-id="gen-endings-input" placeholder="예: 된다., 는다."></label>
+        <div class="help" id="gen-profile-examples" data-id="gen-profile-examples"></div>
+        <label class="help">저장할 프로필 이름<input class="input" id="gen-profile-name" data-id="gen-profile-name" placeholder="예: 톤앤매너"></label>
+        <div class="row"><span class="spacer"></span><button class="btn btn-ghost" id="gen-profile-cancel" data-id="gen-profile-cancel">취소</button><button class="btn btn-primary" data-id="gen-profile-save" id="gen-profile-save">저장</button></div>
+      </div>
+    </div>
+  </div>
   <div class="scrim" id="sheet-rename-modal" data-id="sheet-rename-modal" hidden>
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="sheet-rename-title" style="width:min(440px,100%)">
       <div class="panel-head" id="sheet-rename-title">시트 이름 변경</div>
@@ -483,15 +488,21 @@
       renderTarget({ sheet: t.sheet, path: t.path.map((p, j) => (j <= i ? p : '')) });
     }));
     $('#gen-profile', root).addEventListener('change', () => { renderRules(); loadExamples(); });
+    const profileModal = $('#profile-modal', root);
+    const closeProfileModal = () => { profileModal.hidden = true; $('#gen-profile-edit', root).focus(); };
+    $('#gen-profile-cancel', root).addEventListener('click', closeProfileModal);
+    profileModal.addEventListener('click', (e) => { if (e.target === profileModal) closeProfileModal(); });
+    profileModal.addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.preventDefault(); closeProfileModal(); } });
     $('#gen-profile-edit', root).addEventListener('click', () => {
-      const ed = $('#gen-profile-editor', root);
-      ed.hidden = !ed.hidden;
+      $('#profile-modal-title', root).textContent = `작성 규칙 편집 · ${profile().name || '기본'}`;
+      profileModal.hidden = false;
       $('#gen-rules-input', root).value = profile().rules.join('\n');
       $('#gen-banned-input', root).value = (profile().banned_phrases || []).join(', ');
       $('#gen-endings-input', root).value = (profile().expected_endings || []).join(', ');
       editExamples = profile().style_examples || [];
       renderEditExamples();
       $('#gen-profile-name', root).value = profile().name === '기본' ? '' : profile().name;
+      $('#gen-rules-input', root).focus();
     });
     $('#gen-style-file', root).addEventListener('change', async (e) => {
       const file = e.target.files[0];
@@ -519,7 +530,7 @@
         await api.saveProfile(name, { ...profile(), rules, banned_phrases: splitList($('#gen-banned-input', root).value),
           expected_endings: splitList($('#gen-endings-input', root).value), style_examples: editExamples });
         await loadProfiles(name);
-        $('#gen-profile-editor', root).hidden = true;
+        profileModal.hidden = true;
         toast(`작성 프로필 "${esc(name)}"을 저장했습니다.`, 'ok');
       } catch (err) { toast(`저장하지 못했습니다: ${esc(err.message)}`, 'err'); }
     });

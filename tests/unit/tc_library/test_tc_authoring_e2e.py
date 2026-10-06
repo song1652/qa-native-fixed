@@ -57,10 +57,12 @@ def test_profile_edit_and_save(studio):
     _, page, _ = studio
     page.locator('[data-id="nav-tab-generate"]').click()
     page.locator('[data-id="gen-profile-edit"]').click()
+    expect(page.locator('[data-id="profile-modal"]')).to_be_visible()
     page.locator('[data-id="gen-rules-input"]').fill("경계값을 모두 쓴다\n금액은 원 단위")
     page.locator('[data-id="gen-profile-name"]').fill("결제 엄격")
     page.locator('[data-id="gen-profile-save"]').click()
     expect(page.locator('[data-id="gen-profile"]')).to_have_value("결제 엄격")
+    expect(page.locator('[data-id="profile-modal"]')).to_be_hidden()
     expect(page.locator("#gen-rules li").first).to_have_text("경계값을 모두 쓴다")
 
 

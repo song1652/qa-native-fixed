@@ -1,9 +1,9 @@
 # 현재 제품 화면과 촬영 기준
 
-- 촬영 날짜: 대시보드 **2026-10-03**, TC 스튜디오 **2026-10-02**.
+- 촬영 날짜: 대시보드 **2026-10-03**, TC 스튜디오 **2026-10-02** (09 작성 규칙 편집 팝업은 **2026-10-06**).
 - 기준 구현: 밝은 테마 및 1·2·3차 안정화 적용 작업본.
 - 서버: 대시보드 캡처는 저장소를 복제한 실제 `serve.py` **http://localhost:62916/**, TC 스튜디오는 **http://localhost:8766/**.
-- 도구: Playwright Chromium. 화면 크기 **1440 × 1000**, 개요와 작성 규칙 편집은 전체 항목을 보여 주기 위해 **1440 × 1400**을 사용했습니다.
+- 도구: Playwright Chromium. 화면 크기 **1440 × 1000**, 개요는 전체 항목을 보여 주기 위해 **1440 × 1400**을 사용했습니다.
 - 스위트 이름·건수·시각은 촬영 당시 예시 환경의 값이며 사용자 환경에서는 달라집니다.
 
 ## 대시보드
@@ -41,7 +41,7 @@
 | [06-import-history.png](tc-studio-user-guide/06-import-history.png) | 가져오기 이력 |
 | [07-suite-delete.png](tc-studio-user-guide/07-suite-delete.png) | 스위트 삭제 확인 — 취소 |
 | [08-sheet-rename.png](tc-studio-user-guide/08-sheet-rename.png) | 시트 이름 변경 — 취소 |
-| [09-writing-profile.png](tc-studio-user-guide/09-writing-profile.png) | 작성 규칙 편집 — 저장하지 않음 |
+| [09-writing-profile.png](tc-studio-user-guide/09-writing-profile.png) | 작성 규칙 편집 팝업 — 저장하지 않음 |
 | [10-case-detail.png](tc-studio-user-guide/10-case-detail.png) | TC 상세 편집 — 조회 |
 | [11-suite-trash.png](tc-studio-user-guide/11-suite-trash.png) | 삭제한 스위트 — 빈 목록 |
 | [12-md-preview.png](tc-studio-user-guide/12-md-preview.png) | Markdown 변경 미리보기 — 반영하지 않음 |
