@@ -55,7 +55,7 @@ function _failActionsSection(data) {
     // 경로에 공백이 없어 브라우저가 줄바꿈할 자연스러운 지점이 없다 —
     // "/" 뒤에 <wbr>(줄바꿈 가능 지점)을 심어 폴더 경계에서만 끊기게 한다
     // (안 그러면 "traces" 같은 단어 중간에서 끊기는 문제가 있었다).
-    const cmdWithBreaks = esc(data.trace_cmd).replace(/\//g, '/<wbr>');
+    const cmdWithBreaks = esc(data.trace_cmd).replace(/\//g, '/<wbr>').replace(/__/g, '__<wbr>');
     parts.push(`<span class="fd-cmd">${cmdWithBreaks}</span>`);
   }
   const buttons = [];
@@ -82,13 +82,16 @@ function renderFailureDetail(data) {
   if (data.url) facts.push(['URL', data.url]);
   if (data.timestamp) facts.push(['실행 시각', data.timestamp]);
 
+  // 페이지 이동 자체가 실패하면(연결 거부 등) 브라우저 오류 페이지가 헤드리스에선 빈 화면으로 찍힌다
+  const blankPage = /^(chrome-error:|about:blank)/.test(data.url || '');
   const shot = data.screenshot_url
     ? `<img class="fail-shot" src="${esc(data.screenshot_url)}" alt="실패 시점 스크린샷" onclick="window.open('${esc(data.screenshot_url)}','_blank')">`
+      + (blankPage ? '<p class="fail-shot-note">페이지를 열지 못해 빈 화면으로 찍혔습니다. 대상 서버가 켜져 있는지, URL이 맞는지 확인하세요.</p>' : '')
     : '';
 
   // 스텝은 "비교 대상"이 아니라 순서가 있는 절차라서 Expected/실패원인의
   // 초록/빨강 diff 박스가 아니라 번호 매긴 목록으로 별도 카드에 둔다.
-  const stepLines = (data.steps || '').split('\n').map((s) => s.trim()).filter(Boolean);
+  const stepLines = (data.steps || '').split('\n').map((s) => s.trim().replace(/^\d+[.)]\s+/, '')).filter(Boolean);
   const stepsCard = stepLines.length
     ? `<div class="fail-card">
         <div class="fail-card-head"><span class="fd-dot" style="background:var(--text-dim)"></span>테스트 스텝</div>

@@ -9,6 +9,7 @@
 .fail-card-head .fd-count { margin-left: auto; padding: 2px 8px; border-radius: var(--radius-badge); background: var(--surface-sub); color: var(--text-2); font-size: var(--fs-label); font-weight: 600; }
 .fail-card-body { padding: 16px; }
 .fail-card-empty { padding: 16px; color: var(--text-3); font-size: var(--fs-sub); }
+.fail-shot-note { margin: 8px 0 0; color: var(--text-2); font-size: var(--fs-sub); }
 .fail-shot { display: block; width: 100%; border: 1px solid var(--border); border-radius: var(--radius-ctrl); cursor: zoom-in; }
 .fail-diff-label { display: block; margin-bottom: 12px; color: var(--text); font-size: var(--fs-h3); font-weight: 600; }
 .fail-diff-label.expect,.fail-diff-label.actual { color: var(--text); }
@@ -44,7 +45,7 @@
 .fail-net-req { overflow: hidden; color: var(--text); text-overflow: ellipsis; white-space: nowrap; }
 .fail-net-reason { grid-column: 1 / -1; color: var(--fail); font-size: var(--fs-label); }
 .fail-actions { display: flex; flex-direction: column; gap: 12px; padding: 16px; }
-.fail-actions .fd-cmd { display: block; width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius-ctrl); background: var(--log-bg); color: var(--text-2); font: var(--fs-label) / 1.7 var(--font-mono); white-space: pre-wrap; word-break: normal; overflow-wrap: normal; }
+.fail-actions .fd-cmd { display: block; width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius-ctrl); background: var(--log-bg); color: var(--text-2); font: var(--fs-label) / 1.7 var(--font-mono); white-space: pre-wrap; word-break: normal; overflow-wrap: anywhere; }
 .fail-actions .fd-btn-row { display: flex; gap: 8px; justify-content: flex-end; }
 .fail-btn { min-height: 34px; padding: 0 14px; border: 1px solid var(--border); border-radius: var(--radius-ctrl); background: var(--surface); color: var(--text); font: var(--fs-body) var(--font-sans); cursor: pointer; white-space: nowrap; }
 .fail-btn:hover { background: var(--surface-sub); }
