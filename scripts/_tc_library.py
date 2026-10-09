@@ -42,6 +42,7 @@ class RevConflict(LibraryError):
 RESERVED_SUITES = {"import", "exports", "sources", "profiles", "jobs", "credentials", "source-diff", "trash"}
 # 처음 접속할 때 쓰는 빈 양식 스위트. 삭제할 수 없다
 DEFAULT_SUITE = "기본양식"
+STARTER_TEMPLATE = Path(__file__).resolve().parents[1] / "agents" / "dashboard" / "assets" / "TC_빈양식.xlsx"
 
 
 def suite_dir(suite: str) -> Path:
@@ -159,6 +160,26 @@ def list_suites() -> list[dict]:
                        "imported": sum(map(is_imported, live)),
                        "protected": d.name == DEFAULT_SUITE})
     return suites
+
+
+def create_blank_starter() -> bool:
+    """사용자가 작성을 시작할 때만 빈 기본 양식 스위트를 만든다. 이미 있으면 False."""
+    from _tc_template import analyze_workbook
+
+    with suite_lock(DEFAULT_SUITE):
+        root = suite_dir(DEFAULT_SUITE)
+        if root.exists():
+            if (root / "cases.json").exists() and (root / "template.xlsx").exists():
+                return False
+            raise LibraryError("기본 양식이 불완전합니다. 기존 파일을 확인하세요.", "STARTER_INCOMPLETE", 409)
+        try:
+            profiles = analyze_workbook(STARTER_TEMPLATE)
+            save_template(DEFAULT_SUITE, STARTER_TEMPLATE, profiles)
+            import_cases(DEFAULT_SUITE, list(profiles), [], "starter")
+        except Exception:
+            shutil.rmtree(root, ignore_errors=True)
+            raise
+        return True
 
 
 @_locked

@@ -165,12 +165,33 @@ def test_detail_save_history_and_revert(studio):
     expect(page.locator("#d-rev")).to_have_text("rev 3")
 
 
+def test_empty_studio_starts_with_authoring_inputs(tmp_path, page):
+    project = tmp_path / "project"
+    (project / "testcases").mkdir(parents=True)
+    with dashboard_server(project) as base_url:
+        page.goto(base_url + "/tc-studio")
+        expect(page.locator("#screen-generate")).to_be_visible()
+        page.locator("#btn-start-blank").click()
+        expect(page.locator("#suite-select")).to_have_value("기본양식")
+        expect(page.locator("#gen-no-suite")).to_be_hidden()
+        expect(page.locator("#gen-target-sheet option")).to_have_text(["시트를 선택하세요", "테스트케이스"])
+        page.locator("#gen-target-sheet").select_option("테스트케이스")
+        page.locator("#gen-path-l1").select_option("__new")
+        page.locator("#gen-new-l1").fill("로그인")
+        page.get_by_role("tab", name="텍스트 붙여넣기").click()
+        page.locator("#src-paste").fill("로그인 버튼을 누르면 홈 화면으로 이동한다.")
+        page.locator("#src-paste-add").click()
+        expect(page.locator("#src-n")).to_have_text("1")
+        expect(page.locator("#gen-submit")).to_be_enabled()
+
+
 # ── W2: 엑셀 가져오기 모달 ───────────────────────────────────────────────
 def test_import_modal_previews_and_imports_workbook(tmp_path, page):
     project = tmp_path / "project"
     (project / "testcases").mkdir(parents=True)
     with dashboard_server(project) as base_url:
         page.goto(base_url + "/tc-studio")
+        page.get_by_role("tab", name=re.compile("라이브러리")).click()
         page.locator('[data-id="empty-import-xlsx"]').click()
         expect(page.locator('[data-id="import-modal"]')).to_be_visible()
         assert page.evaluate("""async () => {

@@ -275,8 +275,10 @@ def test_failure(page):
                             env={**os.environ, 'PYTHONPATH': str(ROOT), 'QA_ARTIFACT_PREFIX': 'run_owned__attempt_one__',
                                  'QA_RUN_ID': 'run_owned', 'QA_INVOCATION_ID': 'attempt_one'})
     assert result.returncode == 1, result.stdout + result.stderr
-    path = tmp_path / f'tests/screenshots/run_owned__attempt_one__{tmp_path.name}__test_failure.meta.json'
-    assert path.exists(), 'failure artifacts did not receive their owner prefix'
+    # pytest-playwright 0.10+는 page를 쓰는 테스트 이름에 [chromium]을 붙인다
+    paths = list((tmp_path / 'tests/screenshots').glob(f'run_owned__attempt_one__{tmp_path.name}__test_failure*.meta.json'))
+    assert len(paths) == 1, 'failure artifacts did not receive their owner prefix'
+    path = paths[0]
     metadata = json.loads(path.read_text())
     assert metadata['run_id'] == 'run_owned' and metadata['invocation_id'] == 'attempt_one'
     assert Path(tmp_path / metadata['screenshot_path']).exists()

@@ -40,9 +40,12 @@ DOM 분석 → 테스트 코드 자동 생성 → 심의 → 실행 → 자가 �
 
 ### 1. Python 패키지
 
+`.claude/settings.json`의 프롬프트 훅이 `.venv/bin/python3`로 실행되므로 프로젝트 루트에 `.venv`를 만든다.
+
 ```bash
-pip install -r requirements.txt
-playwright install chromium
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+.venv/bin/python -m playwright install chromium
 ```
 
 ### 2. Playwright MCP (힐링 단계 실시간 DOM 확인용)

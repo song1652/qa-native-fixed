@@ -130,3 +130,18 @@ def test_rejects_bad_suite_and_cross_origin_writes(api):
     with pytest.raises(urllib.error.HTTPError) as err:
         urllib.request.urlopen(req, timeout=10)
     assert err.value.code == 403
+
+
+def test_blank_starter_is_explicit_and_ready_for_authoring(tmp_path: Path):
+    project = tmp_path / "project"
+    (project / "testcases").mkdir(parents=True)
+    with dashboard_server(project) as base_url:
+        assert request_json(base_url, "GET", "/api/tc-library")[1]["suites"] == []
+        status, started = request_json(base_url, "POST", "/api/tc-library/starter")
+        assert (status, started["suite"]) == (201, "기본양식")
+        assert request_json(base_url, "POST", "/api/tc-library/starter")[0] == 200
+        suites = request_json(base_url, "GET", "/api/tc-library")[1]["suites"]
+        assert [(s["suite"], s["sheets"], s["count"]) for s in suites] == [("기본양식", ["테스트케이스"], 0)]
+        status, _ = request_json(base_url, "POST", "/api/tc-library/" + quote("기본양식") + "/branches",
+                                 {"sheet": "테스트케이스", "path": ["로그인", "", ""]})
+        assert status == 200
