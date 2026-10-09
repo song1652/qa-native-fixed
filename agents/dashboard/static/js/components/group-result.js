@@ -8,7 +8,7 @@ function toggleGroupResult(prefix, groupName) {
   if (chv) chv.classList.toggle('open', !!_groupOpenState[key]);
 }
 
-function buildGroupResultsHtml(gr, prefix) {
+function buildGroupResultsHtml(gr, prefix, runKey = '') {
   const grNames = Object.keys(gr).sort();
   if (!grNames.length) return '';
   let html = '<div class="group-result-list"><div class="group-result-columns"><span>그룹</span><span>통과</span><span>결과</span></div>';
@@ -20,7 +20,7 @@ function buildGroupResultsHtml(gr, prefix) {
     const gBadge = gPass ? (gSkipped > 0 ? `통과 (건너뜀 ${gSkipped})` : '통과') : (gSkipped > 0 ? `실패 (건너뜀 ${gSkipped})` : '실패');
     const key = prefix + '__' + g;
     const isOpen = !!_groupOpenState[key];
-    const testListHtml = buildTestListHtml(gd.tests || [], prefix, g);
+    const testListHtml = buildTestListHtml(gd.tests || [], prefix, g, runKey);
     html += `
       <div class="group-result-item">
         <button type="button" class="group-result-header" onclick="toggleGroupResult('${esc(prefix)}','${esc(g)}')" aria-expanded="${isOpen}">

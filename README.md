@@ -38,20 +38,21 @@ DOM 분석 → 테스트 코드 자동 생성 → 심의 → 실행 → 자가 �
 
 ## 설치
 
-### 1. Python 패키지
+### 1. Python 패키지·테스트 데이터
 
-`.claude/settings.json`의 프롬프트 훅이 `.venv/bin/python3`로 실행되므로 프로젝트 루트에 `.venv`를 만든다.
+새로 클론했다면 아래 한 줄로 `.venv` 생성, 패키지 설치, Chromium 설치, 테스트 데이터 템플릿 복사(3단계)를 한 번에 실행한다. 여러 번 실행해도 안전하고 기존 `test_data/*.json`은 덮어쓰지 않는다.
 
 ```bash
-python3 -m venv .venv
-.venv/bin/pip install -r requirements.txt
-.venv/bin/python -m playwright install chromium
+python3 scripts/setup_env.py
 ```
 
-### 2. Playwright MCP (힐링 단계 실시간 DOM 확인용)
+`.claude/settings.json`의 프롬프트 훅이 `.venv/bin/python3`로 실행되므로 `.venv`가 없으면 매 프롬프트마다 `UserPromptSubmit hook error`가 난다.
+
+### 2. MCP (Playwright: 힐링 단계 실시간 DOM 확인, Sequential Thinking: CLAUDE.md의 단계적 추론 규칙)
 
 ```bash
 claude mcp add playwright -- npx -y @playwright/mcp@latest
+claude mcp add sequential-thinking -- npx -y @modelcontextprotocol/server-sequential-thinking
 ```
 
 설치 확인:
@@ -65,7 +66,7 @@ claude mcp list
 
 ### 3. 테스트 데이터
 
-실제 입력값 `test_data/{프로덕트}.json`은 `.gitignore` 대상이라 새로 클론하면 없습니다. 사용할 프로덕트의 템플릿을 복사해서 만드세요:
+실제 입력값 `test_data/{프로덕트}.json`은 `.gitignore` 대상이라 새로 클론하면 없습니다. 1단계 스크립트가 템플릿을 복사해 주며, 직접 만들려면:
 
 ```bash
 cp test_data/serveone.example.json test_data/serveone.json

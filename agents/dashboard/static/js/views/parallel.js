@@ -112,7 +112,7 @@ function renderParallelPipeline(main) {
     const badgeCls = allPass ? 'pass' : 'fail';
     const badgeTxt = allPass ? '모두 통과' : execResult.failed > 0 ? `${execResult.failed || 0}건 실패` : '실행 중단·오류';
 
-    const groupResultsHtml = buildGroupResultsHtml(execResult.group_results || {}, 'parallel');
+    const groupResultsHtml = buildGroupResultsHtml(execResult.group_results || {}, 'parallel', execResult.invocation_id || execResult.run_id || '');
 
     execResultHtml = `
       <div class="exec-result-card">

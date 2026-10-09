@@ -369,10 +369,12 @@ class GetRoutesMixin:
 
         shot_candidates = []
         if _paths.SCREENSHOTS_DIR.exists():
-            shot_candidates = sorted(_paths.SCREENSHOTS_DIR.glob(f"*__{test_func}.png")) \
-                or sorted(_paths.SCREENSHOTS_DIR.glob(f"{test_func}.png"))
+            # test_func의 "[chromium]"을 glob 문자 묶음으로 해석하지 않도록 이름을 직접 비교한다
+            shot_candidates = [p for p in _paths.SCREENSHOTS_DIR.glob("*.png")
+                               if p.name.endswith(f"__{test_func}.png") or p.name == f"{test_func}.png"]
         if shot_candidates:
-            shot_path = shot_candidates[0]
+            # 실행 ID 접두어는 시간순이 아니므로 가장 최근에 저장된 증거를 고른다
+            shot_path = max(shot_candidates, key=lambda p: p.stat().st_mtime)
             if is_safe_filename(shot_path.name):
                 detail["screenshot_url"] = f"/screenshots/{shot_path.name}"
             meta_path = shot_path.with_suffix("").with_suffix(".meta.json")
@@ -464,7 +466,9 @@ class GetRoutesMixin:
 
     def _get_artifact_file(self, path: str, prefix: str, base_dir: Path, content_type: str):
         """screenshots / videos 등 아티팩트 파일 서빙."""
-        fname = path[len(prefix):]
+        from urllib.parse import unquote
+
+        fname = unquote(path[len(prefix):])
         if not is_safe_filename(fname):
             self.send_response(403)
             self.end_headers()

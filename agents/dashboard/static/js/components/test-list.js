@@ -31,14 +31,14 @@ function _plainDetailHtml(text) {
   return `<pre class="tc-detail-content" style="margin:0;padding:10px 16px;font-size:11px;background:var(--surface);border-top:1px solid var(--border);color:var(--text-dim);white-space:pre-wrap;word-break:break-all;max-height:320px;overflow-y:auto;">${esc(text)}</pre>`;
 }
 
-async function toggleTestDetail(rowId, nodeid, outcome) {
+async function toggleTestDetail(rowId, nodeid, outcome, cacheKey = nodeid) {
   const detailRow = document.getElementById('td_' + rowId);
   if (!detailRow) return;
 
   // 이미 열려 있으면 닫기
   if (detailRow.style.display !== 'none') {
     detailRow.style.display = 'none';
-    _testDetailOpen[nodeid] = false;
+    _testDetailOpen[cacheKey] = false;
     return;
   }
 
@@ -46,22 +46,22 @@ async function toggleTestDetail(rowId, nodeid, outcome) {
   if (!cell) return;
 
   // 캐시된 콘텐츠가 있으면 바로 표시 (이미 렌더링된 HTML이므로 그대로 삽입)
-  if (_testDetailContent[nodeid]) {
-    cell.innerHTML = _testDetailContent[nodeid];
+  if (_testDetailContent[cacheKey]) {
+    cell.innerHTML = _testDetailContent[cacheKey];
     detailRow.style.display = '';
-    _testDetailOpen[nodeid] = true;
+    _testDetailOpen[cacheKey] = true;
     return;
   }
 
   // 로딩 표시 후 펼침
   cell.innerHTML = _plainDetailHtml('불러오는 중…');
   detailRow.style.display = '';
-  _testDetailOpen[nodeid] = true;
+  _testDetailOpen[cacheKey] = true;
 
   if (!_hasTcFile(nodeid)) {
     const html = _plainDetailHtml('(테스트케이스 파일 경로를 확인할 수 없습니다)');
     cell.innerHTML = html;
-    _testDetailContent[nodeid] = html;
+    _testDetailContent[cacheKey] = html;
     return;
   }
 
@@ -71,11 +71,11 @@ async function toggleTestDetail(rowId, nodeid, outcome) {
       const data = await res.json();
       const html = data.ok ? renderFailureDetail(data) : _plainDetailHtml(`(${data.error || '조회 실패'})`);
       cell.innerHTML = html;
-      _testDetailContent[nodeid] = html;
+      _testDetailContent[cacheKey] = html;
     } catch (e) {
       const html = _plainDetailHtml('(로드 실패)');
       cell.innerHTML = html;
-      _testDetailContent[nodeid] = html;
+      _testDetailContent[cacheKey] = html;
     }
     return;
   }
@@ -85,15 +85,15 @@ async function toggleTestDetail(rowId, nodeid, outcome) {
     const data = await res.json();
     const html = _plainDetailHtml(data.ok ? data.content : `(${data.error || '파일 없음'})`);
     cell.innerHTML = html;
-    _testDetailContent[nodeid] = html;
+    _testDetailContent[cacheKey] = html;
   } catch (e) {
     const html = _plainDetailHtml('(로드 실패)');
     cell.innerHTML = html;
-    _testDetailContent[nodeid] = html;
+    _testDetailContent[cacheKey] = html;
   }
 }
 
-function buildTestListHtml(tests, prefix, groupName) {
+function buildTestListHtml(tests, prefix, groupName, runKey = '') {
   if (!tests || !tests.length) return '';
   const key = _getTestListKey(prefix, groupName);
   const st = _getState(key);
@@ -139,11 +139,19 @@ function buildTestListHtml(tests, prefix, groupName) {
     const rowId = esc(pfx) + '_' + esc(gn) + '_' + (start + i);
     const nodeid = esc(rawNodeid);
     const hasTc = _hasTcFile(rawNodeid);
-    const isOpen = hasTc && !!_testDetailOpen[rawNodeid];
+    // 목록(단일·병렬·빠른)마다 따로 캐시하고, 실행·결과가 바뀌면 이전 상세를 버린다
+    const cacheKey = `${prefix}|${rawNodeid}`;
+    const sig = `${runKey}|${oc}|${t.error || ''}`;
+    if (_testDetailSig[cacheKey] !== sig) {
+      delete _testDetailOpen[cacheKey];
+      delete _testDetailContent[cacheKey];
+      _testDetailSig[cacheKey] = sig;
+    }
+    const isOpen = hasTc && !!_testDetailOpen[cacheKey];
     // _testDetailContent는 이미 렌더링된 HTML을 저장하므로 재이스케이프하지 않는다.
-    const cachedContent = hasTc && _testDetailContent[rawNodeid] ? _testDetailContent[rawNodeid] : '';
+    const cachedContent = hasTc && _testDetailContent[cacheKey] ? _testDetailContent[cacheKey] : '';
     const displayName = t.title || t.name;
-    const clickable = hasTc ? `style="cursor:pointer;" tabindex="0" role="button" aria-label="${esc(displayName)} 테스트케이스 보기" onclick="toggleTestDetail('${rowId}','${nodeid}','${oc}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleTestDetail('${rowId}','${nodeid}','${oc}')}"` : '';
+    const clickable = hasTc ? `style="cursor:pointer;" tabindex="0" role="button" aria-label="${esc(displayName)} 테스트케이스 보기" onclick="toggleTestDetail('${rowId}','${nodeid}','${oc}','${esc(cacheKey)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleTestDetail('${rowId}','${nodeid}','${oc}','${esc(cacheKey)}')}"` : '';
     html += `<tr ${clickable}><td style="color:var(--text-dim)">${num}</td><td>${esc(displayName)}${hasTc ? ' <span style="font-size:10px;opacity:0.4;" aria-hidden="true">▼</span>' : ''}</td><td style="white-space:nowrap"><span class="test-status-dot ${cls}"></span>${label}</td></tr>`;
     if (hasTc) {
       html += `<tr id="td_${rowId}" style="display:${isOpen ? '' : 'none'};"><td colspan="3" style="padding:0;">${cachedContent}</td></tr>`;

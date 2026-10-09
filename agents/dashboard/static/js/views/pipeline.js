@@ -175,7 +175,7 @@ function renderSinglePipeline(main) {
     const badgeCls = allPass ? 'pass' : 'fail';
     const badgeTxt = allPass ? '모두 통과' : execResult.failed > 0 ? `${execResult.failed || 0}건 실패` : '실행 중단·오류';
 
-    const groupResultsHtml = buildGroupResultsHtml(execResult.group_results || {}, 'single');
+    const groupResultsHtml = buildGroupResultsHtml(execResult.group_results || {}, 'single', execResult.invocation_id || execResult.run_id || '');
 
     singleExecResultHtml = `
       <div class="exec-result-card">

@@ -134,3 +134,25 @@ def test_unknown_test_returns_graceful_empty_fields(project: Path):
     assert body["error_summary"] == ""
     assert body["console_errors"] == []
     assert body["network_failures"] == []
+
+
+def test_parametrized_test_uses_latest_run_screenshot(project: Path):
+    """pytest-playwright 이름의 [chromium]을 glob 문자 묶음으로 해석하지 않고, 최신 실행 증거를 고른다."""
+    import os
+    import urllib.request
+    from urllib.parse import quote
+
+    func = f"{TEST_FUNC}[chromium]"
+    shot_dir = project / "tests" / "screenshots"
+    old = shot_dir / f"zzz_old__inv__{GROUP}__{func}.png"
+    new = shot_dir / f"aaa_new__inv__{GROUP}__{func}.png"
+    for path, ts in ((old, 1_000_000_000), (new, 2_000_000_000)):
+        path.write_bytes(b"\x89PNG\r\n")
+        os.utime(path, (ts, ts))
+    nodeid = NODEID + "[chromium]"
+    with dashboard_server(project) as base_url:
+        status, body = request_json(base_url, "GET", "/api/testcase/failure_detail?nodeid=" + quote(nodeid))
+        assert status == 200
+        assert body["screenshot_url"] == f"/screenshots/{new.name}"
+        with urllib.request.urlopen(base_url + quote(body["screenshot_url"]), timeout=10) as resp:
+            assert resp.status == 200

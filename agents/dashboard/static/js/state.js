@@ -42,6 +42,8 @@ var _testListState = {};
 // Test Detail 열림 상태 & 콘텐츠 캐시 (nodeid → bool / string)
 var _testDetailOpen = {};
 var _testDetailContent = {};
+// 펼침 캐시의 실행·결과 서명 — 바뀌면 이전 실행의 상세를 버린다
+var _testDetailSig = {};
 
 // 로그 타이머
 var _logTimers = {};
