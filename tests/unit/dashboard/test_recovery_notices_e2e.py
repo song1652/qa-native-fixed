@@ -249,7 +249,11 @@ def test_overview_trend_matches_app_layout_and_keeps_each_execution(tmp_path):
         page.route('**/api/run_history', lambda route: route.fulfill(json=history))
         page.goto(base)
         expect(page.locator('.oax-trend-svg circle')).to_have_count(8)
-        expect(page.locator('.oax-trend-svg')).to_have_attribute('viewBox', '0 0 480 190')
+        page.wait_for_function('''() => {
+            const svg = document.querySelector('.oax-trend-svg');
+            return Math.abs(svg.viewBox.baseVal.width - svg.clientWidth) < 2;
+        }''')
+        assert page.locator('.oax-trend-svg').evaluate('(svg)=>svg.viewBox.baseVal.height') == 190
         expect(page.locator('.oax-trend-footer')).to_contain_text('2초 · 통과')
         assert page.locator('.oax-trend-svg polyline').evaluate('(e)=>getComputedStyle(e).stroke') == page.evaluate('''() => {const e=document.createElement('span');e.style.color='var(--accent)';document.body.append(e);const c=getComputedStyle(e).color;e.remove();return c;}''')
         browser.close()

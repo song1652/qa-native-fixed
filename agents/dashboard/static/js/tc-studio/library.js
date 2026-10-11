@@ -22,6 +22,7 @@
     <div class="lib no-detail" id="lib">
       <aside class="tree-pane" aria-label="계층 트리">
         <div class="tree-tools">
+          <b>계층 트리</b>
           <input class="input" id="tree-search" data-id="tree-search" placeholder="가지 이름 검색" aria-label="가지 이름 검색" autocomplete="off">
           <div class="row" style="justify-content:space-between;flex-wrap:nowrap">
             <span class="faint" style="font-size:12px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="시트 › 대분류 › 중분류 › 소분류 › 제목">시트 › 대분류 › 중분류 › 소분류 › 제목</span>

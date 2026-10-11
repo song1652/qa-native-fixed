@@ -8,6 +8,7 @@ function _overviewRunResult(run) {
 }
 
 // ── Dashboard Overview (OAXIS-inspired) ──
+let _ovTrendResizeObserver = null;
 
 async function resetDashboard() {
   if (!(await safeConfirm('대시보드를 초기화하시겠습니까?\n(힐링 통계, 실행 이력)'))) return;
@@ -125,7 +126,7 @@ async function renderDashboardOverview(main) {
     <div class="ov-status-row"><span>팀 토론</span><span class="ov-status-value">${teamCount ? `진행 중 ${teamCount}건` : '토론 없음'}</span></div>
   </div></section>`;
 
-  const trendHtml = `<section class="oax-card"><h3 class="oax-card-title">통과율 추이</h3>${_buildTrendChart(history)}</section>`;
+  const trendHtml = `<section class="oax-card"><h3 class="oax-card-title">통과율 추이</h3><div class="ov-trend-chart">${_buildTrendChart(history)}</div></section>`;
   const logHtml = `
     <section class="oax-card oax-log-section">
       <div class="oax-card-title">최근 로그
@@ -229,6 +230,8 @@ async function renderDashboardOverview(main) {
       </div>
     </div>`;
 
+  _mountOverviewTrend(main, history);
+
   // 이전 로그 내용+스크롤 즉시 복원 (플래시 방지)
   if (_prevLogContent && _prevLogContent !== '로그 로딩 중…') {
     const logBoxInit = document.getElementById('ov-log-content');
@@ -271,9 +274,14 @@ async function renderDashboardOverview(main) {
   main.querySelectorAll('.ov-log-tab').forEach(btn => {
     if (btn.dataset.log === _currentLogFile) btn.classList.add('active');
     else btn.classList.remove('active');
+    btn.setAttribute('aria-pressed', btn.dataset.log === _currentLogFile);
     btn.addEventListener('click', () => {
-      main.querySelectorAll('.ov-log-tab').forEach(b => b.classList.remove('active'));
+      main.querySelectorAll('.ov-log-tab').forEach(b => {
+        b.classList.remove('active');
+        b.setAttribute('aria-pressed', 'false');
+      });
       btn.classList.add('active');
+      btn.setAttribute('aria-pressed', 'true');
       loadLog(btn.dataset.log);
     });
   });
@@ -285,14 +293,32 @@ async function renderDashboardOverview(main) {
 }
 
 // ── 트렌드 차트 빌더 ──
-function _buildTrendChart(history) {
+function _mountOverviewTrend(main, history) {
+  _ovTrendResizeObserver?.disconnect();
+  const host = main.querySelector('.ov-trend-chart');
+  if (!host) return;
+  let previousWidth = 0;
+  const redraw = () => {
+    const availableWidth = Math.floor(host.getBoundingClientRect().width);
+    if (availableWidth <= 0) return;
+    const width = Math.max(320, availableWidth);
+    if (width === previousWidth) return;
+    previousWidth = width;
+    host.innerHTML = _buildTrendChart(history, width);
+  };
+  redraw();
+  _ovTrendResizeObserver = new ResizeObserver(redraw);
+  _ovTrendResizeObserver.observe(host);
+}
+
+function _buildTrendChart(history, width = 480) {
   if (!history || history.length === 0) return '<div class="oax-trend-empty">실행 이력 없음</div>';
 
   const recent = history.filter(run => run.total > 0).slice(-8);
   if (!recent.length) return '<div class="oax-trend-empty">측정된 테스트 결과 없음</div>';
 
   // SVG 라인 차트
-  const w = 480, h = 190, padX = 40, padY = 32, padBot = 78;
+  const w = width, h = 190, padX = 40, padY = 32, padBot = 40;
   const chartH = h - padY - padBot;
   const stepX = recent.length > 1 ? (w - padX * 2) / (recent.length - 1) : 0;
   let points = '';
@@ -301,10 +327,10 @@ function _buildTrendChart(history) {
   let pctLabels = '';
 
   // 각 실행의 시간을 표시
-  const showEveryN = 1;
+  const showEveryN = Math.max(1, Math.ceil(64 / Math.max(stepX, 1)));
 
   recent.forEach((r, i) => {
-    const x = padX + stepX * i;
+    const x = recent.length === 1 ? w / 2 : padX + stepX * i;
     const rate = Math.max(0, Math.min(100, Math.round((r.passed || 0) / r.total * 100)));
     const rDisplay = String(rate);
     const y = padY + chartH - (rate / 100) * chartH;
@@ -316,10 +342,14 @@ function _buildTrendChart(history) {
     dots += `<circle cx="${x}" cy="${y}" r="3.5" fill="${color}" stroke="var(--surface)" stroke-width="1.5"><title>${rDisplay}% · 통과 ${r.passed||0} · 실패 ${r.failed||0}${_skippedTip}</title></circle>`;
 
     // 숫자는 점 위에, 시간은 차트 아래에 배치한다.
-    pctLabels += `<text x="${x}" y="${y - 11}" text-anchor="middle" fill="${color}" font-size="13" font-weight="600" font-family="'JetBrains Mono', monospace">${rDisplay}%</text>`;
+    const showLabel = i === 0 || i === recent.length - 1 ||
+      (i % showEveryN === 0 && i < recent.length - showEveryN);
+    if (showLabel) {
+      pctLabels += `<text x="${x}" y="${y - 11}" text-anchor="middle" fill="${color}" font-size="13" font-weight="600" font-family="'JetBrains Mono', monospace">${rDisplay}%</text>`;
+    }
 
     // 시간 라벨 — 첫/마지막은 항상, 나머지는 간격에 따라
-    if (i === 0 || i === recent.length - 1 || i % showEveryN === 0) {
+    if (showLabel) {
       labels += `<text x="${x}" y="${h - 7}" text-anchor="middle" fill="var(--text-2)" font-size="12" font-family="'JetBrains Mono', monospace">${shortTs}</text>`;
     }
   });
@@ -336,7 +366,7 @@ function _buildTrendChart(history) {
 
   return `
     <div class="oax-trend">
-      <svg viewBox="0 0 ${w} ${h}" class="oax-trend-svg">
+      <svg viewBox="0 0 ${w} ${h}" class="oax-trend-svg" role="img" aria-label="최근 ${recent.length}회 실행 통과율 추이">
         <defs><g id="areaGrad"></g></defs>
         ${gridLines}
         <polyline points="${points}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>

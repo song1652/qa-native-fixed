@@ -75,13 +75,13 @@ async function renderHistory(main) {
   // ── 필터 바 ──
   const typeFilters = ['all', 'single', 'parallel', 'quick'].map(t => {
     const label = { all: '전체', single: '단일', parallel: '병렬', quick: '빠른 실행' }[t];
-    return `<button class="hist-filter-btn ${filter.type === t ? 'active' : ''}"
+    return `<button class="hist-filter-btn ${filter.type === t ? 'active' : ''}" aria-pressed="${filter.type === t}"
       onclick="_histSetFilter('type','${t}')">${label}</button>`;
   }).join('');
 
   const groupFilters = ['all', ...[...allGroups]].map(g => {
     const label = g === 'all' ? '전체 그룹' : g;
-    return `<button class="hist-filter-btn ${filter.group === g ? 'active' : ''}"
+    return `<button class="hist-filter-btn ${filter.group === g ? 'active' : ''}" aria-pressed="${filter.group === g}"
       onclick="_histSetFilter('group','${g}')">${label}</button>`;
   }).join('');
 
@@ -113,8 +113,9 @@ async function renderHistory(main) {
 
 function _buildHistCard(r) {
   const ts = r.timestamp || '';
-  const datePart = ts.split(' ')[0] || '';
-  const timePart = ts.split(' ')[1] || '';
+  const timestamp = ts.match(/^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2}:\d{2})/);
+  const datePart = timestamp ? timestamp[1] : ts.split(' ')[0] || '';
+  const timePart = timestamp ? timestamp[2] : ts.split(' ')[1] || '';
   const rate = r.pass_rate || 0;
   const rateColor = rate >= 95 ? 'var(--approved-color)'
     : rate >= 80 ? 'var(--pending-color)' : 'var(--revision-color)';

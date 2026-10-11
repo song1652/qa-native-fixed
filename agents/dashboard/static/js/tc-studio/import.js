@@ -3,6 +3,7 @@
   'use strict';
   const { state, api, esc, $, $$, toast } = NS;
   let root, previews = [], files = [], profiles = [], plan = null, busy = false, generation = 0, planVersion = 0, mappingDirty = false;
+  let opener = null;
   const fields = [['header_row','헤더 행','1'],['source_tc_id','원본 TC ID',''],['feature','제목*','B'],['steps','Step*','C'],['expected','Expected*','D'],['precondition','사전 조건',''],['l1','대분류',''],['l2','중분류',''],['l3','소분류',''],['priority','우선순위',''],['tags','태그','']];
   const statuses = {new:'신규',updated:'갱신',same:'동일',conflict:'충돌',error:'오류',committed:'반영 완료',preview:'미리보기',rolled_back:'되돌림'};
   NS.importModal = { html, mount, open };
@@ -12,7 +13,7 @@
       <div class="panel-head"><span id="im-title">엑셀을 라이브러리로 가져오기</span><span class="spacer"></span><button class="icon-btn" id="import-close" data-id="import-close" aria-label="닫기">✕</button></div>
       <div class="panel-body" style="display:grid;gap:12px;max-height:82vh;overflow:auto">
         <div class="row"><span class="help">파일 선택 → 열 매핑 → 변경 확인 → 가져오기</span><span class="spacer"></span><button class="btn-sm" data-id="import-history-open" id="import-history-open">가져오기 이력</button></div>
-        <label class="drop" id="import-drop" data-id="import-pick-file" for="import-file"><b>엑셀 파일을 끌어다 놓거나 눌러서 선택</b><span class="faint">.xlsx · 파일당 최대 25MB · 여러 파일 선택 가능 · 원본은 변경하지 않습니다</span></label>
+        <button type="button" class="drop" id="import-drop" data-id="import-pick-file"><b>엑셀 파일을 끌어다 놓거나 눌러서 선택</b><span class="faint">.xlsx · 파일당 최대 25MB · 여러 파일 선택 가능 · 원본은 변경하지 않습니다</span></button>
         <input type="file" id="import-file" data-id="import-file-input" accept=".xlsx" multiple hidden>
         <div class="field"><label class="label" for="import-mapping-mode">양식 인식</label><select class="select" id="import-mapping-mode" data-id="import-mapping-mode"><option value="auto">기준 양식 자동 인식 (대분류·기능·Test Step·Expected Result 헤더)</option><option value="custom">다른 양식 직접 매핑</option></select></div>
         <div id="import-custom-mapping" data-id="import-column-mapping" hidden style="display:grid;gap:8px">
@@ -31,14 +32,21 @@
         <div class="row"><span class="help" id="import-summary"></span><span class="spacer"></span><button class="btn btn-ghost" id="import-cancel" data-id="import-cancel">취소</button><button class="btn btn-ghost" id="import-plan" data-id="import-plan" disabled>변경 미리보기</button><button class="btn btn-primary" id="import-confirm" data-id="import-confirm" disabled>가져오기</button></div>
       </div></div></div>`;
   }
-  const close = () => { if (!busy) { generation++; $('#import-modal',root).hidden=true; } };
+  const close = () => {
+    if (busy) return;
+    generation++;
+    $('#import-modal',root).hidden=true;
+    if (opener?.isConnected) opener.focus();
+  };
   function resetPlan() { planVersion++; plan=null; $('#import-plan-panel',root).hidden=true; $('#import-confirm',root).disabled=true; }
   function open() {
+    opener = document.activeElement;
     generation++; previews=[];files=[];resetPlan();
     $('#import-suite',root).value=''; $('#import-file',root).value='';
     $('#import-preview',root).hidden=true; $('#import-history-panel',root).hidden=true;
     $('#import-summary',root).textContent=''; $('#import-plan',root).disabled=true;
     $('#import-modal',root).hidden=false;
+    $('#import-close',root).focus();
     refreshProfiles().catch(err=>toast(`프로필을 읽지 못했습니다: ${esc(err.message)}`,'err'));
   }
   function mapping() {
@@ -171,6 +179,25 @@
   }
   function mount(r){
     root=r;const drop=$('#import-drop',root);
+    drop.addEventListener('click', () => {
+      if (!drop.classList.contains('busy')) $('#import-file',root).click();
+    });
+    $('#import-modal',root).addEventListener('keydown', e => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        close();
+      } else if (e.key === 'Tab') {
+        const controls = $$('button,input,select,textarea,a[href],[tabindex]', $('#import-modal',root))
+          .filter(el => !el.disabled && el.tabIndex >= 0 && el.getClientRects().length);
+        const first = controls[0], last = controls[controls.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault(); last?.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault(); first?.focus();
+        }
+      }
+    });
     ['dragover','dragenter'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('over');}));
     ['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,()=>drop.classList.remove('over')));
     drop.addEventListener('drop',e=>{e.preventDefault();pick(e.dataTransfer.files);});

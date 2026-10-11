@@ -43,6 +43,9 @@ function renderSession(session, tabId, idx) {
 }
 
 function renderTeamNew(main) {
+  const previous = main.querySelector('#new-topic-input');
+  const focused = previous && document.activeElement === previous;
+  const selection = focused ? [previous.selectionStart, previous.selectionEnd] : null;
   main.innerHTML = `
     <div class="pipeline-view team-new-view">
       <div class="pipeline-title">새 토론 시작</div>
@@ -50,9 +53,9 @@ function renderTeamNew(main) {
       <div class="team-new-grid">
         <section class="team-card"><h3>토론 주제</h3><div class="team-card-body">
           <label class="team-field-label" for="new-topic-input">주제</label>
-          <textarea id="new-topic-input" class="new-topic-input" placeholder="논의할 주제와 판단 기준을 입력하세요" rows="6"></textarea>
-          <button id="new-topic-btn" class="new-topic-btn" onclick="submitTopic()">토론 시작</button>
-          <div class="topic-status" id="topic-status"></div>
+          <textarea id="new-topic-input" class="new-topic-input" placeholder="논의할 주제와 판단 기준을 입력하세요" rows="6">${esc(_uiState.teamTopic)}</textarea>
+          <button id="new-topic-btn" class="new-topic-btn" onclick="submitTopic()" ${_uiState.teamTopicSubmitting ? 'disabled' : ''}>토론 시작</button>
+          <div class="${esc(_uiState.teamTopicStatusClass)}" id="topic-status">${esc(_uiState.teamTopicStatus)}</div>
         </div></section>
         <section class="team-card"><h3>진행 방식</h3><ol class="team-guide">
           <li>사수가 기준안을 제시합니다.</li><li>부사수가 반론과 보완점을 냅니다.</li>
@@ -61,6 +64,12 @@ function renderTeamNew(main) {
         </ol></section>
       </div>
     </div>`;
+  const input = main.querySelector('#new-topic-input');
+  input.addEventListener('input', () => { _uiState.teamTopic = input.value; });
+  if (focused) {
+    input.focus({ preventScroll: true });
+    input.setSelectionRange(...selection);
+  }
 }
 
 function renderTeamView(main) {

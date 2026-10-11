@@ -95,9 +95,21 @@ def test_every_view_starts_with_the_same_title_position_and_width(tmp_path):
             page.wait_for_function(f"({TITLE})() !== null", timeout=10000)
             page.wait_for_timeout(300)
             seen[view or "dashboard"] = page.evaluate(TITLE)
+            if view == 'tc_studio':
+                # Native Studio aligns its title with the suite picker in one row.
+                seen[view]['suite_alignment'] = page.evaluate('''() => {
+                    const title = document.querySelector('.tc-studio .page-title').getBoundingClientRect();
+                    const suite = document.querySelector('#suite-select').getBoundingClientRect();
+                    return Math.abs(title.y + title.height / 2 - suite.y - suite.height / 2);
+                }''')
         browser.close()
     reference = seen["quick_run"]
     for name, got in seen.items():
         assert got["visible"], f"{name}: 제목 글자가 투명합니다"
+        if name == 'tc_studio':
+            assert got['suite_alignment'] < 1, got
+            assert (got['x'], got['size'], got['font'], got['width']) == \
+                (reference['x'], reference['size'], reference['font'], reference['width'])
+            continue
         assert (got["x"], got["y"], got["size"], got["font"], got["width"]) == \
             (reference["x"], reference["y"], reference["size"], reference["font"], reference["width"]), (name, got, reference)

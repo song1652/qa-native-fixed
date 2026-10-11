@@ -69,6 +69,8 @@
   --header-h: 56px;
   --sidebar-w: 232px;
   --page-pad: 28px 32px;
+  --page-max: 2000px;
+  --form-max: 1440px;
   --card-pad: 16px;
   --gap-section: 20px;
 

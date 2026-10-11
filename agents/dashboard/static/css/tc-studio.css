@@ -420,6 +420,7 @@
 /* 상단·탭·라이브러리 — TcLibrary / TcLibraryBulk / TcDetailTabs */
 .tc-studio { padding:0; font-size:var(--fs-body); }
 .tc-studio .page-header { padding:0; border:0; margin-bottom:20px; gap:20px; }
+.tc-studio .studio:has(:is(#screen-generate, #screen-review, #screen-export).active) .page-header { width:100%; max-width:var(--form-max); }
 .tc-studio .ph-top { align-items:center; }
 .tc-studio .page-title { align-self:flex-start; font:600 var(--fs-h1) / 1.35 var(--sans); }
 .tc-studio .suite-select { min-height:36px; border-color:var(--border-input); font-size:var(--fs-body); }
@@ -455,12 +456,12 @@
 
 /* 기획 정보·초안 검토·내보내기 — TcGenerate / TcReview / TcExport */
 .tc-studio .wrap { padding:0; gap:20px; }
-.tc-studio .gen { grid-template-columns:minmax(0,1fr) 420px; gap:20px; }
+.tc-studio .gen { grid-template-columns:minmax(0,1fr) 420px; gap:20px; max-width:var(--form-max); }
 .tc-studio .src-tabs { gap:0; border:1px solid var(--line); border-radius:var(--radius-sm); overflow:hidden; width:fit-content; }
 .tc-studio .src-tab { border:0; border-radius:0; padding:8px 12px; font-size:var(--fs-sub); font-weight:500; }
 .tc-studio .src-tab + .src-tab { border-left:1px solid var(--line); }
 .tc-studio .src-tab[aria-selected="true"] { background:var(--text); color:var(--on-accent); }
-.tc-studio .drop { border:1px dashed var(--border-input); padding:32px 16px; font-size:var(--fs-sub); background:var(--card); }
+.tc-studio .drop { border:1px dashed var(--border-input); padding:32px 16px; font-family:var(--sans); font-size:var(--fs-sub); background:var(--card); }
 .tc-studio .src-card { background:var(--card); padding:12px; }
 .tc-studio .src-title { font-size:var(--fs-body); font-weight:600; }
 .tc-studio .src-ico { background:var(--card2); color:var(--text2); border-radius:var(--radius-sm); }
@@ -470,7 +471,7 @@
 .tc-studio .job { gap:16px; }
 .tc-studio .jstep { font-size:var(--fs-label); }
 .tc-studio .log { background:var(--log-bg); font-size:var(--fs-sub); }
-.tc-studio .review { grid-template-columns:minmax(0,1fr) 360px; gap:20px; min-height:640px; }
+.tc-studio .review { grid-template-columns:minmax(0,1fr) 360px; gap:20px; min-height:640px; max-width:var(--form-max); }
 .tc-studio .rv-left { padding:0; border:0; gap:16px; }
 .tc-studio .rv-right { padding:16px; border:1px solid var(--line); border-radius:var(--radius); background:var(--card); }
 .tc-studio .rv-summary { font-size:var(--fs-sub); }
@@ -483,7 +484,7 @@
 .tc-studio .seg button[aria-pressed="true"] { background:var(--text); color:var(--on-accent); }
 .tc-studio .btn-success { background:var(--accent); border-color:var(--accent); color:var(--on-accent); }
 .tc-studio .excerpt,.tc-studio .gap-list li,.tc-studio .dupbox { font-size:var(--fs-sub); }
-.tc-studio .exp { gap:20px; }
+.tc-studio .exp { gap:20px; max-width:var(--form-max); }
 .tc-studio .exp-card { gap:16px; }
 .tc-studio .exp-card .head { padding-bottom:14px; border-bottom:1px solid var(--line); }
 .tc-studio .fmt { border-radius:var(--radius-sm); font-size:var(--fs-sub); font-weight:600; }
@@ -512,3 +513,146 @@
 .tc-studio #import-sheets .row .select { width:180px; }
 .tc-studio #import-modal:has(#import-confirm:disabled) #import-plan:not(:disabled) { background:var(--accent); border-color:var(--accent); color:var(--on-accent); }
 .tc-studio .dcard:not(.focus) .btn-success { background:var(--card); border-color:var(--line); color:var(--text); }
+
+/* qa-native-app 공통 디자인: 밑줄 탭과 화면 높이를 채우는 라이브러리. */
+.tc-studio { font:14px/1.5 var(--sans); }
+.tc-studio .page-title { align-self:center; font:600 22px/1.4 var(--sans); letter-spacing:0; }
+.tc-studio .suite-label { font-size:13px; color:var(--text2); }
+.tc-studio .wizard { gap:24px; }
+.tc-studio .step-item { padding:10px 0; gap:6px; border-radius:0; }
+.tc-studio .step-label { font-size:14px; font-weight:400; }
+.tc-studio .step-item[aria-selected="true"] .step-label { color:var(--text); font-weight:600; }
+.tc-studio .step-count { border-radius:4px; font-size:12px; }
+.tc-studio .btn,.tc-studio .btn-sm { min-height:34px; font-size:13px; border-radius:6px; }
+.tc-studio .lib { grid-template-columns:240px minmax(0,1fr) 380px; min-height:0; border-radius:8px; align-items:stretch; }
+.tc-studio .lib.no-detail { grid-template-columns:240px minmax(0,1fr); }
+.tc-studio .lib.tree-hidden { grid-template-columns:minmax(0,1fr) 380px; }
+.tc-studio .lib.tree-hidden.no-detail { grid-template-columns:minmax(0,1fr); }
+.tc-studio .center { min-height:0; background:var(--surface); }
+.tc-studio .tree-tools { padding:12px; }
+.tc-studio .tree-tools > b { font-size:14px; font-weight:600; }
+.tc-studio .tree-legend { font-size:12px; }
+.tc-studio #screen-library .filterbar { order:-3; padding:12px; gap:8px; background:transparent; }
+.tc-studio #screen-library .filterbar .search { flex:1; min-width:150px; }
+.tc-studio #screen-library .filterbar .fselect { min-height:34px; max-width:125px; padding:0 8px; font-size:12px; border-color:var(--border-input); }
+.tc-studio :is(.filterbar,.grid-meta) > .fchip { min-height:30px; border-radius:6px; font-size:12px; background:var(--surface); }
+.tc-studio #screen-library .grid-meta { order:-2; padding:12px; gap:8px; }
+.tc-studio .grid-wrap { margin:0 12px 12px; border-radius:6px; }
+.tc-studio .grid th { padding:7px 8px; font-size:12px; font-weight:600; }
+.tc-studio .grid th .xl { display:none; }
+.tc-studio .grid td { font-size:13px; border-color:var(--line); }
+.tc-studio .bulkbar { order:-1; position:relative; bottom:auto; margin:0; border:0; border-bottom:1px solid var(--line); border-radius:0; padding:10px 12px; gap:6px; }
+.tc-studio .detail { min-height:0; max-height:none; }
+.tc-studio .detail-head { padding:14px 16px; }
+.tc-studio .detail-body { padding:16px; }
+
+/* 대시보드의 헤더·상태 표시줄을 제외한 실제 남은 높이를 사용한다. */
+@media (min-width:1101px) {
+  #tc-studio-root:has(#screen-library.active) { height:100%; min-height:600px; }
+  .tc-studio:has(#screen-library.active),.tc-studio .studio:has(#screen-library.active) { width:100%; height:100%; display:flex; flex-direction:column; min-height:0; }
+  .tc-studio .studio:has(#screen-library.active) > .page-header { flex:none; }
+  .tc-studio #screen-library.active { display:flex; flex:1; min-height:0; }
+  .tc-studio #screen-library.active > .lib { width:100%; height:100%; }
+  .tc-studio #screen-library .grid-wrap { min-height:0; max-height:none; }
+  .tc-studio #screen-library .tree { max-height:none; flex:1; min-height:0; }
+}
+@container tcslib (min-width:1401px) {
+  .tc-studio .lib:not(.no-detail):not(.tree-hidden) { grid-template-columns:240px minmax(0,1fr) 380px; }
+}
+@container tcslib (max-width:1400px) {
+  .tc-studio .lib:not(.no-detail) { grid-template-columns:minmax(0,1fr); }
+}
+@container tcslib (max-width:760px) {
+  .tc-studio .lib,.tc-studio .lib.no-detail { grid-template-columns:minmax(0,1fr); }
+}
+
+
+/* qa-native-app: 생성·초안 목록·선택한 초안·근거·내보내기. */
+/* 기획 정보, 생성 진행, 초안 검토와 내보내기 */
+.tc-studio .gen{grid-template-columns:minmax(0,1fr) 420px;gap:20px}
+.tc-studio .help,.tc-studio .profile-rules,.tc-studio .examples{font-size:13px;line-height:1.65}
+.tc-studio .src-tabs{gap:0;border:1px solid var(--line);border-radius:6px;overflow:hidden;flex-wrap:wrap}
+.tc-studio .src-tab{border:0;border-right:1px solid var(--line);border-radius:0;min-height:34px;padding:0 12px;font-weight:500;white-space:nowrap}
+.tc-studio .src-tab[aria-selected="true"]{background:var(--text);color:var(--on-accent)}
+.tc-studio .drop{border:1px dashed var(--border-input);min-height:120px}
+.tc-studio .src-ico{background:var(--surface-sub)!important;color:var(--text2);font-weight:600}
+.tc-studio .picker{align-items:start}.tc-studio .picker .field{align-content:start}
+.tc-studio .select{height:36px}.tc-studio .textarea{border-color:var(--border-input);font-size:14px}
+.tc-studio .btn-sm{background:var(--surface);border-color:var(--line);color:var(--text)}
+.tc-studio #src-extra .tag{background:none;border:0;font-weight:400;font-size:12px}
+.tc-studio #job-panel{padding:0}.tc-studio .panel:has(>#job-panel){border:0;background:transparent}
+.tc-studio #job-panel>.row:first-child{display:grid;gap:12px}.tc-studio #gen-submit{width:100%;justify-content:center;min-height:44px}
+.tc-studio .jsteps{gap:8px}.tc-studio .jstep{font-size:12px}
+.tc-studio .log{background:var(--log-bg);font-size:12px;line-height:1.7}
+.tc-studio .review{margin-top:20px;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--surface)}
+.tc-studio .dcard{border-radius:8px;background:var(--surface)}
+.tc-studio .draft-grid{font-size:13px}
+.tc-studio .exp{gap:20px}.tc-studio .fmt{border-radius:6px;background:var(--surface-sub)!important;color:var(--text2)!important;font:12px var(--mono)}
+.tc-studio .warnbox{background:var(--warn-bg);border-color:var(--line);color:var(--warn);font-size:13px;line-height:1.7}
+.tc-studio .fname {background:var(--log-bg);font-family:var(--mono)}
+.tc-studio .exp-card{gap:16px}.tc-studio .radio{font-size:14px}
+.tc-studio .funnel .f{font-size:13px}.tc-studio .md-preview{background:var(--surface);border-color:var(--line)}
+@media(max-width:1100px){.tc-studio .gen{grid-template-columns:minmax(0,1fr)}}
+
+.tc-studio .seg button[aria-pressed="true"]{background:var(--text);color:var(--on-accent)}
+.tc-studio .maprow{grid-template-columns:minmax(0,1fr);gap:6px}.tc-studio .maprow>.row{flex-wrap:wrap}.tc-studio .maprow>.tag{justify-self:start}
+
+/* 1440px 화면에서 생성 행동이 작성 규칙 아래에 보이도록 간격을 맞춘다. */
+.tc-studio .gen>.panel .panel-body{gap:12px!important}
+.tc-studio .gen>div{gap:20px!important}
+.tc-studio .gen .profile-rules{margin:0;padding-left:18px;line-height:1.6}
+.tc-studio .gen .profile-rules li{margin:0;padding:0}
+.tc-studio .profile-dialog{width:min(640px,100%)}
+.tc-studio .profile-dialog>.panel-body{display:grid;gap:14px}
+.tc-studio .profile-dialog #gen-rules-input{min-height:150px}
+.tc-studio .profile-actions{border-top:1px solid var(--line);padding-top:14px;justify-content:flex-end}
+.tc-studio .profile-actions #gen-profile-save{background:var(--accent);color:var(--on-accent)}
+.tc-studio .gen:has(#job:not([hidden])) #job-panel{padding:16px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+/* 검토 목록 / 선택한 초안 / 근거 */
+.tc-studio .review{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.6fr) minmax(0,1.2fr);gap:20px;border:0;background:transparent;overflow:visible;min-height:0;align-items:start}
+.tc-studio .rv-left{display:contents}.tc-studio .rv-summary{grid-column:1/-1;grid-row:1;padding:0;flex-wrap:wrap}
+.tc-studio .rv-left>.row{grid-column:1;grid-row:2;display:flex;flex-wrap:wrap;gap:8px;padding:12px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+.tc-studio #review-case-list{grid-column:1;grid-row:3;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--surface)}
+.tc-studio .review-case-item{width:100%;display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:6px;text-align:left;padding:14px 16px;border:0;border-bottom:1px solid var(--line);border-radius:0;background:var(--surface);color:var(--text);font:13px var(--sans);cursor:pointer;white-space:normal!important}
+.tc-studio .review-case-item.selected{background:var(--accent-bg)}
+.tc-studio .review-case-item .mono{font-size:11px;color:var(--text3)}
+.tc-studio .review-case-item small{grid-column:2/-1;color:var(--text2)}
+.tc-studio #drafts{grid-column:2;grid-row:2/span 2;display:block!important}
+.tc-studio #drafts .dcard:not(.focus){display:none}
+.tc-studio .dcard{padding:20px;border:1px solid var(--line)}
+.tc-studio .dcard.focus{border-color:var(--line);box-shadow:none}
+.tc-studio .draft-head{flex-wrap:wrap}.tc-studio .draft-title{font-size:17px;flex-basis:100%;order:2}
+.tc-studio .draft-grid{display:block}.tc-studio .draft-grid dt{margin:16px 0 6px}.tc-studio .draft-grid dd{margin:0}
+.tc-studio .rv-right{grid-column:3;grid-row:2/span 2;border:0;padding:0;display:grid;gap:16px;background:transparent;min-width:0}
+.tc-studio .rv-right>.row{padding:16px;background:var(--surface);border:1px solid var(--line);border-radius:8px 8px 0 0;margin-bottom:-16px}
+.tc-studio .rv-right>.excerpt{padding:16px;background:var(--surface);border:1px solid var(--line);border-top:0;border-radius:0 0 8px 8px;margin:0}
+.tc-studio #rv-invalid{grid-column:1/-1}.tc-studio #rv-invalid:empty{display:none}
+.tc-studio .exp-card>.head{margin:-16px -16px 0;padding:14px 16px;border-bottom:1px solid var(--line);display:block}
+.tc-studio .exp-card>.head .fmt{display:none}.tc-studio .exp-card>.head .help{margin-top:14px}
+.tc-studio .funnel .f{grid-template-columns:minmax(0,1fr) auto;padding:10px 0;border-top:1px solid var(--line)}
+.tc-studio .funnel .track{display:none}
+.tc-studio #screen-export .wrap:has(>#md-preview-panel:not([hidden]))>.exp{display:none}
+.tc-studio #md-preview-panel{padding:0;border:0;background:transparent;gap:20px}
+.tc-studio #md-preview-back{justify-self:start}
+.tc-studio #md-preview-panel table{background:var(--surface);font-size:14px}
+.tc-studio #md-preview-panel :is(td,th){padding:14px 16px}
+.tc-studio #md-preview-panel>.row:last-of-type{padding:16px;background:var(--surface);border:1px solid var(--line);border-radius:8px}
+@media(max-width:1100px){.tc-studio .review{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.tc-studio .rv-right{grid-column:1/-1;grid-row:auto}.tc-studio #review-case-list{grid-column:1}.tc-studio #drafts{grid-column:2}}
+.tc-studio .suite-label{font-size:13px;color:var(--text2)}
+.tc-studio .rv-list-pane{grid-column:1;grid-row:2;display:grid;gap:0;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--surface)}
+.tc-studio .rv-list-pane>.row{padding:12px;display:flex;flex-wrap:wrap;gap:8px}
+.tc-studio .rv-list-pane #review-case-list{border:0;border-radius:0}
+.tc-studio #drafts,.tc-studio .rv-right{grid-row:2}
+.tc-studio .rv-summary #review-approve-clean{margin-left:0}
+@media (max-width:1100px) {
+  .tc-studio .rv-right { grid-column:1/-1; grid-row:3; }
+}
+@media (max-width:600px) {
+  .tc-studio .wizard { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); column-gap:16px; overflow:visible; }
+  .tc-studio .step-item { min-width:0; min-height:44px; }
+  .tc-studio .review { grid-template-columns:minmax(0,1fr); }
+  .tc-studio .rv-list-pane,.tc-studio #drafts,.tc-studio .rv-right { grid-column:1; grid-row:auto; }
+  .tc-studio .review-case-item { grid-template-columns:auto minmax(0,1fr); line-height:1.5; }
+  .tc-studio .review-case-item .pill { grid-column:2; justify-self:start; }
+  .tc-studio .review-case-item b,.tc-studio .draft-grid dd { min-width:0; overflow-wrap:anywhere; }
+}

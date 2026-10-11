@@ -6,20 +6,38 @@ async function resetTeamDiscussion() {
 }
 
 async function submitTopic() {
+  if (_uiState.teamTopicSubmitting) return;
   const input = document.getElementById('new-topic-input');
   const btn = document.getElementById('new-topic-btn');
-  const status = document.getElementById('topic-status');
+  const setStatus = (message, kind = '') => {
+    _uiState.teamTopicStatus = message;
+    _uiState.teamTopicStatusClass = 'topic-status' + (kind ? ' ' + kind : '');
+    const status = document.getElementById('topic-status');
+    if (status) { status.textContent = message; status.className = _uiState.teamTopicStatusClass; }
+  };
   const topic = input.value.trim();
-  if (!topic) { status.textContent = '주제를 입력해주세요.'; status.className = 'topic-status err'; return; }
+  if (!topic) { setStatus('주제를 입력해주세요.', 'err'); return; }
+  _uiState.teamTopicSubmitting = true;
   btn.disabled = true;
-  status.textContent = '전송 중…'; status.className = 'topic-status';
+  setStatus('전송 중…');
   try {
     const res = await fetch('/api/discuss/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ topic }) });
     const data = await res.json();
-    if (data.ok) { status.textContent = '주제 등록됨'; status.className = 'topic-status ok'; input.value = ''; showHookAlert('discuss', topic); }
-    else { status.textContent = data.error || '전송 실패'; status.className = 'topic-status err'; }
-  } catch (e) { status.textContent = '서버 연결 오류'; status.className = 'topic-status err'; }
+    if (data.ok) {
+      setStatus('주제 등록됨', 'ok');
+      if (_uiState.teamTopic.trim() === topic) {
+        _uiState.teamTopic = '';
+        const currentInput = document.getElementById('new-topic-input');
+        if (currentInput) currentInput.value = '';
+      }
+      showHookAlert('discuss', topic);
+    }
+    else { setStatus(data.error || '전송 실패', 'err'); }
+  } catch (e) { setStatus('서버 연결 오류', 'err'); }
+  _uiState.teamTopicSubmitting = false;
   btn.disabled = false;
+  const currentButton = document.getElementById('new-topic-btn');
+  if (currentButton) currentButton.disabled = false;
 }
 
 

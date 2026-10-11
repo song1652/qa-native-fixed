@@ -51,7 +51,7 @@ function _shouldSkipRender() {
   // 사용자가 select/input 조작 중이면 스킵
   const mainEl = document.getElementById('main');
   if (mainEl && mainEl.contains(document.activeElement)
-    && (document.activeElement.tagName === 'SELECT' || document.activeElement.tagName === 'INPUT')) {
+    && ['SELECT', 'INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
     return true;
   }
   // iframe이 열려 있으면 스킵 (리포트 보는 중)

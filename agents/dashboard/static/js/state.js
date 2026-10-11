@@ -19,6 +19,10 @@ var _uiState = {
   quickReportName: null,        // 빠른 실행 뷰: 열린 리포트 이름
   scrollTop: {},                // 뷰별 스크롤 위치
   overviewLogTab: 'run_qa.txt', // Overview: 선택된 로그 탭
+  teamTopic: '',                // 작성 중인 토론 주제
+  teamTopicSubmitting: false,
+  teamTopicStatus: '',
+  teamTopicStatusClass: 'topic-status',
 };
 
 // 데이터 변경 감지용 이전 상태 해시

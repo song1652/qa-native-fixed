@@ -19,7 +19,13 @@
 .report-item:hover { background: var(--surface-sub); }
 .report-item.is-open { background: var(--accent-bg); }
 .report-info { min-width: 0; }
-.report-name { overflow-wrap: anywhere; font: var(--fs-sub) / 1.6 var(--font-mono); color: var(--text); }
+.report-filename summary { display: flex; align-items: center; gap: 6px; cursor: pointer; list-style: none; }
+.report-filename summary::-webkit-details-marker { display: none; }
+.report-filename summary::before { content: '›'; flex-shrink: 0; color: var(--text-3); }
+.report-filename[open] summary::before { transform: rotate(90deg); }
+.report-filename summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--radius-badge); }
+.report-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: var(--fs-sub) / 1.6 var(--font-mono); color: var(--text); }
+.report-full-name { margin-top: 6px; overflow-wrap: anywhere; font: var(--fs-sub) / 1.6 var(--font-mono); color: var(--text-2); }
 .report-meta { margin-top: 4px; font: var(--fs-label) var(--font-mono); color: var(--text-3); }
 .report-actions { grid-column: 2; display: flex; gap: 6px; flex-wrap: wrap; }
 .report-actions button,.report-actions a { display: inline-flex; align-items: center; padding: 0 9px; font-size: var(--fs-label); }

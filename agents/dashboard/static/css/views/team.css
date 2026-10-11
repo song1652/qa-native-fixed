@@ -11,7 +11,7 @@
 .team-guide { padding: 16px 16px 16px 34px; color: var(--text-2); font-size: var(--fs-sub); line-height: 1.9; }
 .session-header { display: flex; align-items: center; gap: 10px; width: 100%; padding: 14px 16px; border: 0; border-bottom: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; font: inherit; text-align: left; }
 .session-header:hover { background: var(--surface-sub); }
-.session-stage { font-size: var(--fs-h3); font-weight: 600; flex: 1; }
+.session-stage { font-size: var(--fs-h3); font-weight: 600; flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .session-meta,.session-toggle { font-size: var(--fs-label); color: var(--text-3); }
 .messages { padding: 16px; display: flex; flex-direction: column; gap: 20px; background: var(--surface); }
 .messages.collapsed { display: none; }
@@ -34,8 +34,9 @@
 .vote-item[data-status="approved"] { border-color: var(--pass); }
 .vote-item[data-status="rejected"] { border-color: var(--fail); }
 .vote-item-top { display: flex; align-items: center; gap: 10px; padding: 12px 14px; }
-.vote-item-title { flex: 1; font-size: var(--fs-body); font-weight: 600; }
-.vote-item-body { padding: 12px 14px; border-top: 1px solid var(--border); color: var(--text-2); font-size: var(--fs-sub); white-space: pre-wrap; line-height: 1.6; }
+.vote-item-title { flex: 1; min-width: 0; overflow-wrap: anywhere; font-size: var(--fs-body); font-weight: 600; }
+.vote-item-top > div { display: flex; flex-shrink: 0; gap: 6px; }
+.vote-item-body { padding: 12px 14px; border-top: 1px solid var(--border); color: var(--text-2); font-size: var(--fs-sub); white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.6; }
 .vote-item.collapsed .vote-item-body { display: none; }
 .vote-tag-approve { background: var(--pass-bg); color: var(--pass); }
 .vote-tag-reject { background: var(--fail-bg); color: var(--fail); }

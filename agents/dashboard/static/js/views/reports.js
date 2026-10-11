@@ -29,11 +29,14 @@ function _renderReportsOnly(focusSearch = false) {
   const rowName = active?.closest('.report-item')?.dataset.name;
   const activeId = active?.id;
   const pageLabel = active?.closest('.report-pager') ? active.getAttribute('aria-label') : null;
+  const fileSummary = active?.matches('.report-filename summary');
   renderReports(main);
   if (focusSearch) {
     const next = document.getElementById('report-search-input');
     next.focus();
     if (position !== null) next.setSelectionRange(position, position);
+  } else if (fileSummary && rowName) {
+    [...main.querySelectorAll('.report-item')].find(row => row.dataset.name === rowName)?.querySelector('.report-filename summary')?.focus();
   } else if (action && rowName) {
     [...main.querySelectorAll('.report-item')].find(row => row.dataset.name === rowName)?.querySelector(`[data-action="${action}"]`)?.focus();
   } else if (activeId === 'report-close') {
@@ -48,6 +51,7 @@ function _renderReportsOnly(focusSearch = false) {
 }
 
 function renderReports(main) {
+  const expandedNames = new Set([...main.querySelectorAll('.report-filename[open]')].map(details => details.closest('.report-item').dataset.name));
   const state = _reportListState;
   const names = new Set(reportsList.map(report => report.name));
   state.selected.forEach(name => { if (!names.has(name)) state.selected.delete(name); });
@@ -78,7 +82,7 @@ function renderReports(main) {
           <div class="report-list">${pageItems.map(report => `
             <div class="report-item ${report.name === reportOpen ? 'is-open' : ''}" data-name="${esc(report.name)}" role="group" aria-label="${esc(report.name)}">
               <input type="checkbox" aria-label="${esc(report.name)} 선택" ${state.selected.has(report.name) ? 'checked' : ''} ${disabled}>
-              <div class="report-info"><div class="report-name" title="${esc(report.name)}">${esc(report.name)}</div>
+              <div class="report-info"><details class="report-filename" ${expandedNames.has(report.name) ? 'open' : ''}><summary aria-label="전체 파일명 확인: ${esc(report.name)}"><span class="report-name" title="${esc(report.name)}">${esc(report.name)}</span></summary><div class="report-full-name">${esc(report.name)}</div></details>
                 <div class="report-meta">${fmtDate(report.modified_at)} · ${Math.round(report.size / 1024)} KB</div></div>
               <div class="report-actions"><button type="button" data-action="open" aria-label="${esc(report.name)} 열기" aria-pressed="${report.name === reportOpen}">열기</button>
                 <a href="/reports/${esc(encodeURIComponent(report.name))}" aria-label="${esc(report.name)} 새 탭" target="_blank" rel="noopener noreferrer">새 탭</a>
