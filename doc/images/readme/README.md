@@ -28,7 +28,7 @@ Playwright Chromium, 배율 1로 촬영했습니다. README 축소 시 가독성
 |---|---|
 | [dashboard.png](dashboard.png) | 실제 실행 통계·추이 · 1440 × 1000 |
 | [tc-studio.png](tc-studio.png) | 웹 TC 4건 · 1920 × 820 화면에서 트리를 숨기고 TC 스튜디오 영역만 촬영 |
-| [quick-run.png](quick-run.png) | 실제 3/4 통과 결과와 펼친 케이스 목록 · 1440 × 1200 |
+| [quick-run.png](quick-run.png) | 실제 3/4 통과 결과 · 실패 필터와 케이스 상세를 펼친 결과 영역만 촬영 · 1144 × 1297 |
 | [pipeline.png](pipeline.png) | URL·TC를 지정한 실행 준비 화면 · 1440 × 720, 파이프라인 실행 완료 화면은 아님 |
 | [reports.png](reports.png) | 실제 생성된 HTML 리포트 미리보기 · 1440 × 1000 |
 | [failure-detail.png](failure-detail.png) | 실제 실패 TC의 스크린샷·영상 증거 · 폭 1100, 전체 페이지 |
