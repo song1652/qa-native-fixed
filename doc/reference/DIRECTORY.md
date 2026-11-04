@@ -203,6 +203,7 @@
 | `guides/tc-studio/TC_AUTHORING_USER_GUIDE.md` | TC 스튜디오 사용자 설명서 |
 | `guides/tc-studio/templates/회원등록_기획예시.md` | 회원 등록 기획 예시 |
 | `images/README.md` | 현재 제품 화면과 촬영 기준 |
+| `images/readme/README.md` | README 화면 캡처 |
 | `operations/HEALING_GUIDE.md` | 힐링 가이드 |
 | `operations/TEAM_DISCUSSION.md` | 팀 자유 토론 파이프라인 |
 | `reference/API_REFERENCE.md` | API & CLI 레퍼런스 |
